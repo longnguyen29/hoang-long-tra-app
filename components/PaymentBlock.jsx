@@ -19,7 +19,9 @@ export default function PaymentBlock({ order, payment, qrUrl, onPrint, t, TOKENS
       <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
         {t.paymentTitle}
       </div>
-      {qrUrl ? (
+      {order.paymentMethod === "cash" ? (
+        <p style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic" }}>{t.cashConfirmedNote}</p>
+      ) : qrUrl ? (
         <div>
           <p style={{ fontSize: 13, color: TOKENS.jadeSoft, marginBottom: 12 }}>{t.paymentHint}</p>
           <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>

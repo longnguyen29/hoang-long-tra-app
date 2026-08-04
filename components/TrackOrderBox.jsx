@@ -68,6 +68,11 @@ export default function TrackOrderBox({ supabase, lang, t, TOKENS }) {
               })}
             </div>
           )}
+          {result && (
+            <div style={{ marginTop: 12, fontSize: 12.5, color: TOKENS.jadeSoft }}>
+              {t.trackingCodeLabel}: {result.tracking_code ? <strong style={{ color: TOKENS.jade, fontFamily: "monospace" }}>{result.tracking_code}</strong> : t.noTrackingYet}
+            </div>
+          )}
         </div>
       )}
     </div>

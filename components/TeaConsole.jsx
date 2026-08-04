@@ -1,27 +1,94 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Search, ChevronRight, ChevronLeft, Menu, X, Edit3, Save, Plus, Trash2,
-  Leaf, Mountain, Languages, Copy, Check,
+  Leaf, Mountain, Languages, Copy, Check, Lock, Upload, Sparkles, ShoppingCart, Minus,
   MessageCircle, Send, Download, Printer, LogOut,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { TOKENS, ROLES, NAV, CATEGORIES, PRICE_TIERS, STATUS_STEPS } from "@/lib/constants";
+import { uploadImage } from "@/lib/supabase/storage";
+import {
+  TOKENS, ROLES, NAV, CATEGORIES, LIBRARY_CATEGORIES, PRICE_TIERS, STATUS_STEPS,
+  YIELD_GUIDE, CUP_ML_MIN, CUP_ML_MAX,
+  getStockTotal, getVariantMinPrice, getVariantStockTotal,
+} from "@/lib/constants";
 import { STR } from "@/lib/strings";
 import {
   fromOrderRow, toOrderRow, fromThreadRow,
-  fromCatalogRow, toCatalogRow, fromPromoRow, toPromoRow,
-  fromPaymentRow, toPaymentRow,
+  fromCatalogRow, toCatalogRow, fromVariantRow, fromPromoRow, toPromoRow,
+  fromPaymentRow, toPaymentRow, fromGalleryRow, fromWholesaleAccountRow,
 } from "@/lib/mappers";
 import PaymentBlock from "./PaymentBlock";
 import ReorderBox from "./ReorderBox";
 import TrackOrderBox from "./TrackOrderBox";
 import TeaDetailModal from "./TeaDetailModal";
 import ChatThreadPanel from "./ChatThreadPanel";
+import BrandSeal from "./BrandSeal";
+import VariantEditorRow from "./VariantEditorRow";
+import TrackingCodeEditor from "./TrackingCodeEditor";
 
 function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9à-ỹ]+/gi, "-").slice(0, 40) + "-" + Date.now().toString(36);
+}
+
+// Turns any http(s) URL inside plain text into a clickable link, preserving surrounding text/line breaks.
+function linkifyText(text, color) {
+  if (!text) return text;
+  const regex = /(https?:\/\/[^\s]+)/g;
+  const result = [];
+  let lastIndex = 0;
+  let match;
+  let key = 0;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) result.push(text.slice(lastIndex, match.index));
+    result.push(
+      <a key={key++} href={match[0]} target="_blank" rel="noopener noreferrer" style={{ color, textDecoration: "underline", wordBreak: "break-all" }}>
+        {match[0]}
+      </a>
+    );
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) result.push(text.slice(lastIndex));
+  return result;
+}
+
+// Expands catalog products (incl. variants) into flat orderable line items keyed by cartKey.
+function flattenOrderable(products) {
+  return products.flatMap((p) => {
+    if (p.variants && p.variants.length > 0) {
+      return p.variants.map((v) => ({
+        cartKey: `${p.id}__${v.weight}`,
+        productId: p.id,
+        weight: v.weight,
+        line: p.line,
+        available: p.available,
+        name: p.name,
+        notes: p.notes,
+        brew: p.brew,
+        photoUrl: p.photoUrl,
+        photoPosition: p.photoPosition,
+        price: v.price,
+        stockHaGiang: v.stockHaGiang,
+        stockSocSon: v.stockSocSon,
+      }));
+    }
+    return [{
+      cartKey: p.id,
+      productId: p.id,
+      weight: null,
+      line: p.line,
+      available: p.available,
+      name: p.name,
+      notes: p.notes,
+      brew: p.brew,
+      photoUrl: p.photoUrl,
+      photoPosition: p.photoPosition,
+      price: p.price,
+      stockHaGiang: p.stockHaGiang,
+      stockSocSon: p.stockSocSon,
+    }];
+  });
 }
 
 export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
@@ -34,14 +101,24 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
   const [articles, setArticles] = useState([]);
   const [query, setQuery] = useState("");
-
   const [wikiCategory, setWikiCategory] = useState(null);
   const [activeId, setActiveId] = useState(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ title: "", body: "", category: "legacy" });
 
+  const [libraryArticles, setLibraryArticles] = useState([]);
+  const [libraryTab, setLibraryTab] = useState("gallery");
+  const [libraryCategory, setLibraryCategory] = useState(null);
+  const [libraryActiveId, setLibraryActiveId] = useState(null);
+  const [libraryQuery, setLibraryQuery] = useState("");
+  const [galleryImages, setGalleryImages] = useState([]);
+  const [galleryDraft, setGalleryDraft] = useState({ url: "", captionEn: "", captionVi: "" });
+  const [lightboxImage, setLightboxImage] = useState(null);
+  const [homePhoto, setHomePhoto] = useState("");
+
   const [cart, setCart] = useState({});
   const [detailProduct, setDetailProduct] = useState(null);
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [retailCart, setRetailCart] = useState({});
   const [copied, setCopied] = useState(false);
   const [orderName, setOrderName] = useState("");
@@ -50,6 +127,13 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [orderTaxNumber, setOrderTaxNumber] = useState("");
   const [orderNote, setOrderNote] = useState("");
   const [orderSubmitted, setOrderSubmitted] = useState(null);
+  const [orderError, setOrderError] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("qr");
+  const [variantSelection, setVariantSelection] = useState({});
+  const retailSummaryRef = useRef(null);
+  const sampleSectionRef = useRef(null);
+  const everydaySectionRef = useRef(null);
+  const reserveSectionRef = useRef(null);
 
   const [orders, setOrders] = useState([]);
   const [threads, setThreads] = useState([]);
@@ -62,11 +146,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     if (typeof window === "undefined") return "guest";
     const KEY = "thl:customer-id";
     let id;
-    try {
-      id = window.localStorage.getItem(KEY);
-    } catch {
-      id = null;
-    }
+    try { id = window.localStorage.getItem(KEY); } catch { id = null; }
     if (!id) {
       id = "guest-" + Math.random().toString(36).slice(2, 9);
       try { window.localStorage.setItem(KEY, id); } catch { /* ignore */ }
@@ -91,10 +171,13 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [productDraft, setProductDraft] = useState({
     id: null, nameEn: "", nameVi: "", line: "everyday",
     notesEn: "", notesVi: "", brewEn: "", brewVi: "", packSize: "", photoUrl: "",
+    price: "", stockHaGiang: "", stockSocSon: "", batch: "", photoPosX: 50, photoPosY: 50,
   });
 
   const [testimonials, setTestimonials] = useState([]);
   const [testimonialDraft, setTestimonialDraft] = useState({ id: null, name: "", quote: "" });
+  const [customerReviewDraft, setCustomerReviewDraft] = useState({ name: "", quote: "" });
+  const [customerReviewSent, setCustomerReviewSent] = useState(false);
 
   const [promos, setPromos] = useState([]);
   const [promoDraft, setPromoDraft] = useState({ id: null, code: "", percent: "", ownerName: "" });
@@ -102,10 +185,21 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [appliedPromo, setAppliedPromo] = useState(null);
   const [promoError, setPromoError] = useState(false);
 
+  const [wholesaleAccounts, setWholesaleAccounts] = useState([]);
+  const [partnerDraft, setPartnerDraft] = useState({ id: null, code: "", businessName: "", contact: "" });
+  const [partnerIdInput, setPartnerIdInput] = useState("");
+  const [wholesaleVerified, setWholesaleVerified] = useState(false);
+  const [verifiedAccount, setVerifiedAccount] = useState(null);
+  const [partnerIdError, setPartnerIdError] = useState(false);
+  const [eligibleForTestPack, setEligibleForTestPack] = useState(false);
+  const [addTestPack, setAddTestPack] = useState(false);
+
   const [orderConsent, setOrderConsent] = useState(false);
 
   const t = STR[lang];
   const other = lang === "en" ? "vi" : "en";
+  const lineLabel = (l) => (l === "reserve" ? t.reserveOption : l === "sample" ? t.sampleOption : t.everydayOption);
+  const formatVND = (n) => n.toLocaleString("vi-VN") + "đ";
 
   const visibleCategories = useMemo(() => CATEGORIES.filter((c) => c.audience.includes(role)), [role]);
   const visibleCategoryIds = useMemo(() => new Set(visibleCategories.map((c) => c.id)), [visibleCategories]);
@@ -125,11 +219,27 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const active = articles.find((a) => a.id === activeId);
   const activeCategoryMeta = wikiCategory ? CATEGORIES.find((c) => c.id === wikiCategory) : null;
 
+  const libraryArticlesInCategory = (catId) => libraryArticles.filter((a) => a.category === catId);
+  const librarySearchResults = useMemo(() => {
+    if (!libraryQuery.trim()) return null;
+    const q = libraryQuery.toLowerCase();
+    return libraryArticles.filter((a) => {
+      const title = (a.title[lang] || a.title.en || "").toLowerCase();
+      const body = (a.body[lang] || a.body.en || "").toLowerCase();
+      return title.includes(q) || body.includes(q);
+    });
+  }, [libraryArticles, libraryQuery, lang]);
+  const libraryActive = libraryArticles.find((a) => a.id === libraryActiveId);
+  const libraryActiveCategoryMeta = libraryCategory ? LIBRARY_CATEGORIES.find((c) => c.id === libraryCategory) : null;
+
   const resetWiki = () => {
     setWikiCategory(null);
     setActiveId(null);
     setEditing(false);
     setQuery("");
+    setLibraryCategory(null);
+    setLibraryActiveId(null);
+    setLibraryQuery("");
   };
 
   const startEdit = (a) => {
@@ -171,23 +281,25 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
   const nav = NAV.filter((n) => n.roles.includes(role));
 
-  const wholesaleProducts = catalog.filter((p) => p.line !== "reserve");
+  const wholesaleProducts = catalog.filter((p) => p.line === "everyday");
   const retailProducts = catalog;
 
   const cartLines = wholesaleProducts.map((p) => ({ ...p, qty: Number(cart[p.id]) || 0 })).filter((p) => p.qty > 0);
   const totalKg = cartLines.reduce((sum, p) => sum + p.qty, 0);
   const currentTier = [...PRICE_TIERS].reverse().find((tier) => totalKg >= tier.min) || PRICE_TIERS[0];
 
-  const retailCartLines = retailProducts.map((p) => ({ ...p, qty: Number(retailCart[p.id]) || 0 })).filter((p) => p.qty > 0);
+  const retailOrderableItems = flattenOrderable(retailProducts);
+  const retailCartLines = retailOrderableItems.map((item) => ({ ...item, qty: Number(retailCart[item.cartKey]) || 0 })).filter((item) => item.qty > 0);
   const retailTotalItems = retailCartLines.reduce((sum, p) => sum + p.qty, 0);
 
   const setQty = (id, val) => {
     const n = Math.max(0, Number(val) || 0);
     setCart((c) => ({ ...c, [id]: n }));
   };
-  const setRetailQty = (id, val) => {
-    const n = Math.max(0, Number(val) || 0);
-    setRetailCart((c) => ({ ...c, [id]: n }));
+  const setRetailQty = (cartKey, val, stockTotal) => {
+    let n = Math.max(0, Number(val) || 0);
+    if (typeof stockTotal === "number") n = Math.min(n, stockTotal);
+    setRetailCart((c) => ({ ...c, [cartKey]: n }));
   };
 
   const summaryText = useMemo(() => {
@@ -217,9 +329,38 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     if (data) setArticles(data);
   }, [supabase]);
 
+  const loadLibraryArticles = useCallback(async () => {
+    const { data } = await supabase.from("library_articles").select("*");
+    if (data) setLibraryArticles(data);
+  }, [supabase]);
+
+  const loadGalleryImages = useCallback(async () => {
+    const { data } = await supabase.from("gallery_images").select("*").order("created_at", { ascending: true });
+    if (data) setGalleryImages(data.map(fromGalleryRow));
+  }, [supabase]);
+
+  const loadHomePhoto = useCallback(async () => {
+    const { data } = await supabase.from("settings_home").select("*").eq("id", 1).maybeSingle();
+    if (data) setHomePhoto(data.featured_photo || "");
+  }, [supabase]);
+
   const loadCatalog = useCallback(async () => {
-    const { data } = await supabase.from("catalog_products").select("*");
-    if (data) setCatalog(data.map(fromCatalogRow));
+    const [{ data: products }, { data: variants }] = await Promise.all([
+      supabase.from("catalog_products").select("*"),
+      supabase.from("catalog_variants").select("*"),
+    ]);
+    if (products) {
+      const byProduct = {};
+      (variants || []).forEach((v) => {
+        (byProduct[v.product_id] ||= []).push(fromVariantRow(v));
+      });
+      setCatalog(products.map((r) => {
+        const p = fromCatalogRow(r);
+        const vs = byProduct[p.id];
+        if (vs && vs.length > 0) p.variants = vs;
+        return p;
+      }));
+    }
   }, [supabase]);
 
   const loadTestimonials = useCallback(async () => {
@@ -252,6 +393,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     if (data) setPromos(data.map(fromPromoRow));
   }, [supabase]);
 
+  const loadWholesaleAccounts = useCallback(async () => {
+    const { data } = await supabase.from("wholesale_accounts").select("*").order("code");
+    if (data) setWholesaleAccounts(data.map(fromWholesaleAccountRow));
+  }, [supabase]);
+
   const loadMyThread = useCallback(async () => {
     const { data } = await supabase.rpc("get_customer_thread", { p_customer_id: customerId });
     if (data && data.length > 0) setMyThread(fromThreadRow(data[0]));
@@ -259,6 +405,9 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
   useEffect(() => {
     loadArticles();
+    loadLibraryArticles();
+    loadGalleryImages();
+    loadHomePhoto();
     loadCatalog();
     loadTestimonials();
     loadPayment();
@@ -274,6 +423,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       loadThreads();
       loadLeads();
       loadPromos();
+      loadWholesaleAccounts();
     } else {
       loadMyThread();
     }
@@ -293,9 +443,22 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     return () => clearInterval(id);
   }, [isAdmin, chatOpen, loadMyThread]);
 
+  // Eligibility for the free "new batch test pack" — checked server-side via RPC since
+  // customers have no direct read access to the orders table.
+  useEffect(() => {
+    if (isAdmin || !wholesaleVerified || !verifiedAccount?.contact) { setEligibleForTestPack(false); return; }
+    supabase.rpc("has_prior_wholesale_order", { p_contact: verifiedAccount.contact }).then(({ data }) => {
+      setEligibleForTestPack(!!data);
+    });
+  }, [isAdmin, wholesaleVerified, verifiedAccount, supabase]);
+
   const updateOrderStatus = async (id, status) => {
     await supabase.from("orders").update({ status }).eq("id", id);
     setOrders(orders.map((o) => (o.id === id ? { ...o, status } : o)));
+  };
+  const updateTrackingCode = async (id, trackingCode) => {
+    await supabase.from("orders").update({ tracking_code: trackingCode }).eq("id", id);
+    setOrders(orders.map((o) => (o.id === id ? { ...o, trackingCode } : o)));
   };
   const markOrderRead = async (id) => {
     await supabase.from("orders").update({ unread: false }).eq("id", id);
@@ -306,8 +469,17 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     setLeads(leads.map((l) => (l.id === id ? { ...l, unread: false } : l)));
   };
 
+  const savePayment = async () => {
+    await supabase.from("settings_payment").upsert(toPaymentRow(payment));
+    setPaymentSaved(true);
+    setTimeout(() => setPaymentSaved(false), 1800);
+  };
+
   const saveProductDraft = async () => {
     if (!productDraft.nameEn.trim() && !productDraft.nameVi.trim()) return;
+    const priceVal = Number(productDraft.price);
+    const hgVal = productDraft.stockHaGiang.trim();
+    const ssVal = productDraft.stockSocSon.trim();
     const fields = {
       line: productDraft.line,
       name: { en: productDraft.nameEn.trim(), vi: productDraft.nameVi.trim() },
@@ -315,20 +487,27 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       brew: { en: productDraft.brewEn.trim(), vi: productDraft.brewVi.trim() },
       packSize: productDraft.packSize.trim(),
       photoUrl: productDraft.photoUrl.trim(),
+      photoPosition: `${productDraft.photoPosX}% ${productDraft.photoPosY}%`,
+      price: priceVal > 0 ? priceVal : undefined,
+      stockHaGiang: hgVal !== "" ? Math.max(0, Number(hgVal)) : undefined,
+      stockSocSon: ssVal !== "" ? Math.max(0, Number(ssVal)) : undefined,
+      batch: productDraft.batch.trim(),
     };
     if (productDraft.id) {
       await supabase.from("catalog_products").update({
         line: fields.line, name: fields.name, notes: fields.notes, brew: fields.brew,
-        pack_size: fields.packSize, photo_url: fields.photoUrl,
+        pack_size: fields.packSize, photo_url: fields.photoUrl, photo_position: fields.photoPosition,
+        price: fields.price ?? null, stock_ha_giang: fields.stockHaGiang ?? null, stock_soc_son: fields.stockSocSon ?? null,
+        batch: fields.batch,
       }).eq("id", productDraft.id);
       setCatalog(catalog.map((p) => (p.id === productDraft.id ? { ...p, ...fields } : p)));
     } else {
       const id = slugify(productDraft.nameEn || productDraft.nameVi);
-      const newRow = { id, available: true, ...fields };
+      const newRow = { id, available: true, limited: false, ...fields };
       await supabase.from("catalog_products").insert(toCatalogRow(newRow));
       setCatalog([...catalog, newRow]);
     }
-    setProductDraft({ id: null, nameEn: "", nameVi: "", line: "everyday", notesEn: "", notesVi: "", brewEn: "", brewVi: "", packSize: "", photoUrl: "" });
+    setProductDraft({ id: null, nameEn: "", nameVi: "", line: "everyday", notesEn: "", notesVi: "", brewEn: "", brewVi: "", packSize: "", photoUrl: "", price: "", stockHaGiang: "", stockSocSon: "", batch: "", photoPosX: 50, photoPosY: 50 });
   };
   const toggleAvailability = async (id) => {
     const p = catalog.find((x) => x.id === id);
@@ -336,17 +515,45 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     await supabase.from("catalog_products").update({ available: next }).eq("id", id);
     setCatalog(catalog.map((x) => (x.id === id ? { ...x, available: next } : x)));
   };
+  const toggleLimited = async (id) => {
+    const p = catalog.find((x) => x.id === id);
+    const next = !p.limited;
+    await supabase.from("catalog_products").update({ limited: next }).eq("id", id);
+    setCatalog(catalog.map((x) => (x.id === id ? { ...x, limited: next } : x)));
+  };
+  const updateVariant = async (productId, weight, fields) => {
+    await supabase.from("catalog_variants").update({
+      price: fields.price ?? null, stock_ha_giang: fields.stockHaGiang ?? null, stock_soc_son: fields.stockSocSon ?? null,
+    }).eq("product_id", productId).eq("weight", weight);
+    setCatalog(catalog.map((p) =>
+      p.id === productId && p.variants
+        ? { ...p, variants: p.variants.map((v) => (v.weight === weight ? { ...v, ...fields } : v)) }
+        : p
+    ));
+  };
   const editProductDraft = (p) =>
     setProductDraft({
       id: p.id,
       nameEn: p.name.en || "", nameVi: p.name.vi || "", line: p.line,
       notesEn: p.notes?.en || "", notesVi: p.notes?.vi || "",
       brewEn: p.brew?.en || "", brewVi: p.brew?.vi || "",
-      packSize: p.packSize || "", photoUrl: p.photoUrl || "",
+      packSize: p.packSize || "", photoUrl: p.photoUrl || "", price: p.price ? String(p.price) : "",
+      stockHaGiang: p.stockHaGiang !== undefined && p.stockHaGiang !== null ? String(p.stockHaGiang) : "",
+      stockSocSon: p.stockSocSon !== undefined && p.stockSocSon !== null ? String(p.stockSocSon) : "",
+      batch: p.batch || "",
+      photoPosX: p.photoPosition ? Number(p.photoPosition.split(" ")[0].replace("%", "")) : 50,
+      photoPosY: p.photoPosition ? Number(p.photoPosition.split(" ")[1].replace("%", "")) : 50,
     });
   const deleteProductFn = async (id) => {
     await supabase.from("catalog_products").delete().eq("id", id);
     setCatalog(catalog.filter((p) => p.id !== id));
+  };
+
+  const uploadProductPhoto = async (file) => {
+    try {
+      const url = await uploadImage(supabase, file, "products");
+      setProductDraft((d) => ({ ...d, photoUrl: url }));
+    } catch (e) { console.error("Upload failed:", e); }
   };
 
   const savePromoDraft = async () => {
@@ -396,7 +603,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       await supabase.from("testimonials").update({ name, quote }).eq("id", testimonialDraft.id);
       setTestimonials(testimonials.map((r) => (r.id === testimonialDraft.id ? { ...r, name, quote } : r)));
     } else {
-      const row = { id: "review-" + Date.now().toString(36), name: testimonialDraft.name.trim(), quote: testimonialDraft.quote.trim() };
+      const row = { id: "review-" + Date.now().toString(36), name: testimonialDraft.name.trim(), quote: testimonialDraft.quote.trim(), approved: true };
       await supabase.from("testimonials").insert(row);
       setTestimonials([...testimonials, row]);
     }
@@ -406,24 +613,109 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     await supabase.from("testimonials").delete().eq("id", id);
     setTestimonials(testimonials.filter((r) => r.id !== id));
   };
+  const approveTestimonial = async (id) => {
+    await supabase.from("testimonials").update({ approved: true }).eq("id", id);
+    setTestimonials(testimonials.map((r) => (r.id === id ? { ...r, approved: true } : r)));
+  };
+  const submitCustomerReview = async () => {
+    if (!customerReviewDraft.name.trim() || !customerReviewDraft.quote.trim()) return;
+    const row = { id: "review-" + Date.now().toString(36), name: customerReviewDraft.name.trim(), quote: customerReviewDraft.quote.trim(), approved: false };
+    const { error } = await supabase.from("testimonials").insert(row);
+    if (error) { console.error(error); return; }
+    setCustomerReviewDraft({ name: "", quote: "" });
+    setCustomerReviewSent(true);
+    setTimeout(() => setCustomerReviewSent(false), 3000);
+  };
 
-  const savePayment = async () => {
-    await supabase.from("settings_payment").upsert(toPaymentRow(payment));
-    setPaymentSaved(true);
-    setTimeout(() => setPaymentSaved(false), 1800);
+  const addGalleryImage = async () => {
+    if (!galleryDraft.url.trim()) return;
+    const row = {
+      id: "img-" + Date.now().toString(36),
+      url: galleryDraft.url.trim(),
+      caption: { en: galleryDraft.captionEn.trim(), vi: galleryDraft.captionVi.trim() },
+    };
+    await supabase.from("gallery_images").insert(row);
+    setGalleryImages([...galleryImages, row]);
+    setGalleryDraft({ url: "", captionEn: "", captionVi: "" });
+  };
+  const deleteGalleryImage = async (id) => {
+    await supabase.from("gallery_images").delete().eq("id", id);
+    setGalleryImages(galleryImages.filter((g) => g.id !== id));
+  };
+  const uploadGalleryPhoto = async (file) => {
+    try {
+      const url = await uploadImage(supabase, file, "gallery");
+      setGalleryDraft((d) => ({ ...d, url }));
+    } catch (e) { console.error("Upload failed:", e); }
+  };
+
+  const saveHomePhoto = async (url) => {
+    await supabase.from("settings_home").upsert({ id: 1, featured_photo: url });
+    setHomePhoto(url);
+  };
+  const uploadHomePhoto = async (file) => {
+    try {
+      const url = await uploadImage(supabase, file, "home");
+      await saveHomePhoto(url);
+    } catch (e) { console.error("Upload failed:", e); }
+  };
+
+  const savePartnerDraft = async () => {
+    if (!partnerDraft.code.trim() || !partnerDraft.businessName.trim()) return;
+    if (partnerDraft.id) {
+      const code = partnerDraft.code.trim().toUpperCase();
+      const businessName = partnerDraft.businessName.trim();
+      const contact = partnerDraft.contact.trim();
+      await supabase.from("wholesale_accounts").update({ code, business_name: businessName, contact }).eq("id", partnerDraft.id);
+      setWholesaleAccounts(wholesaleAccounts.map((a) => (a.id === partnerDraft.id ? { ...a, code, businessName, contact } : a)));
+    } else {
+      const row = { id: "partner-" + Date.now().toString(36), code: partnerDraft.code.trim().toUpperCase(), businessName: partnerDraft.businessName.trim(), contact: partnerDraft.contact.trim() };
+      await supabase.from("wholesale_accounts").insert({ id: row.id, code: row.code, business_name: row.businessName, contact: row.contact });
+      setWholesaleAccounts([...wholesaleAccounts, row]);
+    }
+    setPartnerDraft({ id: null, code: "", businessName: "", contact: "" });
+  };
+  const deletePartner = async (id) => {
+    await supabase.from("wholesale_accounts").delete().eq("id", id);
+    setWholesaleAccounts(wholesaleAccounts.filter((a) => a.id !== id));
+  };
+  const verifyPartnerId = async () => {
+    const { data, error } = await supabase.rpc("verify_partner_code", { p_code: partnerIdInput.trim() });
+    if (error || !data || data.length === 0) {
+      setPartnerIdError(true);
+      return;
+    }
+    const match = data[0];
+    setWholesaleVerified(true);
+    setVerifiedAccount({ businessName: match.business_name, contact: match.contact });
+    setPartnerIdError(false);
+    if (!orderName.trim()) setOrderName(match.business_name);
+    if (!orderContact.trim() && match.contact) setOrderContact(match.contact);
   };
 
   const printInvoice = (order) => {
+    // Escape user-controlled text before interpolating into raw HTML — without this, a malicious
+    // order name/address/note could run arbitrary script in the admin's browser when printing.
+    const esc = (s) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
     const itemRows = order.lines
-      .map((l) => `<tr><td style="padding:8px 0;">${l.name.en || l.name.vi}</td><td style="padding:8px 0;text-align:right;">${l.qty} ${l.unit === "kg" ? "kg" : "pcs"}</td></tr>`)
+      .map((l) => `<tr><td style="padding:8px 0;">${esc(l.name.en || l.name.vi)}${l.price ? ` <span style="color:#AD8A4E;">(${l.price.toLocaleString("vi-VN")}đ)</span>` : ""}</td><td style="padding:8px 0;text-align:right;">${l.qty} ${l.unit === "kg" ? "kg" : l.unit === "pack" ? "pack" : "pcs"}${l.price ? ` = ${(l.price * l.qty).toLocaleString("vi-VN")}đ` : ""}</td></tr>`)
       .join("");
     const totalLine =
       order.type === "retail"
         ? `<tr><td style="padding:10px 0;font-weight:700;">Total items</td><td style="padding:10px 0;text-align:right;font-weight:700;">${order.totalItems} pcs</td></tr>`
         : `<tr><td style="padding:10px 0;font-weight:700;">Total volume</td><td style="padding:10px 0;text-align:right;font-weight:700;">${order.totalKg} kg</td></tr>
-           <tr><td colspan="2" style="padding:2px 0 10px;color:#AD8A4E;">${order.tier.range.en} · ${order.tier.off.en}</td></tr>`;
-    const promoLine = order.promo ? `<tr><td colspan="2" style="padding:2px 0 10px;color:#9C3B2E;">Promo: ${order.promo.code} (-${order.promo.percent}%)</td></tr>` : "";
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice ${order.id}</title>
+           <tr><td colspan="2" style="padding:2px 0 10px;color:#AD8A4E;">${esc(order.tier.range.en)} · ${esc(order.tier.off.en)}</td></tr>`;
+    const estimatedTotalLine = order.estimatedTotal
+      ? `<tr><td style="padding:6px 0;font-weight:700;color:#AD8A4E;">Estimated total</td><td style="padding:6px 0;text-align:right;font-weight:700;color:#AD8A4E;">${order.estimatedTotal.toLocaleString("vi-VN")}đ</td></tr>`
+      : "";
+    const promoLine = order.promo ? `<tr><td colspan="2" style="padding:2px 0 10px;color:#9C3B2E;">Promo: ${esc(order.promo.code)} (-${order.promo.percent}%)</td></tr>` : "";
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice ${esc(order.id)}</title>
       <style>
         body{font-family:Georgia,serif;color:#1C2B24;padding:40px;max-width:600px;margin:0 auto;}
         table{width:100%;border-collapse:collapse;}
@@ -436,15 +728,15 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       <body>
         <div class="seal">皇龍</div>
         <div class="brand">House of Hoàng Long</div>
-        <div class="meta">Invoice · Order ${order.id}<br/>${new Date(order.ts).toLocaleString("vi-VN")}</div>
+        <div class="meta">Invoice · Order ${esc(order.id)}<br/>${esc(new Date(order.ts).toLocaleString("vi-VN"))}</div>
         <hr/>
         <h2>Customer</h2>
         <p style="font-size:14px;line-height:1.7;margin:0 0 16px;">
-          ${order.customerName}<br/>${order.contact}${order.address ? `<br/>${order.address}` : ""}${order.taxNumber ? `<br/>Tax No: ${order.taxNumber}` : ""}
+          ${esc(order.customerName)}<br/>${esc(order.contact)}${order.address ? `<br/>${esc(order.address)}` : ""}${order.taxNumber ? `<br/>Tax No: ${esc(order.taxNumber)}` : ""}
         </p>
         <h2>Items</h2>
-        <table>${itemRows}${totalLine}${promoLine}</table>
-        ${order.note ? `<p style="font-size:13px;font-style:italic;color:#2E4A40;margin-top:16px;">Note: ${order.note}</p>` : ""}
+        <table>${itemRows}${totalLine}${estimatedTotalLine}${promoLine}</table>
+        ${order.note ? `<p style="font-size:13px;font-style:italic;color:#2E4A40;margin-top:16px;">Note: ${esc(order.note)}</p>` : ""}
         <hr/>
         <p style="font-size:11px;color:#2E4A40;">This is a preliminary invoice. Final pricing is confirmed by our team.</p>
       </body></html>`;
@@ -457,7 +749,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   };
 
   const exportOrdersCsv = () => {
-    const headers = ["Order ID", "Date", "Type", "Customer", "Contact", "Address", "Tax Number", "Items", "Total", "Tier/VAT", "Promo", "Status", "Note"];
+    const headers = ["Order ID", "Date", "Type", "Customer", "Contact", "Address", "Tax Number", "Items", "Total", "Tier/VAT", "Estimated Total (VND)", "Promo", "Payment Method", "Status", "Tracking Code", "Note"];
     const rows = orders.map((o) => [
       o.id,
       new Date(o.ts).toLocaleString("vi-VN"),
@@ -466,11 +758,14 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       o.contact,
       o.address || "",
       o.taxNumber || "",
-      o.lines.map((l) => `${l.name.en || l.name.vi}: ${l.qty}${l.unit === "kg" ? "kg" : "pcs"}`).join(" | "),
+      o.lines.map((l) => `${l.name.en || l.name.vi}: ${l.qty}${l.unit === "kg" ? "kg" : l.unit === "pack" ? "pack" : "pcs"}${l.price ? ` @${l.price.toLocaleString("vi-VN")}đ` : ""}`).join(" | "),
       o.type === "retail" ? `${o.totalItems} pcs` : `${o.totalKg} kg`,
       o.type === "retail" ? `VAT ${o.vat}%` : `${o.tier?.range?.en || ""} (${o.tier?.off?.en || ""})`,
+      o.estimatedTotal ? o.estimatedTotal.toLocaleString("vi-VN") + "đ" : "",
       o.promo ? `${o.promo.code} (-${o.promo.percent}%)${o.promo.ownerName ? " via " + o.promo.ownerName : ""}` : "",
+      o.paymentMethod === "cash" ? "Cash" : "QR",
       o.status || "pending",
+      o.trackingCode || "",
       o.note || "",
     ]);
     const csv = [headers, ...rows]
@@ -489,7 +784,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     if (!payment.bin || !payment.accountNumber) return null;
     const info = encodeURIComponent(order ? order.id : "");
     const name = encodeURIComponent(payment.accountName || "");
-    return `https://img.vietqr.io/image/${payment.bin}-${payment.accountNumber}-compact2.png?accountName=${name}&addInfo=${info}`;
+    const amountParam = order && order.estimatedTotal ? `&amount=${Math.round(order.estimatedTotal)}` : "";
+    return `https://img.vietqr.io/image/${payment.bin}-${payment.accountNumber}-compact2.png?accountName=${name}&addInfo=${info}${amountParam}`;
   };
 
   const unreadOrders = orders.filter((o) => o.unread).length;
@@ -519,13 +815,27 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   };
 
   const applyReorder = (order) => {
-    const productList = order.type === "retail" ? retailProducts : wholesaleProducts;
     const newCart = {};
-    order.lines.forEach((l) => {
-      const match = productList.find((p) => p.name.en === l.name.en || p.name.vi === l.name.vi);
-      if (match) newCart[match.id] = l.qty;
-    });
-    if (order.type === "retail") setRetailCart(newCart); else setCart(newCart);
+    if (order.type === "retail") {
+      order.lines.forEach((l) => {
+        const match = retailProducts.find((p) => l.name.en === p.name.en || l.name.en.startsWith(p.name.en + " ("));
+        if (!match) return;
+        if (match.variants && match.variants.length > 0) {
+          const m = l.name.en.match(/\(([^)]+)\)\s*$/);
+          const weight = (m && match.variants.some((v) => v.weight === m[1])) ? m[1] : match.variants[0].weight;
+          newCart[`${match.id}__${weight}`] = l.qty;
+        } else {
+          newCart[match.id] = l.qty;
+        }
+      });
+      setRetailCart(newCart);
+    } else {
+      order.lines.forEach((l) => {
+        const match = wholesaleProducts.find((p) => p.name.en === l.name.en || p.name.vi === l.name.vi);
+        if (match) newCart[match.id] = l.qty;
+      });
+      setCart(newCart);
+    }
     setOrderName(order.customerName);
     setOrderContact(order.contact);
     setOrderAddress(order.address || "");
@@ -536,34 +846,81 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     if (!orderName.trim() || !orderContact.trim() || !orderConsent) return;
     const isRetail = type === "retail";
     const lines = isRetail
-      ? retailCartLines.map((p) => ({ name: p.name, qty: p.qty, unit: "pcs" }))
-      : cartLines.map((p) => ({ name: p.name, qty: p.qty, unit: "kg" }));
-    const newOrder = {
-      id: "order-" + Date.now().toString(36),
-      ts: new Date().toISOString(),
-      type,
-      customerName: orderName.trim(),
-      contact: orderContact.trim(),
-      address: orderAddress.trim(),
-      taxNumber: isRetail ? "" : orderTaxNumber.trim(),
-      vat: isRetail ? 10 : null,
-      promo: appliedPromo,
-      note: orderNote.trim(),
-      lines,
-      totalKg: isRetail ? null : totalKg,
-      totalItems: isRetail ? retailTotalItems : null,
-      tier: isRetail ? null : currentTier,
-      status: "pending",
-      unread: true,
-    };
-    const { error } = await supabase.from("orders").insert(toOrderRow(newOrder));
-    if (error) { console.error(error); return; }
-    setOrderSubmitted(newOrder);
-    if (isRetail) setRetailCart({}); else setCart({});
+      ? retailCartLines.map((p) => ({
+          name: p.weight ? { en: `${p.name.en} (${p.weight})`, vi: `${p.name.vi} (${p.weight})` } : p.name,
+          qty: p.qty, unit: p.line === "everyday" ? "kg" : "pcs", price: p.price || null,
+          productId: p.productId, weight: p.weight || null,
+        }))
+      : cartLines.map((p) => ({ name: p.name, qty: p.qty, unit: "kg", price: p.price || null }));
+    if (!isRetail && addTestPack) {
+      lines.push({ name: t.testPackName, qty: 1, unit: "pack" });
+    }
+    const rawTotal = lines.reduce((s, l) => s + (l.price ? l.price * l.qty : 0), 0);
+    const wholesaleTotal = rawTotal > 0 ? Math.round(rawTotal * (1 - currentTier.pct / 100)) : null;
+
+    setOrderError(false);
+
+    if (isRetail) {
+      const { data, error } = await supabase.rpc("submit_retail_order", {
+        p_customer_name: orderName.trim(),
+        p_contact: orderContact.trim(),
+        p_address: orderAddress.trim(),
+        p_note: orderNote.trim(),
+        p_lines: lines,
+        p_total_items: retailTotalItems,
+        p_estimated_total: rawTotal || null,
+        p_promo: appliedPromo,
+        p_payment_method: paymentMethod,
+      });
+      if (error || !data || data.length === 0) {
+        console.error(error);
+        setOrderError(true);
+        loadCatalog(); // stock may have changed under us — refresh what's shown
+        return;
+      }
+      const row = data[0];
+      setOrderSubmitted({
+        id: row.id, ts: row.ts, type: "retail",
+        customerName: orderName.trim(), contact: orderContact.trim(), address: orderAddress.trim(),
+        taxNumber: "", vat: 10, promo: appliedPromo, note: orderNote.trim(), lines,
+        totalKg: null, totalItems: retailTotalItems, estimatedTotal: rawTotal || null, tier: null,
+        paymentMethod, status: "pending", trackingCode: "", unread: true,
+      });
+      setRetailCart({});
+      loadCatalog();
+    } else {
+      const newOrder = {
+        id: "order-" + Date.now().toString(36),
+        ts: new Date().toISOString(),
+        type,
+        customerName: orderName.trim(),
+        contact: orderContact.trim(),
+        address: orderAddress.trim(),
+        taxNumber: orderTaxNumber.trim(),
+        vat: null,
+        promo: appliedPromo,
+        note: orderNote.trim(),
+        lines,
+        totalKg,
+        totalItems: null,
+        estimatedTotal: wholesaleTotal,
+        tier: currentTier,
+        paymentMethod,
+        status: "pending",
+        trackingCode: "",
+        unread: true,
+      };
+      const { error } = await supabase.from("orders").insert(toOrderRow(newOrder));
+      if (error) { console.error(error); setOrderError(true); return; }
+      setOrderSubmitted(newOrder);
+      setCart({});
+    }
     setAppliedPromo(null);
     setPromoInput("");
     setPromoError(false);
     setOrderConsent(false);
+    setPaymentMethod("qr");
+    setAddTestPack(false);
   };
 
   const mailtoHref = (order) => {
@@ -575,9 +932,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       order.taxNumber ? `Tax number: ${order.taxNumber}` : null,
       order.note ? `Note: ${order.note}` : null,
       "",
-      ...order.lines.map((l) => `- ${l.name[lang] || l.name.en}: ${l.qty} ${l.unit === "kg" ? "kg" : "pcs"}`),
+      ...order.lines.map((l) => `- ${l.name[lang] || l.name.en}: ${l.qty} ${l.unit === "kg" ? "kg" : l.unit === "pack" ? "pack" : "pcs"}${l.price ? ` (${l.price.toLocaleString("vi-VN")}đ each)` : ""}`),
       "",
       order.type === "retail" ? `Items: ${order.totalItems}` : `Total: ${order.totalKg} kg`,
+      order.estimatedTotal ? `Estimated total: ${order.estimatedTotal.toLocaleString("vi-VN")}đ` : null,
+      `Payment method: ${order.paymentMethod === "cash" ? "Cash" : "QR bank transfer"}`,
       order.vat ? `VAT: ${order.vat}% (added to final invoice)` : null,
       order.promo ? `Promo code: ${order.promo.code} (-${order.promo.percent}%)` : null,
       order.tier ? `Tier: ${order.tier.range[lang]} (${order.tier.off[lang]})` : null,
@@ -628,72 +987,80 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   return (
     <div style={{ fontFamily: "Inter, sans-serif", background: TOKENS.paper, minHeight: "100vh", color: TOKENS.jade, display: "flex", overflowX: "clip" }}>
       {/* Sidebar */}
-      <aside
-        style={{
-          width: sidebarOpen ? 240 : 0,
-          minWidth: sidebarOpen ? 240 : 0,
-          background: TOKENS.jade,
-          color: TOKENS.paper,
-          transition: "width 0.25s ease, min-width 0.25s ease",
-          overflow: "hidden",
-          position: "sticky",
-          top: 0,
-          height: "100vh",
-          zIndex: 20,
-        }}
-      >
-        <div style={{ padding: "24px 20px", borderBottom: `1px solid ${TOKENS.jadeSoft}` }}>
-          <div style={{ fontFamily: "Fraunces, Georgia, serif", fontSize: 20, letterSpacing: 1, color: TOKENS.brass }}>皇龍</div>
-          <div style={{ fontSize: 13, marginTop: 4, opacity: 0.85, whiteSpace: "nowrap" }}>House of Hoàng Long</div>
+      {sidebarOpen && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(28,43,36,0.55)", zIndex: 25 }}
+          onClick={() => setSidebarOpen(false)}
+        >
+          <aside
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 240, minWidth: 240, background: TOKENS.jade, color: TOKENS.paper,
+              position: "fixed", top: 0, left: 0, height: "100vh", zIndex: 26,
+              boxShadow: "8px 0 24px rgba(0,0,0,0.25)",
+            }}
+          >
+            <div style={{ padding: "26px 20px 22px", borderBottom: `1px solid ${TOKENS.jadeSoft}` }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: "50%", border: `1px solid ${TOKENS.brass}88`,
+                display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12,
+                fontFamily: "'Noto Serif SC', serif", fontSize: 15, color: TOKENS.brass,
+              }}>
+                皇龍
+              </div>
+              <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 14.5, fontWeight: 600, letterSpacing: 0.2, whiteSpace: "nowrap" }}>House of Hoàng Long</div>
+            </div>
+            <nav style={{ padding: "14px 8px" }}>
+              {nav.map((n) => {
+                const Icon = n.icon;
+                const isActive = section === n.id;
+                return (
+                  <button
+                    key={n.id}
+                    onClick={() => { setSection(n.id); resetWiki(); setSidebarOpen(false); }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "12px 14px",
+                      marginBottom: 2, background: "transparent", border: "none",
+                      borderLeft: `2px solid ${isActive ? TOKENS.brass : "transparent"}`,
+                      color: isActive ? TOKENS.paper : `${TOKENS.paper}99`, fontSize: 14,
+                      fontWeight: isActive ? 600 : 400, cursor: "pointer", textAlign: "left", whiteSpace: "nowrap",
+                    }}
+                  >
+                    <Icon size={17} strokeWidth={1.7} color={isActive ? TOKENS.brass : `${TOKENS.paper}77`} />
+                    {n.label[lang]}
+                    {n.id === "frontdesk" && frontDeskBadge > 0 && (
+                      <span style={{
+                        marginLeft: "auto", background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10,
+                        fontSize: 11, fontWeight: 700, padding: "1px 7px", minWidth: 18, textAlign: "center",
+                      }}>
+                        {frontDeskBadge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+            <div style={{ position: "absolute", bottom: 16, left: 20, right: 20, fontSize: 10.5, letterSpacing: 0.3, opacity: 0.45, lineHeight: 1.5 }}>
+              Trà Cổ Hà Giang – Công Nghệ Nhật Bản
+            </div>
+          </aside>
         </div>
-        <nav style={{ padding: "12px 10px" }}>
-          {nav.map((n) => {
-            const Icon = n.icon;
-            const isActive = section === n.id;
-            return (
-              <button
-                key={n.id}
-                onClick={() => { setSection(n.id); resetWiki(); }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "11px 12px",
-                  marginBottom: 4, background: isActive ? TOKENS.jadeSoft : "transparent", border: "none",
-                  borderRadius: 8, color: isActive ? TOKENS.brass : TOKENS.paper, fontSize: 14,
-                  fontWeight: isActive ? 600 : 400, cursor: "pointer", textAlign: "left", whiteSpace: "nowrap",
-                }}
-              >
-                <Icon size={17} strokeWidth={1.8} />
-                {n.label[lang]}
-                {n.id === "frontdesk" && frontDeskBadge > 0 && (
-                  <span style={{
-                    marginLeft: "auto", background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10,
-                    fontSize: 11, fontWeight: 700, padding: "1px 7px", minWidth: 18, textAlign: "center",
-                  }}>
-                    {frontDeskBadge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-        <div style={{ position: "absolute", bottom: 16, left: 20, right: 20, fontSize: 11, opacity: 0.55, lineHeight: 1.5 }}>
-          Trà Cổ Hà Giang – Công Nghệ Nhật Bản
-        </div>
-      </aside>
+      )}
 
       {/* Main */}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         {/* Top bar */}
         <header
           style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px",
-            borderBottom: `1px solid ${TOKENS.brassDeep}33`, background: TOKENS.paperDeep,
-            position: "sticky", top: 0, zIndex: 10, gap: 10,
+            display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px",
+            borderBottom: `1px solid ${TOKENS.hairline}`, background: TOKENS.paper,
+            position: "sticky", top: 0, zIndex: 10, gap: 14,
           }}
         >
-          <button onClick={() => setSidebarOpen((s) => !s)} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.jade, flexShrink: 0 }} aria-label="Menu">
-            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+          <button onClick={() => setSidebarOpen((s) => !s)} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.jadeSoft, flexShrink: 0, padding: 0, display: "flex" }} aria-label="Menu">
+            {sidebarOpen ? <X size={21} /> : <Menu size={21} />}
           </button>
-          <div style={{ fontFamily: "Fraunces, Georgia, serif", fontSize: 16, fontWeight: 600, flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>
+          <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17.5, fontWeight: 600, letterSpacing: 0.1, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: TOKENS.jade }}>
             {nav.find((n) => n.id === section)?.label[lang] || nav[0]?.label[lang]}
           </div>
 
@@ -701,14 +1068,36 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
             onClick={() => setLang(other)}
             title="Switch language"
             style={{
-              display: "flex", alignItems: "center", gap: 5, border: `1px solid ${TOKENS.brassDeep}55`,
-              background: TOKENS.paper, color: TOKENS.jade, borderRadius: 16, padding: "6px 10px",
+              display: "flex", alignItems: "center", gap: 4, border: "none",
+              background: "none", color: TOKENS.jadeSoft, padding: "4px 2px",
               fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0,
             }}
           >
-            <Languages size={13} />
+            <Languages size={14} />
             {other.toUpperCase()}
           </button>
+
+          {section === "retail" && !isAdmin && (
+            <button
+              onClick={() => setCartDrawerOpen(true)}
+              style={{
+                position: "relative", display: "flex", alignItems: "center", justifyContent: "center",
+                border: "none", background: "none", color: TOKENS.jadeSoft, cursor: "pointer", flexShrink: 0, padding: "4px 2px",
+              }}
+              aria-label="Cart"
+            >
+              <ShoppingCart size={18} />
+              {retailTotalItems > 0 && (
+                <span style={{
+                  position: "absolute", top: -3, right: -3, background: TOKENS.lacquer, color: TOKENS.paper,
+                  borderRadius: 10, fontSize: 10, fontWeight: 700, minWidth: 17, height: 17, padding: "0 4px",
+                  display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
+                }}>
+                  {retailTotalItems}
+                </span>
+              )}
+            </button>
+          )}
 
           {isAdmin ? (
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
@@ -719,8 +1108,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 onClick={onLogout}
                 title={t.logout}
                 style={{
-                  display: "flex", alignItems: "center", gap: 5, border: `1px solid ${TOKENS.brassDeep}55`,
-                  background: TOKENS.paper, color: TOKENS.jade, borderRadius: 16, padding: "6px 10px",
+                  display: "flex", alignItems: "center", gap: 5, border: `1px solid ${TOKENS.hairline}`,
+                  background: TOKENS.paperDeep, color: TOKENS.jade, borderRadius: 16, padding: "6px 10px",
                   fontSize: 12, fontWeight: 600, cursor: "pointer",
                 }}
               >
@@ -728,7 +1117,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               </button>
             </div>
           ) : (
-            <div style={{ display: "flex", gap: 4, background: TOKENS.paper, borderRadius: 20, padding: 3, border: `1px solid ${TOKENS.brassDeep}44`, flexShrink: 0 }}>
+            <div style={{ display: "flex", gap: 4, background: TOKENS.paperDeep, borderRadius: 20, padding: 3, border: `1px solid ${TOKENS.hairline}`, flexShrink: 0 }}>
               {ROLES.map((r) => (
                 <button
                   key={r.id}
@@ -743,8 +1132,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   title={r.label[lang]}
                   style={{
                     border: "none", borderRadius: 16, padding: "6px 10px", fontSize: 12, cursor: "pointer",
-                    background: role === r.id ? TOKENS.brass : "transparent",
-                    color: role === r.id ? TOKENS.paper : TOKENS.jade,
+                    background: role === r.id ? TOKENS.jade : "transparent",
+                    color: role === r.id ? TOKENS.brass : TOKENS.jadeSoft,
                     display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap",
                   }}
                 >
@@ -762,50 +1151,127 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               {/* Hero */}
               <div
                 style={{
-                  position: "relative",
-                  background: `linear-gradient(160deg, ${TOKENS.jade} 0%, ${TOKENS.jadeSoft} 100%)`,
-                  color: TOKENS.paper,
-                  padding: "56px 24px 44px",
-                  overflow: "hidden",
+                  position: "relative", background: TOKENS.jade, color: TOKENS.paper,
+                  padding: "72px 28px 56px", overflow: "hidden",
                 }}
               >
+                <div style={{
+                  position: "absolute", top: -90, right: -70, width: 300, height: 300, borderRadius: "50%",
+                  background: `radial-gradient(circle, ${TOKENS.brass}1f 0%, transparent 68%)`,
+                }} />
                 <svg
                   viewBox="0 0 400 90"
                   preserveAspectRatio="none"
-                  style={{ position: "absolute", left: 0, right: 0, bottom: 0, width: "100%", height: 70, opacity: 0.16 }}
+                  style={{ position: "absolute", left: 0, right: 0, bottom: 0, width: "100%", height: 56, opacity: 0.3 }}
                 >
-                  <path d="M0,90 L0,55 L45,20 L80,48 L120,10 L165,50 L210,28 L250,55 L290,15 L335,45 L400,25 L400,90 Z" fill={TOKENS.brass} />
+                  <path
+                    d="M0,90 L0,55 L45,20 L80,48 L120,10 L165,50 L210,28 L250,55 L290,15 L335,45 L400,25 L400,90"
+                    fill="none" stroke={TOKENS.brass} strokeWidth="1"
+                  />
                 </svg>
-
-                <div style={{ position: "relative", maxWidth: 520 }}>
-                  <div
-                    style={{
-                      width: 52, height: 52, borderRadius: "50%", border: `1.5px solid ${TOKENS.brass}`,
-                      display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20,
-                      fontFamily: "'Noto Serif SC', serif", fontSize: 20, color: TOKENS.brass,
-                    }}
-                  >
-                    皇龍
-                  </div>
-                  <div style={{ fontSize: 11, letterSpacing: 2.5, textTransform: "uppercase", color: TOKENS.brass, marginBottom: 10, fontWeight: 600 }}>
-                    Est. 1995 · Hà Giang
-                  </div>
-                  <h1 style={{ fontFamily: "Fraunces, Georgia, serif", fontWeight: 500, fontSize: "clamp(28px, 7vw, 42px)", lineHeight: 1.08, margin: "0 0 14px", overflowWrap: "anywhere" }}>
-                    House of Hoàng Long
-                  </h1>
-                  <div style={{ width: 40, height: 2, background: TOKENS.brass }} />
+                <div style={{ position: "relative", maxWidth: 460, margin: "0 auto" }}>
+                  <BrandSeal TOKENS={TOKENS} />
                 </div>
               </div>
 
               {/* Viewing-as strip */}
               {!isAdmin && (
-                <div style={{ padding: "14px 20px", fontSize: 12.5, color: TOKENS.jadeSoft, borderBottom: `1px solid ${TOKENS.brassDeep}22` }}>
+                <div style={{ padding: "14px 20px", fontSize: 12.5, color: TOKENS.jadeSoft, borderBottom: `1px solid ${TOKENS.hairline}` }}>
                   {t.viewingAs}: <strong style={{ color: TOKENS.jade }}>{ROLES.find((r) => r.id === role)?.label[lang]}</strong>
                 </div>
               )}
 
+              {/* Story teaser */}
+              <button
+                onClick={() => { setSection("wiki"); setWikiCategory("legacy"); setActiveId("not-farm-not-corp"); }}
+                style={{
+                  display: "block", width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer",
+                  padding: "22px 20px", borderBottom: `1px solid ${TOKENS.brassDeep}22`,
+                }}
+              >
+                <p style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 16, lineHeight: 1.55, color: TOKENS.jade, margin: "0 0 8px" }}>
+                  {lang === "en"
+                    ? "“It's easy to make great things from great ingredients — but to make great things from the ordinary, that's something else.”"
+                    : "“Làm ra thứ tuyệt vời từ nguyên liệu tuyệt vời thì dễ, nhưng từ những gì bình thường — đó mới là chuyện khác.”"}
+                </p>
+                <span style={{ fontSize: 12, fontWeight: 600, color: TOKENS.brassDeep, textDecoration: "underline" }}>
+                  {t.viewDetails}
+                </span>
+              </button>
+
+              {/* Featured photo below the quote */}
+              {(homePhoto || isAdmin) && (
+                <div style={{ padding: "20px 20px 0" }}>
+                  {homePhoto && (
+                    <img
+                      src={homePhoto}
+                      alt=""
+                      style={{ width: "100%", height: 220, objectFit: "cover", borderRadius: TOKENS.radius, boxShadow: TOKENS.shadowSm, display: "block" }}
+                    />
+                  )}
+                  {isAdmin && (
+                    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                      <label style={{
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1,
+                        padding: "9px 12px", borderRadius: 8, border: `1px dashed ${TOKENS.brassDeep}88`,
+                        fontSize: 12.5, color: TOKENS.brassDeep, cursor: "pointer", fontWeight: 600,
+                      }}>
+                        <Upload size={14} />
+                        {homePhoto ? t.uploadPhotoLabel : t.addPhoto}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: "none" }}
+                          onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadHomePhoto(file); }}
+                        />
+                      </label>
+                      {homePhoto && (
+                        <button
+                          onClick={() => saveHomePhoto("")}
+                          style={{ background: "none", border: `1px solid ${TOKENS.lacquer}55`, borderRadius: 8, padding: "9px 12px", cursor: "pointer" }}
+                        >
+                          <Trash2 size={14} color={TOKENS.lacquer} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Featured: Sample Pack */}
+              {catalog.some((p) => p.line === "sample") && (
+                <div style={{ padding: "20px 20px 0" }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                    {t.sampleOption}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+                    {catalog.filter((p) => p.line === "sample").map((p) => {
+                      const stockTotal = getStockTotal(p);
+                      const soldOut = p.available === false || stockTotal === 0;
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => setDetailProduct({ product: p, cartType: "retail" })}
+                          style={{
+                            background: `linear-gradient(160deg, ${TOKENS.jade} 0%, ${TOKENS.jadeSoft} 100%)`,
+                            borderRadius: 14, padding: 16, cursor: "pointer", opacity: soldOut ? 0.55 : 1,
+                            display: "flex", flexDirection: "column", gap: 6, minHeight: 110,
+                          }}
+                        >
+                          <div style={{ fontSize: 14, fontWeight: 600, color: TOKENS.paper, overflowWrap: "anywhere" }}>{p.name[lang]}</div>
+                          {p.price ? <div style={{ fontSize: 15, fontWeight: 700, color: TOKENS.brass }}>{formatVND(p.price)}</div> : null}
+                          <div style={{ fontSize: 11, color: TOKENS.brass, fontWeight: 600, textDecoration: "underline", marginTop: "auto" }}>
+                            {soldOut ? t.outOfStock : t.viewDetails}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Bento entry points */}
-              <div style={{ padding: "22px 20px 0", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+              <div style={{ padding: "28px 20px 0", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
                 {nav.filter((n) => n.id !== "home").map((n, i) => {
                   const Icon = n.icon;
                   const featured = i === 0;
@@ -815,28 +1281,36 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       onClick={() => { setSection(n.id); resetWiki(); }}
                       style={{
                         gridColumn: featured ? "1 / -1" : "auto",
-                        background: featured ? TOKENS.paperDeep : TOKENS.paper,
-                        border: `1px solid ${TOKENS.brassDeep}${featured ? "66" : "33"}`,
-                        borderRadius: 14, padding: featured ? "26px 24px" : "20px 18px",
+                        background: TOKENS.paper, border: `1px solid ${TOKENS.hairline}`,
+                        boxShadow: featured ? TOKENS.shadowMd : TOKENS.shadowSm,
+                        borderRadius: TOKENS.radius, padding: featured ? "28px 26px" : "22px 20px",
                         textAlign: "left", cursor: "pointer", minWidth: 0,
                         display: "flex", flexDirection: featured ? "row" : "column",
                         alignItems: featured ? "center" : "flex-start", gap: featured ? 20 : 12,
                         justifyContent: "space-between",
                       }}
                     >
-                      <div style={{ display: "flex", flexDirection: "column", gap: featured ? 8 : 10, minWidth: 0 }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: featured ? 10 : 12, minWidth: 0 }}>
                         <div style={{
                           width: featured ? 44 : 36, height: featured ? 44 : 36, borderRadius: 10, background: TOKENS.jade,
                           display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                         }}>
                           <Icon size={featured ? 21 : 17} color={TOKENS.brass} strokeWidth={1.6} />
                         </div>
-                        <div style={{ fontFamily: "Fraunces, Georgia, serif", fontWeight: 500, fontSize: featured ? 20 : 16, overflowWrap: "anywhere" }}>
+                        <div style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: featured ? 20 : 16, overflowWrap: "anywhere" }}>
                           {n.label[lang]}
                         </div>
                         <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>
                           {n.id === "wiki"
                             ? (lang === "en" ? "The full story behind the leaf — legacy, origin, and craft." : t.articleCount(visibleCategories.length))
+                            : n.id === "library"
+                            ? (lang === "en" ? "General tea knowledge — types, culture, brewing." : "Kiến thức trà nói chung — phân loại, văn hoá, cách pha.")
+                            : n.id === "wholesale"
+                            ? (lang === "en" ? "Wholesale pricing and ordering." : "Giá sỉ và đặt hàng.")
+                            : n.id === "retail"
+                            ? (lang === "en" ? "Shop our teas by the pack." : "Mua trà theo gói.")
+                            : n.id === "frontdesk"
+                            ? (lang === "en" ? "Orders, leads, messages, and settings." : "Đơn hàng, lead, tin nhắn, cài đặt.")
                             : t.comingSoon}
                         </div>
                       </div>
@@ -888,7 +1362,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               ) : (
                 <>
                   <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginBottom: 16 }}>{t.chooseSection}</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
                     {visibleCategories.map((cat, i) => {
                       const Icon = cat.icon;
                       const count = articlesInCategory(cat.id).length;
@@ -897,16 +1371,20 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           key={cat.id}
                           onClick={() => setWikiCategory(cat.id)}
                           style={{
-                            display: "flex", alignItems: "center", gap: 14, background: TOKENS.paperDeep,
-                            border: `1px solid ${TOKENS.brassDeep}44`, borderRadius: 12, padding: "16px 16px",
+                            display: "flex", alignItems: "center", gap: 18, background: "transparent",
+                            border: "none", borderTop: i === 0 ? `1px solid ${TOKENS.hairline}` : "none",
+                            borderBottom: `1px solid ${TOKENS.hairline}`, padding: "18px 4px",
                             textAlign: "left", cursor: "pointer", minWidth: 0,
                           }}
                         >
-                          <div style={{ width: 38, height: 38, borderRadius: 10, background: TOKENS.jade, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            <Icon size={18} color={TOKENS.brass} strokeWidth={1.7} />
+                          <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 22, fontWeight: 500, color: `${TOKENS.jade}44`, width: 28, flexShrink: 0, textAlign: "right" }}>
+                            {String(i + 1).padStart(2, "0")}
+                          </div>
+                          <div style={{ width: 34, height: 34, borderRadius: 9, background: TOKENS.jade, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <Icon size={16} color={TOKENS.brass} strokeWidth={1.7} />
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 15, fontWeight: 600, overflowWrap: "anywhere" }}>{i + 1}. {cat.label[lang]}</div>
+                            <div style={{ fontSize: 15, fontWeight: 600, overflowWrap: "anywhere" }}>{cat.label[lang]}</div>
                             <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginTop: 2 }}>{cat.subtitle[lang]} · {count}</div>
                           </div>
                           <ChevronRight size={17} color={TOKENS.brassDeep} style={{ flexShrink: 0 }} />
@@ -918,8 +1396,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     <button
                       onClick={() => startNew(null)}
                       style={{
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", marginTop: 16,
-                        background: "transparent", color: TOKENS.brassDeep, border: `1px dashed ${TOKENS.brassDeep}88`,
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", marginTop: 20,
+                        background: "transparent", color: TOKENS.brassDeep, border: `1px dashed ${TOKENS.brassDeep}66`,
                         borderRadius: 10, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
                       }}
                     >
@@ -939,7 +1417,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               </button>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
                 {activeCategoryMeta && <activeCategoryMeta.icon size={20} color={TOKENS.brassDeep} />}
-                <h2 style={{ fontFamily: "Fraunces, Georgia, serif", fontSize: "clamp(19px, 4vw, 24px)", margin: 0, overflowWrap: "anywhere" }}>
+                <h2 style={{ fontFamily: "Lora, Georgia, serif", fontSize: "clamp(19px, 4vw, 24px)", margin: 0, overflowWrap: "anywhere" }}>
                   {activeCategoryMeta?.label[lang]}
                 </h2>
               </div>
@@ -984,38 +1462,65 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
                 {activeCategoryMeta?.label[lang]}
               </div>
-              <h2 style={{ fontFamily: "Fraunces, Georgia, serif", fontSize: "clamp(20px, 4vw, 26px)", margin: "0 0 16px", overflowWrap: "anywhere" }}>
+              <h2 style={{ fontFamily: "Lora, Georgia, serif", fontSize: "clamp(20px, 4vw, 26px)", margin: "0 0 16px", overflowWrap: "anywhere" }}>
                 {active.title[lang] || active.title.en}
               </h2>
               <div style={{ whiteSpace: "pre-line", fontSize: 15, lineHeight: 1.75, color: TOKENS.jade }}>
-                {active.body[lang] || active.body.en || <em style={{ color: TOKENS.jadeSoft }}>— {STR[other].noResults}</em>}
+                {linkifyText(active.body[lang] || active.body.en, TOKENS.brassDeep) || <em style={{ color: TOKENS.jadeSoft }}>— {STR[other].noResults}</em>}
               </div>
 
               {active.id === "dong-san-pham" && (
                 <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 22 }}>
-                  {["everyday", "reserve"].map((lineId) => {
+                  {["everyday", "reserve", "sample"].map((lineId) => {
                     const items = catalog.filter((p) => p.line === lineId);
                     if (items.length === 0) return null;
                     return (
                       <div key={lineId}>
                         <div style={{ fontSize: 12, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
-                          {lineId === "everyday" ? t.everydayOption : t.reserveOption}
+                          {lineLabel(lineId)}
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                           {items.map((p) => (
                             <div
                               key={p.id}
-                              onClick={() => setDetailProduct({ product: p, cartType: lineId === "reserve" ? "retail" : (role === "retail" ? "retail" : "wholesale") })}
-                              style={{ display: "flex", gap: 12, background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 12, padding: 14, opacity: p.available === false ? 0.6 : 1, cursor: "pointer" }}
+                              onClick={() => setDetailProduct({ product: p, cartType: (lineId === "reserve" || lineId === "sample") ? "retail" : (role === "retail" ? "retail" : "wholesale") })}
+                              style={{ display: "flex", gap: 12, background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 12, padding: 14, opacity: p.available === false ? 0.6 : 1, cursor: "pointer", position: "relative" }}
                             >
+                              {p.limited && (
+                                <div style={{
+                                  position: "absolute", top: 8, right: 8, zIndex: 1,
+                                  background: TOKENS.jade, color: TOKENS.brass, borderRadius: 20,
+                                  padding: "3px 8px", display: "flex", alignItems: "center", gap: 4,
+                                  fontSize: 10, fontWeight: 700,
+                                }}>
+                                  <Sparkles size={11} /> {t.limitedBadge}
+                                </div>
+                              )}
                               {p.photoUrl && (
-                                <img src={p.photoUrl} alt={p.name[lang]} style={{ width: 64, height: 64, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
+                                <img src={p.photoUrl} alt={p.name[lang]} style={{ width: 64, height: 64, borderRadius: 8, objectFit: "cover", objectPosition: p.photoPosition || "50% 50%", flexShrink: 0 }} />
                               )}
                               <div style={{ minWidth: 0, flex: 1 }}>
                                 <div style={{ fontSize: 14.5, fontWeight: 600, overflowWrap: "anywhere" }}>
                                   {p.name[lang]}
                                   {p.available === false && <span style={{ color: TOKENS.lacquer, fontSize: 11, fontWeight: 700, marginLeft: 8 }}>· {t.outOfStock}</span>}
                                 </div>
+                                {lang === "en" && p.name.vi && (
+                                  <div style={{ fontSize: 11.5, color: TOKENS.jadeSoft, marginTop: 1 }}>{p.name.vi}</div>
+                                )}
+                                {p.price ? <div style={{ fontSize: 13.5, fontWeight: 700, color: TOKENS.brassDeep, marginTop: 2 }}>{formatVND(p.price)}{p.line === "everyday" ? ` / ${t.kg}` : ""}</div> : null}
+                                {!p.price && getVariantMinPrice(p) !== undefined && (
+                                  <div style={{ fontSize: 13.5, fontWeight: 700, color: TOKENS.brassDeep, marginTop: 2 }}>{t.fromPrice(formatVND(getVariantMinPrice(p)))}</div>
+                                )}
+                                {typeof getStockTotal(p) === "number" && p.available !== false && (
+                                  <div style={{ fontSize: 11.5, fontWeight: 700, color: getStockTotal(p) <= 5 ? TOKENS.lacquer : TOKENS.jadeSoft, marginTop: 2 }}>
+                                    {t.stockLeft(getStockTotal(p))}{getStockTotal(p) <= 5 ? ` · ${t.lastFew}` : ""}
+                                  </div>
+                                )}
+                                {!getStockTotal(p) && getVariantStockTotal(p) !== undefined && p.available !== false && (
+                                  <div style={{ fontSize: 11.5, fontWeight: 700, color: getVariantStockTotal(p) <= 5 ? TOKENS.lacquer : TOKENS.jadeSoft, marginTop: 2 }}>
+                                    {t.stockLeft(getVariantStockTotal(p))}{getVariantStockTotal(p) <= 5 ? ` · ${t.lastFew}` : ""}
+                                  </div>
+                                )}
                                 {p.notes?.[lang] && <div style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic", marginTop: 3 }}>{p.notes[lang]}</div>}
                                 <div style={{ fontSize: 12, color: TOKENS.brassDeep, marginTop: 4 }}>
                                   {p.brew?.[lang]}
@@ -1084,15 +1589,268 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
             </div>
           )}
 
-          {/* ---------- TRADE PARTNERS ---------- */}
+          {/* ---------- LIBRARY ---------- */}
+          {section === "library" && (
+            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+              {["gallery", "reading"].map((tb) => (
+                <button
+                  key={tb}
+                  onClick={() => setLibraryTab(tb)}
+                  style={{
+                    flex: 1, padding: "10px", borderRadius: 10, cursor: "pointer", fontSize: 13.5, fontWeight: 600,
+                    border: `1px solid ${libraryTab === tb ? TOKENS.brass : TOKENS.hairline}`,
+                    background: libraryTab === tb ? TOKENS.jade : TOKENS.paper,
+                    color: libraryTab === tb ? TOKENS.brass : TOKENS.jadeSoft,
+                  }}
+                >
+                  {tb === "gallery" ? t.galleryTab : t.readingTab}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {section === "library" && libraryTab === "gallery" && (
+            <div>
+              {isAdmin && (
+                <div style={{ marginBottom: 20, background: TOKENS.paperDeep, border: `1px solid ${TOKENS.hairline}`, borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <label style={{
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    padding: "9px 12px", borderRadius: 8, border: `1px dashed ${TOKENS.brassDeep}88`,
+                    fontSize: 12.5, color: TOKENS.brassDeep, cursor: "pointer", fontWeight: 600,
+                  }}>
+                    <Upload size={14} />
+                    {t.uploadPhotoLabel}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadGalleryPhoto(file); }}
+                    />
+                  </label>
+                  {galleryDraft.url && (
+                    <img src={galleryDraft.url} alt="" style={{ width: "100%", height: 120, borderRadius: 8, objectFit: "cover" }} />
+                  )}
+                  <input
+                    value={galleryDraft.captionEn}
+                    onChange={(e) => setGalleryDraft({ ...galleryDraft, captionEn: e.target.value })}
+                    placeholder={`${t.captionPh} (EN)`}
+                    style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
+                  />
+                  <input
+                    value={galleryDraft.captionVi}
+                    onChange={(e) => setGalleryDraft({ ...galleryDraft, captionVi: e.target.value })}
+                    placeholder={`${t.captionPh} (VI)`}
+                    style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
+                  />
+                  <button
+                    onClick={addGalleryImage}
+                    style={{ background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 8, padding: "10px", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}
+                  >
+                    {t.addPhoto}
+                  </button>
+                </div>
+              )}
+
+              {galleryImages.length === 0 ? (
+                <p style={{ color: TOKENS.jadeSoft, fontSize: 14, fontStyle: "italic" }}>{t.emptyGallery}</p>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 8 }}>
+                  {galleryImages.map((g) => (
+                    <div key={g.id} style={{ position: "relative" }}>
+                      <img
+                        src={g.url}
+                        alt={g.caption?.[lang] || ""}
+                        onClick={() => setLightboxImage(g)}
+                        style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 10, cursor: "pointer", border: `1px solid ${TOKENS.hairline}` }}
+                      />
+                      {isAdmin && (
+                        <button
+                          onClick={() => deleteGalleryImage(g.id)}
+                          style={{
+                            position: "absolute", top: 6, right: 6, background: "rgba(28,43,36,0.7)", border: "none",
+                            borderRadius: "50%", width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                          }}
+                        >
+                          <Trash2 size={12} color="#fff" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {section === "library" && libraryTab === "reading" && !libraryCategory && (
+            <div>
+              <div style={{ position: "relative", marginBottom: 18 }}>
+                <Search size={16} style={{ position: "absolute", left: 12, top: 12, color: TOKENS.jadeSoft }} />
+                <input
+                  value={libraryQuery}
+                  onChange={(e) => setLibraryQuery(e.target.value)}
+                  placeholder={t.librarySearch}
+                  style={{
+                    width: "100%", boxSizing: "border-box", padding: "10px 12px 10px 36px",
+                    borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`,
+                    background: TOKENS.paperDeep, fontSize: 14, color: TOKENS.jade,
+                  }}
+                />
+              </div>
+
+              {librarySearchResults ? (
+                <div>
+                  <div style={{ fontSize: 12, color: TOKENS.jadeSoft, marginBottom: 10 }}>
+                    {t.results(librarySearchResults.length, libraryQuery)}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {librarySearchResults.map((a) => (
+                      <button
+                        key={a.id}
+                        onClick={() => { setLibraryCategory(a.category); setLibraryActiveId(a.id); }}
+                        style={{
+                          display: "flex", alignItems: "center", justifyContent: "space-between",
+                          background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`,
+                          borderRadius: 10, padding: "13px 14px", textAlign: "left", cursor: "pointer",
+                          fontSize: 14.5, color: TOKENS.jade, minWidth: 0,
+                        }}
+                      >
+                        <span style={{ overflowWrap: "anywhere" }}>{a.title[lang] || a.title.en}</span>
+                        <ChevronRight size={16} color={TOKENS.brassDeep} style={{ flexShrink: 0, marginLeft: 8 }} />
+                      </button>
+                    ))}
+                    {librarySearchResults.length === 0 && <p style={{ color: TOKENS.jadeSoft, fontSize: 14 }}>{t.noResults}</p>}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginBottom: 16, lineHeight: 1.5 }}>{t.libraryChooseSection}</p>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {LIBRARY_CATEGORIES.map((cat, i) => {
+                      const Icon = cat.icon;
+                      const count = libraryArticlesInCategory(cat.id).length;
+                      return (
+                        <button
+                          key={cat.id}
+                          onClick={() => setLibraryCategory(cat.id)}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 18, background: "transparent",
+                            border: "none", borderTop: i === 0 ? `1px solid ${TOKENS.hairline}` : "none",
+                            borderBottom: `1px solid ${TOKENS.hairline}`, padding: "18px 4px",
+                            textAlign: "left", cursor: "pointer", minWidth: 0,
+                          }}
+                        >
+                          <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 22, fontWeight: 500, color: `${TOKENS.jade}44`, width: 28, flexShrink: 0, textAlign: "right" }}>
+                            {String(i + 1).padStart(2, "0")}
+                          </div>
+                          <div style={{ width: 34, height: 34, borderRadius: 9, background: TOKENS.jade, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <Icon size={16} color={TOKENS.brass} strokeWidth={1.7} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 15, fontWeight: 600, overflowWrap: "anywhere" }}>{cat.label[lang]}</div>
+                            <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginTop: 2 }}>{cat.subtitle[lang]} · {count}</div>
+                          </div>
+                          <ChevronRight size={17} color={TOKENS.brassDeep} style={{ flexShrink: 0 }} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {section === "library" && libraryTab === "reading" && libraryCategory && !libraryActiveId && (
+            <div>
+              <button onClick={() => setLibraryCategory(null)} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: TOKENS.jadeSoft, cursor: "pointer", fontSize: 13.5, marginBottom: 16, padding: 0 }}>
+                <ChevronLeft size={15} /> {t.allSections}
+              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+                {libraryActiveCategoryMeta && <libraryActiveCategoryMeta.icon size={20} color={TOKENS.brassDeep} />}
+                <h2 style={{ fontFamily: "Lora, Georgia, serif", fontSize: "clamp(19px, 4vw, 24px)", margin: 0, overflowWrap: "anywhere" }}>
+                  {libraryActiveCategoryMeta?.label[lang]}
+                </h2>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {libraryArticlesInCategory(libraryCategory).map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => setLibraryActiveId(a.id)}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`,
+                      borderRadius: 10, padding: "13px 14px", textAlign: "left", cursor: "pointer",
+                      fontSize: 14.5, color: TOKENS.jade, minWidth: 0,
+                    }}
+                  >
+                    <span style={{ overflowWrap: "anywhere" }}>{a.title[lang] || a.title.en}</span>
+                    <ChevronRight size={16} color={TOKENS.brassDeep} style={{ flexShrink: 0, marginLeft: 8 }} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {section === "library" && libraryTab === "reading" && libraryActiveId && libraryActive && (
+            <div>
+              <button onClick={() => setLibraryActiveId(null)} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: TOKENS.jadeSoft, cursor: "pointer", fontSize: 13.5, marginBottom: 16, padding: 0 }}>
+                <ChevronLeft size={15} /> {libraryActiveCategoryMeta?.label[lang]}
+              </button>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
+                {libraryActiveCategoryMeta?.label[lang]}
+              </div>
+              <h2 style={{ fontFamily: "Lora, Georgia, serif", fontSize: "clamp(20px, 4vw, 26px)", margin: "0 0 16px", overflowWrap: "anywhere" }}>
+                {libraryActive.title[lang] || libraryActive.title.en}
+              </h2>
+              <div style={{ whiteSpace: "pre-line", fontSize: 15, lineHeight: 1.75, color: TOKENS.jade }}>
+                {linkifyText(libraryActive.body[lang] || libraryActive.body.en, TOKENS.brassDeep)}
+              </div>
+            </div>
+          )}
+
+          {/* ---------- HOUSE PARTNERS ---------- */}
           {section === "wholesale" && (
             <div>
+              {!isAdmin && !wholesaleVerified ? (
+                <div style={{ maxWidth: 380, margin: "20px auto 0", textAlign: "center" }}>
+                  <div style={{ display: "inline-flex", padding: 14, borderRadius: "50%", background: TOKENS.paperDeep, marginBottom: 16 }}>
+                    <Lock size={22} color={TOKENS.brassDeep} />
+                  </div>
+                  <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 19, margin: "0 0 8px" }}>{t.wholesaleGateTitle}</h2>
+                  <p style={{ fontSize: 13.5, color: TOKENS.jadeSoft, marginBottom: 18 }}>{t.wholesaleGateHint}</p>
+                  <div style={{ display: "flex", gap: 8, textAlign: "left" }}>
+                    <input
+                      value={partnerIdInput}
+                      onChange={(e) => { setPartnerIdInput(e.target.value); setPartnerIdError(false); }}
+                      onKeyDown={(e) => e.key === "Enter" && verifyPartnerId()}
+                      placeholder={t.partnerIdPh}
+                      style={{ flex: 1, padding: "10px 13px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 14, minWidth: 0 }}
+                    />
+                    <button
+                      onClick={verifyPartnerId}
+                      style={{ background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 8, padding: "10px 16px", fontSize: 13.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
+                    >
+                      {t.verifyBtn}
+                    </button>
+                  </div>
+                  {partnerIdError && <p style={{ fontSize: 12.5, color: TOKENS.lacquer, marginTop: 10 }}>{t.invalidPartnerId}</p>}
+                  <div style={{ marginTop: 24, fontSize: 12.5, color: TOKENS.jadeSoft }}>
+                    {t.notRegisteredYet}{" "}
+                    <button
+                      onClick={() => setChatOpen(true)}
+                      style={{ background: "none", border: "none", color: TOKENS.brassDeep, fontWeight: 600, cursor: "pointer", textDecoration: "underline", padding: 0 }}
+                    >
+                      {t.requestAccess}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+              <>
               {orderSubmitted && orderSubmitted.type === "wholesale" ? (
                 <div style={{ textAlign: "center", padding: "40px 16px" }}>
                   <div style={{ display: "inline-flex", padding: 16, borderRadius: "50%", background: TOKENS.paperDeep, marginBottom: 16 }}>
                     <Check size={26} color={TOKENS.brassDeep} />
                   </div>
-                  <h2 style={{ fontFamily: "Fraunces, Georgia, serif", fontSize: 20, margin: "0 0 8px" }}>{t.orderSent}</h2>
+                  <h2 style={{ fontFamily: "Lora, Georgia, serif", fontSize: 20, margin: "0 0 8px" }}>{t.orderSent}</h2>
                   <PaymentBlock order={orderSubmitted} payment={payment} qrUrl={vietQrUrl(orderSubmitted)} onPrint={printInvoice} t={t} TOKENS={TOKENS} />
                   <a
                     href={mailtoHref(orderSubmitted)}
@@ -1114,9 +1872,50 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 </div>
               ) : (
                 <>
-                  <h2 style={{ fontFamily: "Fraunces, Georgia, serif", fontWeight: 500, fontSize: 22, margin: "0 0 4px" }}>{t.orderTitle}</h2>
+                  <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 22, margin: "0 0 4px" }}>{t.orderTitle}</h2>
                   <p style={{ color: TOKENS.jadeSoft, fontSize: 13.5, marginBottom: 18 }}>{t.orderHint}</p>
                   {!isAdmin && <ReorderBox supabase={supabase} type="wholesale" onApply={applyReorder} t={t} TOKENS={TOKENS} />}
+
+                  <div style={{ marginBottom: 20, background: TOKENS.paper, border: `1px solid ${TOKENS.hairline}`, boxShadow: TOKENS.shadowSm, borderRadius: TOKENS.radius, padding: 18 }}>
+                    <div style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 16, marginBottom: 3 }}>{t.yieldGuideTitle}</div>
+                    <p style={{ fontSize: 11.5, color: TOKENS.jadeSoft, margin: "0 0 14px", lineHeight: 1.5 }}>{t.yieldGuideHint}</p>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      {YIELD_GUIDE.map((y, i) => {
+                        const minCups = Math.round((y.minL * 1000) / CUP_ML_MAX);
+                        const maxCups = Math.round((y.maxL * 1000) / CUP_ML_MIN);
+                        const label = y.key === "light" ? t.yieldLight : y.key === "standard" ? t.yieldStandard : t.yieldConcentrate;
+                        return (
+                          <div
+                            key={y.key}
+                            style={{
+                              display: "flex", justifyContent: "space-between", alignItems: "center",
+                              padding: "12px 0", borderTop: i === 0 ? `1px solid ${TOKENS.hairline}` : "none",
+                              borderBottom: `1px solid ${TOKENS.hairline}`,
+                            }}
+                          >
+                            <div style={{ fontSize: 13, color: TOKENS.jade, maxWidth: "50%" }}>{label}</div>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 15, fontWeight: 600, color: TOKENS.brassDeep }}>
+                                {y.minL}–{y.maxL} {t.litersLabel}
+                              </div>
+                              <div style={{ fontSize: 11, color: TOKENS.jadeSoft, marginTop: 1 }}>{t.cupsApprox(minCups, maxCups)}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {eligibleForTestPack && (
+                    <div style={{ marginBottom: 20, background: `${TOKENS.brass}14`, border: `1px solid ${TOKENS.brass}55`, borderRadius: 12, padding: 14 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 3 }}>{t.testPackOfferTitle}</div>
+                      <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, margin: "0 0 10px" }}>{t.testPackOfferHint}</p>
+                      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+                        <input type="checkbox" checked={addTestPack} onChange={(e) => setAddTestPack(e.target.checked)} />
+                        {t.testPackCheckbox}
+                      </label>
+                    </div>
+                  )}
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
                     {[...wholesaleProducts].sort((a, b) => (a.available === false ? 1 : 0) - (b.available === false ? 1 : 0)).map((p) => (
@@ -1124,8 +1923,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         key={p.id}
                         style={{
                           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-                          background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`,
-                          borderRadius: 10, padding: "10px 14px", opacity: p.available === false ? 0.55 : 1,
+                          background: TOKENS.paper, border: `1px solid ${TOKENS.hairline}`, boxShadow: TOKENS.shadowSm,
+                          borderRadius: 12, padding: "12px 14px", opacity: p.available === false ? 0.55 : 1,
                         }}
                       >
                         <div
@@ -1133,10 +1932,21 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, cursor: "pointer" }}
                         >
                           {p.photoUrl && (
-                            <img src={p.photoUrl} alt={p.name[lang]} style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
+                            <img src={p.photoUrl} alt={p.name[lang]} style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", objectPosition: p.photoPosition || "50% 50%", flexShrink: 0 }} />
                           )}
                           <div style={{ minWidth: 0 }}>
                             <div style={{ fontSize: 14, overflowWrap: "anywhere" }}>{p.name[lang]}</div>
+                            {lang === "en" && p.name.vi && (
+                              <div style={{ fontSize: 11, color: TOKENS.jadeSoft, marginTop: 0 }}>{p.name.vi}</div>
+                            )}
+                            {p.price ? (
+                              <div style={{ display: "flex", alignItems: "baseline", gap: 3, marginTop: 2 }}>
+                                <span style={{ fontSize: 13.5, fontWeight: 700, color: TOKENS.brassDeep, fontFamily: "Lora, Georgia, serif" }}>
+                                  {formatVND(p.price)}
+                                </span>
+                                <span style={{ fontSize: 10.5, color: TOKENS.jadeSoft, letterSpacing: 0.3 }}>/ {t.kg}</span>
+                              </div>
+                            ) : null}
                             {p.notes?.[lang] && (
                               <div style={{ fontSize: 11.5, color: TOKENS.jadeSoft, fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>
                                 {p.notes[lang]}
@@ -1167,7 +1977,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     ))}
                   </div>
 
-                  {cartLines.length === 0 ? (
+                  {cartLines.length === 0 && !addTestPack ? (
                     <p style={{ color: TOKENS.jadeSoft, fontSize: 13.5, fontStyle: "italic" }}>{t.emptyCart}</p>
                   ) : (
                     <div style={{ background: TOKENS.jade, color: TOKENS.paper, borderRadius: 12, padding: "18px 18px 16px", marginBottom: 20 }}>
@@ -1177,10 +1987,16 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 12 }}>
                         {cartLines.map((p) => (
                           <div key={p.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5 }}>
-                            <span style={{ opacity: 0.9 }}>{p.name[lang]}</span>
-                            <span>{p.qty} {t.kg}</span>
+                            <span style={{ opacity: 0.9 }}>{p.name[lang]}{p.price ? ` (${formatVND(p.price)}/${t.kg})` : ""}</span>
+                            <span>{p.qty} {t.kg}{p.price ? ` = ${formatVND(p.price * p.qty)}` : ""}</span>
                           </div>
                         ))}
+                        {addTestPack && (
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, color: TOKENS.brass }}>
+                            <span>{t.testPackName[lang]}</span>
+                            <span>× 1</span>
+                          </div>
+                        )}
                       </div>
                       <div style={{ borderTop: `1px solid ${TOKENS.paper}33`, paddingTop: 10, display: "flex", flexDirection: "column", gap: 4, marginBottom: 14 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 600 }}>
@@ -1191,6 +2007,15 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           <span>{t.tierApplied}</span>
                           <span>{currentTier.range[lang]} · {currentTier.off[lang]}</span>
                         </div>
+                        {cartLines.some((p) => p.price) && (
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, color: TOKENS.brass, marginTop: 2 }}>
+                            <span>{t.estimatedTotal}</span>
+                            <span>{formatVND(Math.round(cartLines.reduce((s, p) => s + (p.price ? p.price * p.qty : 0), 0) * (1 - currentTier.pct / 100)))}</span>
+                          </div>
+                        )}
+                        {cartLines.some((p) => !p.price) && (
+                          <p style={{ fontSize: 10.5, color: `${TOKENS.paper}88`, margin: "2px 0 0" }}>{t.priceNote}</p>
+                        )}
                         {appliedPromo && (
                           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: TOKENS.brass }}>
                             <span>{t.promoLabel}</span>
@@ -1249,6 +2074,36 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         />
                       </div>
 
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 12, color: `${TOKENS.paper}cc`, marginBottom: 6 }}>{t.paymentMethodLabel}</div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod("qr")}
+                            style={{
+                              flex: 1, padding: "9px", borderRadius: 8, cursor: "pointer", fontSize: 12.5, fontWeight: 600,
+                              border: `1px solid ${paymentMethod === "qr" ? TOKENS.brass : TOKENS.paper + "44"}`,
+                              background: paymentMethod === "qr" ? TOKENS.brass : "transparent",
+                              color: paymentMethod === "qr" ? TOKENS.jade : TOKENS.paper,
+                            }}
+                          >
+                            {t.payByQR}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod("cash")}
+                            style={{
+                              flex: 1, padding: "9px", borderRadius: 8, cursor: "pointer",
+                              border: `1px solid ${paymentMethod === "cash" ? TOKENS.brass : TOKENS.paper + "44"}`,
+                              background: paymentMethod === "cash" ? TOKENS.brass : "transparent",
+                              color: paymentMethod === "cash" ? TOKENS.jade : TOKENS.paper,
+                            }}
+                          >
+                            {t.payByCash}
+                          </button>
+                        </div>
+                      </div>
+
                       <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 12, fontSize: 12, color: `${TOKENS.paper}cc`, cursor: "pointer" }}>
                         <input
                           type="checkbox"
@@ -1258,6 +2113,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         />
                         {t.consentLabel}
                       </label>
+
+                      {orderError && <p style={{ fontSize: 12.5, color: "#E8A99A", marginBottom: 10 }}>{t.orderFailed}</p>}
 
                       <div style={{ display: "flex", gap: 8 }}>
                         <button
@@ -1311,11 +2168,13 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   {!isAdmin && <TrackOrderBox supabase={supabase} lang={lang} t={t} TOKENS={TOKENS} />}
                 </>
               )}
+              </>
+              )}
             </div>
           )}
 
           {/* ---------- FRONT DESK (internal only) ---------- */}
-          {section === "frontdesk" && isAdmin && (
+          {section === "frontdesk" && (
             <div>
               {(() => {
                 const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
@@ -1350,7 +2209,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               })()}
 
               <div style={{ display: "flex", gap: 8, marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>
-                {["orders", "leads", "messages", "payment", "catalog", "reviews", "promos"].map((tab) => (
+                {["orders", "leads", "messages", "payment", "catalog", "reviews", "promos", "partners"].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setFrontDeskTab(tab)}
@@ -1361,7 +2220,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                     }}
                   >
-                    {tab === "orders" ? t.frontDeskOrders : tab === "leads" ? t.frontDeskLeads : tab === "payment" ? t.frontDeskPayment : tab === "catalog" ? t.catalogTitle : tab === "reviews" ? t.reviewsTitle : tab === "promos" ? t.promosTitle : t.frontDeskMessages}
+                    {tab === "orders" ? t.frontDeskOrders : tab === "leads" ? t.frontDeskLeads : tab === "payment" ? t.frontDeskPayment : tab === "catalog" ? t.catalogTitle : tab === "reviews" ? t.reviewsTitle : tab === "promos" ? t.promosTitle : tab === "partners" ? t.wholesaleAccountsTitle : t.frontDeskMessages}
                     {tab === "orders" && unreadOrders > 0 && (
                       <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10.5, padding: "1px 6px" }}>{unreadOrders}</span>
                     )}
@@ -1432,7 +2291,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     style={{ padding: "10px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
                   />
                   <button
-                    onClick={savePayment}
+                    onClick={() => savePayment()}
                     style={{
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: paymentSaved ? TOKENS.brass : TOKENS.jade,
                       color: paymentSaved ? TOKENS.jade : TOKENS.paper, border: "none", borderRadius: 8, padding: "11px", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
@@ -1473,6 +2332,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     >
                       <option value="everyday">{t.everydayOption}</option>
                       <option value="reserve">{t.reserveOption}</option>
+                      <option value="sample">{t.sampleOption}</option>
                     </select>
                     <input
                       value={productDraft.notesEn}
@@ -1507,11 +2367,88 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
                     />
                     <input
+                      type="number"
+                      value={productDraft.price}
+                      onChange={(e) => setProductDraft({ ...productDraft, price: e.target.value })}
+                      placeholder={t.pricePh}
+                      style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
+                    />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        type="number"
+                        min="0"
+                        value={productDraft.stockHaGiang}
+                        onChange={(e) => setProductDraft({ ...productDraft, stockHaGiang: e.target.value })}
+                        placeholder={t.stockHaGiangPh}
+                        style={{ flex: 1, padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13, minWidth: 0 }}
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        value={productDraft.stockSocSon}
+                        onChange={(e) => setProductDraft({ ...productDraft, stockSocSon: e.target.value })}
+                        placeholder={t.stockSocSonPh}
+                        style={{ flex: 1, padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13, minWidth: 0 }}
+                      />
+                    </div>
+                    <input
+                      value={productDraft.batch}
+                      onChange={(e) => setProductDraft({ ...productDraft, batch: e.target.value })}
+                      placeholder={t.batchPh}
+                      style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
+                    />
+                    <input
                       value={productDraft.photoUrl}
                       onChange={(e) => setProductDraft({ ...productDraft, photoUrl: e.target.value })}
                       placeholder={t.photoUrlPh}
                       style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
                     />
+                    <label style={{
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      padding: "9px 12px", borderRadius: 8, border: `1px dashed ${TOKENS.brassDeep}88`,
+                      fontSize: 12.5, color: TOKENS.brassDeep, cursor: "pointer", fontWeight: 600,
+                    }}>
+                      <Upload size={14} />
+                      {t.uploadPhotoLabel}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadProductPhoto(file); }}
+                      />
+                    </label>
+                    {productDraft.photoUrl && (
+                      <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                        <img
+                          src={productDraft.photoUrl}
+                          alt=""
+                          style={{
+                            width: 84, height: 84, borderRadius: 8, objectFit: "cover", flexShrink: 0,
+                            objectPosition: `${productDraft.photoPosX}% ${productDraft.photoPosY}%`,
+                            border: `1px solid ${TOKENS.brassDeep}44`,
+                          }}
+                        />
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, paddingTop: 4 }}>
+                          <div style={{ fontSize: 11, color: TOKENS.jadeSoft }}>{t.centerImageLabel}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 10.5, color: TOKENS.jadeSoft, width: 14 }}>X</span>
+                            <input
+                              type="range" min="0" max="100" value={productDraft.photoPosX}
+                              onChange={(e) => setProductDraft({ ...productDraft, photoPosX: Number(e.target.value) })}
+                              style={{ flex: 1 }}
+                            />
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 10.5, color: TOKENS.jadeSoft, width: 14 }}>Y</span>
+                            <input
+                              type="range" min="0" max="100" value={productDraft.photoPosY}
+                              onChange={(e) => setProductDraft({ ...productDraft, photoPosY: Number(e.target.value) })}
+                              style={{ flex: 1 }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <button
                       onClick={saveProductDraft}
                       style={{ background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 8, padding: "10px", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}
@@ -1525,16 +2462,46 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 600 }}>{p.name.en} <span style={{ color: TOKENS.jadeSoft, fontWeight: 400 }}>· {p.name.vi}</span></div>
                         <div style={{ fontSize: 11.5, color: TOKENS.brassDeep }}>
-                          {p.line === "reserve" ? t.reserveOption : t.everydayOption}
+                          {lineLabel(p.line)}
                           {p.packSize && ` · ${p.packSize}`}
+                          {p.price && ` · ${formatVND(p.price)}`}
                           {p.available === false && <span style={{ color: TOKENS.lacquer, marginLeft: 6 }}>· {t.outOfStock}</span>}
                         </div>
+                        {(typeof p.stockHaGiang === "number" || typeof p.stockSocSon === "number") && (
+                          <div style={{ fontSize: 11, color: TOKENS.jadeSoft, marginTop: 2 }}>
+                            {t.warehouseHaGiang}: {p.stockHaGiang ?? 0} · {t.warehouseSocSon}: {p.stockSocSon ?? 0} · {t.stockLeft(getStockTotal(p))}
+                          </div>
+                        )}
+                        {p.batch && (
+                          <div style={{ fontSize: 11, color: TOKENS.jadeSoft, marginTop: 2 }}>{t.batchLabel}: {p.batch}</div>
+                        )}
+                        {p.variants && p.variants.length > 0 && (
+                          <div style={{ marginTop: 8, background: TOKENS.paper, borderRadius: 8, padding: 8 }}>
+                            <div style={{ fontSize: 10.5, color: TOKENS.jadeSoft, marginBottom: 2 }}>{t.chooseWeight} · {t.pricePh} · {t.warehouseHaGiang} · {t.warehouseSocSon}</div>
+                            {p.variants.map((v) => (
+                              <VariantEditorRow
+                                key={v.weight}
+                                variant={v}
+                                onSave={(fields) => updateVariant(p.id, v.weight, fields)}
+                                t={t}
+                                TOKENS={TOKENS}
+                              />
+                            ))}
+                          </div>
+                        )}
                         {p.notes?.en && <div style={{ fontSize: 12, color: TOKENS.jade, fontStyle: "italic", marginTop: 3 }}>{p.notes.en}</div>}
                         {!p.notes?.en && !p.photoUrl && (
                           <div style={{ fontSize: 11, color: `${TOKENS.jadeSoft}99`, marginTop: 3 }}>{t.missingDetailsHint}</div>
                         )}
                       </div>
                       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                        <button
+                          onClick={() => toggleLimited(p.id)}
+                          title={t.limitedBadge}
+                          style={{ background: p.limited ? TOKENS.jade : "none", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 6, padding: "6px 8px", cursor: "pointer" }}
+                        >
+                          <Sparkles size={13} color={p.limited ? TOKENS.brass : TOKENS.jadeSoft} />
+                        </button>
                         <button
                           onClick={() => toggleAvailability(p.id)}
                           title={p.available === false ? t.markAvailable : t.markOutOfStock}
@@ -1578,14 +2545,24 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     </button>
                   </div>
                   {testimonials.length === 0 && <p style={{ color: TOKENS.jadeSoft, fontSize: 14 }}>{t.noReviewsYetAdmin}</p>}
-                  {testimonials.map((r) => (
-                    <div key={r.id} style={{ background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 10, padding: "12px 14px" }}>
+                  {[...testimonials].sort((a, b) => (a.approved === false ? -1 : 1) - (b.approved === false ? -1 : 1)).map((r) => (
+                    <div key={r.id} style={{ background: TOKENS.paperDeep, border: `1px solid ${r.approved === false ? TOKENS.lacquer : TOKENS.brassDeep}${r.approved === false ? "88" : "33"}`, borderRadius: 10, padding: "12px 14px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                         <div>
-                          <div style={{ fontSize: 14, fontWeight: 600 }}>{r.name}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <div style={{ fontSize: 14, fontWeight: 600 }}>{r.name}</div>
+                            {r.approved === false && (
+                              <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10, fontWeight: 700, padding: "2px 8px" }}>{t.pendingApproval}</span>
+                            )}
+                          </div>
                           <div style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic", marginTop: 3 }}>&quot;{r.quote}&quot;</div>
                         </div>
                         <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                          {r.approved === false && (
+                            <button onClick={() => approveTestimonial(r.id)} style={{ background: TOKENS.jade, border: "none", borderRadius: 6, padding: "6px 8px", cursor: "pointer" }}>
+                              <Check size={13} color={TOKENS.brass} />
+                            </button>
+                          )}
                           <button onClick={() => setTestimonialDraft({ id: r.id, name: r.name, quote: r.quote })} style={{ background: "none", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 6, padding: "6px 8px", cursor: "pointer" }}>
                             <Edit3 size={13} color={TOKENS.jade} />
                           </button>
@@ -1663,6 +2640,55 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 </div>
               )}
 
+              {frontDeskTab === "partners" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}44`, borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+                    <input
+                      value={partnerDraft.code}
+                      onChange={(e) => setPartnerDraft({ ...partnerDraft, code: e.target.value })}
+                      placeholder={t.partnerCodePh}
+                      style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5, textTransform: "uppercase" }}
+                    />
+                    <input
+                      value={partnerDraft.businessName}
+                      onChange={(e) => setPartnerDraft({ ...partnerDraft, businessName: e.target.value })}
+                      placeholder={t.businessNamePh}
+                      style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
+                    />
+                    <input
+                      value={partnerDraft.contact}
+                      onChange={(e) => setPartnerDraft({ ...partnerDraft, contact: e.target.value })}
+                      placeholder={t.yourContact}
+                      style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
+                    />
+                    <button
+                      onClick={savePartnerDraft}
+                      style={{ background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 8, padding: "10px", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}
+                    >
+                      {partnerDraft.id ? t.saveProduct : t.addPartner}
+                    </button>
+                  </div>
+                  {wholesaleAccounts.length === 0 && <p style={{ color: TOKENS.jadeSoft, fontSize: 14 }}>{t.noPartnersYet}</p>}
+                  {wholesaleAccounts.map((a) => (
+                    <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 10, padding: "10px 14px" }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "monospace" }}>{a.code}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{a.businessName}</div>
+                        {a.contact && <div style={{ fontSize: 11.5, color: TOKENS.jadeSoft }}>{a.contact}</div>}
+                      </div>
+                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                        <button onClick={() => setPartnerDraft({ id: a.id, code: a.code, businessName: a.businessName, contact: a.contact || "" })} style={{ background: "none", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 6, padding: "6px 8px", cursor: "pointer" }}>
+                          <Edit3 size={13} color={TOKENS.jade} />
+                        </button>
+                        <button onClick={() => deletePartner(a.id)} style={{ background: "none", border: `1px solid ${TOKENS.lacquer}55`, borderRadius: 6, padding: "6px 8px", cursor: "pointer" }}>
+                          <Trash2 size={13} color={TOKENS.lacquer} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {frontDeskTab === "orders" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {orders.length > 0 && (
@@ -1696,6 +2722,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           {o.address && <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.yourAddress}: {o.address}</div>}
                           {o.taxNumber && <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.taxNumber}: {o.taxNumber}</div>}
                           {o.vat && <div style={{ fontSize: 12.5, color: TOKENS.brassDeep }}>VAT: {o.vat}%</div>}
+                          <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.paymentMethodLabel}: {o.paymentMethod === "cash" ? t.payByCash : t.payByQR}</div>
                           {o.promo && <div style={{ fontSize: 12.5, color: TOKENS.lacquer }}>{t.promoLabel}: {o.promo.code} (-{o.promo.percent}%){o.promo.ownerName ? ` · ${o.promo.ownerName}` : ""}</div>}
                         </div>
                         {o.unread && <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10.5, fontWeight: 700, padding: "2px 8px", flexShrink: 0 }}>{t.newBadge}</span>}
@@ -1704,7 +2731,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         {o.lines.map((l, i) => (
                           <div key={i} style={{ display: "flex", justifyContent: "space-between" }}>
                             <span>{l.name[lang] || l.name.en}</span>
-                            <span>{l.qty} {l.unit === "kg" ? t.kg : t.pcs}</span>
+                            <span>{l.qty} {l.unit === "kg" ? t.kg : l.unit === "pack" ? "pack" : t.pcs}</span>
                           </div>
                         ))}
                       </div>
@@ -1718,6 +2745,12 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           </>
                         )}
                       </div>
+                      {o.estimatedTotal ? (
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, color: TOKENS.brassDeep, marginTop: 4 }}>
+                          <span>{t.estimatedTotal}</span>
+                          <span>{formatVND(o.estimatedTotal)}</span>
+                        </div>
+                      ) : null}
                       {o.note && <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginTop: 8, fontStyle: "italic" }}>{t.noteLabel}: {o.note}</div>}
 
                       <div style={{ marginTop: 12 }}>
@@ -1739,6 +2772,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                             </button>
                           ))}
                         </div>
+                      </div>
+
+                      <div style={{ marginTop: 10 }}>
+                        <div style={{ fontSize: 11, color: TOKENS.jadeSoft }}>{t.trackingCodeLabel}</div>
+                        <TrackingCodeEditor value={o.trackingCode} onSave={(code) => updateTrackingCode(o.id, code)} t={t} TOKENS={TOKENS} />
                       </div>
 
                       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -1806,7 +2844,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   <div style={{ display: "inline-flex", padding: 16, borderRadius: "50%", background: TOKENS.paperDeep, marginBottom: 16 }}>
                     <Check size={26} color={TOKENS.brassDeep} />
                   </div>
-                  <h2 style={{ fontFamily: "Fraunces, Georgia, serif", fontSize: 20, margin: "0 0 8px" }}>{t.orderSent}</h2>
+                  <h2 style={{ fontFamily: "Lora, Georgia, serif", fontSize: 20, margin: "0 0 8px" }}>{t.orderSent}</h2>
                   <PaymentBlock order={orderSubmitted} payment={payment} qrUrl={vietQrUrl(orderSubmitted)} onPrint={printInvoice} t={t} TOKENS={TOKENS} />
                   <a
                     href={mailtoHref(orderSubmitted)}
@@ -1828,17 +2866,192 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 </div>
               ) : (
                 <>
-                  <h2 style={{ fontFamily: "Fraunces, Georgia, serif", fontWeight: 500, fontSize: 22, margin: "0 0 4px" }}>{t.shopTitle}</h2>
-                  <p style={{ color: TOKENS.jadeSoft, fontSize: 13.5, marginBottom: 18 }}>{t.shopHint}</p>
+                  <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 22, margin: "0 0 4px" }}>{t.shopTitle}</h2>
+                  <p style={{ color: TOKENS.jadeSoft, fontSize: 13.5, marginBottom: 14 }}>{t.shopHint}</p>
+
+                  <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, marginBottom: 18 }}>
+                    {[
+                      { ref: sampleSectionRef, label: t.sampleOption, show: catalog.some((p) => p.line === "sample") },
+                      { ref: everydaySectionRef, label: t.everydayOption, show: catalog.some((p) => p.line === "everyday") },
+                      { ref: reserveSectionRef, label: t.reserveOption, show: catalog.some((p) => p.line === "reserve") },
+                    ].filter((s) => s.show).map((s) => (
+                      <button
+                        key={s.label}
+                        onClick={() => s.ref.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                        style={{
+                          flexShrink: 0, padding: "7px 14px", borderRadius: 20, border: `1px solid ${TOKENS.brassDeep}55`,
+                          background: TOKENS.paperDeep, color: TOKENS.jade, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                        }}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
                   {!isAdmin && <ReorderBox supabase={supabase} type="retail" onApply={applyReorder} t={t} TOKENS={TOKENS} />}
 
-                  {testimonials.length > 0 && (
+                  {/* Featured: Sample Packs as a standalone hero row */}
+                  {catalog.some((p) => p.line === "sample") && (
+                    <div ref={sampleSectionRef} style={{ marginBottom: 24, scrollMarginTop: 70 }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                        {t.sampleOption}
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+                        {catalog.filter((p) => p.line === "sample").map((p) => {
+                          const stockTotal = getStockTotal(p);
+                          const soldOut = p.available === false || stockTotal === 0;
+                          return (
+                            <div
+                              key={p.id}
+                              onClick={() => setDetailProduct({ product: p, cartType: "retail" })}
+                              style={{
+                                background: `linear-gradient(160deg, ${TOKENS.jade} 0%, ${TOKENS.jadeSoft} 100%)`,
+                                borderRadius: 14, padding: 16, cursor: "pointer", opacity: soldOut ? 0.55 : 1,
+                                display: "flex", flexDirection: "column", gap: 6, minHeight: 120, position: "relative", overflow: "hidden",
+                              }}
+                            >
+                              <div style={{ fontSize: 10, fontWeight: 700, color: TOKENS.brass, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                                {t.sampleOption}
+                              </div>
+                              <div style={{ fontSize: 15, fontWeight: 600, color: TOKENS.paper, overflowWrap: "anywhere" }}>{p.name[lang]}</div>
+                              {p.price ? <div style={{ fontSize: 16, fontWeight: 700, color: TOKENS.brass }}>{formatVND(p.price)}</div> : null}
+                              {p.notes?.[lang] && (
+                                <div style={{ fontSize: 11.5, color: `${TOKENS.paper}bb`, lineHeight: 1.4, flex: 1 }}>{p.notes[lang]}</div>
+                              )}
+                              <div style={{ fontSize: 11, color: TOKENS.brass, fontWeight: 600, textDecoration: "underline", marginTop: 4 }}>
+                                {soldOut ? t.outOfStock : t.viewDetails}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: 20 }}>
+                    {["everyday", "reserve"].map((lineId) => {
+                      const items = [...retailProducts]
+                        .filter((p) => p.line === lineId)
+                        .sort((a, b) => (a.available === false ? 1 : 0) - (b.available === false ? 1 : 0));
+                      if (items.length === 0) return null;
+                      return (
+                        <div key={lineId} ref={lineId === "everyday" ? everydaySectionRef : reserveSectionRef} style={{ scrollMarginTop: 70 }}>
+                          <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                            {lineLabel(lineId)}
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(148px, 1fr))", gap: 10 }}>
+                            {items.map((p) => {
+                              const hasVariants = p.variants && p.variants.length > 0;
+                              const selectedWeight = hasVariants ? (variantSelection[p.id] || p.variants[0].weight) : null;
+                              const variant = hasVariants ? (p.variants.find((v) => v.weight === selectedWeight) || p.variants[0]) : null;
+                              const cartKey = hasVariants ? `${p.id}__${variant.weight}` : p.id;
+                              const price = hasVariants ? variant.price : p.price;
+                              const stockTotal = hasVariants ? getStockTotal(variant) : getStockTotal(p);
+                              const soldOut = p.available === false || stockTotal === 0;
+                              return (
+                                <div
+                                  key={p.id}
+                                  style={{
+                                    display: "flex", flexDirection: "column", position: "relative",
+                                    background: TOKENS.paper, border: `1px solid ${TOKENS.hairline}`, boxShadow: TOKENS.shadowSm,
+                                    borderRadius: 14, overflow: "hidden", opacity: soldOut ? 0.55 : 1,
+                                  }}
+                                >
+                                  {p.limited && (
+                                    <div style={{
+                                      position: "absolute", top: 8, right: 8, zIndex: 1,
+                                      background: TOKENS.jade, color: TOKENS.brass, borderRadius: 20,
+                                      padding: "3px 8px", display: "flex", alignItems: "center", gap: 4,
+                                      fontSize: 10, fontWeight: 700,
+                                    }}>
+                                      <Sparkles size={11} /> {t.limitedBadge}
+                                    </div>
+                                  )}
+                                  <div
+                                    onClick={() => setDetailProduct({ product: p, cartType: "retail" })}
+                                    style={{ cursor: "pointer" }}
+                                  >
+                                    {p.photoUrl ? (
+                                      <img src={p.photoUrl} alt={p.name[lang]} style={{ width: "100%", height: 100, objectFit: "cover", objectPosition: p.photoPosition || "50% 50%", display: "block" }} />
+                                    ) : (
+                                      <div style={{ width: "100%", height: 72, background: TOKENS.jade, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                        <Leaf size={22} color={TOKENS.brass} strokeWidth={1.4} />
+                                      </div>
+                                    )}
+                                    <div style={{ padding: "10px 10px 0" }}>
+                                      <div style={{ fontSize: 13, fontWeight: 600, overflowWrap: "anywhere", lineHeight: 1.3 }}>{p.name[lang]}</div>
+                                      {lang === "en" && p.name.vi && (
+                                        <div style={{ fontSize: 10.5, color: TOKENS.jadeSoft, marginTop: 1 }}>{p.name.vi}</div>
+                                      )}
+                                      {price ? <div style={{ fontSize: 12.5, color: TOKENS.brassDeep, fontWeight: 700, marginTop: 3 }}>{formatVND(price)}{p.line === "everyday" ? ` / ${t.kg}` : ""}</div> : null}
+                                      {typeof stockTotal === "number" && p.available !== false && (
+                                        <div style={{ fontSize: 10.5, fontWeight: 700, color: stockTotal <= 5 ? TOKENS.lacquer : TOKENS.jadeSoft, marginTop: 2 }}>
+                                          {t.stockLeft(stockTotal)}
+                                        </div>
+                                      )}
+                                      {p.notes?.[lang] && (
+                                        <div style={{ fontSize: 10.5, color: TOKENS.jadeSoft, fontStyle: "italic", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                          {p.notes[lang]}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div style={{ padding: "8px 10px 10px", marginTop: "auto" }}>
+                                    {hasVariants && (
+                                      <div style={{ display: "flex", gap: 5, marginBottom: 6 }}>
+                                        {p.variants.map((v) => (
+                                          <button
+                                            key={v.weight}
+                                            onClick={(e) => { e.stopPropagation(); setVariantSelection({ ...variantSelection, [p.id]: v.weight }); }}
+                                            style={{
+                                              flex: 1, minWidth: 0, padding: "5px 4px", borderRadius: 7, cursor: "pointer",
+                                              border: `1px solid ${v.weight === selectedWeight ? TOKENS.brass : TOKENS.brassDeep}55`,
+                                              background: v.weight === selectedWeight ? TOKENS.jade : TOKENS.paper,
+                                              color: v.weight === selectedWeight ? TOKENS.brass : TOKENS.jade,
+                                              display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1.2,
+                                            }}
+                                          >
+                                            <span style={{ fontSize: 11, fontWeight: 700 }}>{v.weight}</span>
+                                            {v.price ? <span style={{ fontSize: 9 }}>{formatVND(v.price)}</span> : null}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {soldOut ? (
+                                      <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.lacquer, textAlign: "center", padding: "6px 0" }}>{t.outOfStock}</div>
+                                    ) : (
+                                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          inputMode="numeric"
+                                          value={retailCart[cartKey] || ""}
+                                          onChange={(e) => setRetailQty(cartKey, e.target.value, stockTotal)}
+                                          placeholder="0"
+                                          style={{
+                                            width: "100%", boxSizing: "border-box", padding: "7px 8px", borderRadius: 6, border: `1px solid ${TOKENS.brassDeep}55`,
+                                            background: TOKENS.paper, color: TOKENS.jade, fontSize: 13, textAlign: "center",
+                                          }}
+                                        />
+                                        <span style={{ fontSize: 11.5, color: TOKENS.jadeSoft, flexShrink: 0 }}>{p.line === "everyday" ? t.kg : t.pcs}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {testimonials.some((r) => r.approved !== false) && (
                     <div style={{ marginBottom: 22 }}>
                       <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
                         {t.testimonialsHeading}
                       </div>
                       <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 6 }}>
-                        {testimonials.map((r) => (
+                        {testimonials.filter((r) => r.approved !== false).map((r) => (
                           <div key={r.id} style={{ flex: "0 0 auto", width: 220, background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 12, padding: 14 }}>
                             <div style={{ fontSize: 13, color: TOKENS.jade, fontStyle: "italic", lineHeight: 1.5, marginBottom: 8 }}>&quot;{r.quote}&quot;</div>
                             <div style={{ fontSize: 12.5, fontWeight: 600, color: TOKENS.brassDeep }}>— {r.name}</div>
@@ -1848,82 +3061,52 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     </div>
                   )}
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 18, marginBottom: 20 }}>
-                    {["everyday", "reserve"].map((lineId) => {
-                      const items = [...retailProducts]
-                        .filter((p) => p.line === lineId)
-                        .sort((a, b) => (a.available === false ? 1 : 0) - (b.available === false ? 1 : 0));
-                      if (items.length === 0) return null;
-                      return (
-                        <div key={lineId}>
-                          <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
-                            {lineId === "everyday" ? t.everydayOption : t.reserveOption}
-                          </div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            {items.map((p) => (
-                              <div
-                                key={p.id}
-                                style={{
-                                  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-                                  background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`,
-                                  borderRadius: 10, padding: "10px 14px", opacity: p.available === false ? 0.55 : 1,
-                                }}
-                              >
-                                <div
-                                  onClick={() => setDetailProduct({ product: p, cartType: "retail" })}
-                                  style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, cursor: "pointer" }}
-                                >
-                                  {p.photoUrl && (
-                                    <img src={p.photoUrl} alt={p.name[lang]} style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
-                                  )}
-                                  <div style={{ minWidth: 0 }}>
-                                    <div style={{ fontSize: 14, overflowWrap: "anywhere" }}>{p.name[lang]}</div>
-                                    {p.notes?.[lang] && (
-                                      <div style={{ fontSize: 11.5, color: TOKENS.jadeSoft, fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>
-                                        {p.notes[lang]}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                                {p.available === false ? (
-                                  <span style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.lacquer, flexShrink: 0 }}>{t.outOfStock}</span>
-                                ) : (
-                                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    inputMode="numeric"
-                                    value={retailCart[p.id] || ""}
-                                    onChange={(e) => setRetailQty(p.id, e.target.value)}
-                                    placeholder="0"
-                                    style={{
-                                      width: 68, padding: "8px 10px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`,
-                                      background: TOKENS.paper, color: TOKENS.jade, fontSize: 14, textAlign: "right",
-                                    }}
-                                  />
-                                  <span style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.pcs}</span>
-                                </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div style={{ marginBottom: 22, background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 12, padding: 14 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t.shareExperienceTitle}</div>
+                    {customerReviewSent ? (
+                      <p style={{ fontSize: 12.5, color: TOKENS.brassDeep, margin: 0 }}>{t.reviewSubmittedNote}</p>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <input
+                          value={customerReviewDraft.name}
+                          onChange={(e) => setCustomerReviewDraft({ ...customerReviewDraft, name: e.target.value })}
+                          placeholder={t.yourReviewNamePh}
+                          style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
+                        />
+                        <textarea
+                          value={customerReviewDraft.quote}
+                          onChange={(e) => setCustomerReviewDraft({ ...customerReviewDraft, quote: e.target.value })}
+                          placeholder={t.yourReviewQuotePh}
+                          rows={2}
+                          style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5, resize: "vertical", fontFamily: "inherit" }}
+                        />
+                        <button
+                          onClick={submitCustomerReview}
+                          disabled={!customerReviewDraft.name.trim() || !customerReviewDraft.quote.trim()}
+                          style={{
+                            background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 8, padding: "10px",
+                            fontSize: 13, fontWeight: 600, cursor: "pointer",
+                            opacity: (!customerReviewDraft.name.trim() || !customerReviewDraft.quote.trim()) ? 0.5 : 1,
+                          }}
+                        >
+                          {t.submitReview}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {retailCartLines.length === 0 ? (
                     <p style={{ color: TOKENS.jadeSoft, fontSize: 13.5, fontStyle: "italic" }}>{t.emptyCart}</p>
                   ) : (
-                    <div style={{ background: TOKENS.jade, color: TOKENS.paper, borderRadius: 12, padding: "18px 18px 16px", marginBottom: 20 }}>
+                    <div ref={retailSummaryRef} style={{ background: TOKENS.jade, color: TOKENS.paper, borderRadius: 12, padding: "18px 18px 16px", marginBottom: 20 }}>
                       <div style={{ fontSize: 11.5, letterSpacing: 1, textTransform: "uppercase", color: TOKENS.brass, marginBottom: 10, fontWeight: 600 }}>
                         {t.summaryTitle}
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 12 }}>
                         {retailCartLines.map((p) => (
-                          <div key={p.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5 }}>
-                            <span style={{ opacity: 0.9 }}>{p.name[lang]}</span>
-                            <span>{p.qty} {t.pcs}</span>
+                          <div key={p.cartKey} style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5 }}>
+                            <span style={{ opacity: 0.9 }}>{p.name[lang]}{p.weight ? ` — ${p.weight}` : ""}{p.price ? ` (${formatVND(p.price)})` : ""}</span>
+                            <span>{p.qty} {p.line === "everyday" ? t.kg : t.pcs}{p.price ? ` = ${formatVND(p.price * p.qty)}` : ""}</span>
                           </div>
                         ))}
                       </div>
@@ -1931,6 +3114,15 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         <span>{t.itemsTotal}</span>
                         <span>{retailTotalItems} {t.pcs}</span>
                       </div>
+                      {retailCartLines.some((p) => p.price) && (
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, color: TOKENS.brass, marginTop: 4 }}>
+                          <span>{t.estimatedTotal}</span>
+                          <span>{formatVND(retailCartLines.reduce((s, p) => s + (p.price ? p.price * p.qty : 0), 0))}</span>
+                        </div>
+                      )}
+                      {retailCartLines.some((p) => !p.price) && (
+                        <p style={{ fontSize: 11, color: `${TOKENS.paper}88`, marginTop: 4 }}>{t.priceNote}</p>
+                      )}
                       {appliedPromo && (
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: TOKENS.brass, marginTop: 4 }}>
                           <span>{t.promoLabel}</span>
@@ -1983,6 +3175,36 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         />
                       </div>
 
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 12, color: `${TOKENS.paper}cc`, marginBottom: 6 }}>{t.paymentMethodLabel}</div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod("qr")}
+                            style={{
+                              flex: 1, padding: "9px", borderRadius: 8, cursor: "pointer", fontSize: 12.5, fontWeight: 600,
+                              border: `1px solid ${paymentMethod === "qr" ? TOKENS.brass : TOKENS.paper + "44"}`,
+                              background: paymentMethod === "qr" ? TOKENS.brass : "transparent",
+                              color: paymentMethod === "qr" ? TOKENS.jade : TOKENS.paper,
+                            }}
+                          >
+                            {t.payByQR}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod("cash")}
+                            style={{
+                              flex: 1, padding: "9px", borderRadius: 8, cursor: "pointer",
+                              border: `1px solid ${paymentMethod === "cash" ? TOKENS.brass : TOKENS.paper + "44"}`,
+                              background: paymentMethod === "cash" ? TOKENS.brass : "transparent",
+                              color: paymentMethod === "cash" ? TOKENS.jade : TOKENS.paper,
+                            }}
+                          >
+                            {t.payByCash}
+                          </button>
+                        </div>
+                      </div>
+
                       <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 12, fontSize: 12, color: `${TOKENS.paper}cc`, cursor: "pointer" }}>
                         <input
                           type="checkbox"
@@ -1992,6 +3214,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         />
                         {t.consentLabel}
                       </label>
+
+                      {orderError && <p style={{ fontSize: 12.5, color: "#E8A99A", marginBottom: 10 }}>{t.orderFailed}</p>}
 
                       <button
                         onClick={() => submitOrder("retail")}
@@ -2041,7 +3265,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               }}
             >
               <div style={{ background: TOKENS.jade, color: TOKENS.paper, padding: "14px 16px" }}>
-                <div style={{ fontFamily: "Fraunces, Georgia, serif", fontSize: 15, fontWeight: 600 }}>{t.chatTitle}</div>
+                <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 15, fontWeight: 600 }}>{t.chatTitle}</div>
                 <div style={{ fontSize: 12, color: `${TOKENS.paper}bb`, marginTop: 2 }}>{t.chatIntro}</div>
               </div>
 
@@ -2086,17 +3310,152 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
           )}
         </>
       )}
+
+      {/* ---------- GALLERY LIGHTBOX ---------- */}
+      {lightboxImage && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(28,43,36,0.85)", zIndex: 65, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+          onClick={() => setLightboxImage(null)}
+        >
+          <div style={{ maxWidth: "min(560px, 100%)" }} onClick={(e) => e.stopPropagation()}>
+            <img src={lightboxImage.url} alt={lightboxImage.caption?.[lang] || ""} style={{ width: "100%", maxHeight: "75vh", objectFit: "contain", borderRadius: 10 }} />
+            {lightboxImage.caption?.[lang] && (
+              <p style={{ color: TOKENS.paper, fontSize: 13.5, textAlign: "center", marginTop: 12 }}>{lightboxImage.caption[lang]}</p>
+            )}
+            <button
+              onClick={() => setLightboxImage(null)}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", margin: "10px auto 0", background: "none", border: `1px solid ${TOKENS.paper}55`, color: TOKENS.paper, borderRadius: "50%", width: 32, height: 32, cursor: "pointer" }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- CART DRAWER (Shopify-style) ---------- */}
+      {cartDrawerOpen && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(28,43,36,0.55)", zIndex: 60 }}
+          onClick={() => setCartDrawerOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "fixed", top: 0, right: 0, bottom: 0, width: "min(360px, 90vw)",
+              background: TOKENS.paper, boxShadow: "-8px 0 30px rgba(0,0,0,0.25)",
+              display: "flex", flexDirection: "column", zIndex: 61,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: `1px solid ${TOKENS.brassDeep}33` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "Lora, Georgia, serif", fontSize: 17, fontWeight: 600 }}>
+                <ShoppingCart size={17} color={TOKENS.brassDeep} /> {t.cartTitle}
+              </div>
+              <button onClick={() => setCartDrawerOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.jadeSoft }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: "auto", padding: "12px 18px" }}>
+              {retailCartLines.length === 0 ? (
+                <p style={{ color: TOKENS.jadeSoft, fontSize: 13.5, fontStyle: "italic", marginTop: 20 }}>{t.emptyCart}</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {retailCartLines.map((p) => {
+                    const stockTotal = getStockTotal(p);
+                    return (
+                      <div key={p.cartKey} style={{ display: "flex", gap: 10, paddingBottom: 12, borderBottom: `1px solid ${TOKENS.brassDeep}22` }}>
+                        {p.photoUrl ? (
+                          <img src={p.photoUrl} alt={p.name[lang]} style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover", objectPosition: p.photoPosition || "50% 50%", flexShrink: 0 }} />
+                        ) : (
+                          <div style={{ width: 48, height: 48, borderRadius: 8, background: TOKENS.jade, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <Leaf size={18} color={TOKENS.brass} />
+                          </div>
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 600, overflowWrap: "anywhere" }}>
+                            {p.name[lang]}{p.weight ? ` — ${p.weight}` : ""}
+                          </div>
+                          {p.price ? <div style={{ fontSize: 12, color: TOKENS.brassDeep, fontWeight: 600, marginTop: 2 }}>{formatVND(p.price)}{p.line === "everyday" ? ` / ${t.kg}` : ""}</div> : null}
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                            <button
+                              onClick={() => setRetailQty(p.cartKey, p.qty - 1, stockTotal)}
+                              style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${TOKENS.brassDeep}55`, background: TOKENS.paperDeep, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                            >
+                              <Minus size={12} color={TOKENS.jade} />
+                            </button>
+                            <span style={{ fontSize: 13, fontWeight: 600, minWidth: 18, textAlign: "center" }}>{p.qty}</span>
+                            <span style={{ fontSize: 10.5, color: TOKENS.jadeSoft }}>{p.line === "everyday" ? t.kg : t.pcs}</span>
+                            <button
+                              onClick={() => setRetailQty(p.cartKey, p.qty + 1, stockTotal)}
+                              disabled={typeof stockTotal === "number" && p.qty >= stockTotal}
+                              style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${TOKENS.brassDeep}55`, background: TOKENS.paperDeep, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: (typeof stockTotal === "number" && p.qty >= stockTotal) ? 0.4 : 1 }}
+                            >
+                              <Plus size={12} color={TOKENS.jade} />
+                            </button>
+                            <button
+                              onClick={() => setRetailQty(p.cartKey, 0, stockTotal)}
+                              style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: TOKENS.lacquer }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                        {p.price ? (
+                          <div style={{ fontSize: 13, fontWeight: 700, color: TOKENS.jade, flexShrink: 0 }}>{formatVND(p.price * p.qty)}</div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {retailCartLines.length > 0 && (
+              <div style={{ padding: "16px 18px", borderTop: `1px solid ${TOKENS.brassDeep}33` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, color: TOKENS.jadeSoft, marginBottom: 4 }}>
+                  <span>{t.itemsTotal}</span>
+                  <span>{retailTotalItems} {t.pcs}</span>
+                </div>
+                {retailCartLines.some((p) => p.price) && (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16, fontWeight: 700, color: TOKENS.brassDeep, marginBottom: 10 }}>
+                    <span>{t.estimatedTotal}</span>
+                    <span>{formatVND(retailCartLines.reduce((s, p) => s + (p.price ? p.price * p.qty : 0), 0))}</span>
+                  </div>
+                )}
+                <button
+                  onClick={() => { setCartDrawerOpen(false); setTimeout(() => retailSummaryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 200); }}
+                  style={{
+                    width: "100%", background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 10,
+                    padding: "13px", fontSize: 14.5, fontWeight: 700, cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                  }}
+                >
+                  {t.proceedToCheckout} <ChevronRight size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ---------- TEA DETAIL MODAL ---------- */}
       {detailProduct && (
         <TeaDetailModal
           product={detailProduct.product}
-          unit={detailProduct.cartType === "retail" ? t.pcs : t.kg}
+          unit={detailProduct.product.line === "everyday" ? t.kg : t.pcs}
+          showYield={detailProduct.cartType === "wholesale"}
           lang={lang}
           t={t}
           TOKENS={TOKENS}
-          onConfirm={(qty) => {
-            if (detailProduct.cartType === "retail") setRetailQty(detailProduct.product.id, qty);
-            else setQty(detailProduct.product.id, qty);
+          onConfirm={(qty, weight) => {
+            const cartKey = weight ? `${detailProduct.product.id}__${weight}` : detailProduct.product.id;
+            if (detailProduct.cartType === "retail") {
+              const variant = weight ? detailProduct.product.variants?.find((v) => v.weight === weight) : null;
+              const stockTotal = variant ? getStockTotal(variant) : getStockTotal(detailProduct.product);
+              setRetailQty(cartKey, qty, stockTotal);
+            } else {
+              setQty(detailProduct.product.id, qty);
+            }
           }}
           onClose={() => setDetailProduct(null)}
         />
@@ -2144,14 +3503,14 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
             <div style={{ padding: "26px 24px 24px" }}>
               {onboardStep === 0 && (
                 <div>
-                  <h2 style={{ fontFamily: "Fraunces, Georgia, serif", fontWeight: 500, fontSize: 22, margin: "0 0 10px" }}>{t.onboardWelcomeTitle}</h2>
+                  <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 22, margin: "0 0 10px" }}>{t.onboardWelcomeTitle}</h2>
                   <p style={{ fontSize: 14, lineHeight: 1.65, color: TOKENS.jadeSoft, margin: 0 }}>{t.onboardWelcomeBody}</p>
                 </div>
               )}
 
               {onboardStep === 1 && (
                 <div>
-                  <h2 style={{ fontFamily: "Fraunces, Georgia, serif", fontWeight: 500, fontSize: 20, margin: "0 0 16px" }}>{t.onboardOfferTitle}</h2>
+                  <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 20, margin: "0 0 16px" }}>{t.onboardOfferTitle}</h2>
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                       <div style={{ width: 36, height: 36, borderRadius: 10, background: TOKENS.jade, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -2177,8 +3536,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
               {onboardStep === 2 && (
                 <div>
-                  <h2 style={{ fontFamily: "Fraunces, Georgia, serif", fontWeight: 500, fontSize: 20, margin: "0 0 16px" }}>{t.onboardInfoTitle}</h2>
-
+                  <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 20, margin: "0 0 16px" }}>{t.onboardInfoTitle}</h2>
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     <input
                       value={onboardName}
