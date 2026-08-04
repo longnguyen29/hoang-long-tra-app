@@ -156,7 +156,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [activeThreadId, setActiveThreadId] = useState(null);
   const [frontDeskTab, setFrontDeskTab] = useState("orders");
 
-  const [showOnboarding, setShowOnboarding] = useState(!isAdmin);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardStep, setOnboardStep] = useState(0);
   const [onboardInterest, setOnboardInterest] = useState("wholesale");
   const [onboardName, setOnboardName] = useState("");
@@ -442,6 +442,21 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     const id = setInterval(loadMyThread, 4000);
     return () => clearInterval(id);
   }, [isAdmin, chatOpen, loadMyThread]);
+
+  // Onboarding shows once per browser, not on every reload/role switch — checked in an
+  // effect (not the initial useState) so server and first client render both start closed
+  // and stay in sync, avoiding a hydration mismatch.
+  useEffect(() => {
+    if (isAdmin) return;
+    try {
+      if (!window.localStorage.getItem("thl:onboarded")) setShowOnboarding(true);
+    } catch { /* localStorage unavailable — just skip onboarding */ }
+  }, [isAdmin]);
+
+  const markOnboarded = () => {
+    try { window.localStorage.setItem("thl:onboarded", "1"); } catch { /* ignore */ }
+    setShowOnboarding(false);
+  };
 
   // Eligibility for the free "new batch test pack" — checked server-side via RPC since
   // customers have no direct read access to the orders table.
@@ -810,7 +825,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     setOrderConsent(true);
     setRole(onboardInterest);
     setSection(onboardInterest);
-    setShowOnboarding(false);
+    markOnboarded();
     setOnboardConsent(false);
   };
 
@@ -1125,9 +1140,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     setRole(r.id);
                     setSection("home");
                     resetWiki();
-                    setShowOnboarding(true);
-                    setOnboardStep(0);
-                    setOnboardInterest(r.id);
                   }}
                   title={r.label[lang]}
                   style={{
@@ -1155,10 +1167,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   padding: "72px 28px 56px", overflow: "hidden",
                 }}
               >
-                <div style={{
-                  position: "absolute", top: -90, right: -70, width: 300, height: 300, borderRadius: "50%",
-                  background: `radial-gradient(circle, ${TOKENS.brass}1f 0%, transparent 68%)`,
-                }} />
                 <svg
                   viewBox="0 0 400 90"
                   preserveAspectRatio="none"
@@ -1189,12 +1197,12 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   padding: "22px 20px", borderBottom: `1px solid ${TOKENS.brassDeep}22`,
                 }}
               >
-                <p style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 16, lineHeight: 1.55, color: TOKENS.jade, margin: "0 0 8px" }}>
+                <p style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 16, lineHeight: 1.55, color: TOKENS.jade, margin: "0 0 8px", maxWidth: "62ch" }}>
                   {lang === "en"
                     ? "“It's easy to make great things from great ingredients — but to make great things from the ordinary, that's something else.”"
                     : "“Làm ra thứ tuyệt vời từ nguyên liệu tuyệt vời thì dễ, nhưng từ những gì bình thường — đó mới là chuyện khác.”"}
                 </p>
-                <span style={{ fontSize: 12, fontWeight: 600, color: TOKENS.brassDeep, textDecoration: "underline" }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: TOKENS.brassOnPaper, textDecoration: "underline" }}>
                   {t.viewDetails}
                 </span>
               </button>
@@ -1214,7 +1222,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       <label style={{
                         display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1,
                         padding: "9px 12px", borderRadius: 8, border: `1px dashed ${TOKENS.brassDeep}88`,
-                        fontSize: 12.5, color: TOKENS.brassDeep, cursor: "pointer", fontWeight: 600,
+                        fontSize: 12.5, color: TOKENS.brassOnPaper, cursor: "pointer", fontWeight: 600,
                       }}>
                         <Upload size={14} />
                         {homePhoto ? t.uploadPhotoLabel : t.addPhoto}
@@ -1241,7 +1249,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               {/* Featured: Sample Pack */}
               {catalog.some((p) => p.line === "sample") && (
                 <div style={{ padding: "20px 20px 0" }}>
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
                     {t.sampleOption}
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
@@ -1259,8 +1267,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           }}
                         >
                           <div style={{ fontSize: 14, fontWeight: 600, color: TOKENS.paper, overflowWrap: "anywhere" }}>{p.name[lang]}</div>
-                          {p.price ? <div style={{ fontSize: 15, fontWeight: 700, color: TOKENS.brass }}>{formatVND(p.price)}</div> : null}
-                          <div style={{ fontSize: 11, color: TOKENS.brass, fontWeight: 600, textDecoration: "underline", marginTop: "auto" }}>
+                          {p.price ? <div style={{ fontSize: 15, fontWeight: 700, color: TOKENS.brassOnDark }}>{formatVND(p.price)}</div> : null}
+                          <div style={{ fontSize: 11, color: TOKENS.brassOnDark, fontWeight: 600, textDecoration: "underline", marginTop: "auto" }}>
                             {soldOut ? t.outOfStock : t.viewDetails}
                           </div>
                         </div>
@@ -1397,7 +1405,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       onClick={() => startNew(null)}
                       style={{
                         display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", marginTop: 20,
-                        background: "transparent", color: TOKENS.brassDeep, border: `1px dashed ${TOKENS.brassDeep}66`,
+                        background: "transparent", color: TOKENS.brassOnPaper, border: `1px dashed ${TOKENS.brassDeep}66`,
                         borderRadius: 10, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
                       }}
                     >
@@ -1443,7 +1451,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   onClick={() => startNew(wikiCategory)}
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", marginTop: 14,
-                    background: "transparent", color: TOKENS.brassDeep, border: `1px dashed ${TOKENS.brassDeep}88`,
+                    background: "transparent", color: TOKENS.brassOnPaper, border: `1px dashed ${TOKENS.brassDeep}88`,
                     borderRadius: 10, padding: "11px", fontSize: 13, fontWeight: 600, cursor: "pointer",
                   }}
                 >
@@ -1459,7 +1467,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               <button onClick={() => setActiveId(null)} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: TOKENS.jadeSoft, cursor: "pointer", fontSize: 13.5, marginBottom: 16, padding: 0 }}>
                 <ChevronLeft size={15} /> {activeCategoryMeta?.label[lang]}
               </button>
-              <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
                 {activeCategoryMeta?.label[lang]}
               </div>
               <h2 style={{ fontFamily: "Lora, Georgia, serif", fontSize: "clamp(20px, 4vw, 26px)", margin: "0 0 16px", overflowWrap: "anywhere" }}>
@@ -1476,7 +1484,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     if (items.length === 0) return null;
                     return (
                       <div key={lineId}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
                           {lineLabel(lineId)}
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1489,7 +1497,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                               {p.limited && (
                                 <div style={{
                                   position: "absolute", top: 8, right: 8, zIndex: 1,
-                                  background: TOKENS.jade, color: TOKENS.brass, borderRadius: 20,
+                                  background: TOKENS.jade, color: TOKENS.brassOnDark, borderRadius: 20,
                                   padding: "3px 8px", display: "flex", alignItems: "center", gap: 4,
                                   fontSize: 10, fontWeight: 700,
                                 }}>
@@ -1497,7 +1505,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                                 </div>
                               )}
                               {p.photoUrl && (
-                                <img src={p.photoUrl} alt={p.name[lang]} style={{ width: 64, height: 64, borderRadius: 8, objectFit: "cover", objectPosition: p.photoPosition || "50% 50%", flexShrink: 0 }} />
+                                <img src={p.photoUrl} alt={p.name[lang]} loading="lazy" decoding="async" style={{ width: 64, height: 64, borderRadius: 8, objectFit: "cover", objectPosition: p.photoPosition || "50% 50%", flexShrink: 0 }} />
                               )}
                               <div style={{ minWidth: 0, flex: 1 }}>
                                 <div style={{ fontSize: 14.5, fontWeight: 600, overflowWrap: "anywhere" }}>
@@ -1507,9 +1515,9 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                                 {lang === "en" && p.name.vi && (
                                   <div style={{ fontSize: 11.5, color: TOKENS.jadeSoft, marginTop: 1 }}>{p.name.vi}</div>
                                 )}
-                                {p.price ? <div style={{ fontSize: 13.5, fontWeight: 700, color: TOKENS.brassDeep, marginTop: 2 }}>{formatVND(p.price)}{p.line === "everyday" ? ` / ${t.kg}` : ""}</div> : null}
+                                {p.price ? <div style={{ fontSize: 13.5, fontWeight: 700, color: TOKENS.brassOnPaper, marginTop: 2 }}>{formatVND(p.price)}{p.line === "everyday" ? ` / ${t.kg}` : ""}</div> : null}
                                 {!p.price && getVariantMinPrice(p) !== undefined && (
-                                  <div style={{ fontSize: 13.5, fontWeight: 700, color: TOKENS.brassDeep, marginTop: 2 }}>{t.fromPrice(formatVND(getVariantMinPrice(p)))}</div>
+                                  <div style={{ fontSize: 13.5, fontWeight: 700, color: TOKENS.brassOnPaper, marginTop: 2 }}>{t.fromPrice(formatVND(getVariantMinPrice(p)))}</div>
                                 )}
                                 {typeof getStockTotal(p) === "number" && p.available !== false && (
                                   <div style={{ fontSize: 11.5, fontWeight: 700, color: getStockTotal(p) <= 5 ? TOKENS.lacquer : TOKENS.jadeSoft, marginTop: 2 }}>
@@ -1522,7 +1530,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                                   </div>
                                 )}
                                 {p.notes?.[lang] && <div style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic", marginTop: 3 }}>{p.notes[lang]}</div>}
-                                <div style={{ fontSize: 12, color: TOKENS.brassDeep, marginTop: 4 }}>
+                                <div style={{ fontSize: 12, color: TOKENS.brassOnPaper, marginTop: 4 }}>
                                   {p.brew?.[lang]}
                                   {p.packSize && ` · ${p.packSize}`}
                                 </div>
@@ -1616,7 +1624,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   <label style={{
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                     padding: "9px 12px", borderRadius: 8, border: `1px dashed ${TOKENS.brassDeep}88`,
-                    fontSize: 12.5, color: TOKENS.brassDeep, cursor: "pointer", fontWeight: 600,
+                    fontSize: 12.5, color: TOKENS.brassOnPaper, cursor: "pointer", fontWeight: 600,
                   }}>
                     <Upload size={14} />
                     {t.uploadPhotoLabel}
@@ -1628,7 +1636,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     />
                   </label>
                   {galleryDraft.url && (
-                    <img src={galleryDraft.url} alt="" style={{ width: "100%", height: 120, borderRadius: 8, objectFit: "cover" }} />
+                    <img src={galleryDraft.url} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: 120, borderRadius: 8, objectFit: "cover" }} />
                   )}
                   <input
                     value={galleryDraft.captionEn}
@@ -1660,6 +1668,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       <img
                         src={g.url}
                         alt={g.caption?.[lang] || ""}
+                        loading="lazy"
+                        decoding="async"
                         onClick={() => setLightboxImage(g)}
                         style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 10, cursor: "pointer", border: `1px solid ${TOKENS.hairline}` }}
                       />
@@ -1795,7 +1805,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               <button onClick={() => setLibraryActiveId(null)} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: TOKENS.jadeSoft, cursor: "pointer", fontSize: 13.5, marginBottom: 16, padding: 0 }}>
                 <ChevronLeft size={15} /> {libraryActiveCategoryMeta?.label[lang]}
               </button>
-              <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
                 {libraryActiveCategoryMeta?.label[lang]}
               </div>
               <h2 style={{ fontFamily: "Lora, Georgia, serif", fontSize: "clamp(20px, 4vw, 26px)", margin: "0 0 16px", overflowWrap: "anywhere" }}>
@@ -1837,7 +1847,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     {t.notRegisteredYet}{" "}
                     <button
                       onClick={() => setChatOpen(true)}
-                      style={{ background: "none", border: "none", color: TOKENS.brassDeep, fontWeight: 600, cursor: "pointer", textDecoration: "underline", padding: 0 }}
+                      style={{ background: "none", border: "none", color: TOKENS.brassOnPaper, fontWeight: 600, cursor: "pointer", textDecoration: "underline", padding: 0 }}
                     >
                       {t.requestAccess}
                     </button>
@@ -1895,7 +1905,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           >
                             <div style={{ fontSize: 13, color: TOKENS.jade, maxWidth: "50%" }}>{label}</div>
                             <div style={{ textAlign: "right" }}>
-                              <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 15, fontWeight: 600, color: TOKENS.brassDeep }}>
+                              <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 15, fontWeight: 600, color: TOKENS.brassOnPaper }}>
                                 {y.minL}–{y.maxL} {t.litersLabel}
                               </div>
                               <div style={{ fontSize: 11, color: TOKENS.jadeSoft, marginTop: 1 }}>{t.cupsApprox(minCups, maxCups)}</div>
@@ -1932,7 +1942,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, cursor: "pointer" }}
                         >
                           {p.photoUrl && (
-                            <img src={p.photoUrl} alt={p.name[lang]} style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", objectPosition: p.photoPosition || "50% 50%", flexShrink: 0 }} />
+                            <img src={p.photoUrl} alt={p.name[lang]} loading="lazy" decoding="async" style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", objectPosition: p.photoPosition || "50% 50%", flexShrink: 0 }} />
                           )}
                           <div style={{ minWidth: 0 }}>
                             <div style={{ fontSize: 14, overflowWrap: "anywhere" }}>{p.name[lang]}</div>
@@ -1941,7 +1951,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                             )}
                             {p.price ? (
                               <div style={{ display: "flex", alignItems: "baseline", gap: 3, marginTop: 2 }}>
-                                <span style={{ fontSize: 13.5, fontWeight: 700, color: TOKENS.brassDeep, fontFamily: "Lora, Georgia, serif" }}>
+                                <span style={{ fontSize: 13.5, fontWeight: 700, color: TOKENS.brassOnPaper, fontFamily: "Lora, Georgia, serif" }}>
                                   {formatVND(p.price)}
                                 </span>
                                 <span style={{ fontSize: 10.5, color: TOKENS.jadeSoft, letterSpacing: 0.3 }}>/ {t.kg}</span>
@@ -1981,7 +1991,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     <p style={{ color: TOKENS.jadeSoft, fontSize: 13.5, fontStyle: "italic" }}>{t.emptyCart}</p>
                   ) : (
                     <div style={{ background: TOKENS.jade, color: TOKENS.paper, borderRadius: 12, padding: "18px 18px 16px", marginBottom: 20 }}>
-                      <div style={{ fontSize: 11.5, letterSpacing: 1, textTransform: "uppercase", color: TOKENS.brass, marginBottom: 10, fontWeight: 600 }}>
+                      <div style={{ fontSize: 11.5, letterSpacing: 1, textTransform: "uppercase", color: TOKENS.brassOnDark, marginBottom: 10, fontWeight: 600 }}>
                         {t.summaryTitle}
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 12 }}>
@@ -1992,7 +2002,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           </div>
                         ))}
                         {addTestPack && (
-                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, color: TOKENS.brass }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, color: TOKENS.brassOnDark }}>
                             <span>{t.testPackName[lang]}</span>
                             <span>× 1</span>
                           </div>
@@ -2003,12 +2013,12 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           <span>{t.totalKg}</span>
                           <span>{totalKg} {t.kg}</span>
                         </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: TOKENS.brass }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: TOKENS.brassOnDark }}>
                           <span>{t.tierApplied}</span>
                           <span>{currentTier.range[lang]} · {currentTier.off[lang]}</span>
                         </div>
                         {cartLines.some((p) => p.price) && (
-                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, color: TOKENS.brass, marginTop: 2 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, color: TOKENS.brassOnDark, marginTop: 2 }}>
                             <span>{t.estimatedTotal}</span>
                             <span>{formatVND(Math.round(cartLines.reduce((s, p) => s + (p.price ? p.price * p.qty : 0), 0) * (1 - currentTier.pct / 100)))}</span>
                           </div>
@@ -2017,7 +2027,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           <p style={{ fontSize: 10.5, color: `${TOKENS.paper}88`, margin: "2px 0 0" }}>{t.priceNote}</p>
                         )}
                         {appliedPromo && (
-                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: TOKENS.brass }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: TOKENS.brassOnDark }}>
                             <span>{t.promoLabel}</span>
                             <span>{appliedPromo.code} (-{appliedPromo.percent}%)</span>
                           </div>
@@ -2147,7 +2157,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
                   <p style={{ color: TOKENS.jadeSoft, fontSize: 12.5, lineHeight: 1.6, marginBottom: 20 }}>{t.tradeQuoteNote}</p>
 
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
                     {t.priceRef}
                   </div>
                   <div style={{ border: `1px solid ${TOKENS.brassDeep}44`, borderRadius: 12, overflow: "hidden" }}>
@@ -2161,7 +2171,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         }}
                       >
                         <span>{row.range[lang]}</span>
-                        <strong style={{ color: TOKENS.brassDeep }}>{row.off[lang]}</strong>
+                        <strong style={{ color: TOKENS.brassOnPaper }}>{row.off[lang]}</strong>
                       </div>
                     ))}
                   </div>
@@ -2193,7 +2203,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 ];
                 return (
                   <div style={{ marginBottom: 18 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
                       {t.statsWeekTitle}
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 8 }}>
@@ -2243,7 +2253,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         <div>
                           <div style={{ fontSize: 15, fontWeight: 600 }}>{l.name}</div>
                           <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.contactLabel}: {l.contact}</div>
-                          <div style={{ fontSize: 12.5, color: TOKENS.brassDeep, marginTop: 2 }}>{t.interestedIn}: {l.interest === "wholesale" ? t.onboardWholesale : t.onboardRetail}</div>
+                          <div style={{ fontSize: 12.5, color: TOKENS.brassOnPaper, marginTop: 2 }}>{t.interestedIn}: {l.interest === "wholesale" ? t.onboardWholesale : t.onboardRetail}</div>
                         </div>
                         {l.unread && <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10.5, fontWeight: 700, padding: "2px 8px", flexShrink: 0 }}>{t.newBadge}</span>}
                       </div>
@@ -2304,6 +2314,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     <img
                       src={`https://img.vietqr.io/image/${payment.bin}-${payment.accountNumber}-compact2.png?accountName=${encodeURIComponent(payment.accountName || "")}`}
                       alt="VietQR preview"
+                      loading="lazy"
+                      decoding="async"
                       style={{ width: 160, height: 160, borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}33`, alignSelf: "flex-start" }}
                     />
                   )}
@@ -2406,7 +2418,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     <label style={{
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                       padding: "9px 12px", borderRadius: 8, border: `1px dashed ${TOKENS.brassDeep}88`,
-                      fontSize: 12.5, color: TOKENS.brassDeep, cursor: "pointer", fontWeight: 600,
+                      fontSize: 12.5, color: TOKENS.brassOnPaper, cursor: "pointer", fontWeight: 600,
                     }}>
                       <Upload size={14} />
                       {t.uploadPhotoLabel}
@@ -2422,6 +2434,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         <img
                           src={productDraft.photoUrl}
                           alt=""
+                          loading="lazy"
+                          decoding="async"
                           style={{
                             width: 84, height: 84, borderRadius: 8, objectFit: "cover", flexShrink: 0,
                             objectPosition: `${productDraft.photoPosX}% ${productDraft.photoPosY}%`,
@@ -2461,7 +2475,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 10, padding: "10px 14px", opacity: p.available === false ? 0.6 : 1 }}>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 600 }}>{p.name.en} <span style={{ color: TOKENS.jadeSoft, fontWeight: 400 }}>· {p.name.vi}</span></div>
-                        <div style={{ fontSize: 11.5, color: TOKENS.brassDeep }}>
+                        <div style={{ fontSize: 11.5, color: TOKENS.brassOnPaper }}>
                           {lineLabel(p.line)}
                           {p.packSize && ` · ${p.packSize}`}
                           {p.price && ` · ${formatVND(p.price)}`}
@@ -2615,7 +2629,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                           <div>
                             <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "monospace" }}>{p.code}</div>
-                            <div style={{ fontSize: 11.5, color: TOKENS.brassDeep }}>-{p.percent}%{p.ownerName ? ` · ${p.ownerName}` : ""}</div>
+                            <div style={{ fontSize: 11.5, color: TOKENS.brassOnPaper }}>-{p.percent}%{p.ownerName ? ` · ${p.ownerName}` : ""}</div>
                           </div>
                           <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                             <button onClick={() => setPromoDraft({ id: p.id, code: p.code, percent: String(p.percent), ownerName: p.ownerName || "" })} style={{ background: "none", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 6, padding: "6px 8px", cursor: "pointer" }}>
@@ -2721,7 +2735,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.contactLabel}: {o.contact}</div>
                           {o.address && <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.yourAddress}: {o.address}</div>}
                           {o.taxNumber && <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.taxNumber}: {o.taxNumber}</div>}
-                          {o.vat && <div style={{ fontSize: 12.5, color: TOKENS.brassDeep }}>VAT: {o.vat}%</div>}
+                          {o.vat && <div style={{ fontSize: 12.5, color: TOKENS.brassOnPaper }}>VAT: {o.vat}%</div>}
                           <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.paymentMethodLabel}: {o.paymentMethod === "cash" ? t.payByCash : t.payByQR}</div>
                           {o.promo && <div style={{ fontSize: 12.5, color: TOKENS.lacquer }}>{t.promoLabel}: {o.promo.code} (-{o.promo.percent}%){o.promo.ownerName ? ` · ${o.promo.ownerName}` : ""}</div>}
                         </div>
@@ -2741,12 +2755,12 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         ) : (
                           <>
                             <span>{o.totalKg} {t.kg}</span>
-                            <span style={{ color: TOKENS.brassDeep }}>{o.tier.range[lang]} · {o.tier.off[lang]}</span>
+                            <span style={{ color: TOKENS.brassOnPaper }}>{o.tier.range[lang]} · {o.tier.off[lang]}</span>
                           </>
                         )}
                       </div>
                       {o.estimatedTotal ? (
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, color: TOKENS.brassDeep, marginTop: 4 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, color: TOKENS.brassOnPaper, marginTop: 4 }}>
                           <span>{t.estimatedTotal}</span>
                           <span>{formatVND(o.estimatedTotal)}</span>
                         </div>
@@ -2892,7 +2906,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   {/* Featured: Sample Packs as a standalone hero row */}
                   {catalog.some((p) => p.line === "sample") && (
                     <div ref={sampleSectionRef} style={{ marginBottom: 24, scrollMarginTop: 70 }}>
-                      <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
                         {t.sampleOption}
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
@@ -2909,15 +2923,15 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                                 display: "flex", flexDirection: "column", gap: 6, minHeight: 120, position: "relative", overflow: "hidden",
                               }}
                             >
-                              <div style={{ fontSize: 10, fontWeight: 700, color: TOKENS.brass, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: TOKENS.brassOnDark, textTransform: "uppercase", letterSpacing: 0.5 }}>
                                 {t.sampleOption}
                               </div>
                               <div style={{ fontSize: 15, fontWeight: 600, color: TOKENS.paper, overflowWrap: "anywhere" }}>{p.name[lang]}</div>
-                              {p.price ? <div style={{ fontSize: 16, fontWeight: 700, color: TOKENS.brass }}>{formatVND(p.price)}</div> : null}
+                              {p.price ? <div style={{ fontSize: 16, fontWeight: 700, color: TOKENS.brassOnDark }}>{formatVND(p.price)}</div> : null}
                               {p.notes?.[lang] && (
                                 <div style={{ fontSize: 11.5, color: `${TOKENS.paper}bb`, lineHeight: 1.4, flex: 1 }}>{p.notes[lang]}</div>
                               )}
-                              <div style={{ fontSize: 11, color: TOKENS.brass, fontWeight: 600, textDecoration: "underline", marginTop: 4 }}>
+                              <div style={{ fontSize: 11, color: TOKENS.brassOnDark, fontWeight: 600, textDecoration: "underline", marginTop: 4 }}>
                                 {soldOut ? t.outOfStock : t.viewDetails}
                               </div>
                             </div>
@@ -2935,7 +2949,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       if (items.length === 0) return null;
                       return (
                         <div key={lineId} ref={lineId === "everyday" ? everydaySectionRef : reserveSectionRef} style={{ scrollMarginTop: 70 }}>
-                          <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                          <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
                             {lineLabel(lineId)}
                           </div>
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(148px, 1fr))", gap: 10 }}>
@@ -2959,7 +2973,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                                   {p.limited && (
                                     <div style={{
                                       position: "absolute", top: 8, right: 8, zIndex: 1,
-                                      background: TOKENS.jade, color: TOKENS.brass, borderRadius: 20,
+                                      background: TOKENS.jade, color: TOKENS.brassOnDark, borderRadius: 20,
                                       padding: "3px 8px", display: "flex", alignItems: "center", gap: 4,
                                       fontSize: 10, fontWeight: 700,
                                     }}>
@@ -2971,7 +2985,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                                     style={{ cursor: "pointer" }}
                                   >
                                     {p.photoUrl ? (
-                                      <img src={p.photoUrl} alt={p.name[lang]} style={{ width: "100%", height: 100, objectFit: "cover", objectPosition: p.photoPosition || "50% 50%", display: "block" }} />
+                                      <img src={p.photoUrl} alt={p.name[lang]} loading="lazy" decoding="async" style={{ width: "100%", height: 100, objectFit: "cover", objectPosition: p.photoPosition || "50% 50%", display: "block" }} />
                                     ) : (
                                       <div style={{ width: "100%", height: 72, background: TOKENS.jade, display: "flex", alignItems: "center", justifyContent: "center" }}>
                                         <Leaf size={22} color={TOKENS.brass} strokeWidth={1.4} />
@@ -2982,7 +2996,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                                       {lang === "en" && p.name.vi && (
                                         <div style={{ fontSize: 10.5, color: TOKENS.jadeSoft, marginTop: 1 }}>{p.name.vi}</div>
                                       )}
-                                      {price ? <div style={{ fontSize: 12.5, color: TOKENS.brassDeep, fontWeight: 700, marginTop: 3 }}>{formatVND(price)}{p.line === "everyday" ? ` / ${t.kg}` : ""}</div> : null}
+                                      {price ? <div style={{ fontSize: 12.5, color: TOKENS.brassOnPaper, fontWeight: 700, marginTop: 3 }}>{formatVND(price)}{p.line === "everyday" ? ` / ${t.kg}` : ""}</div> : null}
                                       {typeof stockTotal === "number" && p.available !== false && (
                                         <div style={{ fontSize: 10.5, fontWeight: 700, color: stockTotal <= 5 ? TOKENS.lacquer : TOKENS.jadeSoft, marginTop: 2 }}>
                                           {t.stockLeft(stockTotal)}
@@ -3047,14 +3061,14 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
                   {testimonials.some((r) => r.approved !== false) && (
                     <div style={{ marginBottom: 22 }}>
-                      <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
                         {t.testimonialsHeading}
                       </div>
                       <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 6 }}>
                         {testimonials.filter((r) => r.approved !== false).map((r) => (
                           <div key={r.id} style={{ flex: "0 0 auto", width: 220, background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 12, padding: 14 }}>
                             <div style={{ fontSize: 13, color: TOKENS.jade, fontStyle: "italic", lineHeight: 1.5, marginBottom: 8 }}>&quot;{r.quote}&quot;</div>
-                            <div style={{ fontSize: 12.5, fontWeight: 600, color: TOKENS.brassDeep }}>— {r.name}</div>
+                            <div style={{ fontSize: 12.5, fontWeight: 600, color: TOKENS.brassOnPaper }}>— {r.name}</div>
                           </div>
                         ))}
                       </div>
@@ -3064,7 +3078,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   <div style={{ marginBottom: 22, background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 12, padding: 14 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t.shareExperienceTitle}</div>
                     {customerReviewSent ? (
-                      <p style={{ fontSize: 12.5, color: TOKENS.brassDeep, margin: 0 }}>{t.reviewSubmittedNote}</p>
+                      <p style={{ fontSize: 12.5, color: TOKENS.brassOnPaper, margin: 0 }}>{t.reviewSubmittedNote}</p>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         <input
@@ -3099,7 +3113,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     <p style={{ color: TOKENS.jadeSoft, fontSize: 13.5, fontStyle: "italic" }}>{t.emptyCart}</p>
                   ) : (
                     <div ref={retailSummaryRef} style={{ background: TOKENS.jade, color: TOKENS.paper, borderRadius: 12, padding: "18px 18px 16px", marginBottom: 20 }}>
-                      <div style={{ fontSize: 11.5, letterSpacing: 1, textTransform: "uppercase", color: TOKENS.brass, marginBottom: 10, fontWeight: 600 }}>
+                      <div style={{ fontSize: 11.5, letterSpacing: 1, textTransform: "uppercase", color: TOKENS.brassOnDark, marginBottom: 10, fontWeight: 600 }}>
                         {t.summaryTitle}
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 12 }}>
@@ -3115,7 +3129,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         <span>{retailTotalItems} {t.pcs}</span>
                       </div>
                       {retailCartLines.some((p) => p.price) && (
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, color: TOKENS.brass, marginTop: 4 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, color: TOKENS.brassOnDark, marginTop: 4 }}>
                           <span>{t.estimatedTotal}</span>
                           <span>{formatVND(retailCartLines.reduce((s, p) => s + (p.price ? p.price * p.qty : 0), 0))}</span>
                         </div>
@@ -3124,7 +3138,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         <p style={{ fontSize: 11, color: `${TOKENS.paper}88`, marginTop: 4 }}>{t.priceNote}</p>
                       )}
                       {appliedPromo && (
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: TOKENS.brass, marginTop: 4 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: TOKENS.brassOnDark, marginTop: 4 }}>
                           <span>{t.promoLabel}</span>
                           <span>{appliedPromo.code} (-{appliedPromo.percent}%)</span>
                         </div>
@@ -3318,13 +3332,14 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
           onClick={() => setLightboxImage(null)}
         >
           <div style={{ maxWidth: "min(560px, 100%)" }} onClick={(e) => e.stopPropagation()}>
-            <img src={lightboxImage.url} alt={lightboxImage.caption?.[lang] || ""} style={{ width: "100%", maxHeight: "75vh", objectFit: "contain", borderRadius: 10 }} />
+            <img src={lightboxImage.url} alt={lightboxImage.caption?.[lang] || ""} decoding="async" style={{ width: "100%", maxHeight: "75vh", objectFit: "contain", borderRadius: 10 }} />
             {lightboxImage.caption?.[lang] && (
               <p style={{ color: TOKENS.paper, fontSize: 13.5, textAlign: "center", marginTop: 12 }}>{lightboxImage.caption[lang]}</p>
             )}
             <button
               onClick={() => setLightboxImage(null)}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", margin: "10px auto 0", background: "none", border: `1px solid ${TOKENS.paper}55`, color: TOKENS.paper, borderRadius: "50%", width: 32, height: 32, cursor: "pointer" }}
+              aria-label={t.close}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", margin: "10px auto 0", background: "none", border: `1px solid ${TOKENS.paper}55`, color: TOKENS.paper, borderRadius: "50%", width: 44, height: 44, cursor: "pointer" }}
             >
               <X size={16} />
             </button>
@@ -3350,7 +3365,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "Lora, Georgia, serif", fontSize: 17, fontWeight: 600 }}>
                 <ShoppingCart size={17} color={TOKENS.brassDeep} /> {t.cartTitle}
               </div>
-              <button onClick={() => setCartDrawerOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.jadeSoft }}>
+              <button
+                onClick={() => setCartDrawerOpen(false)}
+                aria-label={t.close}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 44, height: 44, margin: "-12px -12px -12px 0", background: "none", border: "none", cursor: "pointer", color: TOKENS.jadeSoft }}
+              >
                 <X size={20} />
               </button>
             </div>
@@ -3365,7 +3384,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     return (
                       <div key={p.cartKey} style={{ display: "flex", gap: 10, paddingBottom: 12, borderBottom: `1px solid ${TOKENS.brassDeep}22` }}>
                         {p.photoUrl ? (
-                          <img src={p.photoUrl} alt={p.name[lang]} style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover", objectPosition: p.photoPosition || "50% 50%", flexShrink: 0 }} />
+                          <img src={p.photoUrl} alt={p.name[lang]} loading="lazy" decoding="async" style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover", objectPosition: p.photoPosition || "50% 50%", flexShrink: 0 }} />
                         ) : (
                           <div style={{ width: 48, height: 48, borderRadius: 8, background: TOKENS.jade, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                             <Leaf size={18} color={TOKENS.brass} />
@@ -3375,7 +3394,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           <div style={{ fontSize: 13.5, fontWeight: 600, overflowWrap: "anywhere" }}>
                             {p.name[lang]}{p.weight ? ` — ${p.weight}` : ""}
                           </div>
-                          {p.price ? <div style={{ fontSize: 12, color: TOKENS.brassDeep, fontWeight: 600, marginTop: 2 }}>{formatVND(p.price)}{p.line === "everyday" ? ` / ${t.kg}` : ""}</div> : null}
+                          {p.price ? <div style={{ fontSize: 12, color: TOKENS.brassOnPaper, fontWeight: 600, marginTop: 2 }}>{formatVND(p.price)}{p.line === "everyday" ? ` / ${t.kg}` : ""}</div> : null}
                           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
                             <button
                               onClick={() => setRetailQty(p.cartKey, p.qty - 1, stockTotal)}
@@ -3417,7 +3436,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   <span>{retailTotalItems} {t.pcs}</span>
                 </div>
                 {retailCartLines.some((p) => p.price) && (
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16, fontWeight: 700, color: TOKENS.brassDeep, marginBottom: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16, fontWeight: 700, color: TOKENS.brassOnPaper, marginBottom: 10 }}>
                     <span>{t.estimatedTotal}</span>
                     <span>{formatVND(retailCartLines.reduce((s, p) => s + (p.price ? p.price * p.qty : 0), 0))}</span>
                   </div>
@@ -3476,7 +3495,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
             }}
           >
             <button
-              onClick={() => setShowOnboarding(false)}
+              onClick={markOnboarded}
               style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", color: TOKENS.jadeSoft, cursor: "pointer", fontSize: 12.5, zIndex: 1 }}
             >
               {t.onboardSkip}
@@ -3490,7 +3509,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               }}>
                 皇龍
               </div>
-              <div style={{ fontSize: 10.5, letterSpacing: 1.5, textTransform: "uppercase", color: TOKENS.brass, fontWeight: 600, marginBottom: 4 }}>
+              <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: TOKENS.brassOnDark, fontWeight: 600, marginBottom: 4 }}>
                 {t.onboardStepOf(onboardStep + 1, 3)}
               </div>
               <div style={{ display: "flex", gap: 5 }}>

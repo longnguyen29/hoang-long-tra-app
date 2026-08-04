@@ -39,7 +39,7 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
       >
         <div style={{ position: "relative" }}>
           {product.photoUrl ? (
-            <img src={product.photoUrl} alt={product.name[lang]} style={{ width: "100%", height: 180, objectFit: "cover", objectPosition: product.photoPosition || "50% 50%", borderRadius: "16px 16px 0 0" }} />
+            <img src={product.photoUrl} alt={product.name[lang]} decoding="async" style={{ width: "100%", height: 180, objectFit: "cover", objectPosition: product.photoPosition || "50% 50%", borderRadius: "16px 16px 0 0" }} />
           ) : (
             <div style={{ width: "100%", height: 90, background: TOKENS.jade }} />
           )}
@@ -55,9 +55,10 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
           )}
           <button
             onClick={onClose}
+            aria-label={t.close}
             style={{
-              position: "absolute", top: 12, right: 12, background: "rgba(0,0,0,0.35)", border: "none",
-              borderRadius: "50%", width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+              position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.35)", border: "none",
+              borderRadius: "50%", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
             }}
           >
             <X size={16} color="#fff" />

@@ -56,7 +56,7 @@ export default function BrandSeal({ TOKENS }) {
 
       <div
         style={{
-          fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: `${TOKENS.paper}77`, fontWeight: 600,
+          fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: `${TOKENS.paper}88`, fontWeight: 600,
           opacity: 0, transform: "translateY(8px)", animation: "hlRiseIn 0.7s cubic-bezier(0.22,1,0.36,1) forwards", animationDelay: "2.5s",
         }}
       >
