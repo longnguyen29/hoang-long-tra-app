@@ -119,6 +119,26 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [cart, setCart] = useState({});
   const [detailProduct, setDetailProduct] = useState(null);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+  // cartDrawerOpen is the public "should be open" intent (set from the header cart icon,
+  // checkout button, etc.). mounted/visible split it into two frames so the slide-in
+  // transition actually has a starting position to animate from, and the panel stays
+  // mounted just long enough to play its exit transition instead of vanishing instantly.
+  const [cartDrawerMounted, setCartDrawerMounted] = useState(false);
+  const [cartDrawerVisible, setCartDrawerVisible] = useState(false);
+  useEffect(() => {
+    if (cartDrawerOpen) {
+      setCartDrawerMounted(true);
+    } else {
+      setCartDrawerVisible(false);
+      const id = setTimeout(() => setCartDrawerMounted(false), 320);
+      return () => clearTimeout(id);
+    }
+  }, [cartDrawerOpen]);
+  useEffect(() => {
+    if (!cartDrawerMounted) return;
+    const raf = requestAnimationFrame(() => setCartDrawerVisible(true));
+    return () => cancelAnimationFrame(raf);
+  }, [cartDrawerMounted]);
   const [retailCart, setRetailCart] = useState({});
   const [copied, setCopied] = useState(false);
   const [orderName, setOrderName] = useState("");
@@ -1259,6 +1279,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       return (
                         <div
                           key={p.id}
+                          className="pcard"
                           onClick={() => setDetailProduct({ product: p, cartType: "retail" })}
                           style={{
                             background: `linear-gradient(160deg, ${TOKENS.jade} 0%, ${TOKENS.jadeSoft} 100%)`,
@@ -1931,6 +1952,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     {[...wholesaleProducts].sort((a, b) => (a.available === false ? 1 : 0) - (b.available === false ? 1 : 0)).map((p) => (
                       <div
                         key={p.id}
+                        className="pcard"
                         style={{
                           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
                           background: TOKENS.paper, border: `1px solid ${TOKENS.hairline}`, boxShadow: TOKENS.shadowSm,
@@ -2916,6 +2938,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           return (
                             <div
                               key={p.id}
+                              className="pcard"
                               onClick={() => setDetailProduct({ product: p, cartType: "retail" })}
                               style={{
                                 background: `linear-gradient(160deg, ${TOKENS.jade} 0%, ${TOKENS.jadeSoft} 100%)`,
@@ -2964,6 +2987,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                               return (
                                 <div
                                   key={p.id}
+                                  className="pcard"
                                   style={{
                                     display: "flex", flexDirection: "column", position: "relative",
                                     background: TOKENS.paper, border: `1px solid ${TOKENS.hairline}`, boxShadow: TOKENS.shadowSm,
@@ -3348,9 +3372,13 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       )}
 
       {/* ---------- CART DRAWER (Shopify-style) ---------- */}
-      {cartDrawerOpen && (
+      {cartDrawerMounted && (
         <div
-          style={{ position: "fixed", inset: 0, background: "rgba(28,43,36,0.55)", zIndex: 60 }}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(28,43,36,0.55)", zIndex: 60,
+            opacity: cartDrawerVisible ? 1 : 0,
+            transition: `opacity ${cartDrawerVisible ? 320 : 220}ms ease`,
+          }}
           onClick={() => setCartDrawerOpen(false)}
         >
           <div
@@ -3359,6 +3387,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               position: "fixed", top: 0, right: 0, bottom: 0, width: "min(360px, 90vw)",
               background: TOKENS.paper, boxShadow: "-8px 0 30px rgba(0,0,0,0.25)",
               display: "flex", flexDirection: "column", zIndex: 61,
+              transform: cartDrawerVisible ? "translateX(0)" : "translateX(100%)",
+              transition: `transform ${cartDrawerVisible ? 320 : 220}ms cubic-bezier(0.32, 0.72, 0, 1)`,
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: `1px solid ${TOKENS.brassDeep}33` }}>
