@@ -14,18 +14,14 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Noto+Serif+SC:wght@600&display=swap"
         />
-        {/*
-          TMC-Ong_Do.TTF (calligraphy face for the Hero's "House of Hoang Long" line) is not
-          hosted yet — supply the real font file and drop it at public/fonts/TMC-Ong_Do.ttf,
-          then uncomment this @font-face. Until then BrandSeal falls back to Lora.
-          <style>{`
-            @font-face {
-              font-family: "TMCOngDo";
-              src: url("/fonts/TMC-Ong_Do.ttf") format("truetype");
-              font-display: swap;
-            }
-          `}</style>
-        */}
+        <style>{`
+          @font-face {
+            font-family: "TMCOngDo";
+            src: url("/fonts/TMC-Ong_Do.woff") format("woff"),
+                 url("/fonts/TMC-Ong_Do.ttf") format("truetype");
+            font-display: swap;
+          }
+        `}</style>
       </head>
       <body>{children}</body>
     </html>
