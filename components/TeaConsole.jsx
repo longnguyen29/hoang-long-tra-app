@@ -3364,6 +3364,20 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       )}
                       <p style={{ fontSize: 11.5, color: `${TOKENS.paper}99`, margin: "6px 0 14px" }}>{t.vatNote}</p>
 
+                      {!isAdmin && role !== "wholesale" && (
+                        <button
+                          type="button"
+                          onClick={() => setSection("wholesale")}
+                          style={{
+                            display: "block", width: "100%", textAlign: "left", background: "none", border: "none",
+                            color: TOKENS.brassOnDark, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                            padding: 0, margin: "0 0 14px", textDecoration: "underline",
+                          }}
+                        >
+                          {t.wholesaleDiscoveryPrompt}
+                        </button>
+                      )}
+
                       <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
                         <input
                           value={promoInput}
