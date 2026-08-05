@@ -3,13 +3,13 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Search, ChevronRight, ChevronLeft, Menu, X, Edit3, Save, Plus, Trash2,
-  Leaf, Mountain, Languages, Copy, Check, Lock, Upload, Sparkles, ShoppingCart, Minus,
-  MessageCircle, Send, Download, Printer, LogOut,
+  Leaf, Mountain, Languages, Copy, Check, Lock, Clock, Upload, Sparkles, ShoppingCart, Minus,
+  MessageCircle, Send, Download, Printer, LogOut, Tag, Truck, Loader2, Calendar,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadImage } from "@/lib/supabase/storage";
 import {
-  TOKENS, ROLES, NAV, CATEGORIES, LIBRARY_CATEGORIES, PRICE_TIERS, STATUS_STEPS,
+  TOKENS, NAV, CATEGORIES, LIBRARY_CATEGORIES, PRICE_TIERS, STATUS_STEPS,
   YIELD_GUIDE, CUP_ML_MIN, CUP_ML_MAX,
   getStockTotal, getVariantMinPrice, getVariantStockTotal,
 } from "@/lib/constants";
@@ -17,8 +17,9 @@ import { STR } from "@/lib/strings";
 import {
   fromOrderRow, toOrderRow, fromThreadRow,
   fromCatalogRow, toCatalogRow, fromVariantRow, fromPromoRow, toPromoRow,
-  fromPaymentRow, toPaymentRow, fromGalleryRow, fromWholesaleAccountRow,
+  fromPaymentRow, toPaymentRow, fromGalleryRow, fromWholesaleAccountRow, fromTeaSessionRow,
 } from "@/lib/mappers";
+import AuthPanel from "./AuthPanel";
 import PaymentBlock from "./PaymentBlock";
 import ReorderBox from "./ReorderBox";
 import TrackOrderBox from "./TrackOrderBox";
@@ -27,6 +28,7 @@ import ChatThreadPanel from "./ChatThreadPanel";
 import BrandSeal from "./BrandSeal";
 import VariantEditorRow from "./VariantEditorRow";
 import TrackingCodeEditor from "./TrackingCodeEditor";
+import TeaSessionBooking from "./TeaSessionBooking";
 
 function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9à-ỹ]+/gi, "-").slice(0, 40) + "-" + Date.now().toString(36);
@@ -94,7 +96,23 @@ function flattenOrderable(products) {
 export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const supabase = useMemo(() => createClient(), []);
 
-  const [role, setRole] = useState(isAdmin ? "admin" : "wholesale");
+  // role is derived from real auth, not a manual toggle: not signed in (or signed in without
+  // an approved wholesale account) = retail; signed in + wholesale_verified = wholesale; admin
+  // is separate and already gated by real Supabase Auth + staff_roles.
+  const [session, setSession] = useState(null);
+  const [wholesaleAccount, setWholesaleAccount] = useState(null);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => setSession(newSession));
+    return () => sub.subscription.unsubscribe();
+  }, [supabase]);
+  useEffect(() => {
+    if (isAdmin || !session?.user) { setWholesaleAccount(null); return; }
+    supabase.from("wholesale_accounts").select("*").eq("user_id", session.user.id).maybeSingle().then(({ data }) => {
+      setWholesaleAccount(data ? fromWholesaleAccountRow(data) : null);
+    });
+  }, [isAdmin, session, supabase]);
+  const role = isAdmin ? "admin" : (wholesaleAccount?.wholesaleVerified ? "wholesale" : "retail");
   const [lang, setLang] = useState("vi");
   const [section, setSection] = useState("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -113,8 +131,12 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [libraryQuery, setLibraryQuery] = useState("");
   const [galleryImages, setGalleryImages] = useState([]);
   const [galleryDraft, setGalleryDraft] = useState({ url: "", captionEn: "", captionVi: "" });
+  const [uploadingGalleryPhoto, setUploadingGalleryPhoto] = useState(false);
+  const [galleryPhotoError, setGalleryPhotoError] = useState(false);
   const [lightboxImage, setLightboxImage] = useState(null);
   const [homePhoto, setHomePhoto] = useState("");
+  const [uploadingHomePhoto, setUploadingHomePhoto] = useState(false);
+  const [homePhotoError, setHomePhotoError] = useState(false);
 
   const [cart, setCart] = useState({});
   const [detailProduct, setDetailProduct] = useState(null);
@@ -156,6 +178,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const reserveSectionRef = useRef(null);
 
   const [orders, setOrders] = useState([]);
+  const [teaSessions, setTeaSessions] = useState([]);
   const [threads, setThreads] = useState([]);
   const [leads, setLeads] = useState([]);
   const [myThread, setMyThread] = useState(null);
@@ -193,6 +216,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     notesEn: "", notesVi: "", brewEn: "", brewVi: "", packSize: "", photoUrl: "",
     price: "", stockHaGiang: "", stockSocSon: "", batch: "", photoPosX: 50, photoPosY: 50,
   });
+  const [uploadingProductPhoto, setUploadingProductPhoto] = useState(false);
+  const [productPhotoError, setProductPhotoError] = useState(false);
 
   const [testimonials, setTestimonials] = useState([]);
   const [testimonialDraft, setTestimonialDraft] = useState({ id: null, name: "", quote: "" });
@@ -207,10 +232,9 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
   const [wholesaleAccounts, setWholesaleAccounts] = useState([]);
   const [partnerDraft, setPartnerDraft] = useState({ id: null, code: "", businessName: "", contact: "" });
-  const [partnerIdInput, setPartnerIdInput] = useState("");
-  const [wholesaleVerified, setWholesaleVerified] = useState(false);
-  const [verifiedAccount, setVerifiedAccount] = useState(null);
-  const [partnerIdError, setPartnerIdError] = useState(false);
+  const [applyBusinessName, setApplyBusinessName] = useState("");
+  const [applyContact, setApplyContact] = useState("");
+  const [applyError, setApplyError] = useState(false);
   const [eligibleForTestPack, setEligibleForTestPack] = useState(false);
   const [addTestPack, setAddTestPack] = useState(false);
 
@@ -220,6 +244,24 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const other = lang === "en" ? "vi" : "en";
   const lineLabel = (l) => (l === "reserve" ? t.reserveOption : l === "sample" ? t.sampleOption : t.everydayOption);
   const formatVND = (n) => n.toLocaleString("vi-VN") + "đ";
+
+  // House Partners is a multi-step flow (browse → cart → pricing → track) that used to run
+  // together as one undifferentiated scroll of bordered cards. This numbered header makes
+  // each step visually distinct without introducing a new palette.
+  const stepHeader = (n, Icon, label) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
+      <div style={{
+        width: 22, height: 22, borderRadius: "50%", background: TOKENS.jade, color: TOKENS.brass,
+        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0,
+      }}>
+        {n}
+      </div>
+      <Icon size={14} color={TOKENS.brassOnPaper} />
+      <span style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.6 }}>
+        {label}
+      </span>
+    </div>
+  );
 
   const visibleCategories = useMemo(() => CATEGORIES.filter((c) => c.audience.includes(role)), [role]);
   const visibleCategoryIds = useMemo(() => new Set(visibleCategories.map((c) => c.id)), [visibleCategories]);
@@ -398,6 +440,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     if (data) setOrders(data.map(fromOrderRow));
   }, [supabase]);
 
+  const loadTeaSessions = useCallback(async () => {
+    const { data } = await supabase.from("tea_sessions").select("*").order("date", { ascending: true });
+    if (data) setTeaSessions(data.map(fromTeaSessionRow));
+  }, [supabase]);
+
   const loadThreads = useCallback(async () => {
     const { data } = await supabase.from("support_threads").select("*").order("created_at", { ascending: true });
     if (data) setThreads(data.map(fromThreadRow));
@@ -440,6 +487,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     })();
     if (isAdmin) {
       loadOrders();
+      loadTeaSessions();
       loadThreads();
       loadLeads();
       loadPromos();
@@ -452,9 +500,9 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
   useEffect(() => {
     if (!isAdmin || section !== "frontdesk") return;
-    const id = setInterval(() => { loadOrders(); loadThreads(); loadLeads(); }, 4000);
+    const id = setInterval(() => { loadOrders(); loadTeaSessions(); loadThreads(); loadLeads(); }, 4000);
     return () => clearInterval(id);
-  }, [isAdmin, section, loadOrders, loadThreads, loadLeads]);
+  }, [isAdmin, section, loadOrders, loadTeaSessions, loadThreads, loadLeads]);
 
   useEffect(() => {
     if (isAdmin || !chatOpen) return;
@@ -481,15 +529,28 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   // Eligibility for the free "new batch test pack" — checked server-side via RPC since
   // customers have no direct read access to the orders table.
   useEffect(() => {
-    if (isAdmin || !wholesaleVerified || !verifiedAccount?.contact) { setEligibleForTestPack(false); return; }
-    supabase.rpc("has_prior_wholesale_order", { p_contact: verifiedAccount.contact }).then(({ data }) => {
+    if (isAdmin || !wholesaleAccount?.wholesaleVerified || !wholesaleAccount?.contact) { setEligibleForTestPack(false); return; }
+    supabase.rpc("has_prior_wholesale_order", { p_contact: wholesaleAccount.contact }).then(({ data }) => {
       setEligibleForTestPack(!!data);
     });
-  }, [isAdmin, wholesaleVerified, verifiedAccount, supabase]);
+  }, [isAdmin, wholesaleAccount, supabase]);
+
+  // Prefill the order form once from an approved wholesale account (mirrors the old
+  // verifyPartnerId prefill) — only when the fields are still empty, so we never clobber
+  // something the customer already typed.
+  useEffect(() => {
+    if (!wholesaleAccount?.wholesaleVerified) return;
+    setOrderName((v) => (v.trim() ? v : wholesaleAccount.businessName));
+    setOrderContact((v) => (v.trim() || !wholesaleAccount.contact ? v : wholesaleAccount.contact));
+  }, [wholesaleAccount]);
 
   const updateOrderStatus = async (id, status) => {
     await supabase.from("orders").update({ status }).eq("id", id);
     setOrders(orders.map((o) => (o.id === id ? { ...o, status } : o)));
+  };
+  const updateTeaSessionStatus = async (id, status) => {
+    await supabase.from("tea_sessions").update({ status }).eq("id", id);
+    setTeaSessions(teaSessions.map((s) => (s.id === id ? { ...s, status } : s)));
   };
   const updateTrackingCode = async (id, trackingCode) => {
     await supabase.from("orders").update({ tracking_code: trackingCode }).eq("id", id);
@@ -585,10 +646,17 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   };
 
   const uploadProductPhoto = async (file) => {
+    setProductPhotoError(false);
+    setUploadingProductPhoto(true);
     try {
       const url = await uploadImage(supabase, file, "products");
       setProductDraft((d) => ({ ...d, photoUrl: url }));
-    } catch (e) { console.error("Upload failed:", e); }
+    } catch (e) {
+      console.error("Upload failed:", e);
+      setProductPhotoError(true);
+    } finally {
+      setUploadingProductPhoto(false);
+    }
   };
 
   const savePromoDraft = async () => {
@@ -678,10 +746,17 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     setGalleryImages(galleryImages.filter((g) => g.id !== id));
   };
   const uploadGalleryPhoto = async (file) => {
+    setGalleryPhotoError(false);
+    setUploadingGalleryPhoto(true);
     try {
       const url = await uploadImage(supabase, file, "gallery");
       setGalleryDraft((d) => ({ ...d, url }));
-    } catch (e) { console.error("Upload failed:", e); }
+    } catch (e) {
+      console.error("Upload failed:", e);
+      setGalleryPhotoError(true);
+    } finally {
+      setUploadingGalleryPhoto(false);
+    }
   };
 
   const saveHomePhoto = async (url) => {
@@ -689,23 +764,37 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     setHomePhoto(url);
   };
   const uploadHomePhoto = async (file) => {
+    setHomePhotoError(false);
+    setUploadingHomePhoto(true);
     try {
       const url = await uploadImage(supabase, file, "home");
       await saveHomePhoto(url);
-    } catch (e) { console.error("Upload failed:", e); }
+    } catch (e) {
+      console.error("Upload failed:", e);
+      setHomePhotoError(true);
+    } finally {
+      setUploadingHomePhoto(false);
+    }
   };
 
+  // Manual staff-side add, for partners staff wants to pre-provision without waiting for
+  // self-registration — since staff is the one typing it in, it's created already verified.
   const savePartnerDraft = async () => {
-    if (!partnerDraft.code.trim() || !partnerDraft.businessName.trim()) return;
+    if (!partnerDraft.businessName.trim()) return;
     if (partnerDraft.id) {
       const code = partnerDraft.code.trim().toUpperCase();
       const businessName = partnerDraft.businessName.trim();
       const contact = partnerDraft.contact.trim();
-      await supabase.from("wholesale_accounts").update({ code, business_name: businessName, contact }).eq("id", partnerDraft.id);
+      await supabase.from("wholesale_accounts").update({ code: code || null, business_name: businessName, contact }).eq("id", partnerDraft.id);
       setWholesaleAccounts(wholesaleAccounts.map((a) => (a.id === partnerDraft.id ? { ...a, code, businessName, contact } : a)));
     } else {
-      const row = { id: "partner-" + Date.now().toString(36), code: partnerDraft.code.trim().toUpperCase(), businessName: partnerDraft.businessName.trim(), contact: partnerDraft.contact.trim() };
-      await supabase.from("wholesale_accounts").insert({ id: row.id, code: row.code, business_name: row.businessName, contact: row.contact });
+      const row = {
+        id: "partner-" + Date.now().toString(36), code: partnerDraft.code.trim().toUpperCase() || null,
+        businessName: partnerDraft.businessName.trim(), contact: partnerDraft.contact.trim(), wholesaleVerified: true,
+      };
+      await supabase.from("wholesale_accounts").insert({
+        id: row.id, code: row.code, business_name: row.businessName, contact: row.contact, wholesale_verified: true,
+      });
       setWholesaleAccounts([...wholesaleAccounts, row]);
     }
     setPartnerDraft({ id: null, code: "", businessName: "", contact: "" });
@@ -714,18 +803,27 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     await supabase.from("wholesale_accounts").delete().eq("id", id);
     setWholesaleAccounts(wholesaleAccounts.filter((a) => a.id !== id));
   };
-  const verifyPartnerId = async () => {
-    const { data, error } = await supabase.rpc("verify_partner_code", { p_code: partnerIdInput.trim() });
-    if (error || !data || data.length === 0) {
-      setPartnerIdError(true);
-      return;
-    }
-    const match = data[0];
-    setWholesaleVerified(true);
-    setVerifiedAccount({ businessName: match.business_name, contact: match.contact });
-    setPartnerIdError(false);
-    if (!orderName.trim()) setOrderName(match.business_name);
-    if (!orderContact.trim() && match.contact) setOrderContact(match.contact);
+  const approveWholesalePartner = async (id) => {
+    await supabase.from("wholesale_accounts").update({ wholesale_verified: true }).eq("id", id);
+    setWholesaleAccounts(wholesaleAccounts.map((a) => (a.id === id ? { ...a, wholesaleVerified: true } : a)));
+  };
+
+  // Self-registration: the logged-in customer applies for wholesale access; the row starts
+  // wholesale_verified = false (RLS enforces this — see 0008_v3_rls.sql) until staff approves
+  // it from Front Desk.
+  const submitWholesaleApplication = async () => {
+    if (!applyBusinessName.trim() || !session?.user) return;
+    setApplyError(false);
+    const row = {
+      id: "partner-" + Date.now().toString(36), user_id: session.user.id,
+      business_name: applyBusinessName.trim(), contact: applyContact.trim(), wholesale_verified: false,
+    };
+    const { error } = await supabase.from("wholesale_accounts").insert(row);
+    if (error) { console.error(error); setApplyError(true); return; }
+    setWholesaleAccount({
+      id: row.id, code: null, businessName: row.business_name, contact: row.contact,
+      userId: row.user_id, wholesaleVerified: false,
+    });
   };
 
   const printInvoice = (order) => {
@@ -815,11 +913,12 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     URL.revokeObjectURL(url);
   };
 
-  const vietQrUrl = (order) => {
+  const vietQrUrl = (order, amountOverride) => {
     if (!payment.bin || !payment.accountNumber) return null;
     const info = encodeURIComponent(order ? order.id : "");
     const name = encodeURIComponent(payment.accountName || "");
-    const amountParam = order && order.estimatedTotal ? `&amount=${Math.round(order.estimatedTotal)}` : "";
+    const amount = amountOverride ?? order?.estimatedTotal;
+    const amountParam = amount ? `&amount=${Math.round(amount)}` : "";
     return `https://img.vietqr.io/image/${payment.bin}-${payment.accountNumber}-compact2.png?accountName=${name}&addInfo=${info}${amountParam}`;
   };
 
@@ -843,7 +942,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     setOrderName(onboardName.trim());
     setOrderContact(onboardContact.trim());
     setOrderConsent(true);
-    setRole(onboardInterest);
     setSection(onboardInterest);
     markOnboarded();
     setOnboardConsent(false);
@@ -1151,29 +1249,19 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 <LogOut size={13} /> {t.logout}
               </button>
             </div>
-          ) : (
-            <div style={{ display: "flex", gap: 4, background: TOKENS.paperDeep, borderRadius: 20, padding: 3, border: `1px solid ${TOKENS.hairline}`, flexShrink: 0 }}>
-              {ROLES.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => {
-                    setRole(r.id);
-                    setSection("home");
-                    resetWiki();
-                  }}
-                  title={r.label[lang]}
-                  style={{
-                    border: "none", borderRadius: 16, padding: "6px 10px", fontSize: 12, cursor: "pointer",
-                    background: role === r.id ? TOKENS.jade : "transparent",
-                    color: role === r.id ? TOKENS.brass : TOKENS.jadeSoft,
-                    display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap",
-                  }}
-                >
-                  <r.icon size={13} />
-                </button>
-              ))}
-            </div>
-          )}
+          ) : session ? (
+            <button
+              onClick={() => supabase.auth.signOut()}
+              title={t.logout}
+              style={{
+                display: "flex", alignItems: "center", gap: 5, border: `1px solid ${TOKENS.hairline}`,
+                background: TOKENS.paperDeep, color: TOKENS.jade, borderRadius: 16, padding: "6px 10px",
+                fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0,
+              }}
+            >
+              <LogOut size={13} /> {t.logout}
+            </button>
+          ) : null}
         </header>
 
         {/* Content */}
@@ -1201,13 +1289,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   <BrandSeal TOKENS={TOKENS} />
                 </div>
               </div>
-
-              {/* Viewing-as strip */}
-              {!isAdmin && (
-                <div style={{ padding: "14px 20px", fontSize: 12.5, color: TOKENS.jadeSoft, borderBottom: `1px solid ${TOKENS.hairline}` }}>
-                  {t.viewingAs}: <strong style={{ color: TOKENS.jade }}>{ROLES.find((r) => r.id === role)?.label[lang]}</strong>
-                </div>
-              )}
 
               {/* Story teaser */}
               <button
@@ -1238,17 +1319,20 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     />
                   )}
                   {isAdmin && (
+                    <>
                     <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                       <label style={{
                         display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1,
                         padding: "9px 12px", borderRadius: 8, border: `1px dashed ${TOKENS.brassDeep}88`,
-                        fontSize: 12.5, color: TOKENS.brassOnPaper, cursor: "pointer", fontWeight: 600,
+                        fontSize: 12.5, color: TOKENS.brassOnPaper, cursor: uploadingHomePhoto ? "default" : "pointer", fontWeight: 600,
+                        opacity: uploadingHomePhoto ? 0.6 : 1,
                       }}>
-                        <Upload size={14} />
-                        {homePhoto ? t.uploadPhotoLabel : t.addPhoto}
+                        {uploadingHomePhoto ? <Loader2 size={14} className="spin" /> : <Upload size={14} />}
+                        {uploadingHomePhoto ? t.uploading : (homePhoto ? t.uploadPhotoLabel : t.addPhoto)}
                         <input
                           type="file"
                           accept="image/*"
+                          disabled={uploadingHomePhoto}
                           style={{ display: "none" }}
                           onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadHomePhoto(file); }}
                         />
@@ -1262,7 +1346,25 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         </button>
                       )}
                     </div>
+                    {homePhotoError && <p style={{ fontSize: 11.5, color: TOKENS.lacquer, margin: "6px 0 0" }}>{t.uploadFailed}</p>}
+                    </>
                   )}
+                </div>
+              )}
+
+              {/* Secondary CTA: private tea session */}
+              {!isAdmin && (
+                <div style={{ padding: "20px 20px 0" }}>
+                  <button
+                    onClick={() => { setSection("wiki"); setWikiCategory("visit"); setActiveId("planning-visit"); }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8, width: "100%", justifyContent: "center",
+                      background: "transparent", color: TOKENS.brassOnPaper, border: `1px dashed ${TOKENS.brassDeep}88`,
+                      borderRadius: 10, padding: "12px 16px", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+                    }}
+                  >
+                    <Calendar size={15} /> {t.teaSessionCtaBtn}
+                  </button>
                 </div>
               )}
 
@@ -1566,6 +1668,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   })}
                 </div>
               )}
+
+              {active.id === "planning-visit" && !isAdmin && (
+                <TeaSessionBooking supabase={supabase} payment={payment} vietQrUrl={vietQrUrl} t={t} TOKENS={TOKENS} />
+              )}
+
               {isAdmin && (
                 <div style={{ display: "flex", gap: 10, marginTop: 24, flexWrap: "wrap" }}>
                   <button onClick={() => startEdit(active)} style={{ display: "flex", alignItems: "center", gap: 6, background: TOKENS.brass, color: TOKENS.paper, border: "none", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
@@ -1645,18 +1752,21 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   <label style={{
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                     padding: "9px 12px", borderRadius: 8, border: `1px dashed ${TOKENS.brassDeep}88`,
-                    fontSize: 12.5, color: TOKENS.brassOnPaper, cursor: "pointer", fontWeight: 600,
+                    fontSize: 12.5, color: TOKENS.brassOnPaper, cursor: uploadingGalleryPhoto ? "default" : "pointer", fontWeight: 600,
+                    opacity: uploadingGalleryPhoto ? 0.6 : 1,
                   }}>
-                    <Upload size={14} />
-                    {t.uploadPhotoLabel}
+                    {uploadingGalleryPhoto ? <Loader2 size={14} className="spin" /> : <Upload size={14} />}
+                    {uploadingGalleryPhoto ? t.uploading : t.uploadPhotoLabel}
                     <input
                       type="file"
                       accept="image/*"
+                      disabled={uploadingGalleryPhoto}
                       style={{ display: "none" }}
                       onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadGalleryPhoto(file); }}
                     />
                   </label>
-                  {galleryDraft.url && (
+                  {galleryPhotoError && <p style={{ fontSize: 11.5, color: TOKENS.lacquer, margin: 0 }}>{t.uploadFailed}</p>}
+                  {galleryDraft.url && !uploadingGalleryPhoto && (
                     <img src={galleryDraft.url} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: 120, borderRadius: 8, objectFit: "cover" }} />
                   )}
                   <input
@@ -1841,38 +1951,53 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
           {/* ---------- HOUSE PARTNERS ---------- */}
           {section === "wholesale" && (
             <div>
-              {!isAdmin && !wholesaleVerified ? (
+              {!isAdmin && !wholesaleAccount?.wholesaleVerified ? (
                 <div style={{ maxWidth: 380, margin: "20px auto 0", textAlign: "center" }}>
-                  <div style={{ display: "inline-flex", padding: 14, borderRadius: "50%", background: TOKENS.paperDeep, marginBottom: 16 }}>
-                    <Lock size={22} color={TOKENS.brassDeep} />
-                  </div>
-                  <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 19, margin: "0 0 8px" }}>{t.wholesaleGateTitle}</h2>
-                  <p style={{ fontSize: 13.5, color: TOKENS.jadeSoft, marginBottom: 18 }}>{t.wholesaleGateHint}</p>
-                  <div style={{ display: "flex", gap: 8, textAlign: "left" }}>
-                    <input
-                      value={partnerIdInput}
-                      onChange={(e) => { setPartnerIdInput(e.target.value); setPartnerIdError(false); }}
-                      onKeyDown={(e) => e.key === "Enter" && verifyPartnerId()}
-                      placeholder={t.partnerIdPh}
-                      style={{ flex: 1, padding: "10px 13px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 14, minWidth: 0 }}
-                    />
-                    <button
-                      onClick={verifyPartnerId}
-                      style={{ background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 8, padding: "10px 16px", fontSize: 13.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
-                    >
-                      {t.verifyBtn}
-                    </button>
-                  </div>
-                  {partnerIdError && <p style={{ fontSize: 12.5, color: TOKENS.lacquer, marginTop: 10 }}>{t.invalidPartnerId}</p>}
-                  <div style={{ marginTop: 24, fontSize: 12.5, color: TOKENS.jadeSoft }}>
-                    {t.notRegisteredYet}{" "}
-                    <button
-                      onClick={() => setChatOpen(true)}
-                      style={{ background: "none", border: "none", color: TOKENS.brassOnPaper, fontWeight: 600, cursor: "pointer", textDecoration: "underline", padding: 0 }}
-                    >
-                      {t.requestAccess}
-                    </button>
-                  </div>
+                  {!session ? (
+                    <>
+                      <div style={{ display: "inline-flex", padding: 14, borderRadius: "50%", background: TOKENS.paperDeep, marginBottom: 16 }}>
+                        <Lock size={22} color={TOKENS.brassDeep} />
+                      </div>
+                      <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 19, margin: "0 0 8px" }}>{t.wholesaleGateTitle}</h2>
+                      <p style={{ fontSize: 13.5, color: TOKENS.jadeSoft, marginBottom: 4 }}>{t.wholesaleGateHint}</p>
+                      <AuthPanel supabase={supabase} t={t} TOKENS={TOKENS} />
+                    </>
+                  ) : wholesaleAccount ? (
+                    <>
+                      <div style={{ display: "inline-flex", padding: 14, borderRadius: "50%", background: TOKENS.paperDeep, marginBottom: 16 }}>
+                        <Clock size={22} color={TOKENS.brassDeep} />
+                      </div>
+                      <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 19, margin: "0 0 8px" }}>{t.wholesalePendingTitle}</h2>
+                      <p style={{ fontSize: 13.5, color: TOKENS.jadeSoft, margin: 0 }}>{t.wholesalePendingHint}</p>
+                    </>
+                  ) : (
+                    <>
+                      <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 19, margin: "0 0 8px" }}>{t.wholesaleApplyTitle}</h2>
+                      <p style={{ fontSize: 13.5, color: TOKENS.jadeSoft, marginBottom: 18 }}>{t.wholesaleApplyHint}</p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8, textAlign: "left" }}>
+                        <input
+                          value={applyBusinessName}
+                          onChange={(e) => setApplyBusinessName(e.target.value)}
+                          placeholder={t.businessNamePh}
+                          style={{ padding: "10px 13px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 14 }}
+                        />
+                        <input
+                          value={applyContact}
+                          onChange={(e) => setApplyContact(e.target.value)}
+                          placeholder={t.yourContact}
+                          style={{ padding: "10px 13px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 14 }}
+                        />
+                        <button
+                          onClick={submitWholesaleApplication}
+                          disabled={!applyBusinessName.trim()}
+                          style={{ background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 8, padding: "11px", fontSize: 13.5, fontWeight: 600, cursor: "pointer", opacity: applyBusinessName.trim() ? 1 : 0.6 }}
+                        >
+                          {t.wholesaleApplyBtn}
+                        </button>
+                      </div>
+                      {applyError && <p style={{ fontSize: 12.5, color: TOKENS.lacquer, marginTop: 10 }}>{t.authError}</p>}
+                    </>
+                  )}
                 </div>
               ) : (
               <>
@@ -1907,6 +2032,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   <p style={{ color: TOKENS.jadeSoft, fontSize: 13.5, marginBottom: 18 }}>{t.orderHint}</p>
                   {!isAdmin && <ReorderBox supabase={supabase} type="wholesale" onApply={applyReorder} t={t} TOKENS={TOKENS} />}
 
+                  {stepHeader(1, Leaf, t.stepBrowse)}
                   <div style={{ marginBottom: 20, background: TOKENS.paper, border: `1px solid ${TOKENS.hairline}`, boxShadow: TOKENS.shadowSm, borderRadius: TOKENS.radius, padding: 18 }}>
                     <div style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 16, marginBottom: 3 }}>{t.yieldGuideTitle}</div>
                     <p style={{ fontSize: 11.5, color: TOKENS.jadeSoft, margin: "0 0 14px", lineHeight: 1.5 }}>{t.yieldGuideHint}</p>
@@ -2009,7 +2135,9 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     ))}
                   </div>
 
-                  {cartLines.length === 0 && !addTestPack ? (
+                  <div style={{ borderTop: `1px solid ${TOKENS.hairline}`, paddingTop: 24, marginBottom: 24 }}>
+                    {stepHeader(2, ShoppingCart, t.stepYourOrder)}
+                    {cartLines.length === 0 && !addTestPack ? (
                     <p style={{ color: TOKENS.jadeSoft, fontSize: 13.5, fontStyle: "italic" }}>{t.emptyCart}</p>
                   ) : (
                     <div style={{ background: TOKENS.jade, color: TOKENS.paper, borderRadius: 12, padding: "18px 18px 16px", marginBottom: 20 }}>
@@ -2176,13 +2304,12 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       </div>
                     </div>
                   )}
-
-                  <p style={{ color: TOKENS.jadeSoft, fontSize: 12.5, lineHeight: 1.6, marginBottom: 20 }}>{t.tradeQuoteNote}</p>
-
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
-                    {t.priceRef}
                   </div>
-                  <div style={{ border: `1px solid ${TOKENS.brassDeep}44`, borderRadius: 12, overflow: "hidden" }}>
+
+                  <div style={{ borderTop: `1px solid ${TOKENS.hairline}`, paddingTop: 24, marginBottom: 24 }}>
+                    {stepHeader(3, Tag, t.priceRef)}
+                    <p style={{ color: TOKENS.jadeSoft, fontSize: 12.5, lineHeight: 1.6, marginBottom: 14 }}>{t.tradeQuoteNote}</p>
+                    <div style={{ border: `1px solid ${TOKENS.brassDeep}44`, borderRadius: 12, overflow: "hidden" }}>
                     {PRICE_TIERS.map((row, i) => (
                       <div
                         key={i}
@@ -2196,8 +2323,15 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         <strong style={{ color: TOKENS.brassOnPaper }}>{row.off[lang]}</strong>
                       </div>
                     ))}
+                    </div>
                   </div>
-                  {!isAdmin && <TrackOrderBox supabase={supabase} lang={lang} t={t} TOKENS={TOKENS} />}
+
+                  {!isAdmin && (
+                    <div style={{ borderTop: `1px solid ${TOKENS.hairline}`, paddingTop: 24 }}>
+                      {stepHeader(4, Truck, t.trackOrder)}
+                      <TrackOrderBox supabase={supabase} lang={lang} t={t} TOKENS={TOKENS} />
+                    </div>
+                  )}
                 </>
               )}
               </>
@@ -2241,7 +2375,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               })()}
 
               <div style={{ display: "flex", gap: 8, marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>
-                {["orders", "leads", "messages", "payment", "catalog", "reviews", "promos", "partners"].map((tab) => (
+                {["orders", "sessions", "leads", "messages", "payment", "catalog", "reviews", "promos", "partners"].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setFrontDeskTab(tab)}
@@ -2252,7 +2386,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                     }}
                   >
-                    {tab === "orders" ? t.frontDeskOrders : tab === "leads" ? t.frontDeskLeads : tab === "payment" ? t.frontDeskPayment : tab === "catalog" ? t.catalogTitle : tab === "reviews" ? t.reviewsTitle : tab === "promos" ? t.promosTitle : tab === "partners" ? t.wholesaleAccountsTitle : t.frontDeskMessages}
+                    {tab === "orders" ? t.frontDeskOrders : tab === "sessions" ? t.frontDeskSessionsTab : tab === "leads" ? t.frontDeskLeads : tab === "payment" ? t.frontDeskPayment : tab === "catalog" ? t.catalogTitle : tab === "reviews" ? t.reviewsTitle : tab === "promos" ? t.promosTitle : tab === "partners" ? t.wholesaleAccountsTitle : t.frontDeskMessages}
                     {tab === "orders" && unreadOrders > 0 && (
                       <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10.5, padding: "1px 6px" }}>{unreadOrders}</span>
                     )}
@@ -2440,18 +2574,21 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     <label style={{
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                       padding: "9px 12px", borderRadius: 8, border: `1px dashed ${TOKENS.brassDeep}88`,
-                      fontSize: 12.5, color: TOKENS.brassOnPaper, cursor: "pointer", fontWeight: 600,
+                      fontSize: 12.5, color: TOKENS.brassOnPaper, cursor: uploadingProductPhoto ? "default" : "pointer", fontWeight: 600,
+                      opacity: uploadingProductPhoto ? 0.6 : 1,
                     }}>
-                      <Upload size={14} />
-                      {t.uploadPhotoLabel}
+                      {uploadingProductPhoto ? <Loader2 size={14} className="spin" /> : <Upload size={14} />}
+                      {uploadingProductPhoto ? t.uploading : t.uploadPhotoLabel}
                       <input
                         type="file"
                         accept="image/*"
+                        disabled={uploadingProductPhoto}
                         style={{ display: "none" }}
                         onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadProductPhoto(file); }}
                       />
                     </label>
-                    {productDraft.photoUrl && (
+                    {productPhotoError && <p style={{ fontSize: 11.5, color: TOKENS.lacquer, margin: 0 }}>{t.uploadFailed}</p>}
+                    {productDraft.photoUrl && !uploadingProductPhoto && (
                       <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                         <img
                           src={productDraft.photoUrl}
@@ -2708,18 +2845,80 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   {wholesaleAccounts.map((a) => (
                     <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 10, padding: "10px 14px" }}>
                       <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "monospace" }}>{a.code}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          {a.code && <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "monospace" }}>{a.code}</span>}
+                          <span
+                            style={{
+                              fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4,
+                              padding: "2px 7px", borderRadius: 10,
+                              background: a.wholesaleVerified ? `${TOKENS.jade}18` : `${TOKENS.lacquer}18`,
+                              color: a.wholesaleVerified ? TOKENS.jade : TOKENS.lacquer,
+                            }}
+                          >
+                            {a.wholesaleVerified ? t.partnerVerifiedBadge : t.partnerPendingBadge}
+                          </span>
+                        </div>
                         <div style={{ fontSize: 13, fontWeight: 600 }}>{a.businessName}</div>
                         {a.contact && <div style={{ fontSize: 11.5, color: TOKENS.jadeSoft }}>{a.contact}</div>}
                       </div>
                       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                        <button onClick={() => setPartnerDraft({ id: a.id, code: a.code, businessName: a.businessName, contact: a.contact || "" })} style={{ background: "none", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 6, padding: "6px 8px", cursor: "pointer" }}>
+                        {!a.wholesaleVerified && (
+                          <button onClick={() => approveWholesalePartner(a.id)} style={{ background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 6, padding: "6px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                            {t.approvePartnerBtn}
+                          </button>
+                        )}
+                        <button onClick={() => setPartnerDraft({ id: a.id, code: a.code || "", businessName: a.businessName, contact: a.contact || "" })} style={{ background: "none", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 6, padding: "6px 8px", cursor: "pointer" }}>
                           <Edit3 size={13} color={TOKENS.jade} />
                         </button>
                         <button onClick={() => deletePartner(a.id)} style={{ background: "none", border: `1px solid ${TOKENS.lacquer}55`, borderRadius: 6, padding: "6px 8px", cursor: "pointer" }}>
                           <Trash2 size={13} color={TOKENS.lacquer} />
                         </button>
                       </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {frontDeskTab === "sessions" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {teaSessions.length === 0 && <p style={{ color: TOKENS.jadeSoft, fontSize: 14 }}>{t.teaSessionNoneYet}</p>}
+                  {[...teaSessions].reverse().map((s) => (
+                    <div key={s.id} style={{ background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 12, padding: 16 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                        <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, fontWeight: 600 }}>{s.date}</div>
+                        <span
+                          style={{
+                            fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4,
+                            padding: "2px 8px", borderRadius: 6, flexShrink: 0,
+                            background: s.status === "confirmed" ? `${TOKENS.jade}18` : s.status === "cancelled" ? `${TOKENS.lacquer}18` : `${TOKENS.brass}22`,
+                            color: s.status === "confirmed" ? TOKENS.jade : s.status === "cancelled" ? TOKENS.lacquer : TOKENS.brassDeep,
+                          }}
+                        >
+                          {s.status === "confirmed" ? t.teaSessionStatusConfirmed : s.status === "cancelled" ? t.teaSessionStatusCancelled : t.teaSessionStatusPending}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 13.5, fontWeight: 600 }}>{s.customerName}</div>
+                      <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.contactLabel}: {s.contact}</div>
+                      <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.paymentMethodLabel}: {s.paymentMethod === "cash" ? t.payByCash : t.payByQR}</div>
+                      {s.note && <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginTop: 6, fontStyle: "italic" }}>{t.noteLabel}: {s.note}</div>}
+                      {s.status !== "cancelled" && (
+                        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                          {s.status === "pending" && (
+                            <button
+                              onClick={() => updateTeaSessionStatus(s.id, "confirmed")}
+                              style={{ background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+                            >
+                              {t.teaSessionConfirmBtn}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => updateTeaSessionStatus(s.id, "cancelled")}
+                            style={{ background: "none", border: `1px solid ${TOKENS.lacquer}55`, color: TOKENS.lacquer, borderRadius: 8, padding: "8px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+                          >
+                            {t.teaSessionCancelBtn}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
