@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar, Send, X } from "lucide-react";
 import PaymentBlock from "./PaymentBlock";
 
 const SESSION_PRICE = 500000;
 
-export default function TeaSessionBooking({ supabase, payment, vietQrUrl, t, TOKENS }) {
-  const [open, setOpen] = useState(false);
+export default function TeaSessionBooking({ supabase, payment, vietQrUrl, t, TOKENS, autoOpen }) {
+  const [open, setOpen] = useState(!!autoOpen);
   const [takenDates, setTakenDates] = useState(new Set());
   const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [note, setNote] = useState("");
@@ -20,19 +21,28 @@ export default function TeaSessionBooking({ supabase, payment, vietQrUrl, t, TOK
 
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
 
-  const openBooking = async () => {
-    setOpen(true);
+  const fetchTakenDates = async () => {
     const to = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
     const { data } = await supabase.rpc("list_taken_tea_session_dates", { p_from: tomorrow, p_to: to });
     if (data) setTakenDates(new Set(data.map((d) => d.date)));
   };
 
+  const openBooking = async () => {
+    setOpen(true);
+    await fetchTakenDates();
+  };
+
+  useEffect(() => {
+    if (autoOpen) fetchTakenDates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpen]);
+
   const submit = async () => {
-    if (!date || !name.trim() || !contact.trim() || takenDates.has(date)) return;
+    if (!date || !time || !name.trim() || !contact.trim() || takenDates.has(date)) return;
     setLoading(true);
     setError("");
     const { data, error: bookError } = await supabase.rpc("book_tea_session", {
-      p_date: date, p_customer_name: name.trim(), p_contact: contact.trim(),
+      p_date: date, p_time: time, p_customer_name: name.trim(), p_contact: contact.trim(),
       p_note: note.trim(), p_payment_method: paymentMethod,
     });
     setLoading(false);
@@ -45,7 +55,7 @@ export default function TeaSessionBooking({ supabase, payment, vietQrUrl, t, TOK
       }
       return;
     }
-    setBooked({ id: data[0].id, date: data[0].date, paymentMethod });
+    setBooked({ id: data[0].id, date: data[0].date, time: data[0].session_time?.slice(0, 5) || time, paymentMethod });
   };
 
   const printSessionReceipt = (order) => {
@@ -57,7 +67,7 @@ export default function TeaSessionBooking({ supabase, payment, vietQrUrl, t, TOK
       h2{font-size:16px;margin:0 0 4px;}p{font-size:13px;line-height:1.7;}</style></head>
       <body>
         <h2>House of Hoàng Long — ${esc(t.teaSessionModalTitle)}</h2>
-        <p>${esc(order.id)}<br/>${esc(order.date)}<br/>${esc(SESSION_PRICE.toLocaleString("vi-VN"))}đ</p>
+        <p>${esc(order.id)}<br/>${esc(order.date)} ${esc(order.time || "")}<br/>${esc(SESSION_PRICE.toLocaleString("vi-VN"))}đ</p>
       </body></html>`);
     win.document.close();
     win.focus();
@@ -65,7 +75,7 @@ export default function TeaSessionBooking({ supabase, payment, vietQrUrl, t, TOK
   };
 
   const reset = () => {
-    setBooked(null); setDate(""); setName(""); setContact(""); setNote(""); setError("");
+    setBooked(null); setDate(""); setTime(""); setName(""); setContact(""); setNote(""); setError("");
   };
 
   if (!open) {
@@ -87,7 +97,7 @@ export default function TeaSessionBooking({ supabase, payment, vietQrUrl, t, TOK
       {booked ? (
         <div>
           <h3 style={{ fontFamily: "Lora, Georgia, serif", fontSize: 18, margin: "0 0 8px" }}>{t.teaSessionSuccessTitle}</h3>
-          <p style={{ fontSize: 13, color: TOKENS.jade, fontWeight: 600, marginBottom: 8 }}>{booked.date}</p>
+          <p style={{ fontSize: 13, color: TOKENS.jade, fontWeight: 600, marginBottom: 8 }}>{booked.date}{booked.time ? ` · ${booked.time}` : ""}</p>
           <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, margin: 0 }}>{t.teaSessionPendingNote}</p>
           <PaymentBlock
             order={{ id: booked.id, paymentMethod: booked.paymentMethod }}
@@ -112,15 +122,28 @@ export default function TeaSessionBooking({ supabase, payment, vietQrUrl, t, TOK
           <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginBottom: 2 }}>{t.teaSessionPriceNote}</p>
           <p style={{ fontSize: 11.5, color: TOKENS.jadeSoft, marginBottom: 16 }}>{t.teaSessionAddress}</p>
 
-          <label style={{ fontSize: 12, color: TOKENS.jadeSoft, marginBottom: 4, display: "block" }}>{t.teaSessionDateLabel}</label>
-          <input
-            type="date"
-            min={tomorrow}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 14, marginBottom: 4 }}
-          />
-          {date && takenDates.has(date) && <p style={{ fontSize: 12, color: TOKENS.lacquer, margin: "0 0 8px" }}>{t.teaSessionDateTaken}</p>}
+          <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 12, color: TOKENS.jadeSoft, marginBottom: 4, display: "block" }}>{t.teaSessionDateLabel}</label>
+              <input
+                type="date"
+                min={tomorrow}
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 14 }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 12, color: TOKENS.jadeSoft, marginBottom: 4, display: "block" }}>{t.teaSessionTimeLabel}</label>
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 14 }}
+              />
+            </div>
+          </div>
+          {date && takenDates.has(date) && <p style={{ fontSize: 12, color: TOKENS.lacquer, margin: "6px 0 0" }}>{t.teaSessionDateTaken}</p>}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.yourName} style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }} />
@@ -160,12 +183,12 @@ export default function TeaSessionBooking({ supabase, payment, vietQrUrl, t, TOK
 
           <button
             onClick={submit}
-            disabled={loading || !date || !name.trim() || !contact.trim() || takenDates.has(date)}
+            disabled={loading || !date || !time || !name.trim() || !contact.trim() || takenDates.has(date)}
             style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", marginTop: 14,
               background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 8, padding: "11px",
               fontSize: 13.5, fontWeight: 700, cursor: "pointer",
-              opacity: (loading || !date || !name.trim() || !contact.trim() || takenDates.has(date)) ? 0.5 : 1,
+              opacity: (loading || !date || !time || !name.trim() || !contact.trim() || takenDates.has(date)) ? 0.5 : 1,
             }}
           >
             <Send size={14} /> {t.teaSessionSubmitBtn}

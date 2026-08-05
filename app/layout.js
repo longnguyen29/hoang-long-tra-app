@@ -10,6 +10,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="vi">
       <head>
+        {/* Without this, iOS Safari auto-detects phone numbers/dates in plain text (contact
+            fields, order IDs, tracking codes) and renders them as blue tappable links —
+            inconsistent with desktop and with the app's own text color. */}
+        <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Noto+Serif+SC:wght@600&display=swap"

@@ -19,6 +19,17 @@ body {
   }
 }
 
+/* Header brand wordmark: seal glyph always shows, "House of Hoàng Long" text only
+   once there's room for it next to the page title, same breakpoint as .staff-email. */
+.brand-wordmark-text {
+  display: none;
+}
+@media (min-width: 640px) {
+  .brand-wordmark-text {
+    display: inline;
+  }
+}
+
 /* Buttons must feel responsive to press — subtle scale on :active, everywhere. */
 button:not(:disabled) {
   transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);

@@ -31,12 +31,12 @@ export default function BrandSeal({ TOKENS }) {
         <circle
           className="hl-seal-ring"
           cx="60" cy="60" r="54" fill="none" stroke={TOKENS.brass} strokeWidth="2"
-          style={{ strokeDasharray: 340, strokeDashoffset: 340, animation: "hlDrawRing 950ms cubic-bezier(0.77,0,0.175,1) forwards" }}
+          style={{ strokeDasharray: 340, strokeDashoffset: 340, animation: "hlDrawRing 1500ms cubic-bezier(0.77,0,0.175,1) forwards", animationDelay: "400ms" }}
         />
         <text
           className="hl-seal-char"
           x="60" y="76" textAnchor="middle" fontFamily="'Noto Serif SC', serif" fontSize="40" fill={TOKENS.brass}
-          style={{ opacity: 0, animation: "hlFadeChar 550ms cubic-bezier(0.22,1,0.36,1) forwards", animationDelay: "650ms" }}
+          style={{ opacity: 0, animation: "hlFadeChar 880ms cubic-bezier(0.22,1,0.36,1) forwards", animationDelay: "1450ms" }}
         >
           皇龍
         </text>
@@ -47,7 +47,7 @@ export default function BrandSeal({ TOKENS }) {
         style={{
           fontFamily: "TMCOngDo, Lora, Georgia, serif", fontWeight: 400, fontSize: "clamp(32px, 9vw, 50px)", lineHeight: 1.15,
           margin: "0 0 14px", overflowWrap: "anywhere", color: TOKENS.paper,
-          opacity: 0, transform: "translateY(8px)", animation: "hlRiseIn 600ms cubic-bezier(0.22,1,0.36,1) forwards", animationDelay: "1050ms",
+          opacity: 0, transform: "translateY(8px)", animation: "hlRiseIn 960ms cubic-bezier(0.22,1,0.36,1) forwards", animationDelay: "2100ms",
         }}
       >
         House of Hoang Long
@@ -58,7 +58,7 @@ export default function BrandSeal({ TOKENS }) {
           className="hl-seal-line"
           x1="2" y1="2" x2="198" y2="2"
           stroke={TOKENS.brass} strokeWidth="1.5"
-          style={{ strokeDasharray: 196, strokeDashoffset: 196, animation: "hlDrawLine 450ms cubic-bezier(0.77,0,0.175,1) forwards", animationDelay: "1600ms" }}
+          style={{ strokeDasharray: 196, strokeDashoffset: 196, animation: "hlDrawLine 720ms cubic-bezier(0.77,0,0.175,1) forwards", animationDelay: "3000ms" }}
         />
       </svg>
 
@@ -67,7 +67,7 @@ export default function BrandSeal({ TOKENS }) {
         style={{
           fontSize: 11.5, letterSpacing: 1.5, textTransform: "uppercase", color: `${TOKENS.paper}cc`, fontWeight: 600,
           marginBottom: 14,
-          opacity: 0, transform: "translateY(8px)", animation: "hlRiseIn 550ms cubic-bezier(0.22,1,0.36,1) forwards", animationDelay: "1850ms",
+          opacity: 0, transform: "translateY(8px)", animation: "hlRiseIn 880ms cubic-bezier(0.22,1,0.36,1) forwards", animationDelay: "3400ms",
         }}
       >
         Ancient Ha Giang Tea · Japanese Technology
@@ -77,7 +77,7 @@ export default function BrandSeal({ TOKENS }) {
         className="hl-seal-rise"
         style={{
           fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: `${TOKENS.paper}88`, fontWeight: 600,
-          opacity: 0, transform: "translateY(8px)", animation: "hlRiseIn 550ms cubic-bezier(0.22,1,0.36,1) forwards", animationDelay: "2100ms",
+          opacity: 0, transform: "translateY(8px)", animation: "hlRiseIn 880ms cubic-bezier(0.22,1,0.36,1) forwards", animationDelay: "3800ms",
         }}
       >
         Est. 1995

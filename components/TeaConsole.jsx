@@ -113,12 +113,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     });
   }, [isAdmin, session, supabase]);
   const role = isAdmin ? "admin" : (wholesaleAccount?.wholesaleVerified ? "wholesale" : "retail");
-  const [lang, setLang] = useState("vi");
+  const [lang, setLang] = useState("en");
   const [section, setSection] = useState("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [articles, setArticles] = useState([]);
-  const [query, setQuery] = useState("");
   const [wikiCategory, setWikiCategory] = useState(null);
   const [activeId, setActiveId] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -267,16 +266,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const visibleCategoryIds = useMemo(() => new Set(visibleCategories.map((c) => c.id)), [visibleCategories]);
   const visibleArticles = useMemo(() => articles.filter((a) => visibleCategoryIds.has(a.category)), [articles, visibleCategoryIds]);
 
-  const searchResults = useMemo(() => {
-    if (!query.trim()) return null;
-    const q = query.toLowerCase();
-    return visibleArticles.filter((a) => {
-      const title = (a.title[lang] || a.title.en || "").toLowerCase();
-      const body = (a.body[lang] || a.body.en || "").toLowerCase();
-      return title.includes(q) || body.includes(q);
-    });
-  }, [visibleArticles, query, lang]);
-
   const articlesInCategory = (catId) => visibleArticles.filter((a) => a.category === catId);
   const active = articles.find((a) => a.id === activeId);
   const activeCategoryMeta = wikiCategory ? CATEGORIES.find((c) => c.id === wikiCategory) : null;
@@ -298,7 +287,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     setWikiCategory(null);
     setActiveId(null);
     setEditing(false);
-    setQuery("");
     setLibraryCategory(null);
     setLibraryActiveId(null);
     setLibraryQuery("");
@@ -653,7 +641,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       setProductDraft((d) => ({ ...d, photoUrl: url }));
     } catch (e) {
       console.error("Upload failed:", e);
-      setProductPhotoError(true);
+      setProductPhotoError(e?.message || true);
     } finally {
       setUploadingProductPhoto(false);
     }
@@ -753,7 +741,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       setGalleryDraft((d) => ({ ...d, url }));
     } catch (e) {
       console.error("Upload failed:", e);
-      setGalleryPhotoError(true);
+      setGalleryPhotoError(e?.message || true);
     } finally {
       setUploadingGalleryPhoto(false);
     }
@@ -771,7 +759,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       await saveHomePhoto(url);
     } catch (e) {
       console.error("Upload failed:", e);
-      setHomePhotoError(true);
+      setHomePhotoError(e?.message || true);
     } finally {
       setUploadingHomePhoto(false);
     }
@@ -998,6 +986,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
         p_customer_name: orderName.trim(),
         p_contact: orderContact.trim(),
         p_address: orderAddress.trim(),
+        p_tax_number: orderTaxNumber.trim(),
         p_note: orderNote.trim(),
         p_lines: lines,
         p_total_items: retailTotalItems,
@@ -1015,7 +1004,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       setOrderSubmitted({
         id: row.id, ts: row.ts, type: "retail",
         customerName: orderName.trim(), contact: orderContact.trim(), address: orderAddress.trim(),
-        taxNumber: "", vat: 10, promo: appliedPromo, note: orderNote.trim(), lines,
+        taxNumber: orderTaxNumber.trim(), vat: 10, promo: appliedPromo, note: orderNote.trim(), lines,
         totalKg: null, totalItems: retailTotalItems, estimatedTotal: rawTotal || null, tier: null,
         paymentMethod, status: "pending", trackingCode: "", unread: true,
       });
@@ -1193,6 +1182,22 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
           <button onClick={() => setSidebarOpen((s) => !s)} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.jadeSoft, flexShrink: 0, padding: 0, display: "flex" }} aria-label="Menu">
             {sidebarOpen ? <X size={21} /> : <Menu size={21} />}
           </button>
+
+          {/* Persistent brand wordmark — stays put in the header on every page/scroll
+              position, independent of the big animated seal in the home hero. */}
+          <div
+            style={{
+              display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
+              background: TOKENS.jade, border: `1px solid ${TOKENS.brass}`, borderRadius: 20,
+              padding: "5px 10px 5px 8px",
+            }}
+          >
+            <span style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 13, color: TOKENS.brass, lineHeight: 1 }}>皇龍</span>
+            <span className="brand-wordmark-text" style={{ fontFamily: "TMCOngDo, Lora, Georgia, serif", fontSize: 13, color: TOKENS.brass, whiteSpace: "nowrap", letterSpacing: 0.2 }}>
+              House of Hoàng Long
+            </span>
+          </div>
+
           <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17.5, fontWeight: 600, letterSpacing: 0.1, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: TOKENS.jade }}>
             {nav.find((n) => n.id === section)?.label[lang] || nav[0]?.label[lang]}
           </div>
@@ -1346,7 +1351,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         </button>
                       )}
                     </div>
-                    {homePhotoError && <p style={{ fontSize: 11.5, color: TOKENS.lacquer, margin: "6px 0 0" }}>{t.uploadFailed}</p>}
+                    {homePhotoError && (
+                      <p style={{ fontSize: 11.5, color: TOKENS.lacquer, margin: "6px 0 0" }}>
+                        {t.uploadFailed}{typeof homePhotoError === "string" ? ` (${homePhotoError})` : ""}
+                      </p>
+                    )}
                     </>
                   )}
                 </div>
@@ -1442,6 +1451,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                             ? (lang === "en" ? "Shop our teas by the pack." : "Mua trà theo gói.")
                             : n.id === "frontdesk"
                             ? (lang === "en" ? "Orders, leads, messages, and settings." : "Đơn hàng, lead, tin nhắn, cài đặt.")
+                            : n.id === "sessions"
+                            ? (lang === "en" ? "Reserve a private tasting with Long." : "Đặt lịch buổi trà riêng với Long.")
                             : t.comingSoon}
                         </div>
                       </div>
@@ -1456,43 +1467,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
           {/* ---------- WIKI: MAIN MENU (level 1) ---------- */}
           {section === "wiki" && !wikiCategory && !editing && (
             <div>
-              <div style={{ position: "relative", marginBottom: 22 }}>
-                <Search size={16} style={{ position: "absolute", left: 12, top: 12, color: TOKENS.jadeSoft }} />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={t.search}
-                  style={{
-                    width: "100%", boxSizing: "border-box", padding: "10px 12px 10px 36px", borderRadius: 8,
-                    border: `1px solid ${TOKENS.brassDeep}55`, background: TOKENS.paperDeep, fontSize: 14, color: TOKENS.jade,
-                  }}
-                />
-              </div>
-
-              {searchResults ? (
-                <div>
-                  <div style={{ fontSize: 12, color: TOKENS.jadeSoft, marginBottom: 10 }}>{t.results(searchResults.length, query)}</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {searchResults.map((a) => (
-                      <button
-                        key={a.id}
-                        onClick={() => { setWikiCategory(a.category); setActiveId(a.id); }}
-                        style={{
-                          display: "flex", alignItems: "center", justifyContent: "space-between", background: TOKENS.paperDeep,
-                          border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 10, padding: "13px 14px", textAlign: "left",
-                          cursor: "pointer", fontSize: 14.5, color: TOKENS.jade, minWidth: 0,
-                        }}
-                      >
-                        <span style={{ overflowWrap: "anywhere" }}>{a.title[lang] || a.title.en}</span>
-                        <ChevronRight size={16} color={TOKENS.brassDeep} style={{ flexShrink: 0, marginLeft: 8 }} />
-                      </button>
-                    ))}
-                    {searchResults.length === 0 && <p style={{ color: TOKENS.jadeSoft, fontSize: 14 }}>{t.noResults}</p>}
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginBottom: 16 }}>{t.chooseSection}</div>
                   <div style={{ display: "flex", flexDirection: "column" }}>
                     {visibleCategories.map((cat, i) => {
                       const Icon = cat.icon;
@@ -1535,8 +1509,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       <Plus size={15} /> {t.addArticle}
                     </button>
                   )}
-                </>
-              )}
             </div>
           )}
 
@@ -1765,7 +1737,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadGalleryPhoto(file); }}
                     />
                   </label>
-                  {galleryPhotoError && <p style={{ fontSize: 11.5, color: TOKENS.lacquer, margin: 0 }}>{t.uploadFailed}</p>}
+                  {galleryPhotoError && (
+                    <p style={{ fontSize: 11.5, color: TOKENS.lacquer, margin: 0 }}>
+                      {t.uploadFailed}{typeof galleryPhotoError === "string" ? ` (${galleryPhotoError})` : ""}
+                    </p>
+                  )}
                   {galleryDraft.url && !uploadingGalleryPhoto && (
                     <img src={galleryDraft.url} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: 120, borderRadius: 8, objectFit: "cover" }} />
                   )}
@@ -1945,6 +1921,21 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               <div style={{ whiteSpace: "pre-line", fontSize: 15, lineHeight: 1.75, color: TOKENS.jade }}>
                 {linkifyText(libraryActive.body[lang] || libraryActive.body.en, TOKENS.brassDeep)}
               </div>
+            </div>
+          )}
+
+          {/* ---------- BOOK A SESSION ---------- */}
+          {section === "sessions" && !isAdmin && (
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                <div style={{ display: "inline-flex", padding: 10, borderRadius: "50%", background: TOKENS.paperDeep }}>
+                  <Calendar size={18} color={TOKENS.brassDeep} />
+                </div>
+                <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 22, margin: 0 }}>
+                  {NAV.find((n) => n.id === "sessions")?.label[lang]}
+                </h2>
+              </div>
+              <TeaSessionBooking supabase={supabase} payment={payment} vietQrUrl={vietQrUrl} t={t} TOKENS={TOKENS} autoOpen />
             </div>
           )}
 
@@ -2502,6 +2493,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       <option value="reserve">{t.reserveOption}</option>
                       <option value="sample">{t.sampleOption}</option>
                     </select>
+                    <p style={{ fontSize: 11, color: TOKENS.jadeSoft, margin: "-4px 0 2px", lineHeight: 1.4 }}>{t.productLineHint}</p>
                     <input
                       value={productDraft.notesEn}
                       onChange={(e) => setProductDraft({ ...productDraft, notesEn: e.target.value })}
@@ -2587,7 +2579,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadProductPhoto(file); }}
                       />
                     </label>
-                    {productPhotoError && <p style={{ fontSize: 11.5, color: TOKENS.lacquer, margin: 0 }}>{t.uploadFailed}</p>}
+                    {productPhotoError && (
+                      <p style={{ fontSize: 11.5, color: TOKENS.lacquer, margin: 0 }}>
+                        {t.uploadFailed}{typeof productPhotoError === "string" ? ` (${productPhotoError})` : ""}
+                      </p>
+                    )}
                     {productDraft.photoUrl && !uploadingProductPhoto && (
                       <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                         <img
@@ -2885,7 +2881,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   {[...teaSessions].reverse().map((s) => (
                     <div key={s.id} style={{ background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 12, padding: 16 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                        <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, fontWeight: 600 }}>{s.date}</div>
+                        <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, fontWeight: 600 }}>{s.date}{s.time ? ` · ${s.time}` : ""}</div>
                         <span
                           style={{
                             fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4,
@@ -3401,6 +3397,12 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           value={orderAddress}
                           onChange={(e) => setOrderAddress(e.target.value)}
                           placeholder={t.yourAddress}
+                          style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.paper}44`, background: `${TOKENS.paper}14`, color: TOKENS.paper, fontSize: 13.5 }}
+                        />
+                        <input
+                          value={orderTaxNumber}
+                          onChange={(e) => setOrderTaxNumber(e.target.value)}
+                          placeholder={t.taxNumber}
                           style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.paper}44`, background: `${TOKENS.paper}14`, color: TOKENS.paper, fontSize: 13.5 }}
                         />
                         <textarea
