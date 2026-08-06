@@ -1430,7 +1430,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         background: TOKENS.paper, border: `1px solid ${TOKENS.hairline}`,
                         boxShadow: featured ? TOKENS.shadowMd : TOKENS.shadowSm,
                         borderRadius: TOKENS.radius, padding: featured ? "28px 26px" : "22px 20px",
-                        textAlign: "left", cursor: "pointer", minWidth: 0,
+                        textAlign: "left", cursor: "pointer", minWidth: 0, color: TOKENS.jade,
                         display: "flex", flexDirection: featured ? "row" : "column",
                         alignItems: featured ? "center" : "flex-start", gap: featured ? 20 : 12,
                         justifyContent: "space-between",
@@ -1443,7 +1443,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         }}>
                           <Icon size={featured ? 21 : 17} color={TOKENS.brass} strokeWidth={1.6} />
                         </div>
-                        <div style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: featured ? 20 : 16, overflowWrap: "anywhere" }}>
+                        <div style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: featured ? 20 : 16, overflowWrap: "anywhere", color: TOKENS.jade }}>
                           {n.label[lang]}
                         </div>
                         <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>
@@ -1482,26 +1482,29 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           key={cat.id}
                           onClick={() => setWikiCategory(cat.id)}
                           style={{
-                            display: "flex", alignItems: "center", gap: 18, background: "transparent",
+                            display: "flex", alignItems: "center", gap: 16, background: "transparent",
                             border: "none", borderTop: i === 0 ? `1px solid ${TOKENS.hairline}` : "none",
                             borderBottom: `1px solid ${TOKENS.hairline}`, padding: "18px 4px",
-                            textAlign: "left", cursor: "pointer", minWidth: 0,
+                            textAlign: "left", cursor: "pointer", minWidth: 0, color: TOKENS.jade,
                           }}
                         >
-                          <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 22, fontWeight: 500, color: `${TOKENS.jade}44`, width: 28, flexShrink: 0, textAlign: "right" }}>
-                            {String(i + 1).padStart(2, "0")}
-                          </div>
-                          <div style={{ width: 34, height: 34, borderRadius: 9, background: TOKENS.jade, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            <Icon size={16} color={TOKENS.brass} strokeWidth={1.7} />
+                          <div style={{ width: 52, height: 52, borderRadius: 14, background: TOKENS.jade, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <Icon size={26} color={TOKENS.brass} strokeWidth={1.6} />
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 15, fontWeight: 600, overflowWrap: "anywhere" }}>{cat.label[lang]}</div>
+                            <div style={{ fontSize: 15, fontWeight: 600, overflowWrap: "anywhere", color: TOKENS.jade }}>{cat.label[lang]}</div>
                             <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginTop: 2 }}>{cat.subtitle[lang]} · {count}</div>
                           </div>
                           <ChevronRight size={17} color={TOKENS.brassDeep} style={{ flexShrink: 0 }} />
                         </button>
                       );
                     })}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 24, padding: "16px 0 4px" }}>
+                    <span style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.stillHaveQuestions}</span>
+                    <a href="tel:+84903333841" style={{ display: "flex", alignItems: "center", gap: 5, color: TOKENS.brassOnPaper, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>
+                      <Phone size={13} /> 0903 333 841
+                    </a>
                   </div>
                   {isAdmin && (
                     <button
