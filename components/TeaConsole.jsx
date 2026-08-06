@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Search, ChevronRight, ChevronLeft, Menu, X, Edit3, Save, Plus, Trash2,
   Leaf, Mountain, Languages, Copy, Check, Lock, Clock, Upload, Sparkles, ShoppingCart, Minus,
-  MessageCircle, Send, Download, Printer, LogOut, Tag, Truck, Loader2, Calendar,
+  MessageCircle, Send, Download, Printer, LogOut, Tag, Truck, Loader2, Calendar, Phone,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadImage } from "@/lib/supabase/storage";
@@ -1162,8 +1162,14 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 );
               })}
             </nav>
-            <div style={{ position: "absolute", bottom: 16, left: 20, right: 20, fontSize: 10.5, letterSpacing: 0.3, opacity: 0.45, lineHeight: 1.5 }}>
-              Trà Cổ Hà Giang – Công Nghệ Nhật Bản
+            <div style={{ position: "absolute", bottom: 16, left: 20, right: 20, fontSize: 10.5, letterSpacing: 0.3, lineHeight: 1.5 }}>
+              <a
+                href="tel:+84903333841"
+                style={{ display: "flex", alignItems: "center", gap: 6, color: TOKENS.brass, opacity: 0.9, textDecoration: "none", fontWeight: 600, marginBottom: 6 }}
+              >
+                <Phone size={12} /> 0903 333 841
+              </a>
+              <div style={{ opacity: 0.45 }}>Trà Cổ Hà Giang – Công Nghệ Nhật Bản</div>
             </div>
           </aside>
         </div>

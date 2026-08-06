@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { Calendar, Send, X } from "lucide-react";
 import PaymentBlock from "./PaymentBlock";
 
-const SESSION_PRICE = 500000;
+// Free for now — set back to 500000 to re-enable the QR/cash payment step below.
+const SESSION_PRICE = 0;
 
 export default function TeaSessionBooking({ supabase, payment, vietQrUrl, t, TOKENS, autoOpen }) {
   const [open, setOpen] = useState(!!autoOpen);
@@ -14,7 +15,7 @@ export default function TeaSessionBooking({ supabase, payment, vietQrUrl, t, TOK
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [note, setNote] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("qr");
+  const [paymentMethod, setPaymentMethod] = useState("cash");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [booked, setBooked] = useState(null);
@@ -67,7 +68,7 @@ export default function TeaSessionBooking({ supabase, payment, vietQrUrl, t, TOK
       h2{font-size:16px;margin:0 0 4px;}p{font-size:13px;line-height:1.7;}</style></head>
       <body>
         <h2>House of Hoàng Long — ${esc(t.teaSessionModalTitle)}</h2>
-        <p>${esc(order.id)}<br/>${esc(order.date)} ${esc(order.time || "")}<br/>${esc(SESSION_PRICE.toLocaleString("vi-VN"))}đ</p>
+        <p>${esc(order.id)}<br/>${esc(order.date)} ${esc(order.time || "")}<br/>${SESSION_PRICE > 0 ? esc(SESSION_PRICE.toLocaleString("vi-VN")) + "đ" : esc(t.teaSessionFreeNote)}</p>
       </body></html>`);
     win.document.close();
     win.focus();
@@ -99,14 +100,19 @@ export default function TeaSessionBooking({ supabase, payment, vietQrUrl, t, TOK
           <h3 style={{ fontFamily: "Lora, Georgia, serif", fontSize: 18, margin: "0 0 8px" }}>{t.teaSessionSuccessTitle}</h3>
           <p style={{ fontSize: 13, color: TOKENS.jade, fontWeight: 600, marginBottom: 8 }}>{booked.date}{booked.time ? ` · ${booked.time}` : ""}</p>
           <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, margin: 0 }}>{t.teaSessionPendingNote}</p>
-          <PaymentBlock
-            order={{ id: booked.id, paymentMethod: booked.paymentMethod }}
-            payment={payment}
-            qrUrl={booked.paymentMethod === "qr" ? vietQrUrl({ id: booked.id }, SESSION_PRICE) : null}
-            onPrint={printSessionReceipt}
-            t={t}
-            TOKENS={TOKENS}
-          />
+          {SESSION_PRICE > 0 && (
+            <PaymentBlock
+              order={{ id: booked.id, paymentMethod: booked.paymentMethod }}
+              payment={payment}
+              qrUrl={booked.paymentMethod === "qr" ? vietQrUrl({ id: booked.id }, SESSION_PRICE) : null}
+              onPrint={printSessionReceipt}
+              t={t}
+              TOKENS={TOKENS}
+            />
+          )}
+          {SESSION_PRICE === 0 && (
+            <div style={{ marginTop: 14, fontFamily: "monospace", fontSize: 13, color: TOKENS.jadeSoft }}>{booked.id}</div>
+          )}
           <button onClick={reset} style={{ marginTop: 14, background: "none", border: "none", color: TOKENS.jadeSoft, fontSize: 13, cursor: "pointer", textDecoration: "underline", padding: 0 }}>
             {t.teaSessionBackBtn}
           </button>
@@ -119,7 +125,7 @@ export default function TeaSessionBooking({ supabase, payment, vietQrUrl, t, TOK
               <X size={18} />
             </button>
           </div>
-          <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginBottom: 2 }}>{t.teaSessionPriceNote}</p>
+          <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginBottom: 2 }}>{SESSION_PRICE > 0 ? t.teaSessionPriceNote : t.teaSessionFreeNote}</p>
           <p style={{ fontSize: 11.5, color: TOKENS.jadeSoft, marginBottom: 16 }}>{t.teaSessionAddress}</p>
 
           <div style={{ display: "flex", gap: 8 }}>
@@ -151,33 +157,35 @@ export default function TeaSessionBooking({ supabase, payment, vietQrUrl, t, TOK
             <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder={t.teaSessionNotePh} rows={2} style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5, resize: "vertical", fontFamily: "inherit" }} />
           </div>
 
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 12, color: TOKENS.jadeSoft, marginBottom: 6 }}>{t.paymentMethodLabel}</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("qr")}
-                style={{
-                  flex: 1, padding: "9px", borderRadius: 8, cursor: "pointer", fontSize: 12.5, fontWeight: 600,
-                  border: `1px solid ${paymentMethod === "qr" ? TOKENS.brass : TOKENS.hairline}`,
-                  background: paymentMethod === "qr" ? `${TOKENS.brass}22` : "transparent", color: TOKENS.jade,
-                }}
-              >
-                {t.payByQR}
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("cash")}
-                style={{
-                  flex: 1, padding: "9px", borderRadius: 8, cursor: "pointer", fontSize: 12.5, fontWeight: 600,
-                  border: `1px solid ${paymentMethod === "cash" ? TOKENS.brass : TOKENS.hairline}`,
-                  background: paymentMethod === "cash" ? `${TOKENS.brass}22` : "transparent", color: TOKENS.jade,
-                }}
-              >
-                {t.payByCash}
-              </button>
+          {SESSION_PRICE > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 12, color: TOKENS.jadeSoft, marginBottom: 6 }}>{t.paymentMethodLabel}</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("qr")}
+                  style={{
+                    flex: 1, padding: "9px", borderRadius: 8, cursor: "pointer", fontSize: 12.5, fontWeight: 600,
+                    border: `1px solid ${paymentMethod === "qr" ? TOKENS.brass : TOKENS.hairline}`,
+                    background: paymentMethod === "qr" ? `${TOKENS.brass}22` : "transparent", color: TOKENS.jade,
+                  }}
+                >
+                  {t.payByQR}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("cash")}
+                  style={{
+                    flex: 1, padding: "9px", borderRadius: 8, cursor: "pointer", fontSize: 12.5, fontWeight: 600,
+                    border: `1px solid ${paymentMethod === "cash" ? TOKENS.brass : TOKENS.hairline}`,
+                    background: paymentMethod === "cash" ? `${TOKENS.brass}22` : "transparent", color: TOKENS.jade,
+                  }}
+                >
+                  {t.payByCash}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {error && <p style={{ fontSize: 12.5, color: TOKENS.lacquer, marginTop: 10, marginBottom: 0 }}>{error}</p>}
 
