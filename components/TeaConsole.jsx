@@ -140,6 +140,12 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [lightboxImage, setLightboxImage] = useState(null);
   const [homePhoto, setHomePhoto] = useState("");
+  // Producer + origin facts shown at the top of Our Story. Empty until staff fill it in.
+  const [houseStory, setHouseStory] = useState({ producerName: "", producerPhoto: "", producerRole: {}, producerQuote: {}, originStats: [] });
+  const [houseDraft, setHouseDraft] = useState(null);
+  const [houseSaved, setHouseSaved] = useState(false);
+  const [uploadingProducerPhoto, setUploadingProducerPhoto] = useState(false);
+  const [producerPhotoError, setProducerPhotoError] = useState(false);
   const [uploadingHomePhoto, setUploadingHomePhoto] = useState(false);
   const [homePhotoError, setHomePhotoError] = useState(false);
 
@@ -481,9 +487,17 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     if (data) setGalleryImages(data.map(fromGalleryRow));
   }, [supabase]);
 
-  const loadHomePhoto = useCallback(async () => {
+  const loadHomeSettings = useCallback(async () => {
     const { data } = await supabase.from("settings_home").select("*").eq("id", 1).maybeSingle();
-    if (data) setHomePhoto(data.featured_photo || "");
+    if (!data) return;
+    setHomePhoto(data.featured_photo || "");
+    setHouseStory({
+      producerName: data.producer_name || "",
+      producerPhoto: data.producer_photo || "",
+      producerRole: data.producer_role || {},
+      producerQuote: data.producer_quote || {},
+      originStats: Array.isArray(data.origin_stats) ? data.origin_stats : [],
+    });
   }, [supabase]);
 
   const loadCatalog = useCallback(async () => {
@@ -566,7 +580,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     loadArticles();
     loadLibraryArticles();
     loadGalleryImages();
-    loadHomePhoto();
+    loadHomeSettings();
     loadCatalog();
     loadTestimonials();
     loadProductReviews();
@@ -872,6 +886,62 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     await supabase.from("settings_home").upsert({ id: 1, featured_photo: url });
     setHomePhoto(url);
   };
+  // Stats are edited as one line per stat: "value | English label | Vietnamese label".
+  const parseOriginStats = (text) =>
+    text.split("\n").map((line) => {
+      const [value, en, vi] = line.split("|").map((s) => (s || "").trim());
+      if (!value) return null;
+      return { value, label: { en: en || "", vi: vi || en || "" } };
+    }).filter(Boolean);
+
+  const originStatsToText = (stats) =>
+    (stats || []).map((s) => `${s.value} | ${s.label?.en || ""} | ${s.label?.vi || ""}`).join("\n");
+
+  const openHouseDraft = () => setHouseDraft({
+    producerName: houseStory.producerName,
+    producerPhoto: houseStory.producerPhoto,
+    roleEn: houseStory.producerRole?.en || "",
+    roleVi: houseStory.producerRole?.vi || "",
+    quoteEn: houseStory.producerQuote?.en || "",
+    quoteVi: houseStory.producerQuote?.vi || "",
+    statsText: originStatsToText(houseStory.originStats),
+  });
+
+  const saveHouseDraft = async () => {
+    const next = {
+      producer_name: houseDraft.producerName.trim(),
+      producer_photo: houseDraft.producerPhoto.trim(),
+      producer_role: { en: houseDraft.roleEn.trim(), vi: houseDraft.roleVi.trim() },
+      producer_quote: { en: houseDraft.quoteEn.trim(), vi: houseDraft.quoteVi.trim() },
+      origin_stats: parseOriginStats(houseDraft.statsText),
+    };
+    const { error } = await supabase.from("settings_home").update(next).eq("id", 1);
+    if (error) { console.error(error); return; }
+    setHouseStory({
+      producerName: next.producer_name,
+      producerPhoto: next.producer_photo,
+      producerRole: next.producer_role,
+      producerQuote: next.producer_quote,
+      originStats: next.origin_stats,
+    });
+    setHouseSaved(true);
+    setTimeout(() => setHouseSaved(false), 1800);
+  };
+
+  const uploadProducerPhoto = async (file) => {
+    setProducerPhotoError(false);
+    setUploadingProducerPhoto(true);
+    try {
+      const url = await uploadImage(supabase, file, "producer");
+      setHouseDraft((d) => ({ ...d, producerPhoto: url }));
+    } catch (e) {
+      console.error("Upload failed:", e);
+      setProducerPhotoError(e?.message || true);
+    } finally {
+      setUploadingProducerPhoto(false);
+    }
+  };
+
   const uploadHomePhoto = async (file) => {
     setHomePhotoError(false);
     setUploadingHomePhoto(true);
@@ -1713,6 +1783,64 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
           {/* ---------- WIKI: MAIN MENU (level 1) ---------- */}
           {section === "wiki" && !wikiCategory && !editing && (
             <div>
+                  {/* Origin facts + the person behind the tea. Warm near-black rather than jade:
+                      a colour-tinted dark reads heritage, this reads editorial. Renders only
+                      once staff have filled it in from Front Desk › The House. */}
+                  {(houseStory.originStats.length > 0 || houseStory.producerName) && (
+                    <div style={{
+                      margin: "-4px -20px 24px", padding: "26px 20px 24px",
+                      background: TOKENS.ink, color: TOKENS.paper, borderRadius: TOKENS.radiusLg,
+                    }}>
+                      {houseStory.originStats.length > 0 && (
+                        <div style={{
+                          display: "grid", gap: 14,
+                          gridTemplateColumns: `repeat(${Math.min(houseStory.originStats.length, 4)}, 1fr)`,
+                        }}>
+                          {houseStory.originStats.slice(0, 4).map((s, i) => (
+                            <div key={i} style={{ minWidth: 0 }}>
+                              <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: "clamp(20px, 5vw, 28px)", lineHeight: 1.1, color: TOKENS.paper, overflowWrap: "anywhere" }}>
+                                {s.value}
+                              </div>
+                              <div style={{ fontSize: 10, color: `${TOKENS.paper}88`, textTransform: "uppercase", letterSpacing: 0.7, marginTop: 5, lineHeight: 1.3 }}>
+                                {s.label?.[lang] || s.label?.en}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {houseStory.producerName && (
+                        <div style={{
+                          display: "flex", alignItems: "center", gap: 14,
+                          marginTop: houseStory.originStats.length > 0 ? 24 : 0,
+                          paddingTop: houseStory.originStats.length > 0 ? 22 : 0,
+                          borderTop: houseStory.originStats.length > 0 ? `1px solid ${TOKENS.paper}1A` : "none",
+                        }}>
+                          {houseStory.producerPhoto && (
+                            <img
+                              src={houseStory.producerPhoto}
+                              alt={houseStory.producerName}
+                              loading="lazy"
+                              decoding="async"
+                              style={{ width: 62, height: 62, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+                            />
+                          )}
+                          <div style={{ minWidth: 0 }}>
+                            {houseStory.producerQuote?.[lang] && (
+                              <p style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, lineHeight: 1.5, color: TOKENS.paper, margin: "0 0 8px" }}>
+                                “{houseStory.producerQuote[lang]}”
+                              </p>
+                            )}
+                            <div style={{ fontSize: 13.5, fontWeight: 600, color: TOKENS.brassOnDark }}>{houseStory.producerName}</div>
+                            {houseStory.producerRole?.[lang] && (
+                              <div style={{ fontSize: 11.5, color: `${TOKENS.paper}99`, marginTop: 1 }}>{houseStory.producerRole[lang]}</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div style={{ display: "flex", flexDirection: "column" }}>
                     {visibleCategories.map((cat, i) => {
                       const Icon = cat.icon;
@@ -2694,7 +2822,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               })()}
 
               <div style={{ display: "flex", gap: 8, marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>
-                {["orders", "sessions", "leads", "messages", "payment", "catalog", "reviews", "promos", "partners"].map((tab) => (
+                {["orders", "sessions", "leads", "messages", "payment", "catalog", "reviews", "promos", "partners", "house"].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setFrontDeskTab(tab)}
@@ -2705,7 +2833,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                     }}
                   >
-                    {tab === "orders" ? t.frontDeskOrders : tab === "sessions" ? t.frontDeskSessionsTab : tab === "leads" ? t.frontDeskLeads : tab === "payment" ? t.frontDeskPayment : tab === "catalog" ? t.catalogTitle : tab === "reviews" ? t.reviewsTitle : tab === "promos" ? t.promosTitle : tab === "partners" ? t.wholesaleAccountsTitle : t.frontDeskMessages}
+                    {tab === "orders" ? t.frontDeskOrders : tab === "sessions" ? t.frontDeskSessionsTab : tab === "leads" ? t.frontDeskLeads : tab === "payment" ? t.frontDeskPayment : tab === "catalog" ? t.catalogTitle : tab === "reviews" ? t.reviewsTitle : tab === "promos" ? t.promosTitle : tab === "partners" ? t.wholesaleAccountsTitle : tab === "house" ? t.frontDeskHouseTab : t.frontDeskMessages}
                     {tab === "orders" && unreadOrders > 0 && (
                       <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10.5, padding: "1px 6px" }}>{unreadOrders}</span>
                     )}
@@ -3290,6 +3418,76 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   ))}
                 </div>
               )}
+
+              {frontDeskTab === "house" && (() => {
+                const d = houseDraft ?? {
+                  producerName: houseStory.producerName, producerPhoto: houseStory.producerPhoto,
+                  roleEn: houseStory.producerRole?.en || "", roleVi: houseStory.producerRole?.vi || "",
+                  quoteEn: houseStory.producerQuote?.en || "", quoteVi: houseStory.producerQuote?.vi || "",
+                  statsText: originStatsToText(houseStory.originStats),
+                };
+                const set = (patch) => setHouseDraft({ ...d, ...patch });
+                const field = { padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 };
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, margin: 0, lineHeight: 1.5 }}>{t.houseTabHint}</p>
+
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 6 }}>
+                      {t.originStatsTitle}
+                    </div>
+                    <textarea
+                      value={d.statsText}
+                      onChange={(e) => set({ statsText: e.target.value })}
+                      placeholder={t.originStatsPh}
+                      rows={4}
+                      style={{ ...field, resize: "vertical", fontFamily: "monospace", fontSize: 12.5 }}
+                    />
+
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 6 }}>
+                      {t.producerTitle}
+                    </div>
+                    <input value={d.producerName} onChange={(e) => set({ producerName: e.target.value })} placeholder={t.producerNamePh} style={field} />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input value={d.roleEn} onChange={(e) => set({ roleEn: e.target.value })} placeholder={t.producerRoleEnPh} style={{ ...field, flex: 1, minWidth: 0 }} />
+                      <input value={d.roleVi} onChange={(e) => set({ roleVi: e.target.value })} placeholder={t.producerRoleViPh} style={{ ...field, flex: 1, minWidth: 0 }} />
+                    </div>
+                    <textarea value={d.quoteEn} onChange={(e) => set({ quoteEn: e.target.value })} placeholder={t.producerQuoteEnPh} rows={2} style={{ ...field, resize: "vertical", fontFamily: "inherit" }} />
+                    <textarea value={d.quoteVi} onChange={(e) => set({ quoteVi: e.target.value })} placeholder={t.producerQuoteViPh} rows={2} style={{ ...field, resize: "vertical", fontFamily: "inherit" }} />
+
+                    <label style={{
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      padding: "9px 12px", borderRadius: 8, border: `1px dashed ${TOKENS.brassDeep}88`,
+                      fontSize: 12.5, color: TOKENS.brassOnPaper, cursor: uploadingProducerPhoto ? "default" : "pointer",
+                      fontWeight: 600, opacity: uploadingProducerPhoto ? 0.6 : 1,
+                    }}>
+                      {uploadingProducerPhoto ? <Loader2 size={14} className="spin" /> : <Upload size={14} />}
+                      {uploadingProducerPhoto ? t.uploading : t.producerPhotoLabel}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={uploadingProducerPhoto}
+                        style={{ display: "none" }}
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) { if (!houseDraft) openHouseDraft(); uploadProducerPhoto(f); } }}
+                      />
+                    </label>
+                    {producerPhotoError && (
+                      <p style={{ fontSize: 11.5, color: TOKENS.lacquer, margin: 0 }}>
+                        {t.uploadFailed}{typeof producerPhotoError === "string" ? ` (${producerPhotoError})` : ""}
+                      </p>
+                    )}
+                    {d.producerPhoto && !uploadingProducerPhoto && (
+                      <img src={d.producerPhoto} alt="" style={{ width: 76, height: 76, borderRadius: "50%", objectFit: "cover" }} />
+                    )}
+
+                    <button
+                      onClick={() => { if (!houseDraft) { setHouseDraft(d); setTimeout(saveHouseDraft, 0); } else saveHouseDraft(); }}
+                      style={{ background: houseSaved ? TOKENS.brass : TOKENS.jade, color: houseSaved ? TOKENS.jade : TOKENS.paper, border: "none", borderRadius: 8, padding: "11px", fontSize: 13.5, fontWeight: 600, cursor: "pointer", marginTop: 4 }}
+                    >
+                      {houseSaved ? t.saved : t.save}
+                    </button>
+                  </div>
+                );
+              })()}
 
               {frontDeskTab === "sessions" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
