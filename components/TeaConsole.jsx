@@ -1517,7 +1517,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   padding: "22px 20px", borderBottom: `1px solid ${TOKENS.brassDeep}22`,
                 }}
               >
-                <p style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 16, lineHeight: 1.55, color: TOKENS.jade, margin: "0 0 8px", maxWidth: "62ch" }}>
+                <p style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: "clamp(19px, 4.6vw, 24px)", lineHeight: 1.45, color: TOKENS.jade, margin: "0 0 10px", maxWidth: "34ch" }}>
                   {lang === "en"
                     ? "“It's easy to make great things from great ingredients — but to make great things from the ordinary, that's something else.”"
                     : "“Làm ra thứ tuyệt vời từ nguyên liệu tuyệt vời thì dễ, nhưng từ những gì bình thường — đó mới là chuyện khác.”"}
@@ -1597,7 +1597,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 1 }}>
                         {t.teaOfDayLabel}
                       </div>
-                      <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, color: TOKENS.jade, marginTop: 3, overflowWrap: "anywhere" }}>
+                      <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: "clamp(19px, 4.4vw, 22px)", lineHeight: 1.25, color: TOKENS.jade, marginTop: 4, overflowWrap: "anywhere" }}>
                         {teaOfDay.name[lang] || teaOfDay.name.en}
                       </div>
                       {teaOfDay.notes?.[lang] && (
@@ -1644,7 +1644,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       <Calendar size={19} color={TOKENS.brass} strokeWidth={1.7} />
                     </span>
                     <span style={{ minWidth: 0, flex: 1 }}>
-                      <span style={{ display: "block", fontFamily: "Lora, Georgia, serif", fontSize: 16, color: TOKENS.paper }}>
+                      <span style={{ display: "block", fontFamily: "Lora, Georgia, serif", fontSize: "clamp(19px, 4.4vw, 22px)", lineHeight: 1.25, color: TOKENS.paper }}>
                         {t.teaSessionCtaBtn}
                       </span>
                       <span style={{ display: "block", fontSize: 12, color: TOKENS.brassOnDark, marginTop: 2 }}>
@@ -1677,8 +1677,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                             display: "flex", flexDirection: "column", gap: 6, minHeight: 110,
                           }}
                         >
-                          <div style={{ fontSize: 14, fontWeight: 600, color: TOKENS.paper, overflowWrap: "anywhere" }}>{p.name[lang]}</div>
-                          {p.price ? <div style={{ fontSize: 15, fontWeight: 700, color: TOKENS.brassOnDark }}>{formatVND(p.price)}</div> : null}
+                          <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, lineHeight: 1.25, color: TOKENS.paper, overflowWrap: "anywhere" }}>{p.name[lang]}</div>
+                          {p.price ? <div style={{ fontSize: 16, fontWeight: 700, color: TOKENS.brassOnDark }}>{formatVND(p.price)}</div> : null}
                           <div style={{ fontSize: 11, color: TOKENS.brassOnDark, fontWeight: 600, textDecoration: "underline", marginTop: "auto" }}>
                             {soldOut ? t.outOfStock : t.viewDetails}
                           </div>
@@ -1717,7 +1717,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         }}>
                           <Icon size={featured ? 21 : 17} color={TOKENS.brass} strokeWidth={1.6} />
                         </div>
-                        <div style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: featured ? 20 : 16, overflowWrap: "anywhere", color: TOKENS.jade }}>
+                        <div style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: featured ? "clamp(24px, 5.5vw, 30px)" : "clamp(19px, 4.4vw, 22px)", lineHeight: 1.2, letterSpacing: -0.2, overflowWrap: "anywhere", color: TOKENS.jade }}>
                           {n.label[lang]}
                         </div>
                         <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>
