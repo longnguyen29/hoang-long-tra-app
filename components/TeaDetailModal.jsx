@@ -42,6 +42,14 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
   const effectivePrice = hasVariants ? variant.price : product.price;
   const effectiveStock = hasVariants ? getStockTotal(variant) : getStockTotal(product);
   const soldOut = product.available === false || effectiveStock === 0;
+  const flavors = product.flavors?.[lang]?.length ? product.flavors[lang] : (product.flavors?.en || []);
+
+  // Editorial spec strip — only the facts this product actually carries.
+  const specs = [
+    product.batch && { label: t.batchLabel, value: product.batch },
+    product.packSize && { label: t.specPackSize, value: product.packSize },
+    product.brew?.[lang] && { label: t.specBrew, value: product.brew[lang] },
+  ].filter(Boolean);
 
   const [qty, setQty] = useState("");
   const [added, setAdded] = useState(false);
@@ -130,11 +138,29 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
         </div>
 
         <div style={{ padding: 20 }}>
-          <h3 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 20, margin: "0 0 4px", overflowWrap: "anywhere" }}>
+          <h3 style={{
+            fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: "clamp(26px, 7vw, 34px)",
+            lineHeight: 1.12, letterSpacing: -0.4, margin: "0 0 4px", overflowWrap: "anywhere", color: TOKENS.jade,
+          }}>
             {product.name[lang]}
           </h3>
           {lang === "en" && product.name.vi && (
-            <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginBottom: 6 }}>{product.name.vi}</div>
+            <div style={{ fontSize: 13, color: TOKENS.jadeSoft, marginBottom: 8 }}>{product.name.vi}</div>
+          )}
+          {flavors.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "8px 0 10px" }}>
+              {flavors.map((f) => (
+                <span
+                  key={f}
+                  style={{
+                    fontSize: 11.5, fontWeight: 600, color: TOKENS.brassOnPaper,
+                    background: `${TOKENS.brass}1F`, borderRadius: 20, padding: "4px 11px",
+                  }}
+                >
+                  {f}
+                </span>
+              ))}
+            </div>
           )}
           {stats && stats.count > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
@@ -187,16 +213,22 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
               {t.stockLeft(effectiveStock)}{effectiveStock <= 5 ? ` · ${t.lastFew}` : ""}
             </div>
           )}
-          {product.batch && (
-            <div style={{ fontSize: 11.5, color: TOKENS.jadeSoft, marginTop: 2 }}>{t.batchLabel}: {product.batch}</div>
-          )}
           {product.notes?.[lang] && (
-            <p style={{ fontSize: 14, color: TOKENS.jadeSoft, fontStyle: "italic", lineHeight: 1.6, margin: "8px 0" }}>{product.notes[lang]}</p>
+            <p style={{ fontSize: 14.5, color: TOKENS.jadeSoft, lineHeight: 1.65, margin: "12px 0" }}>{product.notes[lang]}</p>
           )}
-          {(product.brew?.[lang] || product.packSize) && (
-            <div style={{ fontSize: 13, color: TOKENS.brassDeep, marginBottom: 14 }}>
-              {product.brew?.[lang]}
-              {product.packSize ? ` · ${product.packSize}` : ""}
+
+          {specs.length > 0 && (
+            <div style={{
+              display: "grid", gridTemplateColumns: `repeat(${specs.length}, 1fr)`, gap: 12,
+              borderTop: `1px solid ${TOKENS.hairline}`, borderBottom: `1px solid ${TOKENS.hairline}`,
+              padding: "14px 0", margin: "14px 0",
+            }}>
+              {specs.map((s) => (
+                <div key={s.label} style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, color: TOKENS.jade, lineHeight: 1.35, overflowWrap: "anywhere" }}>{s.value}</div>
+                  <div style={{ fontSize: 10.5, color: TOKENS.jadeSoft, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 3 }}>{s.label}</div>
+                </div>
+              ))}
             </div>
           )}
 

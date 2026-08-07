@@ -219,7 +219,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [productDraft, setProductDraft] = useState({
     id: null, nameEn: "", nameVi: "", line: "everyday",
     notesEn: "", notesVi: "", brewEn: "", brewVi: "", packSize: "", photoUrl: "",
-    price: "", stockHaGiang: "", stockSocSon: "", batch: "", soldCount: "", photoPosX: 50, photoPosY: 50,
+    price: "", stockHaGiang: "", stockSocSon: "", batch: "", soldCount: "",
+    flavorsEn: "", flavorsVi: "", photoPosX: 50, photoPosY: 50,
   });
   const [uploadingProductPhoto, setUploadingProductPhoto] = useState(false);
   const [productPhotoError, setProductPhotoError] = useState(false);
@@ -269,6 +270,28 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       </div>
     </div>
   );
+
+  // Compact flavour chips for cards — capped at three so a long list can't wrap the layout.
+  const flavorChips = (p, onDark) => {
+    const list = (p.flavors?.[lang]?.length ? p.flavors[lang] : p.flavors?.en) || [];
+    if (list.length === 0) return null;
+    return (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 5 }}>
+        {list.slice(0, 3).map((f) => (
+          <span
+            key={f}
+            style={{
+              fontSize: 10, fontWeight: 600, borderRadius: 20, padding: "2px 8px",
+              color: onDark ? TOKENS.brassOnDark : TOKENS.brassOnPaper,
+              background: onDark ? `${TOKENS.paper}1A` : `${TOKENS.brass}1F`,
+            }}
+          >
+            {f}
+          </span>
+        ))}
+      </div>
+    );
+  };
 
   // Rating + sold-count line for product cards. Hidden entirely when a product has neither.
   // `onDark` switches to the light brass variant for the jade-backed sample cards.
@@ -659,13 +682,17 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       stockSocSon: ssVal !== "" ? Math.max(0, Number(ssVal)) : undefined,
       batch: productDraft.batch.trim(),
       soldCount: Math.max(0, Number(productDraft.soldCount) || 0),
+      flavors: {
+        en: productDraft.flavorsEn.split(",").map((s) => s.trim()).filter(Boolean),
+        vi: productDraft.flavorsVi.split(",").map((s) => s.trim()).filter(Boolean),
+      },
     };
     if (productDraft.id) {
       await supabase.from("catalog_products").update({
         line: fields.line, name: fields.name, notes: fields.notes, brew: fields.brew,
         pack_size: fields.packSize, photo_url: fields.photoUrl, photo_position: fields.photoPosition,
         price: fields.price ?? null, stock_ha_giang: fields.stockHaGiang ?? null, stock_soc_son: fields.stockSocSon ?? null,
-        batch: fields.batch, sold_count: fields.soldCount,
+        batch: fields.batch, sold_count: fields.soldCount, flavors: fields.flavors,
       }).eq("id", productDraft.id);
       setCatalog(catalog.map((p) => (p.id === productDraft.id ? { ...p, ...fields } : p)));
     } else {
@@ -674,7 +701,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       await supabase.from("catalog_products").insert(toCatalogRow(newRow));
       setCatalog([...catalog, newRow]);
     }
-    setProductDraft({ id: null, nameEn: "", nameVi: "", line: "everyday", notesEn: "", notesVi: "", brewEn: "", brewVi: "", packSize: "", photoUrl: "", price: "", stockHaGiang: "", stockSocSon: "", batch: "", soldCount: "", photoPosX: 50, photoPosY: 50 });
+    setProductDraft({ id: null, nameEn: "", nameVi: "", line: "everyday", notesEn: "", notesVi: "", brewEn: "", brewVi: "", packSize: "", photoUrl: "", price: "", stockHaGiang: "", stockSocSon: "", batch: "", soldCount: "", flavorsEn: "", flavorsVi: "", photoPosX: 50, photoPosY: 50 });
   };
   const toggleAvailability = async (id) => {
     const p = catalog.find((x) => x.id === id);
@@ -709,6 +736,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       stockSocSon: p.stockSocSon !== undefined && p.stockSocSon !== null ? String(p.stockSocSon) : "",
       batch: p.batch || "",
       soldCount: p.soldCount ? String(p.soldCount) : "",
+      flavorsEn: (p.flavors?.en || []).join(", "),
+      flavorsVi: (p.flavors?.vi || []).join(", "),
       photoPosX: p.photoPosition ? Number(p.photoPosition.split(" ")[0].replace("%", "")) : 50,
       photoPosY: p.photoPosition ? Number(p.photoPosition.split(" ")[1].replace("%", "")) : 50,
     });
@@ -1786,7 +1815,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
                 {activeCategoryMeta?.label[lang]}
               </div>
-              <h2 style={{ fontFamily: "Lora, Georgia, serif", fontSize: "clamp(20px, 4vw, 26px)", margin: "0 0 16px", overflowWrap: "anywhere" }}>
+              <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: "clamp(28px, 6.5vw, 40px)", lineHeight: 1.12, letterSpacing: -0.5, margin: "0 0 18px", overflowWrap: "anywhere" }}>
                 {active.title[lang] || active.title.en}
               </h2>
               <div style={{ whiteSpace: "pre-line", fontSize: 15, lineHeight: 1.75, color: TOKENS.jade }}>
@@ -1836,6 +1865,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                                   <div style={{ fontSize: 13.5, fontWeight: 700, color: TOKENS.brassOnPaper, marginTop: 2 }}>{t.fromPrice(formatVND(getVariantMinPrice(p)))}</div>
                                 )}
                                 {productBadges(p)}
+                                {flavorChips(p)}
                                 {typeof getStockTotal(p) === "number" && p.available !== false && (
                                   <div style={{ fontSize: 11.5, fontWeight: 700, color: getStockTotal(p) <= 5 ? TOKENS.lacquer : TOKENS.jadeSoft, marginTop: 2 }}>
                                     {t.stockLeft(getStockTotal(p))}{getStockTotal(p) <= 5 ? ` · ${t.lastFew}` : ""}
@@ -2211,7 +2241,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
                 {libraryActiveCategoryMeta?.label[lang]}
               </div>
-              <h2 style={{ fontFamily: "Lora, Georgia, serif", fontSize: "clamp(20px, 4vw, 26px)", margin: "0 0 16px", overflowWrap: "anywhere" }}>
+              <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: "clamp(28px, 6.5vw, 40px)", lineHeight: 1.12, letterSpacing: -0.5, margin: "0 0 18px", overflowWrap: "anywhere" }}>
                 {libraryActive.title[lang] || libraryActive.title.en}
               </h2>
               <div style={{ whiteSpace: "pre-line", fontSize: 15, lineHeight: 1.75, color: TOKENS.jade }}>
@@ -2393,6 +2423,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                               </div>
                             ) : null}
                             {productBadges(p)}
+                            {flavorChips(p)}
                             {p.notes?.[lang] && (
                               <div style={{ fontSize: 11.5, color: TOKENS.jadeSoft, fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>
                                 {p.notes[lang]}
@@ -2803,6 +2834,20 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       placeholder={t.tastingNotesViPh}
                       style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
                     />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        value={productDraft.flavorsEn}
+                        onChange={(e) => setProductDraft({ ...productDraft, flavorsEn: e.target.value })}
+                        placeholder={t.flavorsEnPh}
+                        style={{ flex: 1, padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13, minWidth: 0 }}
+                      />
+                      <input
+                        value={productDraft.flavorsVi}
+                        onChange={(e) => setProductDraft({ ...productDraft, flavorsVi: e.target.value })}
+                        placeholder={t.flavorsViPh}
+                        style={{ flex: 1, padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13, minWidth: 0 }}
+                      />
+                    </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <input
                         value={productDraft.brewEn}
@@ -3518,6 +3563,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                               <div style={{ fontSize: 15, fontWeight: 600, color: TOKENS.paper, overflowWrap: "anywhere" }}>{p.name[lang]}</div>
                               {p.price ? <div style={{ fontSize: 16, fontWeight: 700, color: TOKENS.brassOnDark }}>{formatVND(p.price)}</div> : null}
                               {productBadges(p, true)}
+                              {flavorChips(p, true)}
                               {p.notes?.[lang] && (
                                 <div style={{ fontSize: 11.5, color: `${TOKENS.paper}bb`, lineHeight: 1.4, flex: 1 }}>{p.notes[lang]}</div>
                               )}
@@ -3589,6 +3635,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                                       )}
                                       {price ? <div style={{ fontSize: 12.5, color: TOKENS.brassOnPaper, fontWeight: 700, marginTop: 3 }}>{formatVND(price)}{p.line === "everyday" ? ` / ${t.kg}` : ""}</div> : null}
                                       {productBadges(p)}
+                                      {flavorChips(p)}
                                       {typeof stockTotal === "number" && p.available !== false && (
                                         <div style={{ fontSize: 10.5, fontWeight: 700, color: stockTotal <= 5 ? TOKENS.lacquer : TOKENS.jadeSoft, marginTop: 2 }}>
                                           {t.stockLeft(stockTotal)}
