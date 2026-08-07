@@ -45,7 +45,7 @@ export default function AdminLoginPage() {
       <form
         onSubmit={submit}
         style={{
-          background: TOKENS.paper, borderRadius: 16, padding: "32px 28px", width: "min(360px, 100%)",
+          background: TOKENS.paper, borderRadius: TOKENS.radius, padding: "32px 28px", width: "min(360px, 100%)",
           boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
         }}
       >
@@ -54,6 +54,7 @@ export default function AdminLoginPage() {
             width: 44, height: 44, borderRadius: "50%", border: `1.5px solid ${TOKENS.brass}`,
             display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16,
             fontFamily: "'Noto Serif SC', serif", fontSize: 18, color: TOKENS.brass,
+            boxShadow: "0 0 22px rgba(176,141,87,0.35)",
           }}
         >
           皇龍

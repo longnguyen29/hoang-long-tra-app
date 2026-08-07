@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Search, ChevronRight, ChevronLeft, Menu, X, Edit3, Save, Plus, Trash2,
   Leaf, Mountain, Languages, Copy, Check, Lock, Clock, Upload, Sparkles, ShoppingCart, Minus,
-  MessageCircle, Send, Download, Printer, LogOut, Tag, Truck, Loader2, Calendar, Phone,
+  MessageCircle, Send, Download, Printer, LogOut, Tag, Truck, Loader2, Calendar, Phone, Images,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadImage } from "@/lib/supabase/storage";
@@ -133,6 +133,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [galleryDraft, setGalleryDraft] = useState({ url: "", captionEn: "", captionVi: "" });
   const [uploadingGalleryPhoto, setUploadingGalleryPhoto] = useState(false);
   const [galleryPhotoError, setGalleryPhotoError] = useState(false);
+  // Resolved after mount so the server-rendered HTML can't disagree with the client's clock.
+  const [today, setToday] = useState(null);
+  useEffect(() => { setToday(new Date()); }, []);
+
+  const [galleryIndex, setGalleryIndex] = useState(0);
   const [lightboxImage, setLightboxImage] = useState(null);
   const [homePhoto, setHomePhoto] = useState("");
   const [uploadingHomePhoto, setUploadingHomePhoto] = useState(false);
@@ -249,6 +254,21 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const other = lang === "en" ? "vi" : "en";
   const lineLabel = (l) => (l === "reserve" ? t.reserveOption : l === "sample" ? t.sampleOption : t.everydayOption);
   const formatVND = (n) => n.toLocaleString("vi-VN") + "đ";
+
+  // Decorative 皇龍 mark used as a quiet anchor at the end of a few sections. Deliberately
+  // sparse — it stops meaning anything if it's on every block.
+  const sealMark = (size = 26) => (
+    <div aria-hidden="true" style={{ display: "flex", justifyContent: "center", padding: "26px 0 6px" }}>
+      <div style={{
+        width: size + 18, height: size + 18, borderRadius: "50%",
+        border: `1px solid ${TOKENS.brass}44`, display: "flex", alignItems: "center", justifyContent: "center",
+        fontFamily: "'Noto Serif SC', serif", fontSize: size * 0.5, color: `${TOKENS.brass}99`,
+        background: TOKENS.sealGlow,
+      }}>
+        皇龍
+      </div>
+    </div>
+  );
 
   // Rating + sold-count line for product cards. Hidden entirely when a product has neither.
   // `onDark` switches to the light brass variant for the jade-backed sample cards.
@@ -369,6 +389,13 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     }
     return out;
   }, [productReviews]);
+
+  // "Tea of the day" — same tea for everyone on a given day, rotating through the catalog.
+  const teaOfDay = useMemo(() => {
+    if (!today || catalog.length === 0) return null;
+    const dayNumber = Math.floor(today.getTime() / 86400000);
+    return catalog[dayNumber % catalog.length];
+  }, [today, catalog]);
 
   const wholesaleProducts = catalog.filter((p) => p.line === "everyday");
   const retailProducts = catalog;
@@ -1181,11 +1208,19 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
             style={{
               width: 240, minWidth: 240, background: TOKENS.jade, color: TOKENS.paper,
               position: "fixed", top: 0, left: 0, height: "100vh", zIndex: 26,
-              boxShadow: "8px 0 24px rgba(0,0,0,0.25)",
+              borderRadius: "0 24px 24px 0", boxShadow: "10px 0 40px rgba(0,0,0,0.28)",
             }}
           >
-            <div style={{ padding: "26px 20px 22px", borderBottom: `1px solid ${TOKENS.jadeSoft}` }}>
+            <div style={{ padding: "26px 20px 22px", borderBottom: `1px solid ${TOKENS.jadeSoft}`, position: "relative" }}>
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute", top: 4, left: 2, width: 110, height: 110, borderRadius: "50%",
+                  background: TOKENS.sealGlow, filter: "blur(5px)", pointerEvents: "none",
+                }}
+              />
               <div style={{
+                position: "relative",
                 width: 38, height: 38, borderRadius: "50%", border: `1px solid ${TOKENS.brass}88`,
                 display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12,
                 fontFamily: "'Noto Serif SC', serif", fontSize: 15, color: TOKENS.brass,
@@ -1203,14 +1238,22 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     key={n.id}
                     onClick={() => { setSection(n.id); resetWiki(); setSidebarOpen(false); }}
                     style={{
-                      display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "12px 14px",
-                      marginBottom: 2, background: "transparent", border: "none",
-                      borderLeft: `2px solid ${isActive ? TOKENS.brass : "transparent"}`,
+                      display: "flex", alignItems: "center", gap: 11, width: "100%", padding: "9px 11px",
+                      marginBottom: 4, border: "none", borderRadius: 14,
+                      background: isActive ? TOKENS.navActiveBg : "transparent",
+                      boxShadow: isActive ? TOKENS.navActiveInset : "none",
                       color: isActive ? TOKENS.paper : `${TOKENS.paper}99`, fontSize: 14,
                       fontWeight: isActive ? 600 : 400, cursor: "pointer", textAlign: "left", whiteSpace: "nowrap",
+                      transition: "background 220ms cubic-bezier(0.23, 1, 0.32, 1)",
                     }}
                   >
-                    <Icon size={17} strokeWidth={1.7} color={isActive ? TOKENS.brass : `${TOKENS.paper}77`} />
+                    <span style={{
+                      width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      background: isActive ? `${TOKENS.brass}2E` : `${TOKENS.paper}0F`,
+                    }}>
+                      <Icon size={16} strokeWidth={1.7} color={isActive ? TOKENS.brass : `${TOKENS.paper}88`} />
+                    </span>
                     {n.label[lang]}
                     {n.id === "frontdesk" && frontDeskBadge > 0 && (
                       <span style={{
@@ -1257,7 +1300,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
             style={{
               display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
               background: TOKENS.jade, border: `1px solid ${TOKENS.brass}`, borderRadius: 20,
-              padding: "5px 10px 5px 8px",
+              padding: "5px 10px 5px 8px", boxShadow: "0 0 14px rgba(176,141,87,0.28)",
             }}
           >
             <span style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 13, color: TOKENS.brass, lineHeight: 1 }}>皇龍</span>
@@ -1346,6 +1389,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 style={{
                   position: "relative", background: TOKENS.jade, color: TOKENS.paper,
                   padding: "72px 28px 56px", overflow: "hidden",
+                  borderRadius: "0 0 28px 28px",
                 }}
               >
                 <svg
@@ -1380,6 +1424,53 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   {t.viewDetails}
                 </span>
               </button>
+
+              {/* Tea of the day — museum "object of the day" framing, rotates once per day */}
+              {teaOfDay && (
+                <div style={{ padding: "22px 20px 0" }}>
+                  <div
+                    className="pcard"
+                    onClick={() => setDetailProduct({ product: teaOfDay, cartType: role === "wholesale" && teaOfDay.line === "everyday" ? "wholesale" : "retail" })}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 16, cursor: "pointer",
+                      background: TOKENS.paper, borderRadius: TOKENS.radius, boxShadow: TOKENS.shadowSm,
+                      padding: "18px 20px", position: "relative", overflow: "hidden",
+                    }}
+                  >
+                    <div style={{
+                      fontFamily: "Lora, Georgia, serif", fontSize: 52, fontWeight: 500, lineHeight: 0.9,
+                      color: `${TOKENS.jade}1F`, flexShrink: 0, letterSpacing: -1,
+                    }}>
+                      {String(today.getDate()).padStart(2, "0")}
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 1 }}>
+                        {t.teaOfDayLabel}
+                      </div>
+                      <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, color: TOKENS.jade, marginTop: 3, overflowWrap: "anywhere" }}>
+                        {teaOfDay.name[lang] || teaOfDay.name.en}
+                      </div>
+                      {teaOfDay.notes?.[lang] && (
+                        <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, fontStyle: "italic", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {teaOfDay.notes[lang]}
+                        </div>
+                      )}
+                    </div>
+                    {teaOfDay.photoUrl && (
+                      <img
+                        src={teaOfDay.photoUrl}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        style={{
+                          width: 64, height: 64, borderRadius: 16, objectFit: "cover", flexShrink: 0,
+                          objectPosition: teaOfDay.photoPosition || "50% 50%",
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Featured photo below the quote */}
               {(homePhoto || isAdmin) && (
@@ -1486,12 +1577,13 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   return (
                     <button
                       key={n.id}
+                      className="pcard"
                       onClick={() => { setSection(n.id); resetWiki(); }}
                       style={{
                         gridColumn: featured ? "1 / -1" : "auto",
-                        background: TOKENS.paper, border: `1px solid ${TOKENS.hairline}`,
+                        background: TOKENS.paper, border: "none",
                         boxShadow: featured ? TOKENS.shadowMd : TOKENS.shadowSm,
-                        borderRadius: TOKENS.radius, padding: featured ? "28px 26px" : "22px 20px",
+                        borderRadius: featured ? TOKENS.radiusLg : TOKENS.radius, padding: featured ? "28px 26px" : "22px 20px",
                         textAlign: "left", cursor: "pointer", minWidth: 0, color: TOKENS.jade,
                         display: "flex", flexDirection: featured ? "row" : "column",
                         alignItems: featured ? "center" : "flex-start", gap: featured ? 20 : 12,
@@ -1529,6 +1621,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   );
                 })}
               </div>
+              {sealMark(30)}
             </div>
           )}
 
@@ -1562,7 +1655,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       );
                     })}
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 24, padding: "16px 0 4px" }}>
+                  {sealMark()}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "4px 0" }}>
                     <span style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.stillHaveQuestions}</span>
                     <a href="tel:+84903333841" style={{ display: "flex", alignItems: "center", gap: 5, color: TOKENS.brassOnPaper, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>
                       <Phone size={13} /> 0903 333 841
@@ -1789,6 +1883,49 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
             </div>
           )}
 
+          {/* Quick access: jump straight to Gallery or any Library section without scrolling */}
+          {section === "library" && (
+            <div style={{ marginBottom: 22 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
+                {t.quickAccess}
+              </div>
+              <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 4 }} className="peekrail">
+                {[
+                  { id: "__gallery", icon: Images, label: t.galleryTab, onClick: () => { setLibraryTab("gallery"); setLibraryCategory(null); setLibraryActiveId(null); } },
+                  ...LIBRARY_CATEGORIES.map((c) => ({
+                    id: c.id, icon: c.icon, label: c.label[lang],
+                    onClick: () => { setLibraryTab("reading"); setLibraryCategory(c.id); setLibraryActiveId(null); },
+                  })),
+                ].map((item) => {
+                  const Icon = item.icon;
+                  const active = item.id === "__gallery" ? libraryTab === "gallery" : (libraryTab === "reading" && libraryCategory === item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={item.onClick}
+                      style={{
+                        display: "flex", flexDirection: "column", alignItems: "center", gap: 6, flex: "0 0 auto",
+                        width: 72, background: "none", border: "none", cursor: "pointer", padding: 0, color: TOKENS.jade,
+                      }}
+                    >
+                      <span style={{
+                        width: 52, height: 52, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                        background: active ? TOKENS.jade : TOKENS.paper,
+                        boxShadow: active ? `0 0 0 2px ${TOKENS.brass}, ${TOKENS.shadowSm}` : TOKENS.shadowSm,
+                        transition: "box-shadow 220ms cubic-bezier(0.23, 1, 0.32, 1)",
+                      }}>
+                        <Icon size={21} strokeWidth={1.6} color={active ? TOKENS.brass : TOKENS.brassDeep} />
+                      </span>
+                      <span style={{ fontSize: 10.5, lineHeight: 1.25, textAlign: "center", color: TOKENS.jadeSoft, overflowWrap: "anywhere" }}>
+                        {item.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {section === "library" && libraryTab === "gallery" && (
             <div>
               {isAdmin && (
@@ -1841,30 +1978,61 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               {galleryImages.length === 0 ? (
                 <p style={{ color: TOKENS.jadeSoft, fontSize: 14, fontStyle: "italic" }}>{t.emptyGallery}</p>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 8 }}>
-                  {galleryImages.map((g) => (
-                    <div key={g.id} style={{ position: "relative" }}>
-                      <img
-                        src={g.url}
-                        alt={g.caption?.[lang] || ""}
-                        loading="lazy"
-                        decoding="async"
-                        onClick={() => setLightboxImage(g)}
-                        style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 10, cursor: "pointer", border: `1px solid ${TOKENS.hairline}` }}
-                      />
-                      {isAdmin && (
-                        <button
-                          onClick={() => deleteGalleryImage(g.id)}
+                /* Peek carousel: the current photo holds most of the frame while the next one
+                   stays partly visible at the right edge, so there's an obvious "swipe on" cue. */
+                <div style={{ position: "relative", margin: "0 -20px" }}>
+                  <div
+                    className="peekrail"
+                    onScroll={(e) => {
+                      const el = e.currentTarget;
+                      const first = el.firstElementChild;
+                      const step = first ? first.getBoundingClientRect().width + 12 : 1;
+                      const i = Math.round(el.scrollLeft / step);
+                      setGalleryIndex(Math.max(0, Math.min(galleryImages.length - 1, i)));
+                    }}
+                    style={{
+                      display: "flex", gap: 12, overflowX: "auto", scrollSnapType: "x mandatory",
+                      padding: "0 20px 12px", scrollPaddingLeft: 20,
+                    }}
+                  >
+                    {galleryImages.map((g) => (
+                      <div key={g.id} style={{ position: "relative", flex: "0 0 84%", scrollSnapAlign: "start" }}>
+                        <img
+                          src={g.url}
+                          alt={g.caption?.[lang] || ""}
+                          loading="lazy"
+                          decoding="async"
+                          onClick={() => setLightboxImage(g)}
                           style={{
-                            position: "absolute", top: 6, right: 6, background: "rgba(28,43,36,0.7)", border: "none",
-                            borderRadius: "50%", width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                            width: "100%", height: 300, objectFit: "cover", borderRadius: TOKENS.radius,
+                            boxShadow: TOKENS.shadowMd, cursor: "pointer", display: "block",
                           }}
-                        >
-                          <Trash2 size={12} color="#fff" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                        />
+                        {g.caption?.[lang] && (
+                          <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginTop: 8, paddingRight: 8 }}>{g.caption[lang]}</div>
+                        )}
+                        {isAdmin && (
+                          <button
+                            onClick={() => deleteGalleryImage(g.id)}
+                            style={{
+                              position: "absolute", top: 10, left: 10, background: "rgba(28,43,36,0.7)", border: "none",
+                              borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                            }}
+                          >
+                            <Trash2 size={13} color="#fff" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{
+                    position: "absolute", top: 12, right: 32,
+                    background: "rgba(28,43,36,0.72)", color: TOKENS.brass,
+                    borderRadius: 20, padding: "4px 11px", fontSize: 11.5, fontWeight: 700,
+                    fontFamily: "Lora, Georgia, serif", letterSpacing: 0.5, pointerEvents: "none",
+                  }}>
+                    {String(galleryIndex + 1).padStart(2, "0")} / {String(galleryImages.length).padStart(2, "0")}
+                  </div>
                 </div>
               )}
             </div>
@@ -2096,7 +2264,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   {!isAdmin && <ReorderBox supabase={supabase} type="wholesale" onApply={applyReorder} t={t} TOKENS={TOKENS} />}
 
                   {stepHeader(1, Leaf, t.stepBrowse)}
-                  <div style={{ marginBottom: 20, background: TOKENS.paper, border: `1px solid ${TOKENS.hairline}`, boxShadow: TOKENS.shadowSm, borderRadius: TOKENS.radius, padding: 18 }}>
+                  <div style={{ marginBottom: 20, background: TOKENS.paper, boxShadow: TOKENS.shadowSm, borderRadius: TOKENS.radius, padding: 18 }}>
                     <div style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 16, marginBottom: 3 }}>{t.yieldGuideTitle}</div>
                     <p style={{ fontSize: 11.5, color: TOKENS.jadeSoft, margin: "0 0 14px", lineHeight: 1.5 }}>{t.yieldGuideHint}</p>
                     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -2144,8 +2312,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         className="pcard"
                         style={{
                           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-                          background: TOKENS.paper, border: `1px solid ${TOKENS.hairline}`, boxShadow: TOKENS.shadowSm,
-                          borderRadius: 12, padding: "12px 14px", opacity: p.available === false ? 0.55 : 1,
+                          background: TOKENS.paper, boxShadow: TOKENS.shadowSm,
+                          borderRadius: TOKENS.radiusSm, padding: "14px 16px", opacity: p.available === false ? 0.55 : 1,
                         }}
                       >
                         <div
@@ -3333,8 +3501,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                                   className="pcard"
                                   style={{
                                     display: "flex", flexDirection: "column", position: "relative",
-                                    background: TOKENS.paper, border: `1px solid ${TOKENS.hairline}`, boxShadow: TOKENS.shadowSm,
-                                    borderRadius: 14, overflow: "hidden", opacity: soldOut ? 0.55 : 1,
+                                    background: TOKENS.paper, boxShadow: TOKENS.shadowSm,
+                                    borderRadius: TOKENS.radius, overflow: "hidden", opacity: soldOut ? 0.55 : 1,
                                   }}
                                 >
                                   {p.limited && (

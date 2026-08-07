@@ -94,7 +94,7 @@ export default function TeaSessionBooking({ supabase, payment, vietQrUrl, t, TOK
   }
 
   return (
-    <div style={{ marginTop: 20, background: TOKENS.paper, border: `1px solid ${TOKENS.hairline}`, boxShadow: TOKENS.shadowSm, borderRadius: TOKENS.radius, padding: 20, maxWidth: 420 }}>
+    <div style={{ marginTop: 20, background: TOKENS.paper, boxShadow: TOKENS.shadowMd, borderRadius: TOKENS.radius, padding: 20, maxWidth: 420 }}>
       {booked ? (
         <div>
           <h3 style={{ fontFamily: "Lora, Georgia, serif", fontSize: 18, margin: "0 0 8px" }}>{t.teaSessionSuccessTitle}</h3>

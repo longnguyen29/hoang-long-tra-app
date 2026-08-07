@@ -27,7 +27,17 @@ export default function BrandSeal({ TOKENS }) {
         }
       `}</style>
 
-      <svg viewBox="0 0 120 120" width="72" height="72" style={{ display: "block", marginBottom: 18 }}>
+      {/* Diffused brass halo behind the seal — purely decorative, sits under the SVG. */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute", top: -26, left: "50%", transform: "translateX(-50%)",
+          width: 190, height: 190, borderRadius: "50%", background: TOKENS.sealGlow,
+          filter: "blur(6px)", pointerEvents: "none", zIndex: 0,
+        }}
+      />
+
+      <svg viewBox="0 0 120 120" width="72" height="72" style={{ display: "block", marginBottom: 18, position: "relative", zIndex: 1 }}>
         <circle
           className="hl-seal-ring"
           cx="60" cy="60" r="54" fill="none" stroke={TOKENS.brass} strokeWidth="2"

@@ -38,14 +38,15 @@ button:not(:disabled):active {
   transform: scale(0.97);
 }
 
-/* Product cards (Tea Shop grid, wholesale list rows, sample packs): a light lift on
-   hover — mouse/trackpad only, so tapping on touch devices never triggers a false hover. */
+/* Cards (Tea Shop grid, wholesale rows, sample packs, home bento tiles): lift and deepen
+   the shadow on hover — mouse/trackpad only, so tapping never triggers a false hover. */
 .pcard {
-  transition: transform 200ms ease;
+  transition: transform 240ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 240ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 @media (hover: hover) and (pointer: fine) {
   .pcard:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    box-shadow: 0 14px 34px rgba(28, 43, 36, 0.13);
   }
 }
 
@@ -59,6 +60,15 @@ button:not(:disabled):active {
   .spin {
     animation: none !important;
   }
+}
+
+/* Gallery peek carousel: hide the scrollbar, the peeking next slide is the affordance. */
+.peekrail {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.peekrail::-webkit-scrollbar {
+  display: none;
 }
 
 /* Admin image-upload spinner (product/gallery/home photo). */
