@@ -1,10 +1,41 @@
 "use client";
 
 import { useState } from "react";
-import { X, Check, Plus, Sparkles } from "lucide-react";
+import { X, Check, Plus, Sparkles, Star } from "lucide-react";
 import { getStockTotal, YIELD_GUIDE } from "@/lib/constants";
 
-export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKENS, onConfirm, onClose }) {
+// Row of 1-5 stars. Interactive when onPick is given, read-only otherwise.
+function Stars({ value, size = 14, onPick, TOKENS }) {
+  return (
+    <span style={{ display: "inline-flex", gap: 1, verticalAlign: "middle" }}>
+      {[1, 2, 3, 4, 5].map((n) => {
+        const filled = n <= value;
+        const star = (
+          <Star
+            size={size}
+            color={TOKENS.brassDeep}
+            fill={filled ? TOKENS.brassDeep : "none"}
+            strokeWidth={1.6}
+          />
+        );
+        if (!onPick) return <span key={n} style={{ display: "flex" }}>{star}</span>;
+        return (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onPick(n)}
+            aria-label={`${n}`}
+            style={{ background: "none", border: "none", padding: 1, cursor: "pointer", display: "flex", color: TOKENS.jade }}
+          >
+            {star}
+          </button>
+        );
+      })}
+    </span>
+  );
+}
+
+export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKENS, onConfirm, onClose, supabase, reviews = [], stats, onReviewSubmitted }) {
   const hasVariants = product.variants && product.variants.length > 0;
   const [selectedWeight, setSelectedWeight] = useState(hasVariants ? product.variants[0].weight : null);
   const variant = hasVariants ? (product.variants.find((v) => v.weight === selectedWeight) || product.variants[0]) : null;
@@ -15,11 +46,44 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
   const [qty, setQty] = useState("");
   const [added, setAdded] = useState(false);
 
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewDraft, setReviewDraft] = useState({ rating: 0, name: "", contact: "", body: "" });
+  const [reviewError, setReviewError] = useState("");
+  const [reviewSending, setReviewSending] = useState(false);
+  const [reviewSent, setReviewSent] = useState(false);
+
   const confirm = () => {
     const n = Math.max(0, Number(qty) || 0);
     onConfirm(n, hasVariants ? variant.weight : null);
     setAdded(true);
     setTimeout(() => setAdded(false), 1200);
+  };
+
+  const submitReview = async () => {
+    if (!reviewDraft.rating || !reviewDraft.name.trim() || !reviewDraft.contact.trim()) return;
+    setReviewSending(true);
+    setReviewError("");
+    const { error } = await supabase.rpc("submit_product_review", {
+      p_product_id: product.id,
+      p_contact: reviewDraft.contact.trim(),
+      p_reviewer_name: reviewDraft.name.trim(),
+      p_rating: reviewDraft.rating,
+      p_body: reviewDraft.body.trim(),
+    });
+    setReviewSending(false);
+    if (error) {
+      const msg = error.message || "";
+      setReviewError(
+        msg.includes("not_purchased") ? t.reviewErrorNotPurchased
+          : msg.includes("already_reviewed") ? t.reviewErrorAlready
+          : t.authError
+      );
+      return;
+    }
+    setReviewDraft({ rating: 0, name: "", contact: "", body: "" });
+    setReviewOpen(false);
+    setReviewSent(true);
+    if (onReviewSubmitted) onReviewSubmitted();
   };
 
   return (
@@ -71,6 +135,17 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
           </h3>
           {lang === "en" && product.name.vi && (
             <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginBottom: 6 }}>{product.name.vi}</div>
+          )}
+          {stats && stats.count > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+              <Stars value={Math.round(stats.avg)} TOKENS={TOKENS} />
+              <span style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.ratingSummary(stats.avg, stats.count)}</span>
+            </div>
+          )}
+          {product.soldCount > 0 && (
+            <div style={{ fontSize: 12, fontWeight: 600, color: TOKENS.brassOnPaper, marginBottom: 6 }}>
+              {t.soldBadge(product.soldCount)}
+            </div>
           )}
           {product.available === false && (
             <span style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.lacquer }}>{t.outOfStock}</span>
@@ -161,6 +236,79 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
               {added ? t.addedToOrder : t.addToOrder}
             </button>
           )}
+
+          {/* ---------- Reviews ---------- */}
+          <div style={{ marginTop: 22, borderTop: `1px solid ${TOKENS.hairline}`, paddingTop: 16 }}>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
+              {t.reviewsHeading}
+            </div>
+
+            {reviews.length === 0 && (
+              <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, fontStyle: "italic", margin: "0 0 12px" }}>{t.noProductReviewsYet}</p>
+            )}
+            {reviews.map((r) => (
+              <div key={r.id} style={{ marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <Stars value={r.rating} size={12} TOKENS={TOKENS} />
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: TOKENS.jade }}>{r.reviewerName}</span>
+                  <span style={{ fontSize: 11, color: TOKENS.jadeSoft }}>{String(r.createdAt).slice(0, 10)}</span>
+                </div>
+                {r.body && <p style={{ fontSize: 13, color: TOKENS.jadeSoft, lineHeight: 1.5, margin: "3px 0 0" }}>{r.body}</p>}
+              </div>
+            ))}
+
+            {reviewSent ? (
+              <p style={{ fontSize: 12.5, color: TOKENS.brassOnPaper, margin: "10px 0 0" }}>{t.reviewSubmittedNote}</p>
+            ) : reviewOpen ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 12, color: TOKENS.jadeSoft }}>{t.yourRating}</span>
+                  <Stars value={reviewDraft.rating} size={20} TOKENS={TOKENS} onPick={(n) => setReviewDraft({ ...reviewDraft, rating: n })} />
+                </div>
+                <input
+                  value={reviewDraft.name}
+                  onChange={(e) => setReviewDraft({ ...reviewDraft, name: e.target.value })}
+                  placeholder={t.yourReviewNamePh}
+                  style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
+                />
+                <input
+                  value={reviewDraft.contact}
+                  onChange={(e) => setReviewDraft({ ...reviewDraft, contact: e.target.value })}
+                  placeholder={t.reviewContactPh}
+                  style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
+                />
+                <textarea
+                  value={reviewDraft.body}
+                  onChange={(e) => setReviewDraft({ ...reviewDraft, body: e.target.value })}
+                  placeholder={t.reviewBodyPh}
+                  rows={2}
+                  style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5, resize: "vertical", fontFamily: "inherit" }}
+                />
+                {reviewError && <p style={{ fontSize: 12.5, color: TOKENS.lacquer, margin: 0 }}>{reviewError}</p>}
+                <button
+                  onClick={submitReview}
+                  disabled={reviewSending || !reviewDraft.rating || !reviewDraft.name.trim() || !reviewDraft.contact.trim()}
+                  style={{
+                    background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 8, padding: "10px",
+                    fontSize: 13, fontWeight: 600, cursor: "pointer",
+                    opacity: (reviewSending || !reviewDraft.rating || !reviewDraft.name.trim() || !reviewDraft.contact.trim()) ? 0.5 : 1,
+                  }}
+                >
+                  {t.submitReview}
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setReviewOpen(true)}
+                style={{
+                  background: "none", border: `1px dashed ${TOKENS.brassDeep}88`, borderRadius: 8, padding: "9px 12px",
+                  fontSize: 12.5, fontWeight: 600, color: TOKENS.brassOnPaper, cursor: "pointer", width: "100%", marginTop: 6,
+                }}
+              >
+                {t.writeReview}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

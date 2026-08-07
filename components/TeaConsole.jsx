@@ -18,6 +18,7 @@ import {
   fromOrderRow, toOrderRow, fromThreadRow,
   fromCatalogRow, toCatalogRow, fromVariantRow, fromPromoRow, toPromoRow,
   fromPaymentRow, toPaymentRow, fromGalleryRow, fromWholesaleAccountRow, fromTeaSessionRow,
+  fromProductReviewRow,
 } from "@/lib/mappers";
 import AuthPanel from "./AuthPanel";
 import PaymentBlock from "./PaymentBlock";
@@ -213,7 +214,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [productDraft, setProductDraft] = useState({
     id: null, nameEn: "", nameVi: "", line: "everyday",
     notesEn: "", notesVi: "", brewEn: "", brewVi: "", packSize: "", photoUrl: "",
-    price: "", stockHaGiang: "", stockSocSon: "", batch: "", photoPosX: 50, photoPosY: 50,
+    price: "", stockHaGiang: "", stockSocSon: "", batch: "", soldCount: "", photoPosX: 50, photoPosY: 50,
   });
   const [uploadingProductPhoto, setUploadingProductPhoto] = useState(false);
   const [productPhotoError, setProductPhotoError] = useState(false);
@@ -222,6 +223,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [testimonialDraft, setTestimonialDraft] = useState({ id: null, name: "", quote: "" });
   const [customerReviewDraft, setCustomerReviewDraft] = useState({ name: "", quote: "" });
   const [customerReviewSent, setCustomerReviewSent] = useState(false);
+
+  // Per-product reviews. Customers see approved ones via the list_approved_product_reviews
+  // RPC (no reviewer contact); staff read the table directly and get everything.
+  const [productReviews, setProductReviews] = useState([]);
+  const [productReviewFilter, setProductReviewFilter] = useState("all");
 
   const [promos, setPromos] = useState([]);
   const [promoDraft, setPromoDraft] = useState({ id: null, code: "", percent: "", ownerName: "" });
@@ -243,6 +249,23 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const other = lang === "en" ? "vi" : "en";
   const lineLabel = (l) => (l === "reserve" ? t.reserveOption : l === "sample" ? t.sampleOption : t.everydayOption);
   const formatVND = (n) => n.toLocaleString("vi-VN") + "đ";
+
+  // Rating + sold-count line for product cards. Hidden entirely when a product has neither.
+  // `onDark` switches to the light brass variant for the jade-backed sample cards.
+  const productBadges = (p, onDark) => {
+    const s = reviewStats[p.id];
+    const hasRating = s && s.count > 0;
+    if (!hasRating && !(p.soldCount > 0)) return null;
+    return (
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8, marginTop: 3,
+        fontSize: 11, fontWeight: 600, color: onDark ? TOKENS.brassOnDark : TOKENS.brassOnPaper,
+      }}>
+        {hasRating && <span>★ {s.avg} ({s.count})</span>}
+        {p.soldCount > 0 && <span>{t.soldBadge(p.soldCount)}</span>}
+      </div>
+    );
+  };
 
   // House Partners is a multi-step flow (browse → cart → pricing → track) that used to run
   // together as one undifferentiated scroll of bordered cards. This numbered header makes
@@ -331,6 +354,22 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
   const nav = NAV.filter((n) => n.roles.includes(role));
 
+  // productId -> { avg, count } over approved reviews, for the card/modal rating badges.
+  const reviewStats = useMemo(() => {
+    const acc = {};
+    for (const r of productReviews) {
+      if (r.approved === false) continue;
+      const s = acc[r.productId] || (acc[r.productId] = { total: 0, count: 0 });
+      s.total += r.rating;
+      s.count += 1;
+    }
+    const out = {};
+    for (const [pid, s] of Object.entries(acc)) {
+      out[pid] = { avg: Math.round((s.total / s.count) * 10) / 10, count: s.count };
+    }
+    return out;
+  }, [productReviews]);
+
   const wholesaleProducts = catalog.filter((p) => p.line === "everyday");
   const retailProducts = catalog;
 
@@ -418,6 +457,18 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     if (data) setTestimonials(data);
   }, [supabase]);
 
+  // Staff need pending reviews too, so they read the table directly (RLS is staff-only);
+  // customers go through the RPC, which returns approved rows without reviewer contact.
+  const loadProductReviews = useCallback(async () => {
+    if (isAdmin) {
+      const { data } = await supabase.from("product_reviews").select("*").order("created_at", { ascending: false });
+      if (data) setProductReviews(data.map(fromProductReviewRow));
+      return;
+    }
+    const { data } = await supabase.rpc("list_approved_product_reviews");
+    if (data) setProductReviews(data.map(fromProductReviewRow));
+  }, [supabase, isAdmin]);
+
   const loadPayment = useCallback(async () => {
     const { data } = await supabase.rpc("get_payment_info");
     if (data && data.length > 0) setPayment(fromPaymentRow(data[0]));
@@ -465,6 +516,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     loadHomePhoto();
     loadCatalog();
     loadTestimonials();
+    loadProductReviews();
     loadPayment();
     (async () => {
       try {
@@ -576,13 +628,14 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       stockHaGiang: hgVal !== "" ? Math.max(0, Number(hgVal)) : undefined,
       stockSocSon: ssVal !== "" ? Math.max(0, Number(ssVal)) : undefined,
       batch: productDraft.batch.trim(),
+      soldCount: Math.max(0, Number(productDraft.soldCount) || 0),
     };
     if (productDraft.id) {
       await supabase.from("catalog_products").update({
         line: fields.line, name: fields.name, notes: fields.notes, brew: fields.brew,
         pack_size: fields.packSize, photo_url: fields.photoUrl, photo_position: fields.photoPosition,
         price: fields.price ?? null, stock_ha_giang: fields.stockHaGiang ?? null, stock_soc_son: fields.stockSocSon ?? null,
-        batch: fields.batch,
+        batch: fields.batch, sold_count: fields.soldCount,
       }).eq("id", productDraft.id);
       setCatalog(catalog.map((p) => (p.id === productDraft.id ? { ...p, ...fields } : p)));
     } else {
@@ -591,7 +644,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       await supabase.from("catalog_products").insert(toCatalogRow(newRow));
       setCatalog([...catalog, newRow]);
     }
-    setProductDraft({ id: null, nameEn: "", nameVi: "", line: "everyday", notesEn: "", notesVi: "", brewEn: "", brewVi: "", packSize: "", photoUrl: "", price: "", stockHaGiang: "", stockSocSon: "", batch: "", photoPosX: 50, photoPosY: 50 });
+    setProductDraft({ id: null, nameEn: "", nameVi: "", line: "everyday", notesEn: "", notesVi: "", brewEn: "", brewVi: "", packSize: "", photoUrl: "", price: "", stockHaGiang: "", stockSocSon: "", batch: "", soldCount: "", photoPosX: 50, photoPosY: 50 });
   };
   const toggleAvailability = async (id) => {
     const p = catalog.find((x) => x.id === id);
@@ -625,6 +678,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       stockHaGiang: p.stockHaGiang !== undefined && p.stockHaGiang !== null ? String(p.stockHaGiang) : "",
       stockSocSon: p.stockSocSon !== undefined && p.stockSocSon !== null ? String(p.stockSocSon) : "",
       batch: p.batch || "",
+      soldCount: p.soldCount ? String(p.soldCount) : "",
       photoPosX: p.photoPosition ? Number(p.photoPosition.split(" ")[0].replace("%", "")) : 50,
       photoPosY: p.photoPosition ? Number(p.photoPosition.split(" ")[1].replace("%", "")) : 50,
     });
@@ -707,6 +761,14 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const approveTestimonial = async (id) => {
     await supabase.from("testimonials").update({ approved: true }).eq("id", id);
     setTestimonials(testimonials.map((r) => (r.id === id ? { ...r, approved: true } : r)));
+  };
+  const approveProductReview = async (id) => {
+    await supabase.from("product_reviews").update({ approved: true }).eq("id", id);
+    setProductReviews(productReviews.map((r) => (r.id === id ? { ...r, approved: true } : r)));
+  };
+  const deleteProductReview = async (id) => {
+    await supabase.from("product_reviews").delete().eq("id", id);
+    setProductReviews(productReviews.filter((r) => r.id !== id));
   };
   const submitCustomerReview = async () => {
     if (!customerReviewDraft.name.trim() || !customerReviewDraft.quote.trim()) return;
@@ -1623,6 +1685,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                                 {!p.price && getVariantMinPrice(p) !== undefined && (
                                   <div style={{ fontSize: 13.5, fontWeight: 700, color: TOKENS.brassOnPaper, marginTop: 2 }}>{t.fromPrice(formatVND(getVariantMinPrice(p)))}</div>
                                 )}
+                                {productBadges(p)}
                                 {typeof getStockTotal(p) === "number" && p.available !== false && (
                                   <div style={{ fontSize: 11.5, fontWeight: 700, color: getStockTotal(p) <= 5 ? TOKENS.lacquer : TOKENS.jadeSoft, marginTop: 2 }}>
                                     {t.stockLeft(getStockTotal(p))}{getStockTotal(p) <= 5 ? ` · ${t.lastFew}` : ""}
@@ -2105,6 +2168,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                                 <span style={{ fontSize: 10.5, color: TOKENS.jadeSoft, letterSpacing: 0.3 }}>/ {t.kg}</span>
                               </div>
                             ) : null}
+                            {productBadges(p)}
                             {p.notes?.[lang] && (
                               <div style={{ fontSize: 11.5, color: TOKENS.jadeSoft, fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>
                                 {p.notes[lang]}
@@ -2561,6 +2625,14 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       />
                     </div>
                     <input
+                      type="number"
+                      min="0"
+                      value={productDraft.soldCount}
+                      onChange={(e) => setProductDraft({ ...productDraft, soldCount: e.target.value })}
+                      placeholder={t.soldCountPh}
+                      style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
+                    />
+                    <input
                       value={productDraft.batch}
                       onChange={(e) => setProductDraft({ ...productDraft, batch: e.target.value })}
                       placeholder={t.batchPh}
@@ -2751,6 +2823,72 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       </div>
                     </div>
                   ))}
+
+                  {/* ---------- Per-product reviews ---------- */}
+                  <div style={{ borderTop: `1px solid ${TOKENS.hairline}`, marginTop: 14, paddingTop: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        {t.productReviewsTitle}
+                      </div>
+                      <select
+                        value={productReviewFilter}
+                        onChange={(e) => setProductReviewFilter(e.target.value)}
+                        style={{ padding: "7px 10px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 12.5, background: TOKENS.paper, color: TOKENS.jade }}
+                      >
+                        <option value="all">{t.allProducts}</option>
+                        {catalog.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name[lang] || p.name.en}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {(() => {
+                      const shown = productReviews
+                        .filter((r) => productReviewFilter === "all" || r.productId === productReviewFilter)
+                        .sort((a, b) => (a.approved === false ? -1 : 1) - (b.approved === false ? -1 : 1));
+                      if (shown.length === 0) {
+                        return <p style={{ color: TOKENS.jadeSoft, fontSize: 14 }}>{t.noProductReviewsAdmin}</p>;
+                      }
+                      return (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                          {shown.map((r) => {
+                            const prod = catalog.find((p) => p.id === r.productId);
+                            return (
+                              <div key={r.id} style={{ background: TOKENS.paperDeep, border: `1px solid ${r.approved === false ? TOKENS.lacquer + "88" : TOKENS.brassDeep + "33"}`, borderRadius: 10, padding: "12px 14px" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                      <span style={{ fontSize: 13, fontWeight: 700, color: TOKENS.brassOnPaper }}>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</span>
+                                      <span style={{ fontSize: 14, fontWeight: 600 }}>{r.reviewerName}</span>
+                                      {r.approved === false && (
+                                        <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10, fontWeight: 700, padding: "2px 8px" }}>{t.pendingApproval}</span>
+                                      )}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: TOKENS.jadeSoft, marginTop: 2 }}>
+                                      {prod ? (prod.name[lang] || prod.name.en) : r.productId}
+                                      {r.contact ? ` · ${r.contact}` : ""}
+                                      {r.createdAt ? ` · ${String(r.createdAt).slice(0, 10)}` : ""}
+                                    </div>
+                                    {r.body && <div style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic", marginTop: 3 }}>&quot;{r.body}&quot;</div>}
+                                  </div>
+                                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                                    {r.approved === false && (
+                                      <button onClick={() => approveProductReview(r.id)} title={t.approve} style={{ background: TOKENS.jade, border: "none", borderRadius: 6, padding: "6px 8px", cursor: "pointer" }}>
+                                        <Check size={13} color={TOKENS.brass} />
+                                      </button>
+                                    )}
+                                    <button onClick={() => deleteProductReview(r.id)} style={{ background: "none", border: `1px solid ${TOKENS.lacquer}55`, borderRadius: 6, padding: "6px 8px", cursor: "pointer" }}>
+                                      <Trash2 size={13} color={TOKENS.lacquer} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
               )}
 
@@ -3155,6 +3293,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                               </div>
                               <div style={{ fontSize: 15, fontWeight: 600, color: TOKENS.paper, overflowWrap: "anywhere" }}>{p.name[lang]}</div>
                               {p.price ? <div style={{ fontSize: 16, fontWeight: 700, color: TOKENS.brassOnDark }}>{formatVND(p.price)}</div> : null}
+                              {productBadges(p, true)}
                               {p.notes?.[lang] && (
                                 <div style={{ fontSize: 11.5, color: `${TOKENS.paper}bb`, lineHeight: 1.4, flex: 1 }}>{p.notes[lang]}</div>
                               )}
@@ -3225,6 +3364,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                                         <div style={{ fontSize: 10.5, color: TOKENS.jadeSoft, marginTop: 1 }}>{p.name.vi}</div>
                                       )}
                                       {price ? <div style={{ fontSize: 12.5, color: TOKENS.brassOnPaper, fontWeight: 700, marginTop: 3 }}>{formatVND(price)}{p.line === "everyday" ? ` / ${t.kg}` : ""}</div> : null}
+                                      {productBadges(p)}
                                       {typeof stockTotal === "number" && p.available !== false && (
                                         <div style={{ fontSize: 10.5, fontWeight: 700, color: stockTotal <= 5 ? TOKENS.lacquer : TOKENS.jadeSoft, marginTop: 2 }}>
                                           {t.stockLeft(stockTotal)}
@@ -3720,6 +3860,10 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
           lang={lang}
           t={t}
           TOKENS={TOKENS}
+          supabase={supabase}
+          reviews={productReviews.filter((r) => r.productId === detailProduct.product.id && r.approved !== false)}
+          stats={reviewStats[detailProduct.product.id]}
+          onReviewSubmitted={loadProductReviews}
           onConfirm={(qty, weight) => {
             const cartKey = weight ? `${detailProduct.product.id}__${weight}` : detailProduct.product.id;
             if (detailProduct.cartType === "retail") {
