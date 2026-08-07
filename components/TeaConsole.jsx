@@ -390,11 +390,14 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     return out;
   }, [productReviews]);
 
-  // "Tea of the day" — same tea for everyone on a given day, rotating through the catalog.
+  // "Tea of the day" — same tea for everyone on a given day. Sample packs are excluded:
+  // the point is to spotlight an individual tea, not a bundle.
   const teaOfDay = useMemo(() => {
-    if (!today || catalog.length === 0) return null;
+    if (!today) return null;
+    const pool = catalog.filter((p) => p.line !== "sample");
+    if (pool.length === 0) return null;
     const dayNumber = Math.floor(today.getTime() / 86400000);
-    return catalog[dayNumber % catalog.length];
+    return pool[dayNumber % pool.length];
   }, [today, catalog]);
 
   const wholesaleProducts = catalog.filter((p) => p.line === "everyday");
@@ -1425,53 +1428,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 </span>
               </button>
 
-              {/* Tea of the day — museum "object of the day" framing, rotates once per day */}
-              {teaOfDay && (
-                <div style={{ padding: "22px 20px 0" }}>
-                  <div
-                    className="pcard"
-                    onClick={() => setDetailProduct({ product: teaOfDay, cartType: role === "wholesale" && teaOfDay.line === "everyday" ? "wholesale" : "retail" })}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 16, cursor: "pointer",
-                      background: TOKENS.paper, borderRadius: TOKENS.radius, boxShadow: TOKENS.shadowSm,
-                      padding: "18px 20px", position: "relative", overflow: "hidden",
-                    }}
-                  >
-                    <div style={{
-                      fontFamily: "Lora, Georgia, serif", fontSize: 52, fontWeight: 500, lineHeight: 0.9,
-                      color: `${TOKENS.jade}1F`, flexShrink: 0, letterSpacing: -1,
-                    }}>
-                      {String(today.getDate()).padStart(2, "0")}
-                    </div>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 1 }}>
-                        {t.teaOfDayLabel}
-                      </div>
-                      <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, color: TOKENS.jade, marginTop: 3, overflowWrap: "anywhere" }}>
-                        {teaOfDay.name[lang] || teaOfDay.name.en}
-                      </div>
-                      {teaOfDay.notes?.[lang] && (
-                        <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, fontStyle: "italic", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {teaOfDay.notes[lang]}
-                        </div>
-                      )}
-                    </div>
-                    {teaOfDay.photoUrl && (
-                      <img
-                        src={teaOfDay.photoUrl}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        style={{
-                          width: 64, height: 64, borderRadius: 16, objectFit: "cover", flexShrink: 0,
-                          objectPosition: teaOfDay.photoPosition || "50% 50%",
-                        }}
-                      />
-                    )}
-                  </div>
-                </div>
-              )}
-
               {/* Featured photo below the quote */}
               {(homePhoto || isAdmin) && (
                 <div style={{ padding: "20px 20px 0" }}>
@@ -1520,18 +1476,83 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 </div>
               )}
 
-              {/* Secondary CTA: private tea session */}
+              {/* Tea of the day — museum "object of the day" framing, rotates once per day */}
+              {teaOfDay && (
+                <div style={{ padding: "20px 20px 0" }}>
+                  <div
+                    className="pcard"
+                    onClick={() => setDetailProduct({ product: teaOfDay, cartType: role === "wholesale" && teaOfDay.line === "everyday" ? "wholesale" : "retail" })}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 16, cursor: "pointer",
+                      background: TOKENS.paper, borderRadius: TOKENS.radius, boxShadow: TOKENS.shadowSm,
+                      padding: "18px 20px", position: "relative", overflow: "hidden",
+                    }}
+                  >
+                    <div style={{
+                      fontFamily: "Lora, Georgia, serif", fontSize: 52, fontWeight: 500, lineHeight: 0.9,
+                      color: `${TOKENS.jade}1F`, flexShrink: 0, letterSpacing: -1,
+                    }}>
+                      {String(today.getDate()).padStart(2, "0")}
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 1 }}>
+                        {t.teaOfDayLabel}
+                      </div>
+                      <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, color: TOKENS.jade, marginTop: 3, overflowWrap: "anywhere" }}>
+                        {teaOfDay.name[lang] || teaOfDay.name.en}
+                      </div>
+                      {teaOfDay.notes?.[lang] && (
+                        <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, fontStyle: "italic", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {teaOfDay.notes[lang]}
+                        </div>
+                      )}
+                    </div>
+                    {teaOfDay.photoUrl && (
+                      <img
+                        src={teaOfDay.photoUrl}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        style={{
+                          width: 64, height: 64, borderRadius: 16, objectFit: "cover", flexShrink: 0,
+                          objectPosition: teaOfDay.photoPosition || "50% 50%",
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Booking CTA — deliberately styled as an action (filled jade + brass) so it
+                  reads differently from the paper nav cards further down, which only navigate. */}
               {!isAdmin && (
                 <div style={{ padding: "20px 20px 0" }}>
                   <button
-                    onClick={() => { setSection("wiki"); setWikiCategory("visit"); setActiveId("planning-visit"); }}
+                    className="pcard"
+                    onClick={() => setSection("sessions")}
                     style={{
-                      display: "flex", alignItems: "center", gap: 8, width: "100%", justifyContent: "center",
-                      background: "transparent", color: TOKENS.brassOnPaper, border: `1px dashed ${TOKENS.brassDeep}88`,
-                      borderRadius: 10, padding: "12px 16px", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left",
+                      background: `linear-gradient(135deg, ${TOKENS.jade} 0%, ${TOKENS.jadeSoft} 100%)`,
+                      color: TOKENS.paper, border: "none", borderRadius: TOKENS.radius,
+                      padding: "18px 20px", cursor: "pointer", boxShadow: TOKENS.shadowMd,
                     }}
                   >
-                    <Calendar size={15} /> {t.teaSessionCtaBtn}
+                    <span style={{
+                      width: 42, height: 42, borderRadius: 14, flexShrink: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      background: `${TOKENS.brass}2E`, boxShadow: `inset 0 0 0 1px ${TOKENS.brass}55`,
+                    }}>
+                      <Calendar size={19} color={TOKENS.brass} strokeWidth={1.7} />
+                    </span>
+                    <span style={{ minWidth: 0, flex: 1 }}>
+                      <span style={{ display: "block", fontFamily: "Lora, Georgia, serif", fontSize: 16, color: TOKENS.paper }}>
+                        {t.teaSessionCtaBtn}
+                      </span>
+                      <span style={{ display: "block", fontSize: 12, color: TOKENS.brassOnDark, marginTop: 2 }}>
+                        {t.teaSessionFreeNote}
+                      </span>
+                    </span>
+                    <ChevronRight size={18} color={TOKENS.brass} style={{ flexShrink: 0 }} />
                   </button>
                 </div>
               )}
@@ -1621,7 +1642,42 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   );
                 })}
               </div>
-              {sealMark(30)}
+
+              {/* Contact footer — high-contrast jade block so it reads as the page's endpoint */}
+              <div style={{ padding: "28px 20px 0" }}>
+                <div style={{
+                  background: TOKENS.jade, borderRadius: TOKENS.radius, padding: "22px 20px",
+                  display: "flex", flexDirection: "column", gap: 12, boxShadow: TOKENS.shadowMd,
+                }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.brassOnDark, textTransform: "uppercase", letterSpacing: 1 }}>
+                    {t.stillHaveQuestions}
+                  </div>
+                  <a
+                    href="tel:+84903333841"
+                    style={{ display: "flex", alignItems: "center", gap: 10, color: TOKENS.paper, textDecoration: "none" }}
+                  >
+                    <span style={{
+                      width: 36, height: 36, borderRadius: 12, flexShrink: 0, background: `${TOKENS.brass}2E`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      <Phone size={16} color={TOKENS.brass} />
+                    </span>
+                    <span style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17 }}>0903 333 841</span>
+                  </a>
+                  <a
+                    href="mailto:hotro.trahoanglong@gmail.com"
+                    style={{ display: "flex", alignItems: "center", gap: 10, color: TOKENS.paper, textDecoration: "none" }}
+                  >
+                    <span style={{
+                      width: 36, height: 36, borderRadius: 12, flexShrink: 0, background: `${TOKENS.brass}2E`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      <Send size={15} color={TOKENS.brass} />
+                    </span>
+                    <span style={{ fontSize: 13.5, overflowWrap: "anywhere" }}>hotro.trahoanglong@gmail.com</span>
+                  </a>
+                </div>
+              </div>
             </div>
           )}
 
