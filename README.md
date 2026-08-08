@@ -1,7 +1,7 @@
 # House of Hoàng Long — web app
 
 Next.js + Supabase production port of the `tra-hoang-long-app.jsx` prototype.
-Public site (Our Story, Trade Partners ordering, Tea Shop, support chat) plus a
+Public site (Our Story, Wholesale ordering, Shop, support chat) plus a
 staff-only `/admin` console (Front Desk: orders, leads, messages, payment
 settings, catalog, reviews, promo codes).
 
@@ -92,7 +92,7 @@ Domains** and move `hoanglongtra.com` from the old project to this new one.
       code renders after a test checkout
 - [ ] Print an invoice from Front Desk > Orders
 - [ ] Send a message via the floating chat widget as a visitor, reply as admin
-- [ ] Track an order by ID from the Trade Partners / Tea Shop page
+- [ ] Track an order by ID from the Wholesale / Shop page
 - [ ] Confirm `/admin` is unreachable without logging in (open in a private
       window)
 - [ ] Generate a QR code pointing at `https://hoanglongtra.com` for the tea

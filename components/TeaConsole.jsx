@@ -316,7 +316,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     );
   };
 
-  // House Partners is a multi-step flow (browse → cart → pricing → track) that used to run
+  // Wholesale is a multi-step flow (browse → cart → pricing → track) that used to run
   // together as one undifferentiated scroll of bordered cards. This numbered header makes
   // each step visually distinct without introducing a new palette.
   const stepHeader = (n, Icon, label) => (
