@@ -38,6 +38,21 @@ button:not(:disabled):active {
   transform: scale(0.97);
 }
 
+/* Keyboard focus. Everything here is custom-styled with inline styles, so the browser
+   default ring either doesn't show or looks wrong against paper — this gives one brass
+   ring for the whole app. :focus-visible only, so mouse clicks stay clean. */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+label:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #b08d57;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 /* Cards (Tea Shop grid, wholesale rows, sample packs, home bento tiles): lift and deepen
    the shadow on hover — mouse/trackpad only, so tapping never triggers a false hover. */
 .pcard {
@@ -48,6 +63,20 @@ button:not(:disabled):active {
     transform: translateY(-3px);
     box-shadow: 0 14px 34px rgba(28, 43, 36, 0.13);
   }
+  /* A photo inside a hovered card drifts in very slightly. Needs overflow:hidden on the
+     card, which every card carrying one already has. */
+  .pcard:hover .pzoom {
+    transform: scale(1.045);
+  }
+}
+.pzoom {
+  transition: transform 500ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* A .pcard that is itself the button already scales via the rule above; when the card is
+   a plain element wrapping a button, press feedback would otherwise be lost. */
+.pcard:active {
+  transition-duration: 120ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -55,6 +84,9 @@ button:not(:disabled):active {
     transform: none;
   }
   .pcard:hover {
+    transform: none;
+  }
+  .pcard:hover .pzoom {
     transform: none;
   }
   .spin {

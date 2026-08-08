@@ -334,6 +334,33 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     </div>
   );
 
+  // Several cards carry block content (badge rows, flavour chips) that can't legally live
+  // inside a <button>, so they stay divs. These props make them behave like one anyway:
+  // reachable by Tab, activated by Enter/Space, announced as a button.
+  const clickable = (fn) => ({
+    role: "button",
+    tabIndex: 0,
+    onClick: fn,
+    onKeyDown: (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
+    },
+  });
+
+  // Home reads as a sequence of movements rather than one scroll of similar cards. This is
+  // the marker that opens each one — a numeral, its name, then a rule running to the edge.
+  // Cheap device, but it's what gives the page a beginning, a middle and an end.
+  const movementMark = (numeral, label) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 20px", margin: "36px 0 14px" }}>
+      <span style={{ fontFamily: "Lora, Georgia, serif", fontSize: 13, color: TOKENS.brassOnPaper, letterSpacing: 1 }}>
+        {numeral}
+      </span>
+      <span style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 1.4 }}>
+        {label}
+      </span>
+      <span aria-hidden="true" style={{ flex: 1, height: 1, background: TOKENS.hairline }} />
+    </div>
+  );
+
   const visibleCategories = useMemo(() => CATEGORIES.filter((c) => c.audience.includes(role)), [role]);
   const visibleCategoryIds = useMemo(() => new Set(visibleCategories.map((c) => c.id)), [visibleCategories]);
   const visibleArticles = useMemo(() => articles.filter((a) => visibleCategoryIds.has(a.category)), [articles, visibleCategoryIds]);
@@ -1526,60 +1553,76 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
         }}>
           {section === "home" && (
             <div style={{ margin: "-24px -20px 0", padding: "0 0 40px" }}>
-              {/* Hero */}
+              {/* ── Opening chapter ──────────────────────────────────────────────────
+                  Seal, founding line and the house photograph run as one uninterrupted
+                  dark band rather than three stacked cards, so the page opens on a single
+                  held image the way a feature spread does. Jade at the top (the brand
+                  colour still opens the page) bleeding into warm near-black lower down,
+                  which is the register that carries a large photograph without competing
+                  with it. Everything after this is paper. */}
               <div
                 style={{
-                  position: "relative", background: TOKENS.jade, color: TOKENS.paper,
-                  padding: "72px 28px 56px", overflow: "hidden",
+                  position: "relative", overflow: "hidden", color: TOKENS.paper,
+                  background: `linear-gradient(180deg, ${TOKENS.jade} 0%, ${TOKENS.jade} 34%, ${TOKENS.inkSoft} 72%, ${TOKENS.ink} 100%)`,
                   borderRadius: "0 0 28px 28px",
+                  paddingTop: 72,
+                  paddingBottom: homePhoto ? 0 : 40,
                 }}
               >
+                <div style={{ padding: "0 28px", maxWidth: 460, margin: "0 auto" }}>
+                  <BrandSeal TOKENS={TOKENS} />
+                </div>
+
+                {/* The ridgeline is the horizon between the seal and the words. It used to
+                    sit pinned to the bottom of the hero; inline it separates the two. */}
                 <svg
                   viewBox="0 0 400 90"
                   preserveAspectRatio="none"
-                  style={{ position: "absolute", left: 0, right: 0, bottom: 0, width: "100%", height: 56, opacity: 0.3 }}
+                  aria-hidden="true"
+                  style={{ display: "block", width: "100%", height: 56, opacity: 0.3, marginTop: 24 }}
                 >
                   <path
                     d="M0,90 L0,55 L45,20 L80,48 L120,10 L165,50 L210,28 L250,55 L290,15 L335,45 L400,25 L400,90"
                     fill="none" stroke={TOKENS.brass} strokeWidth="1"
                   />
                 </svg>
-                <div style={{ position: "relative", maxWidth: 460, margin: "0 auto" }}>
-                  <BrandSeal TOKENS={TOKENS} />
-                </div>
+
+                {/* Founding line */}
+                <button
+                  onClick={() => { setSection("wiki"); setWikiCategory("legacy"); setActiveId("not-farm-not-corp"); }}
+                  style={{
+                    display: "block", width: "100%", textAlign: "left", background: "none", border: "none",
+                    cursor: "pointer", padding: "4px 20px 26px", color: TOKENS.paper,
+                  }}
+                >
+                  <p style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: "clamp(20px, 4.8vw, 26px)", lineHeight: 1.45, color: TOKENS.paper, margin: "0 0 12px", maxWidth: "34ch" }}>
+                    {lang === "en"
+                      ? "“It's easy to make great things from great ingredients — but to make great things from the ordinary, that's something else.”"
+                      : "“Làm ra thứ tuyệt vời từ nguyên liệu tuyệt vời thì dễ, nhưng từ những gì bình thường — đó mới là chuyện khác.”"}
+                  </p>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: TOKENS.brassOnDark, textDecoration: "underline" }}>
+                    {t.viewDetails}
+                  </span>
+                </button>
+
+                {/* The photograph closes the chapter, full-bleed, clipped by the band's
+                    own rounded bottom. */}
+                {homePhoto && (
+                  <img
+                    src={homePhoto}
+                    alt=""
+                    style={{
+                      display: "block", width: "100%", height: "clamp(220px, 52vw, 320px)",
+                      objectFit: "cover",
+                    }}
+                  />
+                )}
               </div>
 
-              {/* Story teaser */}
-              <button
-                onClick={() => { setSection("wiki"); setWikiCategory("legacy"); setActiveId("not-farm-not-corp"); }}
-                style={{
-                  display: "block", width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer",
-                  padding: "22px 20px", borderBottom: `1px solid ${TOKENS.brassDeep}22`,
-                }}
-              >
-                <p style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: "clamp(19px, 4.6vw, 24px)", lineHeight: 1.45, color: TOKENS.jade, margin: "0 0 10px", maxWidth: "34ch" }}>
-                  {lang === "en"
-                    ? "“It's easy to make great things from great ingredients — but to make great things from the ordinary, that's something else.”"
-                    : "“Làm ra thứ tuyệt vời từ nguyên liệu tuyệt vời thì dễ, nhưng từ những gì bình thường — đó mới là chuyện khác.”"}
-                </p>
-                <span style={{ fontSize: 12, fontWeight: 600, color: TOKENS.brassOnPaper, textDecoration: "underline" }}>
-                  {t.viewDetails}
-                </span>
-              </button>
-
-              {/* Featured photo below the quote */}
-              {(homePhoto || isAdmin) && (
-                <div style={{ padding: "20px 20px 0" }}>
-                  {homePhoto && (
-                    <img
-                      src={homePhoto}
-                      alt=""
-                      style={{ width: "100%", height: 220, objectFit: "cover", borderRadius: TOKENS.radius, boxShadow: TOKENS.shadowSm, display: "block" }}
-                    />
-                  )}
-                  {isAdmin && (
-                    <>
-                    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              {/* Photo controls live on paper, outside the band they edit */}
+              {isAdmin && (
+                <div style={{ padding: "14px 20px 0" }}>
+                    <div style={{ display: "flex", gap: 8 }}>
                       <label style={{
                         display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1,
                         padding: "9px 12px", borderRadius: 8, border: `1px dashed ${TOKENS.brassDeep}88`,
@@ -1610,62 +1653,66 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         {t.uploadFailed}{typeof homePhotoError === "string" ? ` (${homePhotoError})` : ""}
                       </p>
                     )}
-                    </>
-                  )}
                 </div>
               )}
 
+              {(teaOfDay || !isAdmin || catalog.some((p) => p.line === "sample")) && movementMark("Ⅰ", t.movementToday)}
+
               {/* Tea of the day — museum "object of the day" framing, rotates once per day */}
               {teaOfDay && (
-                <div style={{ padding: "20px 20px 0" }}>
-                  <div
+                <div style={{ padding: "0 20px" }}>
+                  <button
                     className="pcard"
                     onClick={() => setDetailProduct({ product: teaOfDay, cartType: role === "wholesale" && teaOfDay.line === "everyday" ? "wholesale" : "retail" })}
                     style={{
                       display: "flex", alignItems: "center", gap: 16, cursor: "pointer",
+                      width: "100%", textAlign: "left", border: "none", color: TOKENS.jade,
                       background: TOKENS.paper, borderRadius: TOKENS.radius, boxShadow: TOKENS.shadowSm,
                       padding: "18px 20px", position: "relative", overflow: "hidden",
                     }}
                   >
-                    <div style={{
+                    <span style={{
                       fontFamily: "Lora, Georgia, serif", fontSize: 52, fontWeight: 500, lineHeight: 0.9,
                       color: `${TOKENS.jade}1F`, flexShrink: 0, letterSpacing: -1,
                     }}>
                       {String(today.getDate()).padStart(2, "0")}
-                    </div>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 1 }}>
+                    </span>
+                    <span style={{ minWidth: 0, flex: 1 }}>
+                      <span style={{ display: "block", fontSize: 10.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 1 }}>
                         {t.teaOfDayLabel}
-                      </div>
-                      <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: "clamp(19px, 4.4vw, 22px)", lineHeight: 1.25, color: TOKENS.jade, marginTop: 4, overflowWrap: "anywhere" }}>
+                      </span>
+                      <span style={{ display: "block", fontFamily: "Lora, Georgia, serif", fontSize: "clamp(19px, 4.4vw, 22px)", lineHeight: 1.25, color: TOKENS.jade, marginTop: 4, overflowWrap: "anywhere" }}>
                         {teaOfDay.name[lang] || teaOfDay.name.en}
-                      </div>
+                      </span>
                       {teaOfDay.notes?.[lang] && (
-                        <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, fontStyle: "italic", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <span style={{ display: "block", fontSize: 12.5, color: TOKENS.jadeSoft, fontStyle: "italic", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {teaOfDay.notes[lang]}
-                        </div>
+                        </span>
                       )}
-                    </div>
+                    </span>
                     {teaOfDay.photoUrl && (
-                      <img
-                        src={teaOfDay.photoUrl}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        style={{
-                          width: 64, height: 64, borderRadius: 16, objectFit: "cover", flexShrink: 0,
-                          objectPosition: teaOfDay.photoPosition || "50% 50%",
-                        }}
-                      />
+                      <span style={{ width: 64, height: 64, borderRadius: 16, overflow: "hidden", flexShrink: 0, display: "block" }}>
+                        <img
+                          src={teaOfDay.photoUrl}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          className="pzoom"
+                          style={{
+                            width: "100%", height: "100%", objectFit: "cover", display: "block",
+                            objectPosition: teaOfDay.photoPosition || "50% 50%",
+                          }}
+                        />
+                      </span>
                     )}
-                  </div>
+                  </button>
                 </div>
               )}
 
               {/* Booking CTA — deliberately styled as an action (filled jade + brass) so it
                   reads differently from the paper nav cards further down, which only navigate. */}
               {!isAdmin && (
-                <div style={{ padding: "20px 20px 0" }}>
+                <div style={{ padding: teaOfDay ? "14px 20px 0" : "0 20px" }}>
                   <button
                     className="pcard"
                     onClick={() => setSection("sessions")}
@@ -1698,7 +1745,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
               {/* Featured: Sample Pack */}
               {catalog.some((p) => p.line === "sample") && (
-                <div style={{ padding: "20px 20px 0" }}>
+                <div style={{ padding: "14px 20px 0" }}>
                   <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
                     {t.sampleOption}
                   </div>
@@ -1707,30 +1754,33 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       const stockTotal = getStockTotal(p);
                       const soldOut = p.available === false || stockTotal === 0;
                       return (
-                        <div
+                        <button
                           key={p.id}
                           className="pcard"
                           onClick={() => setDetailProduct({ product: p, cartType: "retail" })}
                           style={{
                             background: `linear-gradient(160deg, ${TOKENS.jade} 0%, ${TOKENS.jadeSoft} 100%)`,
                             borderRadius: 14, padding: 16, cursor: "pointer", opacity: soldOut ? 0.55 : 1,
+                            border: "none", textAlign: "left",
                             display: "flex", flexDirection: "column", gap: 6, minHeight: 110,
                           }}
                         >
-                          <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, lineHeight: 1.25, color: TOKENS.paper, overflowWrap: "anywhere" }}>{p.name[lang]}</div>
-                          {p.price ? <div style={{ fontSize: 16, fontWeight: 700, color: TOKENS.brassOnDark }}>{formatVND(p.price)}</div> : null}
-                          <div style={{ fontSize: 11, color: TOKENS.brassOnDark, fontWeight: 600, textDecoration: "underline", marginTop: "auto" }}>
+                          <span style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, lineHeight: 1.25, color: TOKENS.paper, overflowWrap: "anywhere" }}>{p.name[lang]}</span>
+                          {p.price ? <span style={{ fontSize: 16, fontWeight: 700, color: TOKENS.brassOnDark }}>{formatVND(p.price)}</span> : null}
+                          <span style={{ fontSize: 11, color: TOKENS.brassOnDark, fontWeight: 600, textDecoration: "underline", marginTop: "auto" }}>
                             {soldOut ? t.outOfStock : t.viewDetails}
-                          </div>
-                        </div>
+                          </span>
+                        </button>
                       );
                     })}
                   </div>
                 </div>
               )}
 
+              {movementMark("Ⅱ", t.movementRooms)}
+
               {/* Bento entry points */}
-              <div style={{ padding: "28px 20px 0", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+              <div style={{ padding: "0 20px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
                 {nav.filter((n) => n.id !== "home").map((n, i) => {
                   const Icon = n.icon;
                   const featured = i === 0;
@@ -1782,39 +1832,60 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 })}
               </div>
 
-              {/* Contact footer — high-contrast jade block so it reads as the page's endpoint */}
-              <div style={{ padding: "28px 20px 0" }}>
-                <div style={{
-                  background: TOKENS.jade, borderRadius: TOKENS.radius, padding: "22px 20px",
-                  display: "flex", flexDirection: "column", gap: 12, boxShadow: TOKENS.shadowMd,
+              {/* ── Closing chapter ──────────────────────────────────────────────────
+                  Full-bleed and dark, answering the band the page opened with, so the
+                  scroll has two covers and everything between them reads as the inside.
+                  This wrapper is already full-bleed (it cancels main's side padding), so the
+                  band only needs its own inset. -100px bottom swallows the wrapper's 40px
+                  and main's 60px of trailing paper, landing the band flush with the bottom
+                  of the column so the scroll ends on the dark rather than on a pale strip. */}
+              <div style={{
+                margin: "36px 0 -100px", padding: "30px 20px 34px",
+                background: `linear-gradient(180deg, ${TOKENS.inkSoft} 0%, ${TOKENS.ink} 100%)`,
+                borderRadius: "28px 28px 0 0",
+                display: "flex", flexDirection: "column", gap: 14,
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontFamily: "Lora, Georgia, serif", fontSize: 13, color: TOKENS.brassOnDark, letterSpacing: 1 }}>Ⅲ</span>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.brassOnDark, textTransform: "uppercase", letterSpacing: 1.4 }}>
+                    {t.movementReach}
+                  </span>
+                  <span aria-hidden="true" style={{ flex: 1, height: 1, background: TOKENS.hairlineOnDark }} />
+                </div>
+                <div style={{ fontSize: 12.5, color: TOKENS.brassOnDark, maxWidth: "38ch" }}>
+                  {t.stillHaveQuestions}
+                </div>
+                <a
+                  href="tel:+84903333841"
+                  style={{ display: "flex", alignItems: "center", gap: 12, color: TOKENS.paper, textDecoration: "none" }}
+                >
+                  <span style={{
+                    width: 40, height: 40, borderRadius: 14, flexShrink: 0, background: `${TOKENS.brass}2E`,
+                    boxShadow: `inset 0 0 0 1px ${TOKENS.brass}44`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <Phone size={17} color={TOKENS.brass} />
+                  </span>
+                  <span style={{ fontFamily: "Lora, Georgia, serif", fontSize: "clamp(19px, 4.4vw, 22px)" }}>0903 333 841</span>
+                </a>
+                <a
+                  href="mailto:hotro.trahoanglong@gmail.com"
+                  style={{ display: "flex", alignItems: "center", gap: 12, color: TOKENS.paper, textDecoration: "none" }}
+                >
+                  <span style={{
+                    width: 40, height: 40, borderRadius: 14, flexShrink: 0, background: `${TOKENS.brass}2E`,
+                    boxShadow: `inset 0 0 0 1px ${TOKENS.brass}44`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <Send size={16} color={TOKENS.brass} />
+                  </span>
+                  <span style={{ fontSize: 14, overflowWrap: "anywhere", minWidth: 0 }}>hotro.trahoanglong@gmail.com</span>
+                </a>
+                <div aria-hidden="true" style={{
+                  marginTop: 8, fontFamily: "'Noto Serif SC', serif", fontSize: 15,
+                  color: `${TOKENS.brass}77`, letterSpacing: 4, textAlign: "center",
                 }}>
-                  <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.brassOnDark, textTransform: "uppercase", letterSpacing: 1 }}>
-                    {t.stillHaveQuestions}
-                  </div>
-                  <a
-                    href="tel:+84903333841"
-                    style={{ display: "flex", alignItems: "center", gap: 10, color: TOKENS.paper, textDecoration: "none" }}
-                  >
-                    <span style={{
-                      width: 36, height: 36, borderRadius: 12, flexShrink: 0, background: `${TOKENS.brass}2E`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      <Phone size={16} color={TOKENS.brass} />
-                    </span>
-                    <span style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17 }}>0903 333 841</span>
-                  </a>
-                  <a
-                    href="mailto:hotro.trahoanglong@gmail.com"
-                    style={{ display: "flex", alignItems: "center", gap: 10, color: TOKENS.paper, textDecoration: "none" }}
-                  >
-                    <span style={{
-                      width: 36, height: 36, borderRadius: 12, flexShrink: 0, background: `${TOKENS.brass}2E`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      <Send size={15} color={TOKENS.brass} />
-                    </span>
-                    <span style={{ fontSize: 13.5, overflowWrap: "anywhere" }}>hotro.trahoanglong@gmail.com</span>
-                  </a>
+                  皇龍
                 </div>
               </div>
             </div>
@@ -3834,7 +3905,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                             <div
                               key={p.id}
                               className="pcard"
-                              onClick={() => setDetailProduct({ product: p, cartType: "retail" })}
+                              {...clickable(() => setDetailProduct({ product: p, cartType: "retail" }))}
                               style={{
                                 background: `linear-gradient(160deg, ${TOKENS.jade} 0%, ${TOKENS.jadeSoft} 100%)`,
                                 borderRadius: 14, padding: 16, cursor: "pointer", opacity: soldOut ? 0.55 : 1,
@@ -3902,11 +3973,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                                     </div>
                                   )}
                                   <div
-                                    onClick={() => setDetailProduct({ product: p, cartType: "retail" })}
+                                    {...clickable(() => setDetailProduct({ product: p, cartType: "retail" }))}
                                     style={{ cursor: "pointer" }}
                                   >
                                     {p.photoUrl ? (
-                                      <img src={p.photoUrl} alt={p.name[lang]} loading="lazy" decoding="async" style={{ width: "100%", height: 100, objectFit: "cover", objectPosition: p.photoPosition || "50% 50%", display: "block" }} />
+                                      <img src={p.photoUrl} alt={p.name[lang]} loading="lazy" decoding="async" className="pzoom" style={{ width: "100%", height: 100, objectFit: "cover", objectPosition: p.photoPosition || "50% 50%", display: "block" }} />
                                     ) : (
                                       <div style={{ width: "100%", height: 72, background: TOKENS.jade, display: "flex", alignItems: "center", justifyContent: "center" }}>
                                         <Leaf size={22} color={TOKENS.brass} strokeWidth={1.4} />
