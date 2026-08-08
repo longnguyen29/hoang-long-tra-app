@@ -659,6 +659,28 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     await supabase.from("tea_sessions").update({ status }).eq("id", id);
     setTeaSessions(teaSessions.map((s) => (s.id === id ? { ...s, status } : s)));
   };
+  // Photo of the packed parcel, taken by staff when the order goes out.
+  const [uploadingParcelPhoto, setUploadingParcelPhoto] = useState(null); // holds the order id
+  const [parcelPhotoError, setParcelPhotoError] = useState(null);
+
+  const saveParcelPhoto = async (id, url) => {
+    await supabase.from("orders").update({ parcel_photo: url }).eq("id", id);
+    setOrders(orders.map((o) => (o.id === id ? { ...o, parcelPhoto: url } : o)));
+  };
+  const uploadParcelPhoto = async (id, file) => {
+    setParcelPhotoError(null);
+    setUploadingParcelPhoto(id);
+    try {
+      const url = await uploadImage(supabase, file, "parcels");
+      await saveParcelPhoto(id, url);
+    } catch (e) {
+      console.error("Upload failed:", e);
+      setParcelPhotoError({ id, message: e?.message || true });
+    } finally {
+      setUploadingParcelPhoto(null);
+    }
+  };
+
   const updateTrackingCode = async (id, trackingCode) => {
     await supabase.from("orders").update({ tracking_code: trackingCode }).eq("id", id);
     setOrders(orders.map((o) => (o.id === id ? { ...o, trackingCode } : o)));
@@ -1199,6 +1221,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
         totalKg: null, totalItems: retailTotalItems, estimatedTotal: rawTotal || null, tier: null,
         paymentMethod, status: "pending", trackingCode: "", unread: true,
       });
+      notifyNewOrder(row.id);
       setRetailCart({});
       loadCatalog();
     } else {
@@ -1225,6 +1248,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       };
       const { error } = await supabase.from("orders").insert(toOrderRow(newOrder));
       if (error) { console.error(error); setOrderError(true); return; }
+      notifyNewOrder(newOrder.id);
       setOrderSubmitted(newOrder);
       setCart({});
     }
@@ -1234,6 +1258,15 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     setOrderConsent(false);
     setPaymentMethod("qr");
     setAddTestPack(false);
+  };
+
+  // Fire-and-forget: a failed or unconfigured notification must never block a real order.
+  const notifyNewOrder = (orderId) => {
+    fetch("/api/notify-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId }),
+    }).catch((e) => console.error("Order notification failed:", e));
   };
 
   const mailtoHref = (order) => {
@@ -3629,6 +3662,52 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       <div style={{ marginTop: 10 }}>
                         <div style={{ fontSize: 11, color: TOKENS.jadeSoft }}>{t.trackingCodeLabel}</div>
                         <TrackingCodeEditor value={o.trackingCode} onSave={(code) => updateTrackingCode(o.id, code)} t={t} TOKENS={TOKENS} />
+                      </div>
+
+                      {/* Photo of the packed parcel — staff record of what actually shipped */}
+                      <div style={{ marginTop: 10 }}>
+                        <div style={{ fontSize: 11, color: TOKENS.jadeSoft, marginBottom: 5 }}>{t.parcelPhotoLabel}</div>
+                        {o.parcelPhoto ? (
+                          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                            <img
+                              src={o.parcelPhoto}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              onClick={() => setLightboxImage({ id: o.id, url: o.parcelPhoto, caption: {} })}
+                              style={{ width: 84, height: 84, borderRadius: 12, objectFit: "cover", cursor: "pointer" }}
+                            />
+                            <button
+                              onClick={() => saveParcelPhoto(o.id, "")}
+                              style={{ background: "none", border: `1px solid ${TOKENS.lacquer}55`, borderRadius: 6, padding: "6px 8px", cursor: "pointer" }}
+                            >
+                              <Trash2 size={13} color={TOKENS.lacquer} />
+                            </button>
+                          </div>
+                        ) : (
+                          <label style={{
+                            display: "inline-flex", alignItems: "center", gap: 6,
+                            padding: "7px 11px", borderRadius: 8, border: `1px dashed ${TOKENS.brassDeep}88`,
+                            fontSize: 12, color: TOKENS.brassOnPaper, fontWeight: 600,
+                            cursor: uploadingParcelPhoto === o.id ? "default" : "pointer",
+                            opacity: uploadingParcelPhoto === o.id ? 0.6 : 1,
+                          }}>
+                            {uploadingParcelPhoto === o.id ? <Loader2 size={13} className="spin" /> : <Upload size={13} />}
+                            {uploadingParcelPhoto === o.id ? t.uploading : t.parcelPhotoUpload}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              disabled={uploadingParcelPhoto === o.id}
+                              style={{ display: "none" }}
+                              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadParcelPhoto(o.id, f); }}
+                            />
+                          </label>
+                        )}
+                        {parcelPhotoError?.id === o.id && (
+                          <p style={{ fontSize: 11.5, color: TOKENS.lacquer, margin: "6px 0 0" }}>
+                            {t.uploadFailed}{typeof parcelPhotoError.message === "string" ? ` (${parcelPhotoError.message})` : ""}
+                          </p>
+                        )}
                       </div>
 
                       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>

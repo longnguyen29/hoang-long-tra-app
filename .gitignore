@@ -16,6 +16,12 @@
 # claude code local settings
 .claude/settings.local.json
 
+# one-off migration runners (throwaway; the .sql files in supabase/migrations are the record)
+scripts/_*.mjs
+
+# locally cloned skill packs
+/skills
+
 # misc
 .DS_Store
 *.pem
