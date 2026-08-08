@@ -1382,8 +1382,12 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
         </div>
       )}
 
-      {/* Main */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+      {/* Main — the seal-ring texture only ever shows in the desktop gutters, since the
+          content column below carries its own opaque paper background. */}
+      <div style={{
+        flex: 1, minWidth: 0, display: "flex", flexDirection: "column",
+        backgroundImage: TOKENS.sidePattern, backgroundRepeat: "repeat",
+      }}>
         {/* Top bar */}
         <header
           style={{
@@ -1483,7 +1487,10 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
         </header>
 
         {/* Content */}
-        <main style={{ flex: 1, padding: "24px 20px 60px", maxWidth: 860, width: "100%", margin: "0 auto", minWidth: 0 }}>
+        <main style={{
+          flex: 1, padding: "24px 20px 60px", maxWidth: 860, width: "100%", margin: "0 auto", minWidth: 0,
+          background: TOKENS.paper, boxShadow: `0 0 60px ${TOKENS.paper}`,
+        }}>
           {section === "home" && (
             <div style={{ margin: "-24px -20px 0", padding: "0 0 40px" }}>
               {/* Hero */}
