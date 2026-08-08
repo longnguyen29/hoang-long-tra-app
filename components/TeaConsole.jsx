@@ -429,6 +429,9 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   };
 
   const nav = NAV.filter((n) => n.roles.includes(role));
+  // Booking is an action, not a place — it gets its own CTA at the foot of the side menu
+  // and its own block on the home page, so it's kept out of the plain list of sections.
+  const navSections = nav.filter((n) => n.id !== "sessions");
 
   // productId -> { avg, count } over approved reviews, for the card/modal rating badges.
   const reviewStats = useMemo(() => {
@@ -1392,7 +1395,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 14.5, fontWeight: 600, letterSpacing: 0.2, whiteSpace: "nowrap" }}>House of Hoàng Long</div>
             </div>
             <nav style={{ padding: "14px 8px" }}>
-              {nav.map((n) => {
+              {navSections.map((n) => {
                 const Icon = n.icon;
                 const isActive = section === n.id;
                 return (
@@ -1429,6 +1432,30 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 );
               })}
             </nav>
+            {/* Booking sits apart from the section list — a brass-filled action pinned above
+                the hotline, so it reads as the one thing to do rather than one more page. */}
+            {nav.some((n) => n.id === "sessions") && (
+              <div style={{ position: "absolute", bottom: 68, left: 16, right: 16 }}>
+                <button
+                  onClick={() => { setSection("sessions"); resetWiki(); setSidebarOpen(false); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10, width: "100%",
+                    padding: "12px 14px", borderRadius: 16, cursor: "pointer", textAlign: "left",
+                    background: `linear-gradient(120deg, ${TOKENS.brass} 0%, ${TOKENS.brassDeep} 100%)`,
+                    border: "none", color: TOKENS.jade,
+                    boxShadow: section === "sessions"
+                      ? `0 0 0 2px ${TOKENS.paper}55, 0 6px 18px rgba(0,0,0,0.3)`
+                      : "0 6px 18px rgba(0,0,0,0.3)",
+                  }}
+                >
+                  <Calendar size={17} strokeWidth={2} color={TOKENS.jade} style={{ flexShrink: 0 }} />
+                  <span style={{ fontSize: 13.5, fontWeight: 700, whiteSpace: "nowrap" }}>
+                    {NAV.find((n) => n.id === "sessions").label[lang]}
+                  </span>
+                </button>
+              </div>
+            )}
+
             <div style={{ position: "absolute", bottom: 16, left: 20, right: 20, fontSize: 10.5, letterSpacing: 0.3, lineHeight: 1.5 }}>
               <a
                 href="tel:+84903333841"
@@ -1781,7 +1808,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
               {/* Bento entry points */}
               <div style={{ padding: "0 20px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
-                {nav.filter((n) => n.id !== "home").map((n, i) => {
+                {navSections.filter((n) => n.id !== "home").map((n, i) => {
                   const Icon = n.icon;
                   const featured = i === 0;
                   return (
