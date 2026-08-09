@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Search, ChevronRight, ChevronLeft, Menu, X, Edit3, Save, Plus, Trash2,
   Leaf, Mountain, Languages, Copy, Check, Lock, Clock, Upload, Sparkles, ShoppingCart, Minus,
-  MessageCircle, Send, Download, Printer, LogOut, Tag, Truck, Loader2, Calendar, Phone, Images,
+  MessageCircle, Send, Download, Printer, LogOut, Tag, Truck, Loader2, Calendar, Phone, Images, Gift,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadImage } from "@/lib/supabase/storage";
@@ -30,6 +30,9 @@ import BrandSeal from "./BrandSeal";
 import VariantEditorRow from "./VariantEditorRow";
 import TrackingCodeEditor from "./TrackingCodeEditor";
 import TeaSessionBooking from "./TeaSessionBooking";
+
+// Home grid order, independent of the side menu's. Ids missing from this list sort last.
+const HOME_TILE_ORDER = ["wiki", "retail", "wholesale", "library"];
 
 function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9à-ỹ]+/gi, "-").slice(0, 40) + "-" + Date.now().toString(36);
@@ -139,7 +142,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [lightboxImage, setLightboxImage] = useState(null);
-  const [homePhoto, setHomePhoto] = useState("");
+  const [homePhotos, setHomePhotos] = useState([]);
+  const [homeSlide, setHomeSlide] = useState(0);
   // Producer + origin facts shown at the top of Our Story. Empty until staff fill it in.
   const [houseStory, setHouseStory] = useState({ producerName: "", producerPhoto: "", producerRole: {}, producerQuote: {}, originStats: [] });
   const [houseDraft, setHouseDraft] = useState(null);
@@ -208,7 +212,10 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     return id;
   });
   const [activeThreadId, setActiveThreadId] = useState(null);
-  const [frontDeskTab, setFrontDeskTab] = useState("orders");
+  const [frontDeskTab, setFrontDeskTab] = useState("overview");
+  const [traffic, setTraffic] = useState(null);
+  const [customerProfiles, setCustomerProfiles] = useState([]);
+  const [customerQuery, setCustomerQuery] = useState("");
 
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardStep, setOnboardStep] = useState(0);
@@ -244,6 +251,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [promos, setPromos] = useState([]);
   const [promoDraft, setPromoDraft] = useState({ id: null, code: "", percent: "", ownerName: "" });
   const [promoInput, setPromoInput] = useState("");
+  const [referral, setReferral] = useState(null);
+  const [referralInput, setReferralInput] = useState("");
+  const [referralLoading, setReferralLoading] = useState(false);
+  const [referralError, setReferralError] = useState(false);
+  const [referralCopied, setReferralCopied] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState(null);
   const [promoError, setPromoError] = useState(false);
 
@@ -433,6 +445,16 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   // and its own block on the home page, so it's kept out of the plain list of sections.
   const navSections = nav.filter((n) => n.id !== "sessions");
 
+  // The home grid runs in its own order, not the side menu's: Our Story stays the featured
+  // full-width tile, then the two ways to buy come before the reading material. Anything
+  // not listed (Front Desk, for staff) falls to the end.
+  const homeTiles = navSections
+    .filter((n) => n.id !== "home")
+    .sort((a, b) => {
+      const rank = (id) => (HOME_TILE_ORDER.indexOf(id) === -1 ? 99 : HOME_TILE_ORDER.indexOf(id));
+      return rank(a.id) - rank(b.id);
+    });
+
   // productId -> { avg, count } over approved reviews, for the card/modal rating badges.
   const reviewStats = useMemo(() => {
     const acc = {};
@@ -517,10 +539,27 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     if (data) setGalleryImages(data.map(fromGalleryRow));
   }, [supabase]);
 
+  // Both dashboard aggregates are staff-only and computed in Postgres — the RPCs raise
+  // not_authorised for anyone else, so there is no client-side gate to get wrong.
+  const loadTraffic = useCallback(async () => {
+    const { data, error } = await supabase.rpc("page_view_stats", { p_days: 30 });
+    if (error) { console.error("Traffic stats failed:", error.message); return; }
+    setTraffic(data || null);
+  }, [supabase]);
+
+  const loadCustomerProfiles = useCallback(async () => {
+    const { data, error } = await supabase.rpc("customer_profiles_summary");
+    if (error) { console.error("Customer profiles failed:", error.message); return; }
+    setCustomerProfiles(Array.isArray(data) ? data : []);
+  }, [supabase]);
+
   const loadHomeSettings = useCallback(async () => {
     const { data } = await supabase.from("settings_home").select("*").eq("id", 1).maybeSingle();
     if (!data) return;
-    setHomePhoto(data.featured_photo || "");
+    // featured_photos is the current shape; featured_photo is the pre-0018 single column,
+    // still populated for anyone who uploaded before the migration.
+    const slides = Array.isArray(data.featured_photos) ? data.featured_photos.filter(Boolean) : [];
+    setHomePhotos(slides.length > 0 ? slides : (data.featured_photo ? [data.featured_photo] : []));
     setHouseStory({
       producerName: data.producer_name || "",
       producerPhoto: data.producer_photo || "",
@@ -606,6 +645,32 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     if (data && data.length > 0) setMyThread(fromThreadRow(data[0]));
   }, [supabase, customerId]);
 
+  // Page-view tracking. The "session id" is a random string in localStorage — it carries no
+  // personal data, it exists only so the dashboard can tell 10 visits by one person from 10
+  // people. Staff are excluded so admin work doesn't inflate the numbers, and a failed
+  // insert is swallowed: analytics must never break the page.
+  useEffect(() => {
+    if (isAdmin) return;
+    let sid;
+    try {
+      sid = localStorage.getItem("hl_sid");
+      if (!sid) {
+        sid = Math.random().toString(36).slice(2) + Date.now().toString(36);
+        localStorage.setItem("hl_sid", sid);
+      }
+    } catch {
+      return; // private mode with storage blocked — skip tracking rather than throw
+    }
+    supabase.rpc("record_page_view", {
+      p_path: section,
+      p_session: sid,
+      p_referrer: typeof document !== "undefined" ? document.referrer || "" : "",
+      p_lang: lang,
+    }).then(({ error }) => {
+      if (error) console.error("Page view not recorded:", error.message);
+    });
+  }, [section, isAdmin, supabase, lang]);
+
   useEffect(() => {
     loadArticles();
     loadLibraryArticles();
@@ -629,6 +694,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       loadLeads();
       loadPromos();
       loadWholesaleAccounts();
+      loadTraffic();
+      loadCustomerProfiles();
     } else {
       loadMyThread();
     }
@@ -861,8 +928,32 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       return;
     }
     const row = data[0];
-    setAppliedPromo({ code: row.code, percent: row.percent, ownerName: row.owner_name || "" });
+    setAppliedPromo({ code: row.code, percent: row.percent, ownerName: row.owner_name || "", kind: row.kind || "staff" });
     setPromoError(false);
+  };
+
+  // A customer's own referral code + any rewards they've earned, looked up by the contact
+  // they ordered with. The RPC returns only their own side — never who they referred.
+  const lookupReferral = async (contact) => {
+    const c = (contact || "").trim();
+    if (!c) return;
+    setReferralError(false);
+    setReferralLoading(true);
+    try {
+      const { data, error } = await supabase.rpc("my_referral_status", { p_contact: c });
+      if (error) throw error;
+      if (!data?.has_ordered) {
+        setReferral(null);
+        setReferralError("not_a_customer");
+        return;
+      }
+      setReferral(data);
+    } catch (e) {
+      console.error("Referral lookup failed:", e);
+      setReferralError(true);
+    } finally {
+      setReferralLoading(false);
+    }
   };
 
   const saveTestimonialDraft = async () => {
@@ -934,9 +1025,14 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     }
   };
 
-  const saveHomePhoto = async (url) => {
-    await supabase.from("settings_home").upsert({ id: 1, featured_photo: url });
-    setHomePhoto(url);
+  // featured_photo is written alongside the array so the pre-0018 column keeps holding the
+  // lead image — it's what an older client (or a rolled-back deploy) would read.
+  const saveHomePhotos = async (list) => {
+    const next = list.filter(Boolean);
+    await supabase.from("settings_home").upsert({
+      id: 1, featured_photos: next, featured_photo: next[0] || "",
+    });
+    setHomePhotos(next);
   };
   // Stats are edited as one line per stat: "value | English label | Vietnamese label".
   const parseOriginStats = (text) =>
@@ -999,7 +1095,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     setUploadingHomePhoto(true);
     try {
       const url = await uploadImage(supabase, file, "home");
-      await saveHomePhoto(url);
+      await saveHomePhotos([...homePhotos, url]);
     } catch (e) {
       console.error("Upload failed:", e);
       setHomePhotoError(e?.message || true);
@@ -1239,7 +1335,15 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       });
       if (error || !data || data.length === 0) {
         console.error(error);
-        setOrderError(true);
+        // Promo problems get their own message — "something went wrong, try again" would
+        // leave the customer re-submitting a code that can never work.
+        const msg = error?.message || "";
+        setOrderError(
+          msg.includes("self_referral") ? t.promoSelfReferral
+            : msg.includes("promo_used_up") ? t.promoUsedUp
+            : msg.includes("reward_not_yours") ? t.promoRewardNotYours
+            : true,
+        );
         loadCatalog(); // stock may have changed under us — refresh what's shown
         return;
       }
@@ -1252,6 +1356,9 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
         paymentMethod, status: "pending", trackingCode: "", unread: true,
       });
       notifyNewOrder(row.id);
+      // Fetch their referral code straight away: the confirmation screen is the one moment
+      // they're pleased with us and likely to pass it on.
+      lookupReferral(orderContact.trim());
       setRetailCart({});
       loadCatalog();
     } else {
@@ -1435,7 +1542,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
             {/* Booking sits apart from the section list — a brass-filled action pinned above
                 the hotline, so it reads as the one thing to do rather than one more page. */}
             {nav.some((n) => n.id === "sessions") && (
-              <div style={{ position: "absolute", bottom: 68, left: 16, right: 16 }}>
+              <div style={{ position: "absolute", bottom: 96, left: 16, right: 16 }}>
                 <button
                   onClick={() => { setSection("sessions"); resetWiki(); setSidebarOpen(false); }}
                   style={{
@@ -1593,7 +1700,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   background: `linear-gradient(180deg, ${TOKENS.jade} 0%, ${TOKENS.jade} 34%, ${TOKENS.inkSoft} 72%, ${TOKENS.ink} 100%)`,
                   borderRadius: "0 0 28px 28px",
                   paddingTop: 72,
-                  paddingBottom: homePhoto ? 0 : 40,
+                  paddingBottom: homePhotos.length > 0 ? 0 : 40,
                 }}
               >
                 <div style={{ padding: "0 28px", maxWidth: 460, margin: "0 auto" }}>
@@ -1632,17 +1739,57 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   </span>
                 </button>
 
-                {/* The photograph closes the chapter, full-bleed, clipped by the band's
-                    own rounded bottom. */}
-                {homePhoto && (
-                  <img
-                    src={homePhoto}
-                    alt=""
-                    style={{
-                      display: "block", width: "100%", height: "clamp(220px, 52vw, 320px)",
-                      objectFit: "cover",
-                    }}
-                  />
+                {/* The photographs close the chapter, full-bleed, clipped by the band's own
+                    rounded bottom. Swiping is native scroll-snap rather than a JS carousel —
+                    it keeps the momentum and rubber-banding the platform already does, and it
+                    still works with a trackpad, a scrollbar drag, or arrow keys. */}
+                {homePhotos.length > 0 && (
+                  <div style={{ position: "relative" }}>
+                    <div
+                      className="peekrail"
+                      onScroll={(e) => {
+                        const el = e.currentTarget;
+                        const i = Math.round(el.scrollLeft / el.clientWidth);
+                        if (i !== homeSlide) setHomeSlide(i);
+                      }}
+                      style={{
+                        display: "flex", overflowX: "auto", scrollSnapType: "x mandatory",
+                        WebkitOverflowScrolling: "touch",
+                      }}
+                    >
+                      {homePhotos.map((url, i) => (
+                        <img
+                          key={url + i}
+                          src={url}
+                          alt=""
+                          loading={i === 0 ? undefined : "lazy"}
+                          decoding="async"
+                          style={{
+                            flex: "0 0 100%", width: "100%", height: "clamp(220px, 52vw, 320px)",
+                            objectFit: "cover", display: "block", scrollSnapAlign: "start",
+                          }}
+                        />
+                      ))}
+                    </div>
+                    {homePhotos.length > 1 && (
+                      <div style={{
+                        position: "absolute", bottom: 14, left: 0, right: 0,
+                        display: "flex", justifyContent: "center", gap: 7, pointerEvents: "none",
+                      }}>
+                        {homePhotos.map((url, i) => (
+                          <span
+                            key={url + i}
+                            style={{
+                              width: i === homeSlide ? 18 : 6, height: 6, borderRadius: 3,
+                              background: i === homeSlide ? TOKENS.brass : `${TOKENS.paper}77`,
+                              boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
+                              transition: "width 260ms cubic-bezier(0.23, 1, 0.32, 1), background 260ms ease",
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -1657,7 +1804,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         opacity: uploadingHomePhoto ? 0.6 : 1,
                       }}>
                         {uploadingHomePhoto ? <Loader2 size={14} className="spin" /> : <Upload size={14} />}
-                        {uploadingHomePhoto ? t.uploading : (homePhoto ? t.uploadPhotoLabel : t.addPhoto)}
+                        {uploadingHomePhoto ? t.uploading : t.addPhoto}
                         <input
                           type="file"
                           accept="image/*"
@@ -1666,15 +1813,33 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadHomePhoto(file); }}
                         />
                       </label>
-                      {homePhoto && (
-                        <button
-                          onClick={() => saveHomePhoto("")}
-                          style={{ background: "none", border: `1px solid ${TOKENS.lacquer}55`, borderRadius: 8, padding: "9px 12px", cursor: "pointer" }}
-                        >
-                          <Trash2 size={14} color={TOKENS.lacquer} />
-                        </button>
-                      )}
                     </div>
+                    {/* One row per slide, in the order they appear, each removable. */}
+                    {homePhotos.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                        {homePhotos.map((url, i) => (
+                          <div key={url + i} style={{ position: "relative" }}>
+                            <img
+                              src={url}
+                              alt=""
+                              style={{ width: 62, height: 62, objectFit: "cover", borderRadius: 10, display: "block" }}
+                            />
+                            <button
+                              onClick={() => saveHomePhotos(homePhotos.filter((_, j) => j !== i))}
+                              aria-label={t.remove || "Remove"}
+                              style={{
+                                position: "absolute", top: -6, right: -6, width: 22, height: 22,
+                                borderRadius: "50%", background: TOKENS.paper, cursor: "pointer",
+                                border: `1px solid ${TOKENS.lacquer}55`, padding: 0,
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                              }}
+                            >
+                              <Trash2 size={11} color={TOKENS.lacquer} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {homePhotoError && (
                       <p style={{ fontSize: 11.5, color: TOKENS.lacquer, margin: "6px 0 0" }}>
                         {t.uploadFailed}{typeof homePhotoError === "string" ? ` (${homePhotoError})` : ""}
@@ -1808,7 +1973,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
               {/* Bento entry points */}
               <div style={{ padding: "0 20px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
-                {navSections.filter((n) => n.id !== "home").map((n, i) => {
+                {homeTiles.map((n, i) => {
                   const Icon = n.icon;
                   const featured = i === 0;
                   return (
@@ -2859,7 +3024,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         {t.consentLabel}
                       </label>
 
-                      {orderError && <p style={{ fontSize: 12.5, color: "#E8A99A", marginBottom: 10 }}>{t.orderFailed}</p>}
+                      {orderError && <p style={{ fontSize: 12.5, color: "#E8A99A", marginBottom: 10 }}>{typeof orderError === "string" ? orderError : t.orderFailed}</p>}
 
                       <div style={{ display: "flex", gap: 8 }}>
                         <button
@@ -2960,7 +3125,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               })()}
 
               <div style={{ display: "flex", gap: 8, marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>
-                {["orders", "sessions", "leads", "messages", "payment", "catalog", "reviews", "promos", "partners", "house"].map((tab) => (
+                {["overview", "orders", "customers", "sessions", "leads", "messages", "payment", "catalog", "reviews", "promos", "partners", "house"].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setFrontDeskTab(tab)}
@@ -2971,7 +3136,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                     }}
                   >
-                    {tab === "orders" ? t.frontDeskOrders : tab === "sessions" ? t.frontDeskSessionsTab : tab === "leads" ? t.frontDeskLeads : tab === "payment" ? t.frontDeskPayment : tab === "catalog" ? t.catalogTitle : tab === "reviews" ? t.reviewsTitle : tab === "promos" ? t.promosTitle : tab === "partners" ? t.wholesaleAccountsTitle : tab === "house" ? t.frontDeskHouseTab : t.frontDeskMessages}
+                    {tab === "overview" ? t.overviewTab : tab === "customers" ? t.customersTab : tab === "orders" ? t.frontDeskOrders : tab === "sessions" ? t.frontDeskSessionsTab : tab === "leads" ? t.frontDeskLeads : tab === "payment" ? t.frontDeskPayment : tab === "catalog" ? t.catalogTitle : tab === "reviews" ? t.reviewsTitle : tab === "promos" ? t.promosTitle : tab === "partners" ? t.wholesaleAccountsTitle : tab === "house" ? t.frontDeskHouseTab : t.frontDeskMessages}
                     {tab === "orders" && unreadOrders > 0 && (
                       <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10.5, padding: "1px 6px" }}>{unreadOrders}</span>
                     )}
@@ -2984,6 +3149,141 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   </button>
                 ))}
               </div>
+
+              {/* ---------- OVERVIEW ---------- */}
+              {frontDeskTab === "overview" && (() => {
+                const days = traffic?.days || 30;
+                const since = Date.now() - days * 86400000;
+                const recent = orders.filter((o) => new Date(o.ts).getTime() >= since);
+                const revenue = recent.reduce((sum, o) => sum + (o.estimatedTotal || 0), 0);
+                const avgOrder = recent.length > 0 ? Math.round(revenue / recent.length) : 0;
+                const byDay = traffic?.by_day || [];
+                const peak = Math.max(1, ...byDay.map((d) => d.views || 0));
+                const tile = (label, value) => (
+                  <div key={label} style={{ background: TOKENS.paperDeep, borderRadius: 14, padding: "12px 14px", boxShadow: TOKENS.shadowSm }}>
+                    <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 24, color: TOKENS.jade, lineHeight: 1.1 }}>{value}</div>
+                    <div style={{ fontSize: 11, color: TOKENS.jadeSoft, marginTop: 3 }}>{label}</div>
+                  </div>
+                );
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                        {t.trafficTitle(days)}
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 8 }}>
+                        {tile(t.statVisitors, traffic?.visitors ?? "—")}
+                        {tile(t.statViews, traffic?.views ?? "—")}
+                        {tile(t.statVisitorsToday, traffic?.today_visitors ?? "—")}
+                      </div>
+                      {byDay.length > 0 ? (
+                        // Bar-per-day, scaled to the busiest day in range. Deliberately plain —
+                        // it answers "is it trending up" at a glance and nothing more.
+                        <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 60, marginTop: 12 }}>
+                          {byDay.map((d) => (
+                            <div
+                              key={d.day}
+                              title={`${d.day} · ${d.views} ${t.statViews.toLowerCase()} · ${d.visitors} ${t.statVisitors.toLowerCase()}`}
+                              style={{
+                                flex: 1, minWidth: 2, borderRadius: "3px 3px 0 0",
+                                height: `${Math.max(4, ((d.views || 0) / peak) * 100)}%`,
+                                background: `linear-gradient(180deg, ${TOKENS.brass} 0%, ${TOKENS.brassDeep} 100%)`,
+                              }}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ fontSize: 12, color: TOKENS.jadeSoft, fontStyle: "italic", margin: "10px 0 0" }}>{t.noTrafficYet}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                        {t.salesTitle(days)}
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 8 }}>
+                        {tile(t.statsOrders, recent.length)}
+                        {tile(t.statRevenue, formatVND(revenue))}
+                        {tile(t.statAvgOrder, formatVND(avgOrder))}
+                      </div>
+                    </div>
+
+                    {(traffic?.top_paths || []).length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                          {t.topPagesTitle}
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {traffic.top_paths.map((p) => (
+                            <div key={p.path} style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13, padding: "7px 12px", background: TOKENS.paperDeep, borderRadius: 10 }}>
+                              <span style={{ color: TOKENS.jade, overflowWrap: "anywhere" }}>
+                                {nav.find((n) => n.id === p.path)?.label[lang] || p.path}
+                              </span>
+                              <span style={{ color: TOKENS.brassOnPaper, fontWeight: 700, flexShrink: 0 }}>{p.views}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* ---------- CUSTOMERS ---------- */}
+              {frontDeskTab === "customers" && (() => {
+                const q = customerQuery.trim().toLowerCase();
+                const list = q
+                  ? customerProfiles.filter((c) =>
+                      (c.customer_name || "").toLowerCase().includes(q) || (c.contact || "").toLowerCase().includes(q))
+                  : customerProfiles;
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {customerProfiles.length > 6 && (
+                      <input
+                        value={customerQuery}
+                        onChange={(e) => setCustomerQuery(e.target.value)}
+                        placeholder={t.searchCustomers}
+                        style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${TOKENS.hairline}`, fontSize: 13.5, background: TOKENS.paper, color: TOKENS.jade }}
+                      />
+                    )}
+                    {list.length === 0 && (
+                      <p style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic" }}>{t.noCustomersYet}</p>
+                    )}
+                    {list.map((c) => (
+                      <div key={c.contact_key} style={{ background: TOKENS.paperDeep, borderRadius: 14, padding: "14px 16px", boxShadow: TOKENS.shadowSm }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, color: TOKENS.jade, overflowWrap: "anywhere" }}>
+                              {c.customer_name || c.contact}
+                            </div>
+                            <div style={{ fontSize: 12, color: TOKENS.jadeSoft, overflowWrap: "anywhere" }}>{c.contact}</div>
+                          </div>
+                          <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 18, color: TOKENS.brassOnPaper, flexShrink: 0 }}>
+                            {formatVND(Number(c.total_spent) || 0)}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 10, fontSize: 12, color: TOKENS.jadeSoft }}>
+                          <span><b style={{ color: TOKENS.jade }}>{c.order_count}</b> {t.custOrders.toLowerCase()}</span>
+                          <span>{t.custAvg}: <b style={{ color: TOKENS.jade }}>{formatVND(Number(c.avg_order) || 0)}</b></span>
+                          <span>
+                            {c.avg_days_between != null ? t.custEvery(Number(c.avg_days_between)) : t.custOnceOnly}
+                          </span>
+                          <span>{t.custLastOrder}: {new Date(c.last_order).toLocaleDateString(lang === "en" ? "en-GB" : "vi-VN")}</span>
+                        </div>
+                        {(c.top_items || []).length > 0 && (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 9 }}>
+                            {c.top_items.map((it) => (
+                              <span key={it.name} style={{ fontSize: 10.5, fontWeight: 600, borderRadius: 20, padding: "3px 9px", color: TOKENS.brassOnPaper, background: `${TOKENS.brass}1F` }}>
+                                {it.name} × {it.qty}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {frontDeskTab === "leads" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -3884,6 +4184,37 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   >
                     <Send size={14} /> {t.emailFallback}
                   </a>
+
+                  {/* Their referral code, right where they just finished ordering. */}
+                  {referral?.code && (
+                    <div style={{ maxWidth: 340, margin: "22px auto 0", padding: "16px 18px", background: TOKENS.paperDeep, borderRadius: TOKENS.radius, boxShadow: TOKENS.shadowSm }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 6 }}>
+                        <Gift size={15} color={TOKENS.brassOnPaper} />
+                        <span style={{ fontFamily: "Lora, Georgia, serif", fontSize: 16, color: TOKENS.jade }}>{t.referralTitle}</span>
+                      </div>
+                      <p style={{ fontSize: 12, color: TOKENS.jadeSoft, margin: "0 0 12px", lineHeight: 1.5 }}>{t.referralExplain}</p>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+                        <code style={{
+                          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 19, fontWeight: 700,
+                          letterSpacing: 2, color: TOKENS.jade, background: `${TOKENS.brass}22`, padding: "8px 14px", borderRadius: 10,
+                        }}>
+                          {referral.code}
+                        </code>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard?.writeText(referral.code).then(
+                              () => { setReferralCopied(true); setTimeout(() => setReferralCopied(false), 2000); },
+                              (e) => console.error("Clipboard write failed:", e),
+                            );
+                          }}
+                          style={{ padding: "8px 14px", borderRadius: 10, border: `1px solid ${TOKENS.hairline}`, background: TOKENS.paper, color: TOKENS.jade, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+                        >
+                          {referralCopied ? t.referralCopied : t.referralCopy}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <button
                       onClick={() => { setOrderSubmitted(null); setOrderName(""); setOrderContact(""); setOrderAddress(""); setOrderTaxNumber(""); setOrderNote(""); }}
@@ -3917,6 +4248,95 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     ))}
                   </div>
                   {!isAdmin && <ReorderBox supabase={supabase} type="retail" onApply={applyReorder} t={t} TOKENS={TOKENS} />}
+
+                  {/* Invite a friend. Looked up by the contact they ordered with, matching
+                      the "Ordered before?" box above — no account needed, since retail
+                      checkout is guest-first and has no login to hang this off. */}
+                  {!isAdmin && (
+                    <div style={{ background: TOKENS.paperDeep, borderRadius: TOKENS.radius, padding: "16px 18px", margin: "0 0 20px", boxShadow: TOKENS.shadowSm }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                        <Gift size={16} color={TOKENS.brassOnPaper} />
+                        <span style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, color: TOKENS.jade }}>{t.referralTitle}</span>
+                      </div>
+                      <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, margin: "0 0 12px", lineHeight: 1.5 }}>{t.referralExplain}</p>
+
+                      {!referral ? (
+                        <>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <input
+                              value={referralInput}
+                              onChange={(e) => { setReferralInput(e.target.value); setReferralError(false); }}
+                              onKeyDown={(e) => { if (e.key === "Enter") lookupReferral(referralInput); }}
+                              placeholder={t.referralLookupHint}
+                              style={{ flex: "1 1 180px", minWidth: 0, padding: "10px 12px", borderRadius: 10, border: `1px solid ${TOKENS.hairline}`, fontSize: 13.5, background: TOKENS.paper, color: TOKENS.jade }}
+                            />
+                            <button
+                              onClick={() => lookupReferral(referralInput)}
+                              disabled={referralLoading || !referralInput.trim()}
+                              style={{
+                                padding: "10px 16px", borderRadius: 10, border: "none", cursor: referralLoading ? "default" : "pointer",
+                                background: TOKENS.brass, color: TOKENS.jade, fontSize: 13.5, fontWeight: 700,
+                                opacity: referralLoading || !referralInput.trim() ? 0.6 : 1,
+                              }}
+                            >
+                              {referralLoading ? <Loader2 size={14} className="spin" /> : t.referralLookupBtn}
+                            </button>
+                          </div>
+                          {referralError && (
+                            <p style={{ fontSize: 12, color: TOKENS.lacquer, margin: "8px 0 0" }}>
+                              {referralError === "not_a_customer" ? t.referralNotACustomer : t.orderFailed}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                          <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 1 }}>
+                            {t.referralYourCode}
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                            <code style={{
+                              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 20, fontWeight: 700,
+                              letterSpacing: 2, color: TOKENS.jade, background: `${TOKENS.brass}22`,
+                              padding: "8px 14px", borderRadius: 10,
+                            }}>
+                              {referral.code}
+                            </code>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard?.writeText(referral.code).then(
+                                  () => { setReferralCopied(true); setTimeout(() => setReferralCopied(false), 2000); },
+                                  (e) => console.error("Clipboard write failed:", e),
+                                );
+                              }}
+                              style={{ padding: "8px 14px", borderRadius: 10, border: `1px solid ${TOKENS.hairline}`, background: TOKENS.paper, color: TOKENS.jade, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+                            >
+                              {referralCopied ? t.referralCopied : t.referralCopy}
+                            </button>
+                          </div>
+                          <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>
+                            {t.referralCount(referral.referral_count || 0)}
+                          </div>
+                          {(referral.rewards || []).length > 0 ? (
+                            <div>
+                              <div style={{ fontSize: 12.5, color: TOKENS.jade, marginBottom: 6 }}>{t.referralRewardsReady}</div>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                {referral.rewards.map((r) => (
+                                  <code key={r.code} style={{
+                                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 13, fontWeight: 700,
+                                    color: TOKENS.jade, background: `${TOKENS.brass}33`, padding: "6px 10px", borderRadius: 8,
+                                  }}>
+                                    {r.code} · −{r.percent}%
+                                  </code>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <p style={{ fontSize: 12, color: TOKENS.jadeSoft, fontStyle: "italic", margin: 0 }}>{t.referralNoRewards}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Featured: Sample Packs as a standalone hero row */}
                   {catalog.some((p) => p.line === "sample") && (
@@ -4270,7 +4690,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         {t.consentLabel}
                       </label>
 
-                      {orderError && <p style={{ fontSize: 12.5, color: "#E8A99A", marginBottom: 10 }}>{t.orderFailed}</p>}
+                      {orderError && <p style={{ fontSize: 12.5, color: "#E8A99A", marginBottom: 10 }}>{typeof orderError === "string" ? orderError : t.orderFailed}</p>}
 
                       <button
                         onClick={() => submitOrder("retail")}
