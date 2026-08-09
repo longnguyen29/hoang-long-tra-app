@@ -188,6 +188,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [paymentMethod, setPaymentMethod] = useState("qr");
   const [variantSelection, setVariantSelection] = useState({});
   const retailSummaryRef = useRef(null);
+  const productFormRef = useRef(null);
   const sampleSectionRef = useRef(null);
   const everydaySectionRef = useRef(null);
   const reserveSectionRef = useRef(null);
@@ -858,7 +859,10 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
         : p
     ));
   };
-  const editProductDraft = (p) =>
+  const editProductDraft = (p) => {
+    // The form sits above the product list. On a phone it's several screens up, so tapping
+    // Edit filled it invisibly and read as "nothing happened" — scroll to it.
+    productFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     setProductDraft({
       id: p.id,
       nameEn: p.name.en || "", nameVi: p.name.vi || "", line: p.line,
@@ -874,6 +878,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       photoPosX: p.photoPosition ? Number(p.photoPosition.split(" ")[0].replace("%", "")) : 50,
       photoPosY: p.photoPosition ? Number(p.photoPosition.split(" ")[1].replace("%", "")) : 50,
     });
+  };
   const deleteProductFn = async (id) => {
     await supabase.from("catalog_products").delete().eq("id", id);
     setCatalog(catalog.filter((p) => p.id !== id));
@@ -3365,7 +3370,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
               {frontDeskTab === "catalog" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <div style={{ background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}44`, borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div ref={productFormRef} style={{ background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}44`, borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 8, scrollMarginTop: 70 }}>
                     <input
                       value={productDraft.nameEn}
                       onChange={(e) => setProductDraft({ ...productDraft, nameEn: e.target.value })}
@@ -3543,8 +3548,13 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   </div>
 
                   {catalog.map((p) => (
-                    <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 10, padding: "10px 14px", opacity: p.available === false ? 0.6 : 1 }}>
-                      <div>
+                    // flexWrap + minWidth:0 are load-bearing, not cosmetic. The variant
+                    // editor inside this row has fixed-width number inputs, giving the left
+                    // column a ~230px floor; without these the column refused to shrink and
+                    // pushed the edit/delete buttons ~190px off the right of a phone screen,
+                    // making variant products impossible to edit on mobile.
+                    <div key={p.id} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 10, background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 10, padding: "10px 14px", opacity: p.available === false ? 0.6 : 1 }}>
+                      <div style={{ flex: "1 1 190px", minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 600 }}>{p.name.en} <span style={{ color: TOKENS.jadeSoft, fontWeight: 400 }}>· {p.name.vi}</span></div>
                         <div style={{ fontSize: 11.5, color: TOKENS.brassOnPaper }}>
                           {lineLabel(p.line)}
@@ -3579,7 +3589,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           <div style={{ fontSize: 11, color: `${TOKENS.jadeSoft}99`, marginTop: 3 }}>{t.missingDetailsHint}</div>
                         )}
                       </div>
-                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                      <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
                         <button
                           onClick={() => toggleLimited(p.id)}
                           title={t.limitedBadge}
@@ -3821,9 +3831,9 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   </div>
                   {wholesaleAccounts.length === 0 && <p style={{ color: TOKENS.jadeSoft, fontSize: 14 }}>{t.noPartnersYet}</p>}
                   {wholesaleAccounts.map((a) => (
-                    <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 10, padding: "10px 14px" }}>
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 10, padding: "10px 14px" }}>
+                      <div style={{ flex: "1 1 190px", minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                           {a.code && <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "monospace" }}>{a.code}</span>}
                           <span
                             style={{
