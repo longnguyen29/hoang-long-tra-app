@@ -5,7 +5,7 @@ import { artworkForDay, fetchArtwork } from "@/lib/artworks";
 import { TOKENS } from "@/lib/constants";
 
 const DEFAULT_IDLE_MS = 30000; // half a minute untouched
-const REVEAL_MS = 20000;       // colour is brushed in over twenty seconds, then it holds
+const REVEAL_MS = 34000;       // colour is brushed in over half a minute, then it holds
 
 // Warm paper, the colour these paintings actually sit on. An earlier version put them on
 // near-black like a gallery wall and it read as cold — and because the reveal added colour
@@ -164,22 +164,40 @@ export default function IdleScreen() {
     mask.width = view.width; mask.height = view.height;
     const mctx = mask.getContext("2d");
 
-    // A single soft round brush head, stamped repeatedly along each stroke. Soft all the way
-    // through is right here — unlike a dot, overlapping stamps along a path are meant to
-    // build up, and the feathered rim is what makes an edge look wet rather than cut.
-    const brushR = Math.max(10, Math.round(Math.min(dw, dh) * 0.055));
-    const brush = document.createElement("canvas");
-    brush.width = brush.height = brushR * 2;
-    const bx = brush.getContext("2d");
-    // Alpha here has to be high enough that overlapping passes reach full opacity. A gentler
-    // brush looked right mid-stroke but never saturated, leaving the finished painting
-    // translucent over the paper — washed out and patchy, with pale holes that never closed.
-    const g = bx.createRadialGradient(brushR, brushR, 0, brushR, brushR, brushR);
-    g.addColorStop(0, "rgba(0,0,0,0.62)");
-    g.addColorStop(0.55, "rgba(0,0,0,0.34)");
-    g.addColorStop(1, "rgba(0,0,0,0)");
-    bx.fillStyle = g;
-    bx.fillRect(0, 0, brushR * 2, brushR * 2);
+    const brushR = Math.max(6, Math.round(Math.min(dw, dh) * 0.03));
+
+    // A brush head is not a blob — it is a row of hairs, and some carry more pigment than
+    // others. Each head here is a stack of thin horizontal bands of differing alpha, with a
+    // few left out where the hairs part. Stamped repeatedly along a stroke, those bands line
+    // up into continuous streaks: the drag of bristles through wet colour.
+    //
+    // Which means the stamp size must stay fixed for the length of a stroke. Jittering the
+    // scale per stamp — as an earlier version did — slides the bands over each other and
+    // grinds the hairs back into a smooth smear.
+    const makeBristleHead = () => {
+      const c = document.createElement("canvas");
+      c.width = c.height = brushR * 2;
+      const x = c.getContext("2d");
+      const hairs = 6 + Math.floor(Math.random() * 5);
+      for (let i = 0; i < hairs; i++) {
+        if (Math.random() < 0.18) continue; // a gap where the hairs have parted
+        const t = (i + 0.5) / hairs;
+        const cy = t * brushR * 2;
+        const half = (brushR / hairs) * (0.55 + Math.random() * 0.75);
+        // Hairs at the edge of the head press less, so the stroke edge stays soft.
+        const press = 1 - Math.pow(Math.abs(t * 2 - 1), 1.7);
+        const a = (0.30 + Math.random() * 0.55) * press;
+        const lg = x.createLinearGradient(0, cy - half, 0, cy + half);
+        lg.addColorStop(0, "rgba(0,0,0,0)");
+        lg.addColorStop(0.5, `rgba(0,0,0,${a.toFixed(3)})`);
+        lg.addColorStop(1, "rgba(0,0,0,0)");
+        x.fillStyle = lg;
+        x.fillRect(0, cy - half, brushR * 2, half * 2);
+      }
+      return c;
+    };
+    // A handful of heads, so different strokes carry different hair signatures.
+    const heads = Array.from({ length: 6 }, makeBristleHead);
 
     // Strokes sweep across the picture, alternating direction like a hand going back and
     // forth, each wandering on a slow sine so no two edges line up.
@@ -193,6 +211,9 @@ export default function IdleScreen() {
         amp: brushR * (0.5 + Math.random()),
         freq: (Math.PI * 2) / (dw * (0.35 + Math.random() * 0.5)),
         phase: Math.random() * Math.PI * 2,
+        head: heads[(Math.random() * heads.length) | 0],
+        // Fixed for the whole stroke, so the hairs stay registered.
+        rr: brushR * (0.85 + Math.random() * 0.35),
         done: 0,
       });
     }
@@ -234,15 +255,14 @@ export default function IdleScreen() {
 
     const stampAlong = (s, from, to) => {
       const len = dw + brushR * 2;
-      const gap = brushR * 0.14;
+      const gap = brushR * 0.12;
       for (let d = from * len; d < to * len; d += gap) {
         const x = s.dir > 0 ? dx - brushR + d : dx + dw + brushR - d;
         const y = s.y + Math.sin(x * s.freq + s.phase) * s.amp;
         const a = edgeFade(x, y);
         if (a <= 0) continue;
         mctx.globalAlpha = a;
-        const rr = brushR * (0.8 + Math.random() * 0.45);
-        mctx.drawImage(brush, x - rr, y - rr, rr * 2, rr * 2);
+        mctx.drawImage(s.head, x - s.rr, y - s.rr, s.rr * 2, s.rr * 2);
       }
       mctx.globalAlpha = 1;
     };
