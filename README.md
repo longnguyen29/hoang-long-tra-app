@@ -98,23 +98,29 @@ Domains** and move `hoanglongtra.com` from the old project to this new one.
 - [ ] Generate a QR code pointing at `https://hoanglongtra.com` for the tea
       room (any QR generator — this isn't part of the app)
 
-## Tea-room kiosk idle screen
+## Idle screen
 
-The tablet in the tea room can show a screensaver: a public-domain Chinese or
-Japanese painting drawn in by thousands of dots over ~18 seconds, held until
-someone touches the screen.
+After 30 seconds without a touch, click, key or scroll, the screen fades to a
+public-domain Chinese or Japanese painting drawn in by thousands of dots over
+~20 seconds, held until someone touches it. This runs for **every visitor on
+every page of the public site** — it is not limited to the tea-room tablet.
 
-Open this once on that tablet and it remembers:
+These are typed into the browser's address bar (they are URLs, not terminal
+commands), and each is remembered on that device:
 
-    https://www.hoanglongtra.com/?kiosk=1
+| Address | Effect |
+| --- | --- |
+| `…/?kiosk=0` | turn the idle screen **off** on this device |
+| `…/?kiosk=1` | turn it back **on** |
+| `…/?idle=60` | wait 60 seconds instead of 30 |
 
-- `?kiosk=0` turns it off again.
-- `?idle=<seconds>` changes the wait — e.g. `?kiosk=1&idle=60` for one minute.
-  The default is 120 seconds. It is remembered too, so you only set it once.
+Two deliberate exceptions:
 
-It is **off everywhere else**. It is deliberately not enabled for ordinary
-visitors: covering the screen of someone who paused to read an article would be
-hostile on a normal website.
+- It never appears while a text field, textarea or select has focus, so it
+  cannot cover a half-typed address or note. At 30 seconds this matters — filling
+  in checkout involves long pauses with no pointer movement.
+- It is not mounted on `/admin`. Staff reviewing orders would otherwise be
+  interrupted every half minute.
 
 The painting changes daily — day-of-year modulo the twelve works in
 `lib/artworks.js`, so it cycles without anyone touching it. To change the

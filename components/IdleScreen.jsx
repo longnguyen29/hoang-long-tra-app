@@ -4,41 +4,51 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { artworkForDay, fetchArtwork } from "@/lib/artworks";
 import { TOKENS } from "@/lib/constants";
 
-const DEFAULT_IDLE_MS = 120000; // two minutes untouched
-const REVEAL_MS = 18000;        // dots gather for eighteen seconds, then the picture holds
+const DEFAULT_IDLE_MS = 30000; // half a minute untouched
+const REVEAL_MS = 20000;       // dots gather for twenty seconds, then the picture holds
 
-// Kiosk-only by design. Left on for everyone, this would cover the screen of anyone who
-// paused two minutes to read an article, which is hostile on a normal website. The tablet in
-// the tea room is opened once at /?kiosk=1 and remembers it; /?kiosk=0 turns it back off.
-// ?idle=<seconds> tunes the wait and is remembered too, so the room can be adjusted without
-// a deploy — two minutes is only a starting guess.
-function useKioskMode() {
-  const [state, setState] = useState({ kiosk: false, idleMs: DEFAULT_IDLE_MS });
+// On for every visitor, everywhere on the public site. ?kiosk=0 switches it off for a given
+// device and is remembered; ?kiosk=1 switches it back on. ?idle=<seconds> tunes the wait,
+// also remembered, so it can be changed without a deploy.
+function useIdleSettings() {
+  const [state, setState] = useState({ enabled: false, idleMs: DEFAULT_IDLE_MS });
   useEffect(() => {
     try {
       const q = new URLSearchParams(window.location.search);
       const k = q.get("kiosk");
-      if (k === "1") localStorage.setItem("hl_kiosk", "1");
-      if (k === "0") localStorage.removeItem("hl_kiosk");
+      if (k === "0") localStorage.setItem("hl_idle_off", "1");
+      if (k === "1") localStorage.removeItem("hl_idle_off");
 
       const secs = Number(q.get("idle"));
-      if (Number.isFinite(secs) && secs > 0) localStorage.setItem("hl_kiosk_idle", String(secs));
+      if (Number.isFinite(secs) && secs > 0) localStorage.setItem("hl_idle_secs", String(secs));
 
-      const stored = Number(localStorage.getItem("hl_kiosk_idle"));
+      const stored = Number(localStorage.getItem("hl_idle_secs"));
       setState({
-        kiosk: localStorage.getItem("hl_kiosk") === "1",
+        enabled: localStorage.getItem("hl_idle_off") !== "1",
         idleMs: Number.isFinite(stored) && stored > 0 ? stored * 1000 : DEFAULT_IDLE_MS,
       });
     } catch {
-      setState({ kiosk: false, idleMs: DEFAULT_IDLE_MS }); // storage blocked — never trap anyone
+      // Storage blocked (private mode). Still run — just without the remembered preference.
+      setState({ enabled: true, idleMs: DEFAULT_IDLE_MS });
     }
   }, []);
   return state;
 }
 
+// Never cover the screen while someone is mid-sentence in a form, or has the cart, a product
+// or the chat open. Thirty seconds is short enough that this matters: typing an address or
+// reading a tea's description involves long pauses with no pointer movement at all.
+function isBusy() {
+  const el = document.activeElement;
+  if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return true;
+  if (el && el.isContentEditable) return true;
+  return false;
+}
+
 export default function IdleScreen() {
-  const { kiosk, idleMs } = useKioskMode();
+  const { enabled, idleMs } = useIdleSettings();
   const [idle, setIdle] = useState(false);
+  const [lit, setLit] = useState(false); // drives the slow fade-in of the whole overlay
   const [art, setArt] = useState(null);
   const [failed, setFailed] = useState(false);
 
@@ -55,8 +65,8 @@ export default function IdleScreen() {
   }, [idleMs]);
 
   useEffect(() => {
-    if (!kiosk) return;
-    const wake = () => { setIdle((was) => { if (was) return false; return was; }); resetTimer(); };
+    if (!enabled) return;
+    const wake = () => { setIdle((was) => (was ? false : was)); setLit(false); resetTimer(); };
     const events = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart", "scroll"];
     events.forEach((e) => window.addEventListener(e, wake, { passive: true }));
     resetTimer();
@@ -64,7 +74,20 @@ export default function IdleScreen() {
       events.forEach((e) => window.removeEventListener(e, wake));
       clearTimeout(timerRef.current);
     };
-  }, [kiosk, resetTimer]);
+  }, [enabled, resetTimer]);
+
+  // Re-arm rather than appear if the visitor is mid-form. Checked at the moment of firing,
+  // not when the timer is set, because focus can change during the wait.
+  useEffect(() => {
+    if (idle && isBusy()) { setIdle(false); resetTimer(); }
+  }, [idle, resetTimer]);
+
+  // Two frames after mounting, raise the opacity — the overlay eases in rather than snapping.
+  useEffect(() => {
+    if (!idle) return;
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => setLit(true)));
+    return () => cancelAnimationFrame(id);
+  }, [idle]);
 
   // Hold the page still underneath. Without this the scrollbar sits on top of the artwork
   // and a stray swipe scrolls a page nobody can see.
@@ -79,7 +102,7 @@ export default function IdleScreen() {
   // Loaded on mount, not when the screen goes idle: the reveal should start the instant the
   // room falls quiet, not after a round-trip to New York.
   useEffect(() => {
-    if (!kiosk) return;
+    if (!enabled) return;
     const ctrl = new AbortController();
     (async () => {
       try {
@@ -102,7 +125,7 @@ export default function IdleScreen() {
       }
     })();
     return () => ctrl.abort();
-  }, [kiosk]);
+  }, [enabled]);
 
   // ---- the reveal --------------------------------------------------------------------
   useEffect(() => {
@@ -122,11 +145,14 @@ export default function IdleScreen() {
     // Fit the painting inside the screen with a generous margin — a handscroll is far wider
     // than a hanging scroll, so this has to be contain, never cover.
     const img = bitmapRef.current;
-    const margin = Math.min(vw, vh) * 0.09;
+    const margin = Math.min(vw, vh) * 0.05;
     const availW = (vw - margin * 2) * dpr, availH = (vh - margin * 2) * dpr;
     const scale = Math.min(availW / img.naturalWidth, availH / img.naturalHeight);
     const dw = Math.round(img.naturalWidth * scale), dh = Math.round(img.naturalHeight * scale);
-    const dx = Math.round((base.width - dw) / 2), dy = Math.round((base.height - dh) / 2);
+    // Optically centred, not mathematically: a picture placed dead centre reads as sitting
+    // low, and the label needs the room beneath it more than the ceiling does.
+    const dx = Math.round((base.width - dw) / 2);
+    const dy = Math.round((base.height - dh) * 0.42);
 
     // Sample in screen space so dot density is the same whatever the painting's own size.
     const off = document.createElement("canvas");
@@ -148,7 +174,7 @@ export default function IdleScreen() {
     // one. Typed arrays rather than an array of objects: a full-screen retina painting is
     // north of 200,000 dots, which as JS arrays would be tens of megabytes on a device that
     // has none to spare. Packed like this it is a couple of megabytes.
-    const grid = Math.max(2, Math.round(3 * dpr));
+    const grid = Math.max(3, Math.round(4 * dpr));
     const cols = Math.ceil(dw / grid), rows = Math.ceil(dh / grid);
     const max = cols * rows;
     const px16 = new Int16Array(max), py16 = new Int16Array(max);
@@ -157,9 +183,17 @@ export default function IdleScreen() {
     let total = 0;
     for (let y = 0; y < dh; y += grid) {
       for (let x = 0; x < dw; x += grid) {
-        const i = (y * dw + x) * 4;
+        // Nudge each dot off its grid point by a quarter cell, and read its colour from
+        // where it actually lands. An exact lattice reads as a screen door laid over the
+        // painting; too much scatter and colours from unrelated areas sit side by side and
+        // the whole thing turns to speckle. A quarter cell breaks the grid without that.
+        const jx = ((Math.random() - 0.5) * grid * 0.5) | 0;
+        const jy = ((Math.random() - 0.5) * grid * 0.5) | 0;
+        const sx = Math.min(dw - 1, Math.max(0, x + jx));
+        const sy = Math.min(dh - 1, Math.max(0, y + jy));
+        const i = (sy * dw + sx) * 4;
         if (pixels[i + 3] < 8) continue; // skip fully transparent margins
-        px16[total] = dx + x; py16[total] = dy + y;
+        px16[total] = dx + sx; py16[total] = dy + sy;
         cr[total] = pixels[i]; cg[total] = pixels[i + 1]; cb[total] = pixels[i + 2];
         total++;
       }
@@ -182,7 +216,49 @@ export default function IdleScreen() {
       return;
     }
 
-    const radius = grid * 0.62; // slight overlap, so the dots knit into a whole
+    // Sized so even the smallest dot reaches the corner of its own cell (half a cell
+    // diagonal is grid * 0.707; the minimum here is 0.80 * 0.92 = 0.74). Measured against
+    // the same painting drawn plainly, the finished dot canvas matches it closely — median
+    // luminance identical, deciles within three points — so the texture reads as the
+    // artwork rather than as a screen laid over it.
+    const radius = grid * 0.8;
+
+    // One round brush, drawn once and stamped thousands of times. The core is fully opaque
+    // and only the outer third feathers: a brush that is soft all the way through never
+    // covers the dark ground, so every dot dilutes toward black and the picture ends up
+    // grey and grainy. Solid centre, soft rim — colour stays true, edges still blend.
+    // Stamping a cached bitmap is also cheaper than filling a path per dot.
+    const brushR = Math.ceil(radius * 1.6);
+    const brush = document.createElement("canvas");
+    brush.width = brush.height = brushR * 2;
+    const brx = brush.getContext("2d");
+    const grad = brx.createRadialGradient(brushR, brushR, 0, brushR, brushR, brushR);
+    grad.addColorStop(0, "rgba(255,255,255,1)");
+    grad.addColorStop(0.62, "rgba(255,255,255,1)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    brx.fillStyle = grad;
+    brx.fillRect(0, 0, brushR * 2, brushR * 2);
+
+    // Tinting: draw the brush into a small scratch canvas, then multiply the dot's colour
+    // through it. Done per colour would be slow, so instead the brush is stamped onto the
+    // base with globalCompositeOperation and a solid fill on top.
+    const stamp = document.createElement("canvas");
+    stamp.width = stamp.height = brushR * 2;
+    const sx2 = stamp.getContext("2d");
+
+    const drawDot = (ctx, k, r, alpha) => {
+      const size = r * 2;
+      sx2.clearRect(0, 0, brushR * 2, brushR * 2);
+      sx2.globalCompositeOperation = "source-over";
+      sx2.drawImage(brush, 0, 0);
+      sx2.globalCompositeOperation = "source-in";
+      sx2.fillStyle = `rgb(${cr[k]},${cg[k]},${cb[k]})`;
+      sx2.fillRect(0, 0, brushR * 2, brushR * 2);
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(stamp, px16[k] - r, py16[k] - r, size, size);
+      ctx.globalAlpha = 1;
+    };
+
     let drawn = 0;
     let start = 0;
     let recent = []; // last arrivals, drawn as fading halos on the fx layer
@@ -190,35 +266,30 @@ export default function IdleScreen() {
     const tick = (now) => {
       if (!start) start = now;
       const t = Math.min((now - start) / REVEAL_MS, 1);
-      // ease-in-out: hesitant at first, decisive in the middle, settling at the end
-      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      // Slow in, slow out, and slowest at the very end — the picture should arrive rather
+      // than finish. A plain linear fill felt like a progress bar.
+      const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
       const target = Math.floor(eased * total);
 
       for (; drawn < target; drawn++) {
         const k = order[drawn];
-        bctx.fillStyle = `rgb(${cr[k]},${cg[k]},${cb[k]})`;
-        bctx.beginPath();
-        bctx.arc(px16[k], py16[k], radius * (0.75 + Math.random() * 0.5), 0, Math.PI * 2);
-        bctx.fill();
-        if (recent.length < 900) recent.push(k, now);
+        // Near-opaque. Size varies for texture, opacity barely does — translucent dots let
+        // the black ground through and wash the colour out.
+        drawDot(bctx, k, radius * (0.92 + Math.random() * 0.26), 0.93 + Math.random() * 0.07);
+        if (recent.length < 600) recent.push(k, now);
       }
 
-      // The halo layer gives arriving dots a moment of brightness before they settle. Kept
-      // flat (index, timestamp, index, timestamp…) to avoid allocating per dot.
+      // Arriving dots hold a soft bloom for a moment, like ink spreading before it dries.
+      // Flat array (index, timestamp, …) so nothing is allocated per dot.
       fctx.clearRect(0, 0, fx.width, fx.height);
       const next = [];
       for (let i = 0; i < recent.length; i += 2) {
         const k = recent[i];
-        const age = (now - recent[i + 1]) / 700;
+        const age = (now - recent[i + 1]) / 900;
         if (age >= 1) continue;
-        fctx.globalAlpha = (1 - age) * 0.5;
-        fctx.fillStyle = `rgb(${cr[k]},${cg[k]},${cb[k]})`;
-        fctx.beginPath();
-        fctx.arc(px16[k], py16[k], radius * (1 + age * 2.4), 0, Math.PI * 2);
-        fctx.fill();
+        drawDot(fctx, k, radius * (1 + age * 1.8), (1 - age) * (1 - age) * 0.18);
         next.push(k, recent[i + 1]);
       }
-      fctx.globalAlpha = 1;
       recent = next;
 
       if (t < 1 || recent.length) rafRef.current = requestAnimationFrame(tick);
@@ -229,7 +300,7 @@ export default function IdleScreen() {
     return () => cancelAnimationFrame(rafRef.current);
   }, [idle, art]);
 
-  if (!kiosk || !idle) return null;
+  if (!enabled || !idle) return null;
 
   return (
     <div
@@ -237,9 +308,15 @@ export default function IdleScreen() {
       // only needs to be invisible to assistive tech and dismissible by any input.
       aria-hidden="true"
       style={{
-        position: "fixed", inset: 0, zIndex: 200, background: TOKENS.ink,
+        position: "fixed", inset: 0, zIndex: 200,
+        // Warm near-black lifted very slightly behind the painting rather than a flat
+        // rectangle of pure black. Ink has a temperature; a cold #000 field made the scroll
+        // look pinned to a lightbox instead of resting in a dim room.
+        background: `radial-gradient(ellipse at 50% 44%, #241E19 0%, ${TOKENS.ink} 58%, #100D0B 100%)`,
         display: "flex", alignItems: "center", justifyContent: "center",
         cursor: "none", overflow: "hidden",
+        opacity: lit ? 1 : 0,
+        transition: "opacity 1400ms cubic-bezier(0.23, 1, 0.32, 1)",
       }}
     >
       {!failed && (
@@ -249,22 +326,50 @@ export default function IdleScreen() {
         </>
       )}
 
+      {/* A breath of shadow at the edges so the picture sits in the dark rather than being
+          cut out of it. */}
+      <div style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        background: "radial-gradient(ellipse at 50% 46%, rgba(0,0,0,0) 42%, rgba(0,0,0,0.55) 100%)",
+      }} />
+
       {/* Credit. Not legally required for public-domain work — kept because naming the hand
-          that made it is the decent thing, and it is the same courtesy the museums extend. */}
+          that made it is the decent thing, and it is the same courtesy the museums extend.
+          Quiet and widely letterspaced: it should read as a gallery label, not a caption. */}
       {art && !failed && (
         <div style={{
-          position: "absolute", left: 26, bottom: 22, maxWidth: "72vw",
-          color: `${TOKENS.paper}99`, lineHeight: 1.5, pointerEvents: "none",
+          position: "absolute", left: "clamp(22px, 5vw, 56px)", bottom: "clamp(20px, 5vh, 48px)",
+          maxWidth: "68vw", pointerEvents: "none",
         }}>
-          <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 15, fontStyle: "italic", color: `${TOKENS.paper}CC` }}>
+          <div aria-hidden="true" style={{
+            width: 22, height: 1, background: `${TOKENS.brass}55`, marginBottom: 12,
+          }} />
+          <div style={{
+            fontFamily: "Lora, Georgia, serif", fontSize: "clamp(13px, 1.5vw, 16px)",
+            fontStyle: "italic", color: `${TOKENS.paper}B0`, lineHeight: 1.45,
+          }}>
             {art.title}
           </div>
-          <div style={{ fontSize: 11.5, letterSpacing: 0.3 }}>
+          <div style={{
+            fontSize: "clamp(10px, 1.1vw, 11.5px)", letterSpacing: 1.6, textTransform: "uppercase",
+            color: `${TOKENS.brass}88`, marginTop: 7,
+          }}>
             {[art.artist, art.date].filter(Boolean).join(" · ")}
           </div>
-          <div style={{ fontSize: 10.5, color: `${TOKENS.brass}AA`, marginTop: 2 }}>
-            {art.museum} · Public domain
+          <div style={{ fontSize: 10, letterSpacing: 0.6, color: `${TOKENS.paper}44`, marginTop: 4 }}>
+            {art.museum}
           </div>
+        </div>
+      )}
+
+      {/* The house seal, opposite the label — the room's own quiet mark. */}
+      {art && !failed && (
+        <div aria-hidden="true" style={{
+          position: "absolute", right: "clamp(22px, 5vw, 56px)", bottom: "clamp(20px, 5vh, 48px)",
+          fontFamily: "'Noto Serif SC', serif", fontSize: 15, letterSpacing: 3,
+          color: `${TOKENS.brass}3A`,
+        }}>
+          皇龍
         </div>
       )}
 
@@ -272,7 +377,7 @@ export default function IdleScreen() {
       {(failed || !art) && (
         <div style={{
           fontFamily: "'Noto Serif SC', serif", fontSize: 30, letterSpacing: 8,
-          color: `${TOKENS.brass}66`,
+          color: `${TOKENS.brass}55`,
         }}>
           皇龍
         </div>

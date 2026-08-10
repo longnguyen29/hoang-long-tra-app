@@ -5,7 +5,8 @@ export default function HomePage() {
   return (
     <>
       <TeaConsole isAdmin={false} />
-      {/* Inert unless the device has been put into kiosk mode with ?kiosk=1 */}
+      {/* Public site only — deliberately not mounted on /admin, where it would interrupt
+          staff reviewing orders every thirty seconds. */}
       <IdleScreen />
     </>
   );
