@@ -6,9 +6,6 @@ import { TOKENS } from "@/lib/constants";
 
 const DEFAULT_IDLE_MS = 30000; // half a minute untouched
 const REVEAL_MS = 80000;       // colour is brushed in over eighty seconds, then it holds
-// Strokes run up-and-right, so the wave of colour advances down the opposite diagonal —
-// starting in the top-left corner and finishing in the bottom-right.
-const STROKE_ANGLE = -Math.PI / 4;
 
 // Warm paper, the colour these paintings actually sit on. An earlier version put them on
 // near-black like a gallery wall and it read as cold — and because the reveal added colour
@@ -174,7 +171,10 @@ export default function IdleScreen() {
     mask.width = view.width; mask.height = view.height;
     const mctx = mask.getContext("2d");
 
-    const brushR = Math.max(6, Math.round(Math.min(dw, dh) * 0.03));
+    // A broad brush. When several sparse families cross each other, a narrow head turns the
+    // picture into a mesh of thin lines — a scribble rather than paint. Each stroke has to be
+    // wide enough to read as a band of colour in its own right.
+    const brushR = Math.max(14, Math.round(Math.min(dw, dh) * 0.085));
 
     // A brush head is not a blob — it is a row of hairs, and some carry more pigment than
     // others. Each head here is a stack of thin horizontal bands of differing alpha, with a
@@ -184,31 +184,40 @@ export default function IdleScreen() {
     // Which means the stamp size must stay fixed for the length of a stroke. Jittering the
     // scale per stamp — as an earlier version did — slides the bands over each other and
     // grinds the hairs back into a smooth smear.
-    const makeBristleHead = () => {
+    const makeBristleHead = (angle) => {
       // Sized to the diagonal, because the bands are drawn rotated and must still reach the
       // corners of the sprite once turned.
       const S = Math.ceil(brushR * 2 * Math.SQRT2);
       const c = document.createElement("canvas");
       c.width = c.height = S;
       const x = c.getContext("2d");
-      // Turn the whole head so the hairs lie along the stroke. Without this the bands would
-      // sit across the direction of travel and read as rungs, not bristles.
+      // Turn the whole head so the hairs lie along its own stroke. Without this the bands
+      // would sit across the direction of travel and read as rungs, not bristles — which is
+      // why each direction needs its own heads rather than sharing one set.
       x.translate(S / 2, S / 2);
-      x.rotate(STROKE_ANGLE);
+      x.rotate(angle);
       x.translate(-S / 2, -S / 2);
 
       const hairs = 11 + Math.floor(Math.random() * 9);
       for (let i = 0; i < hairs; i++) {
-        if (Math.random() < 0.24) continue; // a gap where the hairs have parted
+        if (Math.random() < 0.09) continue; // the occasional gap where the hairs have parted
         // Wander each hair off its even spacing, so the head looks gathered rather than combed.
         const t = (i + 0.5) / hairs + (Math.random() - 0.5) * (0.9 / hairs);
         const cy = S / 2 + (t - 0.5) * brushR * 2;
-        const half = (brushR / hairs) * (0.4 + Math.random() * 1.5);
+        // Wide enough that neighbouring hairs overlap. Narrow bands at this low an opacity
+        // read as scratches drawn across the paper rather than a loaded brush laying colour;
+        // overlapping them makes each pass a soft band that happens to be streaked.
+        const half = (brushR / hairs) * (1.1 + Math.random() * 1.4);
         // Hairs at the edge of the head press less, so the stroke edge stays soft. A few
         // stray ones reach past that and give the head its ragged outline.
         const stray = Math.random() < 0.16 ? 1.5 : 1;
         const press = (1 - Math.pow(Math.min(1, Math.abs(t * 2 - 1)), 1.9)) * stray;
-        const a = Math.min(0.85, (0.18 + Math.random() * 0.68) * press);
+        // Very thin. Stamps along one stroke overlap roughly twelve deep, so a hair carrying
+        // even moderate pigment makes a single pass opaque on its own — which is what kept
+        // the picture finishing early no matter how the families were spaced. At this weight
+        // one pass leaves a wash, and the colour only reaches full depth where several
+        // directions have crossed.
+        const a = Math.min(0.038, (0.005 + Math.random() * 0.028) * press);
         if (a <= 0.01) continue;
         const lg = x.createLinearGradient(0, cy - half, 0, cy + half);
         lg.addColorStop(0, "rgba(0,0,0,0)");
@@ -219,43 +228,68 @@ export default function IdleScreen() {
       }
       return c;
     };
-    // A handful of heads, so different strokes carry different hair signatures.
-    const heads = Array.from({ length: 6 }, makeBristleHead);
+    // Several families of strokes, each at its own angle, all painting at once. A single
+    // sweep — however slow — is still a wipe crossing the picture, and you always know where
+    // it will go next. Four hands working from four sides at the same time read as a picture
+    // gathering itself out of the paper instead.
+    //
+    // A stroke is a line through the picture's centre offset sideways by k: every point is
+    // c + k·n + s·u, with u along the stroke and n across it. Raising k walks a family
+    // across in the direction of its own n, so each family arrives from a different side.
+    const cxp = dx + dw / 2, cyp = dy + dh / 2;
+    const reach = Math.hypot(dw, dh) / 2; // half-diagonal: covers the picture at any angle
 
-    // Each stroke is a line x + y = k in the picture's own coordinates, so it runs up and to
-    // the right. Raising k walks that line from the top-left corner across to the bottom
-    // right, which is the order they are painted in. Perpendicular spacing between two such
-    // lines is (Δk)/√2, so Δk is scaled up to keep the rows as tight as before.
+    // Each family is deliberately sparse — its rows sit several brush widths apart, so one
+    // direction alone leaves most of the paper bare and the picture can only close where
+    // several have crossed. That is the whole point of painting from many sides at once, and
+    // it is easy to lose: at a pitch close to the brush's own width a single family covers
+    // everything on its own, and the reveal is over a third of the way in with nothing left
+    // for the other directions to do.
+    const step = brushR * 4.5;
     const strokes = [];
-    // Tight rows. A bushy head with hair gaps lays down less per pass than a solid one, so
-    // the pitch has to close up to compensate — at a wider spacing the strokes finished with
-    // permanent pale channels between them.
-    const step = brushR * 0.35;
-    const kStep = step * Math.SQRT2;
-    const count = Math.ceil((dw + dh) / kStep) + 2;
-    for (let r = 0; r < count; r++) {
-      strokes.push({
-        k: -brushR * 2 + r * kStep,
-        dir: r % 2 === 0 ? 1 : -1,
-        // Wander has to stay under the row pitch. Wobbling further than neighbouring strokes
-        // are apart makes them crowd in one place and miss in another, which is what left
-        // those channels — the picture never closed no matter how long it ran.
-        amp: step * (0.35 + Math.random() * 0.5),
-        freq: (Math.PI * 2) / (dw * (0.35 + Math.random() * 0.5)),
-        phase: Math.random() * Math.PI * 2,
-        head: heads[(Math.random() * heads.length) | 0],
-        // Fixed for the whole stroke, so the hairs stay registered.
-        rr: brushR * (0.85 + Math.random() * 0.35),
-        done: 0,
-      });
+    const FAMILIES = 6;
+    for (let f = 0; f < FAMILIES; f++) {
+      // Evenly spread directions, turned by a random amount so no two nights line up.
+      const angle = (Math.PI * f) / FAMILIES + Math.random() * Math.PI;
+      const ux = Math.cos(angle), uy = Math.sin(angle);
+      const nx = -uy, ny = ux;
+      const heads = Array.from({ length: 4 }, () => makeBristleHead(angle));
+      const sweep = Math.random() < 0.5 ? 1 : -1; // which side this family comes from
+      const rows = Math.ceil((reach * 2 + brushR * 4) / step);
+      for (let r = 0; r < rows; r++) {
+        const k = -reach - brushR * 2 + r * step;
+        strokes.push({
+          family: f,
+          ux, uy, nx, ny, k,
+          dir: r % 2 === 0 ? 1 : -1,
+          // Wander stays under the row pitch. Wobbling further than neighbouring strokes are
+          // apart makes them crowd in one place and miss in another, which is what left pale
+          // channels in an earlier version.
+          amp: step * (0.3 + Math.random() * 0.45),
+          freq: (Math.PI * 2) / (reach * (0.5 + Math.random() * 0.9)),
+          phase: Math.random() * Math.PI * 2,
+          head: heads[(Math.random() * heads.length) | 0],
+          // Fixed for the whole stroke, so the hairs stay registered.
+          rr: brushR * (0.85 + Math.random() * 0.35),
+          done: 0,
+          // Position within its own family's sweep, 0 at the side it starts from.
+          order: sweep > 0 ? r / rows : 1 - r / rows,
+        });
+      }
     }
-    // Painted corner to corner, but with neighbours overlapping in time, and each start
-    // nudged a little off its slot so the advancing edge stays loose rather than ruled.
-    const slice = 1 / count;
-    strokes.forEach((s, i) => {
-      const jitter = (Math.random() - 0.5) * slice * 2.5;
-      s.t0 = Math.max(0, i * slice - slice * 0.9 + jitter);
-      s.t1 = Math.min(1, s.t0 + slice * 3.2);
+    // All directions are in motion from early on, but they are staggered so they don't finish
+    // together. Six families progressing in lockstep give union coverage of 1-(1-p)^6, which
+    // saturates almost at once — the picture was complete at three quarters and the last
+    // stretch had nothing to do. Letting each family run its sweep over its own window keeps
+    // colour still arriving right to the end.
+    strokes.forEach((s) => {
+      const span = 0.2; // how long one stroke takes, as a share of the whole
+      const fStart = (s.family / FAMILIES) * 0.30;
+      const fEnd = 0.70 + (s.family / FAMILIES) * 0.28;
+      const jitter = (Math.random() - 0.5) * 0.09;
+      const room = Math.max(0.05, fEnd - fStart - span);
+      s.t0 = Math.max(0, Math.min(0.99, fStart + s.order * room + jitter));
+      s.t1 = Math.min(1, s.t0 + span);
     });
 
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
@@ -322,24 +356,25 @@ export default function IdleScreen() {
       return k * k * (0.55 + Math.random() * 0.45); // ragged, not a clean gradient
     };
 
-    // Walks the line x + y = k across the picture. Stepping x by δ moves the point δ√2 along
-    // the line, so δ is divided by √2 to keep the stamps evenly spaced. The wobble pushes the
-    // stroke sideways — along (1,1), perpendicular to its own direction.
-    const stampAlong = (s, from, to) => {
-      const xLo = Math.max(0, s.k - dh) - brushR;
-      const xHi = Math.min(dw, s.k) + brushR;
-      if (xHi <= xLo) return; // this line misses the picture entirely
-      const span = xHi - xLo;
-      const dstep = (brushR * 0.12) / Math.SQRT2;
+    // Walks one stroke: from the centre, k across and s along, in that stroke's own
+    // direction. The wobble pushes it sideways along n, perpendicular to its travel, so the
+    // stroke wanders without ever changing the direction its hairs point.
+    const span = reach * 2 + brushR * 4;
+    const dstep = brushR * 0.16;
+    const stampAlong = (st, from, to) => {
+      const bx0 = cxp + st.k * st.nx, by0 = cyp + st.k * st.ny;
       for (let u = from * span; u < to * span; u += dstep) {
-        const lx = s.dir > 0 ? xLo + u : xHi - u;
-        const ly = s.k - lx;
-        const w = (Math.sin(lx * s.freq + s.phase) * s.amp) / Math.SQRT2;
-        const px = dx + lx + w, py = dy + ly + w;
+        const s = (st.dir > 0 ? u : span - u) - span / 2;
+        const w = Math.sin(s * st.freq + st.phase) * st.amp;
+        const px = bx0 + s * st.ux + w * st.nx;
+        const py = by0 + s * st.uy + w * st.ny;
+        // Cheap reject before the expensive part — most of a long stroke lies off the
+        // picture at steep angles.
+        if (px < dx - brushR || px > dx + dw + brushR || py < dy - brushR || py > dy + dh + brushR) continue;
         const a = edgeFade(px, py);
         if (a <= 0) continue;
         mctx.globalAlpha = a;
-        mctx.drawImage(s.head, px - s.rr, py - s.rr, s.rr * 2, s.rr * 2);
+        mctx.drawImage(st.head, px - st.rr, py - st.rr, st.rr * 2, st.rr * 2);
       }
       mctx.globalAlpha = 1;
     };
@@ -348,10 +383,13 @@ export default function IdleScreen() {
     const tick = (now) => {
       if (!start) start = now;
       const t = Math.min((now - start) / revealMs, 1);
-      // Slow in, slow out — the colour should arrive rather than finish.
-      const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-      // Over the last fifth, any channel the brush happened to miss closes underneath.
-      const s0 = 0.8;
+      // Deliberately behind linear. Overlapping passes from six directions reach full depth
+      // well before every stroke has run, so a curve that races ahead early finishes the
+      // picture at half time and leaves the rest of the reveal with nothing to show. Holding
+      // the strokes back keeps colour arriving into the last quarter.
+      const eased = Math.pow(t, 1.9);
+      // Near the end, anything the brush happened to miss closes underneath.
+      const s0 = 0.88;
       settle = t <= s0 ? 0 : Math.pow((t - s0) / (1 - s0), 1.6);
 
       for (const s of strokes) {
