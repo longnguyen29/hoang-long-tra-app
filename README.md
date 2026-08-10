@@ -100,10 +100,21 @@ Domains** and move `hoanglongtra.com` from the old project to this new one.
 
 ## Idle screen
 
-After 30 seconds without a touch, click, key or scroll, the screen fades to a
-public-domain Chinese or Japanese painting drawn in by thousands of dots over
-~20 seconds, held until someone touches it. This runs for **every visitor on
-every page of the public site** — it is not limited to the tea-room tablet.
+After 30 seconds without a touch, click, key or scroll, the screen fades to warm
+paper carrying a public-domain Chinese or Japanese painting, sunk in mist. Over
+the next 80 seconds the mist thins and the picture comes into focus, then holds
+until someone touches it. This runs for **every visitor on every page of the
+public site** — it is not limited to the tea-room tablet.
+
+Nothing travels across the screen and the picture is never assembled. Earlier
+versions built it from dots, and later painted it in with brush strokes sweeping
+from several directions; the strokes crossed at angles and read, in the owner's
+words, as a hand crawling over the paper. Motion is what made it unsettling, so
+there is none — the painting sits still and only its sharpness changes.
+
+`?paint=<seconds>` shortens the reveal so it can be judged quickly, e.g.
+`?idle=2&paint=20`. Unlike the settings below it is **not** remembered, since a
+fast reveal left on by accident would be worse than no preview at all.
 
 These are typed into the browser's address bar (they are URLs, not terminal
 commands), and each is remembered on that device:
