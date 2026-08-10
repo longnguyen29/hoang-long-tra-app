@@ -98,6 +98,36 @@ Domains** and move `hoanglongtra.com` from the old project to this new one.
 - [ ] Generate a QR code pointing at `https://hoanglongtra.com` for the tea
       room (any QR generator — this isn't part of the app)
 
+## Tea-room kiosk idle screen
+
+The tablet in the tea room can show a screensaver: a public-domain Chinese or
+Japanese painting drawn in by thousands of dots over ~18 seconds, held until
+someone touches the screen.
+
+Open this once on that tablet and it remembers:
+
+    https://www.hoanglongtra.com/?kiosk=1
+
+- `?kiosk=0` turns it off again.
+- `?idle=<seconds>` changes the wait — e.g. `?kiosk=1&idle=60` for one minute.
+  The default is 120 seconds. It is remembered too, so you only set it once.
+
+It is **off everywhere else**. It is deliberately not enabled for ordinary
+visitors: covering the screen of someone who paused to read an article would be
+hostile on a normal website.
+
+The painting changes daily — day-of-year modulo the twelve works in
+`lib/artworks.js`, so it cycles without anyone touching it. To change the
+rotation, edit that list; each entry is a Met object ID or a Cleveland accession
+number, and titles and artists come from the museums' own APIs.
+
+Images are fetched live from the museums through `/api/artwork-image` and never
+stored. That relay exists because the particle effect must read the real pixels
+(`getImageData`), which browsers block on cross-origin images unless the host
+sends `Access-Control-Allow-Origin` on the GET — and neither museum does.
+Note that Met images *do* send it on HEAD, so `curl -I` suggests they would
+work; they don't. Verify CORS in a browser, not with `curl -I`.
+
 ## Notes & deviations from the original brief
 
 - **AI auto-reply (Anthropic) was left out of this v1** per your choice — the
