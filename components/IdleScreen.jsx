@@ -19,11 +19,17 @@ const PAPER = "#EFE6D6";
 // On for every visitor, everywhere on the public site. ?kiosk=0 switches it off for a given
 // device and is remembered; ?kiosk=1 switches it back on. ?idle=<seconds> tunes the wait,
 // also remembered, so it can be changed without a deploy.
+//
+// ?paint=<seconds> shortens the painting itself. Deliberately NOT remembered — it exists so
+// the effect can be watched end to end in a few seconds instead of eighty while judging it,
+// and a fast paint left switched on by accident would be worse than no preview at all.
 function useIdleSettings() {
-  const [state, setState] = useState({ enabled: false, idleMs: DEFAULT_IDLE_MS });
+  const [state, setState] = useState({ enabled: false, idleMs: DEFAULT_IDLE_MS, revealMs: REVEAL_MS });
   useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const paint = Number(q.get("paint"));
+    const revealMs = Number.isFinite(paint) && paint > 0 ? paint * 1000 : REVEAL_MS;
     try {
-      const q = new URLSearchParams(window.location.search);
       const k = q.get("kiosk");
       if (k === "0") localStorage.setItem("hl_idle_off", "1");
       if (k === "1") localStorage.removeItem("hl_idle_off");
@@ -35,10 +41,11 @@ function useIdleSettings() {
       setState({
         enabled: localStorage.getItem("hl_idle_off") !== "1",
         idleMs: Number.isFinite(stored) && stored > 0 ? stored * 1000 : DEFAULT_IDLE_MS,
+        revealMs,
       });
     } catch {
       // Storage blocked (private mode). Still run — just without the remembered preference.
-      setState({ enabled: true, idleMs: DEFAULT_IDLE_MS });
+      setState({ enabled: true, idleMs: DEFAULT_IDLE_MS, revealMs });
     }
   }, []);
   return state;
@@ -54,7 +61,7 @@ function isBusy() {
 }
 
 export default function IdleScreen() {
-  const { enabled, idleMs } = useIdleSettings();
+  const { enabled, idleMs, revealMs } = useIdleSettings();
   const [idle, setIdle] = useState(false);
   const [lit, setLit] = useState(false); // drives the slow fade-in of the whole overlay
   const [art, setArt] = useState(null);
@@ -301,9 +308,12 @@ export default function IdleScreen() {
     // instead of stopping at a rectangle — the loose, blotchy border in the reference.
     const edge = Math.min(dw, dh) * 0.07;
 
-    // The settling interior, inset by the full ragged border so it can never harden the
-    // outline. Everything inside this is guaranteed painted by the end.
-    fctx2.fillRect(dx + edge, dy + edge, Math.max(0, dw - edge * 2), Math.max(0, dh - edge * 2));
+    // Covers the picture corner to corner — no inset. The soft ragged border this used to
+    // leave was faithful to the reference photograph, but on a scroll with its own printed
+    // edge it read as a picture that had not been finished. So the feathering is now only
+    // something you see while the colour is arriving: by the end the painting is whole,
+    // opaque to its own edges.
+    fctx2.fillRect(dx, dy, dw, dh);
     const edgeFade = (x, y) => {
       const d = Math.min(x - dx, dx + dw - x, y - dy, dy + dh - y);
       if (d >= edge) return 1;
@@ -337,7 +347,7 @@ export default function IdleScreen() {
     let start = 0;
     const tick = (now) => {
       if (!start) start = now;
-      const t = Math.min((now - start) / REVEAL_MS, 1);
+      const t = Math.min((now - start) / revealMs, 1);
       // Slow in, slow out — the colour should arrive rather than finish.
       const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
       // Over the last fifth, any channel the brush happened to miss closes underneath.
@@ -356,7 +366,7 @@ export default function IdleScreen() {
 
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [idle, art]);
+  }, [idle, art, revealMs]);
 
   if (!enabled || !idle) return null;
 
