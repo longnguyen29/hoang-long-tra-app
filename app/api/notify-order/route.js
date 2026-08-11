@@ -13,8 +13,10 @@ import { createClient } from "@supabase/supabase-js";
 // With any of them missing the route quietly does nothing, so orders still succeed.
 
 export async function POST(request) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
+  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  // Trimmed because a chat id is copied by hand out of a wall of JSON, and a trailing space
+  // fails as "chat not found" — indistinguishable from having the wrong number entirely.
+  const chatId = process.env.TELEGRAM_CHAT_ID?.trim().replace(/^["']|["']$/g, "");
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 

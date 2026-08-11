@@ -30,8 +30,9 @@ export async function POST(request) {
     return Response.json({ ok: false, reason: "unauthorised" }, { status: 403 });
   }
 
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
+  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  // See notify-order: a hand-copied chat id often arrives with a space or quotes around it.
+  const chatId = process.env.TELEGRAM_CHAT_ID?.trim().replace(/^["']|["']$/g, "");
 
   // Names only, never values — and the names are already in .env.example.
   const missing = Object.entries({ TELEGRAM_BOT_TOKEN: token, TELEGRAM_CHAT_ID: chatId })
