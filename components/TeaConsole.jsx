@@ -20,6 +20,7 @@ import {
   fromPaymentRow, toPaymentRow, fromGalleryRow, fromWholesaleAccountRow, fromTeaSessionRow,
   fromProductReviewRow,
 } from "@/lib/mappers";
+import ConfirmDelete from "./ConfirmDelete";
 import AuthPanel from "./AuthPanel";
 import PaymentBlock from "./PaymentBlock";
 import ReorderBox from "./ReorderBox";
@@ -829,6 +830,61 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     await supabase.from("orders").update({ tracking_code: trackingCode }).eq("id", id);
     setOrders(orders.map((o) => (o.id === id ? { ...o, trackingCode } : o)));
   };
+  // ---- deleting test data -------------------------------------------------------------
+  //
+  // The database has always allowed staff to delete these; there was simply no button. Every
+  // one of them is behind a two-press confirm, because they sit next to real records.
+  //
+  // Deleting an order also winds back the "sold" counter it added. That counter is shown to
+  // customers on the product cards, so a few test orders would otherwise leave the shop
+  // claiming sales that never happened. Stock is deliberately NOT restored — that is a
+  // judgement about physical inventory, not a number to be guessed at, and both fields are
+  // editable by hand in the Catalog tab.
+  const deleteOrder = async (order) => {
+    for (const l of order.lines || []) {
+      const qty = Math.round(Number(l.qty) || 0);
+      if (!l.productId || qty <= 0) continue;
+      const p = catalog.find((c) => c.id === l.productId);
+      if (!p) continue;
+      const next = Math.max(0, (p.soldCount || 0) - qty);
+      await supabase.from("catalog_products").update({ sold_count: next }).eq("id", l.productId);
+    }
+    const { error } = await supabase.from("orders").delete().eq("id", order.id);
+    if (error) { console.error("Delete order failed:", error.message); return; }
+    setOrders((os) => os.filter((o) => o.id !== order.id));
+    loadCatalog();
+    loadCustomerProfiles();
+  };
+
+  const deleteLead = async (id) => {
+    const { error } = await supabase.from("leads").delete().eq("id", id);
+    if (error) { console.error("Delete lead failed:", error.message); return; }
+    setLeads((ls) => ls.filter((l) => l.id !== id));
+  };
+
+  const deleteSampleRequest = async (id) => {
+    const { error } = await supabase.from("sample_requests").delete().eq("id", id);
+    if (error) { console.error("Delete sample request failed:", error.message); return; }
+    setSampleRequests((rs) => rs.filter((r) => r.id !== id));
+  };
+
+  const deleteTeaSession = async (id) => {
+    const { error } = await supabase.from("tea_sessions").delete().eq("id", id);
+    if (error) { console.error("Delete session failed:", error.message); return; }
+    setTeaSessions((ss) => ss.filter((s) => s.id !== id));
+  };
+
+  // Wipes one customer entirely: every order they placed, and the internal note about them.
+  // There is no customers table — a customer *is* their orders — so this is the only way to
+  // make one disappear, and it is the most destructive control in here.
+  const deleteCustomer = async (contactKey) => {
+    const theirs = orders.filter((o) => (o.contact || "").trim().toLowerCase() === contactKey);
+    for (const o of theirs) await deleteOrder(o);
+    await supabase.from("customer_notes").delete().eq("contact_key", contactKey);
+    setCustomerDetail(null);
+    loadCustomerProfiles();
+  };
+
   const markOrderRead = async (id) => {
     await supabase.from("orders").update({ unread: false }).eq("id", id);
     setOrders(orders.map((o) => (o.id === id ? { ...o, unread: false } : o)));
@@ -3408,6 +3464,13 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           <a href={`https://zalo.me/${zalo}`} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 10, background: `${TOKENS.brass}2E`, color: TOKENS.brassOnPaper, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>
                             <MessageCircle size={13} /> {t.zaloCustomer}
                           </a>
+                          <ConfirmDelete
+                            TOKENS={TOKENS}
+                            compact
+                            label={t.delete}
+                            confirmLabel={t.deleteConfirm}
+                            onConfirm={() => deleteSampleRequest(r.id)}
+                          />
                           <select
                             value={r.status}
                             onChange={(e) => setSampleStatus(r.id, e.target.value)}
@@ -3548,6 +3611,18 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         </div>
                       )}
 
+                      {/* The most destructive control in the app, so it sits at the very
+                          bottom rather than beside anything routine. */}
+                      <div style={{ borderTop: `1px solid ${TOKENS.hairline}`, paddingTop: 14 }}>
+                        <ConfirmDelete
+                          TOKENS={TOKENS}
+                          label={t.deleteCustomer}
+                          confirmLabel={t.deleteConfirm}
+                          note={t.deleteCustomerNote((d.history || []).length)}
+                          onConfirm={() => deleteCustomer(d.contact_key)}
+                        />
+                      </div>
+
                       {/* Whole history, scrollable */}
                       <div>
                         <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>
@@ -3650,14 +3725,23 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         </div>
                         {l.unread && <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10.5, fontWeight: 700, padding: "2px 8px", flexShrink: 0 }}>{t.newBadge}</span>}
                       </div>
-                      {l.unread && (
-                        <button
-                          onClick={() => markLeadRead(l.id)}
-                          style={{ fontSize: 12.5, color: TOKENS.jadeSoft, background: "none", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 6, padding: "6px 10px", cursor: "pointer", marginTop: 10 }}
-                        >
-                          {t.markRead}
-                        </button>
-                      )}
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start", marginTop: 10 }}>
+                        {l.unread && (
+                          <button
+                            onClick={() => markLeadRead(l.id)}
+                            style={{ fontSize: 12.5, color: TOKENS.jadeSoft, background: "none", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}
+                          >
+                            {t.markRead}
+                          </button>
+                        )}
+                        <ConfirmDelete
+                          TOKENS={TOKENS}
+                          compact
+                          label={t.delete}
+                          confirmLabel={t.deleteConfirm}
+                          onConfirm={() => deleteLead(l.id)}
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -4306,6 +4390,16 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.contactLabel}: {s.contact}</div>
                       <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.paymentMethodLabel}: {s.paymentMethod === "cash" ? t.payByCash : t.payByQR}</div>
                       {s.note && <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginTop: 6, fontStyle: "italic" }}>{t.noteLabel}: {s.note}</div>}
+                      <div style={{ marginTop: 12 }}>
+                        <ConfirmDelete
+                          TOKENS={TOKENS}
+                          compact
+                          label={t.delete}
+                          confirmLabel={t.deleteConfirm}
+                          note={t.deleteSessionNote}
+                          onConfirm={() => deleteTeaSession(s.id)}
+                        />
+                      </div>
                       {s.status !== "cancelled" && (
                         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                           {s.status === "pending" && (
@@ -4477,6 +4571,14 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                             {t.markRead}
                           </button>
                         )}
+                        <ConfirmDelete
+                          TOKENS={TOKENS}
+                          compact
+                          label={t.deleteOrder}
+                          confirmLabel={t.deleteConfirm}
+                          note={t.deleteOrderNote}
+                          onConfirm={() => deleteOrder(o)}
+                        />
                       </div>
                     </div>
                   ))}
