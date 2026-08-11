@@ -4986,15 +4986,16 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
         </main>
       </div>
 
-      {/* ---------- TRADE SAMPLE BAR (mobile, customer-facing) ----------
-          Phones only: on a desktop the Shop already shows the sample packs without
-          anything having to follow the scroll. Dismissible and remembered, because a bar
-          that cannot be closed taxes every page for someone who does not run a café. */}
+      {/* ---------- TRADE SAMPLE BAR (customer-facing) ----------
+          A strip across the bottom on a phone, a card in the bottom-left corner on anything
+          wider — position lives in globals.css, since a media query cannot override an
+          inline style. Dismissible and remembered: most people reading this site do not run
+          a café, and a bar they cannot close would tax every page they visit. */}
       {!isAdmin && !sampleBarClosed && (
         <div className="samplebar" style={{
-          position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 45,
+          zIndex: 45,
           background: `linear-gradient(100deg, ${TOKENS.jade} 0%, ${TOKENS.jadeSoft} 100%)`,
-          boxShadow: "0 -6px 20px rgba(28,43,36,0.28)",
+          boxShadow: "0 0 22px rgba(28,43,36,0.30)",
           // Clears the home-button strip on iPhones, which would otherwise sit over the link.
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}>

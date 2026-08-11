@@ -92,6 +92,8 @@ const STR = {
     errDuplicate: "There's already a sample request open for this number. Call us if it hasn't arrived.",
     errGeneric: "That didn't go through. Please try again, or call us on 0903 333 841.",
     callUs: "0903 333 841",
+    backHome: "House of Hoàng Long",
+    seeTheTeas: "See all our teas",
   },
   vi: {
     eyebrow: "Dành cho quán pha chế",
@@ -122,6 +124,8 @@ const STR = {
     errDuplicate: "Số này đang có một yêu cầu mẫu chưa xử lý. Gọi cho chúng tôi nếu chưa nhận được.",
     errGeneric: "Chưa gửi được. Vui lòng thử lại, hoặc gọi 0903 333 841.",
     callUs: "0903 333 841",
+    backHome: "Về trang chủ",
+    seeTheTeas: "Xem toàn bộ trà của chúng tôi",
   },
 };
 
@@ -191,9 +195,16 @@ export default function SampleRequest() {
   return (
     <div style={{ background: TOKENS.paper, minHeight: "100vh", color: TOKENS.jade, fontFamily: "Inter, sans-serif" }}>
       <div style={{ maxWidth: 620, margin: "0 auto", padding: "0 20px 64px" }}>
-        {/* Header */}
+        {/* Header. This page is reached by a bare link, so the seal is the way back into the
+            rest of the site — without it a café owner who wants to look around is stuck. */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0" }}>
-          <span style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 15, letterSpacing: 3, color: TOKENS.brassOnPaper }}>皇龍</span>
+          <a
+            href="/"
+            style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", color: TOKENS.brassOnPaper }}
+          >
+            <span style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 15, letterSpacing: 3 }}>皇龍</span>
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: TOKENS.jadeSoft }}>{t.backHome}</span>
+          </a>
           <button
             onClick={() => setLang(lang === "vi" ? "en" : "vi")}
             style={{ background: "none", border: `1px solid ${TOKENS.hairline}`, borderRadius: 20, padding: "5px 12px", fontSize: 12, fontWeight: 600, color: TOKENS.jade, cursor: "pointer" }}
@@ -212,6 +223,12 @@ export default function SampleRequest() {
             <a href="tel:+84903333841" style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 22, color: TOKENS.jade, textDecoration: "none", fontFamily: "Lora, Georgia, serif", fontSize: 19 }}>
               <Phone size={17} color={TOKENS.brassOnPaper} /> {t.callUs}
             </a>
+            {/* Somewhere to go next — otherwise the page is a dead end once it's submitted. */}
+            <div>
+              <a href="/" style={{ display: "inline-block", marginTop: 26, color: TOKENS.brassOnPaper, fontSize: 13.5, fontWeight: 600 }}>
+                {t.seeTheTeas} →
+              </a>
+            </div>
           </div>
         ) : (
           <>

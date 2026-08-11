@@ -103,16 +103,31 @@ label:focus-visible,
   display: none;
 }
 
-/* Trade sample bar: phones only. On a wider screen the Shop shows the sample packs without
-   needing anything pinned to the bottom of the window. */
+/* Trade sample bar.
+   Phones: a full-width strip across the bottom.
+   Wider screens: a card in the bottom-left corner instead. The Shop only ever shows the
+   *paid* sample packs, so without this a café owner on a laptop would never find out the
+   50g one is free — which is the entire point of the bar. It just shouldn't span a whole
+   desktop window to say it. Bottom-left keeps it clear of the chat button on the right. */
 .samplebar {
-  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border-radius: 0;
 }
-@media (max-width: 767px) {
+@media (min-width: 768px) {
   .samplebar {
-    display: block;
+    left: 20px;
+    right: auto;
+    bottom: 20px;
+    max-width: 340px;
+    border-radius: 16px;
+    overflow: hidden;
   }
-  /* Lift the chat button above the bar so the two don't sit on top of each other. */
+}
+/* Only the phone layout sits under the chat button, so only it needs lifting. */
+@media (max-width: 767px) {
   .chatbtn-raised {
     bottom: calc(78px + env(safe-area-inset-bottom, 0px)) !important;
   }
