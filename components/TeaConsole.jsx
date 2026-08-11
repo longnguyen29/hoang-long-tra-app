@@ -899,12 +899,16 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
         headers: { Authorization: `Bearer ${session?.access_token || ""}` },
       });
       const body = await res.json().catch(() => ({}));
-      if (body.ok) { setTelegramTest("ok"); return; }
-      if (body.reason === "not_configured") { setTelegramTest(t.telegramTestMissing((body.missing || []).join(", "))); return; }
-      if (body.reason === "unauthorised") { setTelegramTest(t.telegramTestUnauthorised); return; }
-      setTelegramTest(t.telegramTestFailed(body.description || body.reason || "?"));
+      if (body.ok) { setTelegramTest({ ok: true }); return; }
+      if (body.reason === "not_configured") { setTelegramTest({ message: t.telegramTestMissing((body.missing || []).join(", ")) }); return; }
+      if (body.reason === "unauthorised") { setTelegramTest({ message: t.telegramTestUnauthorised }); return; }
+      setTelegramTest({
+        message: t.telegramTestFailed(body.description || body.reason || "?"),
+        configured: body.configured || "",
+        chats: body.chats || [],
+      });
     } catch (e) {
-      setTelegramTest(t.telegramTestFailed(e?.message || "?"));
+      setTelegramTest({ message: t.telegramTestFailed(e?.message || "?") });
     }
   };
 
@@ -4543,12 +4547,43 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         <Send size={13} color={TOKENS.brass} /> {t.telegramTestSend}
                       </button>
                       {telegramTest && telegramTest !== "sending" && (
-                        <p style={{
-                          fontSize: 12.5, lineHeight: 1.55, margin: "10px 0 0",
-                          color: telegramTest === "ok" ? TOKENS.jade : TOKENS.lacquer,
-                        }}>
-                          {telegramTest === "ok" ? t.telegramTestOk : telegramTest}
-                        </p>
+                        <div style={{ marginTop: 10 }}>
+                          <p style={{ fontSize: 12.5, lineHeight: 1.55, margin: 0, color: telegramTest.ok ? TOKENS.jade : TOKENS.lacquer }}>
+                            {telegramTest.ok ? t.telegramTestOk : telegramTest.message}
+                          </p>
+
+                          {/* The candidates, beside what's actually set — so a dropped minus
+                              sign or a stray digit is something you can see, not deduce. */}
+                          {!telegramTest.ok && telegramTest.configured != null && (
+                            <div style={{ marginTop: 10, borderTop: `1px solid ${TOKENS.hairline}`, paddingTop: 10 }}>
+                              <div style={{ fontSize: 12, color: TOKENS.jadeSoft }}>
+                                {t.telegramConfigured}{" "}
+                                <code style={{ background: `${TOKENS.lacquer}14`, color: TOKENS.lacquer, padding: "2px 7px", borderRadius: 6, fontSize: 12 }}>
+                                  {telegramTest.configured || "—"}
+                                </code>
+                              </div>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: TOKENS.brassOnPaper, marginTop: 10 }}>
+                                {t.telegramChatsTitle}
+                              </div>
+                              {(telegramTest.chats || []).length === 0 ? (
+                                <p style={{ fontSize: 12, color: TOKENS.jadeSoft, lineHeight: 1.55, margin: "4px 0 0" }}>{t.telegramChatsEmpty}</p>
+                              ) : (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                                  {telegramTest.chats.map((c) => (
+                                    <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                      <code style={{ background: `${TOKENS.brass}1F`, color: TOKENS.brassOnPaper, padding: "3px 9px", borderRadius: 6, fontSize: 12.5, fontWeight: 700 }}>
+                                        {c.id}
+                                      </code>
+                                      <span style={{ fontSize: 12, color: TOKENS.jadeSoft, minWidth: 0, overflowWrap: "anywhere" }}>
+                                        {[c.name, c.type].filter(Boolean).join(" · ")}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
 

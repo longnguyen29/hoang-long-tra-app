@@ -56,6 +56,27 @@ export async function POST(request) {
 
     if (res.ok && body.ok) return Response.json({ ok: true });
 
+    // It failed, so stop making the operator guess which number to try next: ask Telegram
+    // which chats this bot has actually heard from, and show them with their ids beside the
+    // id currently configured. A dropped minus sign or a missing -100 prefix is then visible
+    // rather than deduced. Only reached on failure — a working setup needs none of it.
+    const chats = [];
+    try {
+      const u = await fetch(`https://api.telegram.org/bot${token}/getUpdates`);
+      const ub = await u.json().catch(() => ({}));
+      const seen = new Set();
+      for (const upd of Array.isArray(ub.result) ? ub.result : []) {
+        // Always the chat object, never `from`: in a private chat they hold the same number,
+        // but `from` is also where the bot's own id appears, and pointing at that is what
+        // produced "can't send messages to bots" in the first place.
+        const c = (upd.message || upd.my_chat_member || upd.channel_post || {}).chat;
+        if (!c || !c.id || seen.has(c.id)) continue;
+        seen.add(c.id);
+        // Identity of the chat only — never message text.
+        chats.push({ id: String(c.id), type: c.type || "", name: c.title || c.first_name || "" });
+      }
+    } catch { /* diagnostics are a bonus; the real answer is the description below */ }
+
     // Telegram's own wording, which names the actual fault: "Unauthorized" for a bad token,
     // "chat not found" for a bad chat id, "bot was kicked" for a group it isn't in. Passing
     // it through saves a round of guessing. It never contains the token.
@@ -64,6 +85,10 @@ export async function POST(request) {
       reason: "telegram_rejected",
       status: res.status,
       description: typeof body.description === "string" ? body.description : "",
+      // Not a secret — a chat id is just a number, and only staff reach this route. Showing
+      // it back is the whole point: it is what you compare the candidates against.
+      configured: chatId,
+      chats,
     });
   } catch (e) {
     return Response.json({ ok: false, reason: "network", description: e?.message || "" });
