@@ -60,6 +60,17 @@ export async function POST(request) {
     // which chats this bot has actually heard from, and show them with their ids beside the
     // id currently configured. A dropped minus sign or a missing -100 prefix is then visible
     // rather than deduced. Only reached on failure — a working setup needs none of it.
+    // Which bot is this token for? After a /revoke and a second bot from BotFather it is
+    // entirely possible for production to hold one bot's token while the operator is
+    // chatting to another — and that looks identical to a wrong chat id from the outside,
+    // because a bot that has never met you reports your chat as not found.
+    let bot = "";
+    try {
+      const m = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+      const mb = await m.json().catch(() => ({}));
+      bot = mb?.result?.username ? `@${mb.result.username}` : "";
+    } catch { /* the name is a convenience; its absence proves nothing */ }
+
     const chats = [];
     try {
       const u = await fetch(`https://api.telegram.org/bot${token}/getUpdates`);
@@ -88,6 +99,7 @@ export async function POST(request) {
       // Not a secret — a chat id is just a number, and only staff reach this route. Showing
       // it back is the whole point: it is what you compare the candidates against.
       configured: chatId,
+      bot,
       chats,
     });
   } catch (e) {

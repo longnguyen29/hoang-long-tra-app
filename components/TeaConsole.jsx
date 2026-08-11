@@ -905,6 +905,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       setTelegramTest({
         message: t.telegramTestFailed(body.description || body.reason || "?"),
         configured: body.configured || "",
+        bot: body.bot || "",
         chats: body.chats || [],
       });
     } catch (e) {
@@ -4556,6 +4557,14 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                               sign or a stray digit is something you can see, not deduce. */}
                           {!telegramTest.ok && telegramTest.configured != null && (
                             <div style={{ marginTop: 10, borderTop: `1px solid ${TOKENS.hairline}`, paddingTop: 10 }}>
+                              {/* First, because if this isn't the bot you're messaging, the
+                                  chat id was never the problem. */}
+                              <div style={{ fontSize: 12, color: TOKENS.jadeSoft, marginBottom: 6 }}>
+                                {t.telegramBotIs}{" "}
+                                <code style={{ background: `${TOKENS.brass}1F`, color: TOKENS.brassOnPaper, padding: "2px 7px", borderRadius: 6, fontSize: 12, fontWeight: 700 }}>
+                                  {telegramTest.bot || "—"}
+                                </code>
+                              </div>
                               <div style={{ fontSize: 12, color: TOKENS.jadeSoft }}>
                                 {t.telegramConfigured}{" "}
                                 <code style={{ background: `${TOKENS.lacquer}14`, color: TOKENS.lacquer, padding: "2px 7px", borderRadius: 6, fontSize: 12 }}>
