@@ -5,6 +5,7 @@ import {
   Search, ChevronRight, ChevronLeft, Menu, X, Edit3, Save, Plus, Trash2,
   Leaf, Mountain, Languages, Copy, Check, Lock, Clock, Upload, Sparkles, ShoppingCart, Minus,
   MessageCircle, Send, Download, Printer, LogOut, Tag, Truck, Loader2, Calendar, Phone, Images, Gift, Undo2,
+  BarChart3, Users, Building2, Package, Ticket, Star, CreditCard, Home, UserPlus, ArrowLeft,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadImage } from "@/lib/supabase/storage";
@@ -35,6 +36,28 @@ import TeaSessionBooking from "./TeaSessionBooking";
 // Home grid order, independent of the side menu's. Ids missing from this list sort last.
 const BIN_DAYS = 7; // how long a deleted record can still be brought back
 const HOME_TILE_ORDER = ["wiki", "retail", "wholesale", "library"];
+
+// Dashboard navigation.
+//
+// Fourteen sections in one horizontal strip meant that on a phone most of them were off
+// screen with no sign they existed, and the ones checked every morning sat next to ones
+// opened twice a year. Scrolling sideways to find Orders is not a menu, it's a search.
+//
+// So the Dashboard opens on a menu grouped by what a section is *for*, and a section opens
+// on its own with a way back. Within a section you still get its siblings as chips — moving
+// between Orders and Messages is common, moving from Orders to Trash is not.
+const DASH_GROUPS = [
+  { id: "today", tabs: ["orders", "messages", "leads", "samples", "sessions"] },
+  { id: "people", tabs: ["customers", "partners"] },
+  { id: "shop", tabs: ["catalog", "promos", "reviews", "payment"] },
+  { id: "house", tabs: ["overview", "house", "bin"] },
+];
+const DASH_ICONS = {
+  orders: ShoppingCart, messages: MessageCircle, leads: UserPlus, samples: Gift, sessions: Calendar,
+  customers: Users, partners: Building2,
+  catalog: Package, promos: Ticket, reviews: Star, payment: CreditCard,
+  overview: BarChart3, house: Home, bin: Trash2,
+};
 
 function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9à-ỹ]+/gi, "-").slice(0, 40) + "-" + Date.now().toString(36);
@@ -218,7 +241,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     return id;
   });
   const [activeThreadId, setActiveThreadId] = useState(null);
-  const [frontDeskTab, setFrontDeskTab] = useState("overview");
+  const [frontDeskTab, setFrontDeskTab] = useState(null); // null = the grouped menu
+  const [telegramTest, setTelegramTest] = useState(null); // null | "sending" | "ok" | message
   const [traffic, setTraffic] = useState(null);
   const [customerProfiles, setCustomerProfiles] = useState([]);
   const [customerQuery, setCustomerQuery] = useState("");
@@ -864,6 +888,26 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     }
   };
 
+  // Sends a test message and shows whatever Telegram said about it. The route is staff-only,
+  // so the session's access token has to go with the request.
+  const testTelegram = async () => {
+    setTelegramTest("sending");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/telegram-test", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token || ""}` },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (body.ok) { setTelegramTest("ok"); return; }
+      if (body.reason === "not_configured") { setTelegramTest(t.telegramTestMissing((body.missing || []).join(", "))); return; }
+      if (body.reason === "unauthorised") { setTelegramTest(t.telegramTestUnauthorised); return; }
+      setTelegramTest(t.telegramTestFailed(body.description || body.reason || "?"));
+    } catch (e) {
+      setTelegramTest(t.telegramTestFailed(e?.message || "?"));
+    }
+  };
+
   const deleteOrder = async (order) => {
     const label = `${order.customerName || ""} · ${formatVND(Number(order.estimatedTotal) || 0)}`;
     if (!(await binRecord("orders", order.id, label))) return;
@@ -1394,6 +1438,25 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const unreadThreads = threads.filter((th) => th.unreadForAdmin && th.messages.length > 0).length;
   const unreadLeads = leads.filter((l) => l.unread).length;
   const frontDeskBadge = unreadOrders + unreadThreads + unreadLeads;
+
+  const dashLabel = (tab) => ({
+    overview: t.overviewTab, orders: t.frontDeskOrders, messages: t.frontDeskMessages,
+    leads: t.frontDeskLeads, samples: t.samplesTab, sessions: t.frontDeskSessionsTab,
+    customers: t.customersTab, partners: t.wholesaleAccountsTitle,
+    catalog: t.catalogTitle, promos: t.promosTitle, reviews: t.reviewsTitle,
+    payment: t.frontDeskPayment, house: t.frontDeskHouseTab, bin: t.binTab,
+  }[tab] || tab);
+
+  // What each section is waiting on. Zero means no badge at all — a row of "0"s reads as
+  // noise and trains you to ignore the one number that matters.
+  const dashBadge = (tab) => ({
+    orders: unreadOrders,
+    messages: unreadThreads,
+    leads: unreadLeads,
+    samples: sampleRequests.filter((r) => r.status === "new").length,
+    sessions: teaSessions.filter((s) => s.status === "pending").length,
+    bin: bin.length,
+  }[tab] || 0);
 
   const submitLead = async () => {
     if (!onboardName.trim() || !onboardContact.trim() || !onboardConsent) return;
@@ -3310,63 +3373,128 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
           {/* ---------- FRONT DESK (internal only) ---------- */}
           {section === "frontdesk" && (
             <div>
-              {(() => {
+              {/* ---------- MENU ---------- */}
+              {frontDeskTab === null && (() => {
                 const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
                 const weeklyOrders = orders.filter((o) => new Date(o.ts).getTime() >= weekAgo);
                 const weeklyKg = weeklyOrders.filter((o) => o.type === "wholesale").reduce((s, o) => s + (o.totalKg || 0), 0);
+                const weeklyRevenue = weeklyOrders.reduce((s, o) => s + (o.estimatedTotal || 0), 0);
                 const weeklyLeadsCount = leads.filter((l) => new Date(l.ts).getTime() >= weekAgo).length;
-                const weeklyMsgCount = threads.reduce(
-                  (s, th) => s + th.messages.filter((m) => m.from === "customer" && new Date(m.ts).getTime() >= weekAgo).length,
-                  0
-                );
                 const stats = [
                   { label: t.statsOrders, value: weeklyOrders.length },
+                  { label: t.statRevenue, value: formatVND(weeklyRevenue) },
                   { label: t.statsWholesaleVolume, value: `${weeklyKg} kg` },
                   { label: t.statsLeads, value: weeklyLeadsCount },
-                  { label: t.statsMessages, value: weeklyMsgCount },
                 ];
                 return (
-                  <div style={{ marginBottom: 18 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
-                      {t.statsWeekTitle}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                        {t.statsWeekTitle}
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 8 }}>
+                        {stats.map((s, i) => (
+                          <div key={i} style={{ background: TOKENS.paperDeep, borderRadius: 14, padding: "12px 14px", boxShadow: TOKENS.shadowSm }}>
+                            <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 22, color: TOKENS.jade, lineHeight: 1.15 }}>{s.value}</div>
+                            <div style={{ fontSize: 11, color: TOKENS.jadeSoft, marginTop: 2 }}>{s.label}</div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 8 }}>
-                      {stats.map((s, i) => (
-                        <div key={i} style={{ background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 10, padding: "10px 12px" }}>
-                          <div style={{ fontSize: 20, fontWeight: 700, color: TOKENS.jade }}>{s.value}</div>
-                          <div style={{ fontSize: 11, color: TOKENS.jadeSoft }}>{s.label}</div>
+
+                    {DASH_GROUPS.map((g) => (
+                      <div key={g.id}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                          {t.dashGroup(g.id)}
                         </div>
-                      ))}
-                    </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(148px, 1fr))", gap: 8 }}>
+                          {g.tabs.map((tab) => {
+                            const Icon = DASH_ICONS[tab];
+                            const count = dashBadge(tab);
+                            return (
+                              <button
+                                key={tab}
+                                onClick={() => setFrontDeskTab(tab)}
+                                style={{
+                                  display: "flex", alignItems: "center", gap: 10, textAlign: "left",
+                                  background: TOKENS.paperDeep, border: "none", borderRadius: 14,
+                                  padding: "14px 14px", cursor: "pointer", boxShadow: TOKENS.shadowSm,
+                                  color: TOKENS.jade, fontSize: 14, fontWeight: 600, fontFamily: "inherit",
+                                }}
+                              >
+                                <span style={{
+                                  flexShrink: 0, width: 34, height: 34, borderRadius: 10,
+                                  background: `${TOKENS.brass}1F`, display: "flex", alignItems: "center", justifyContent: "center",
+                                }}>
+                                  <Icon size={17} color={TOKENS.brassOnPaper} />
+                                </span>
+                                {/* Without min-width:0 a long label refuses to shrink and pushes the badge out. */}
+                                <span style={{ minWidth: 0, flex: 1, overflowWrap: "anywhere", lineHeight: 1.3 }}>
+                                  {dashLabel(tab)}
+                                </span>
+                                {count > 0 && (
+                                  <span style={{
+                                    flexShrink: 0, background: tab === "bin" ? `${TOKENS.brass}2E` : TOKENS.lacquer,
+                                    color: tab === "bin" ? TOKENS.brassOnPaper : TOKENS.paper,
+                                    borderRadius: 10, fontSize: 10.5, fontWeight: 700, padding: "2px 7px",
+                                  }}>{count}</span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 );
               })()}
 
-              <div style={{ display: "flex", gap: 8, marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>
-                {["overview", "orders", "customers", "samples", "sessions", "leads", "messages", "payment", "catalog", "reviews", "promos", "partners", "house", "bin"].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setFrontDeskTab(tab)}
-                    style={{
-                      flex: "0 0 auto", minWidth: 88, padding: "10px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}44`,
-                      background: frontDeskTab === tab ? TOKENS.jade : TOKENS.paperDeep,
-                      color: frontDeskTab === tab ? TOKENS.paper : TOKENS.jade,
-                      fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                    }}
-                  >
-                    {tab === "overview" ? t.overviewTab : tab === "customers" ? t.customersTab : tab === "samples" ? t.samplesTab : tab === "bin" ? t.binTab : tab === "orders" ? t.frontDeskOrders : tab === "sessions" ? t.frontDeskSessionsTab : tab === "leads" ? t.frontDeskLeads : tab === "payment" ? t.frontDeskPayment : tab === "catalog" ? t.catalogTitle : tab === "reviews" ? t.reviewsTitle : tab === "promos" ? t.promosTitle : tab === "partners" ? t.wholesaleAccountsTitle : tab === "house" ? t.frontDeskHouseTab : t.frontDeskMessages}
-                    {tab === "orders" && unreadOrders > 0 && (
-                      <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10.5, padding: "1px 6px" }}>{unreadOrders}</span>
+              {/* ---------- SECTION HEADER ---------- */}
+              {frontDeskTab !== null && (() => {
+                const group = DASH_GROUPS.find((g) => g.tabs.includes(frontDeskTab));
+                const siblings = (group?.tabs || []).filter((x) => x !== frontDeskTab);
+                return (
+                  <div style={{ marginBottom: 18 }}>
+                    <button
+                      onClick={() => { setFrontDeskTab(null); setCustomerDetail(null); }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 6, background: "none", border: "none",
+                        padding: 0, cursor: "pointer", color: TOKENS.brassOnPaper, fontSize: 12.5,
+                        fontWeight: 700, fontFamily: "inherit",
+                      }}
+                    >
+                      <ArrowLeft size={14} /> {t.dashBack}
+                    </button>
+                    <h2 style={{ fontFamily: "Lora, Georgia, serif", fontSize: 26, color: TOKENS.jade, margin: "8px 0 0" }}>
+                      {dashLabel(frontDeskTab)}
+                    </h2>
+                    {/* Only this section's siblings: hopping Orders → Messages is daily, Orders → Trash is not. */}
+                    {siblings.length > 0 && (
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 12 }}>
+                        {siblings.map((tab) => {
+                          const count = dashBadge(tab);
+                          return (
+                            <button
+                              key={tab}
+                              onClick={() => { setFrontDeskTab(tab); setCustomerDetail(null); }}
+                              style={{
+                                display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 20,
+                                border: `1px solid ${TOKENS.brassDeep}33`, background: "none", cursor: "pointer",
+                                color: TOKENS.jadeSoft, fontSize: 12.5, fontWeight: 600, fontFamily: "inherit",
+                              }}
+                            >
+                              {dashLabel(tab)}
+                              {count > 0 && (
+                                <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10, fontWeight: 700, padding: "1px 6px" }}>{count}</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
                     )}
-                    {tab === "leads" && unreadLeads > 0 && (
-                      <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10.5, padding: "1px 6px" }}>{unreadLeads}</span>
-                    )}
-                    {tab === "messages" && unreadThreads > 0 && (
-                      <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10.5, padding: "1px 6px" }}>{unreadThreads}</span>
-                    )}
-                  </button>
-                ))}
-              </div>
+                  </div>
+                );
+              })()}
 
               {/* ---------- OVERVIEW ---------- */}
               {frontDeskTab === "overview" && (() => {
@@ -4396,6 +4524,33 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 return (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, margin: 0, lineHeight: 1.5 }}>{t.houseTabHint}</p>
+
+                    <div style={{ background: TOKENS.paperDeep, borderRadius: 14, padding: "13px 16px", boxShadow: TOKENS.shadowSm, marginTop: 6 }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        {t.telegramTestTitle}
+                      </div>
+                      <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, lineHeight: 1.55, margin: "6px 0 10px" }}>{t.telegramTestHint}</p>
+                      <button
+                        onClick={testTelegram}
+                        disabled={telegramTest === "sending"}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 6, background: TOKENS.jade, color: TOKENS.paper,
+                          border: "none", borderRadius: 10, padding: "9px 15px", fontSize: 12.5, fontWeight: 600,
+                          fontFamily: "inherit", cursor: telegramTest === "sending" ? "default" : "pointer",
+                          opacity: telegramTest === "sending" ? 0.6 : 1,
+                        }}
+                      >
+                        <Send size={13} color={TOKENS.brass} /> {t.telegramTestSend}
+                      </button>
+                      {telegramTest && telegramTest !== "sending" && (
+                        <p style={{
+                          fontSize: 12.5, lineHeight: 1.55, margin: "10px 0 0",
+                          color: telegramTest === "ok" ? TOKENS.jade : TOKENS.lacquer,
+                        }}>
+                          {telegramTest === "ok" ? t.telegramTestOk : telegramTest}
+                        </p>
+                      )}
+                    </div>
 
                     <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 6 }}>
                       {t.originStatsTitle}
