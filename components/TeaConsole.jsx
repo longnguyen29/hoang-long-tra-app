@@ -3623,10 +3623,24 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   {[...leads].reverse().map((l) => (
                     <div key={l.id} style={{ background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}${l.unread ? "88" : "33"}`, borderRadius: 12, padding: 16 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <div>
+                        <div style={{ minWidth: 0 }}>
                           <div style={{ fontSize: 15, fontWeight: 600 }}>{l.name}</div>
+                          {l.business_name && (
+                            <div style={{ fontSize: 13, color: TOKENS.jade, overflowWrap: "anywhere" }}>{l.business_name}</div>
+                          )}
                           <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.contactLabel}: {l.contact}</div>
-                          <div style={{ fontSize: 12.5, color: TOKENS.brassOnPaper, marginTop: 2 }}>{t.interestedIn}: {l.interest === "wholesale" ? t.onboardWholesale : t.onboardRetail}</div>
+                          {/* A sample lead is useless without somewhere to post it to. */}
+                          {l.address && (
+                            <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, overflowWrap: "anywhere", marginTop: 2 }}>
+                              {t.addressLabel}: {l.address}
+                            </div>
+                          )}
+                          <div style={{ fontSize: 12.5, color: TOKENS.brassOnPaper, marginTop: 2 }}>
+                            {t.interestedIn}:{" "}
+                            {l.interest === "mau-thu-doanh-nghiep" ? t.leadFromAd
+                              : l.interest === "wholesale" ? t.onboardWholesale
+                              : t.onboardRetail}
+                          </div>
                         </div>
                         {l.unread && <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10.5, fontWeight: 700, padding: "2px 8px", flexShrink: 0 }}>{t.newBadge}</span>}
                       </div>
