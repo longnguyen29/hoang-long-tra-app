@@ -217,6 +217,10 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [traffic, setTraffic] = useState(null);
   const [customerProfiles, setCustomerProfiles] = useState([]);
   const [customerQuery, setCustomerQuery] = useState("");
+  const [customerDetail, setCustomerDetail] = useState(null);
+  const [customerNoteDraft, setCustomerNoteDraft] = useState("");
+  const [customerNoteSaved, setCustomerNoteSaved] = useState(false);
+  const [sampleRequests, setSampleRequests] = useState([]);
 
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardStep, setOnboardStep] = useState(0);
@@ -554,6 +558,38 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     setCustomerProfiles(Array.isArray(data) ? data : []);
   }, [supabase]);
 
+  const openCustomer = useCallback(async (contact) => {
+    setCustomerDetail(null);
+    setCustomerNoteSaved(false);
+    const { data, error } = await supabase.rpc("customer_detail", { p_contact: contact });
+    if (error) { console.error("Customer detail failed:", error.message); return; }
+    setCustomerDetail(data || null);
+    setCustomerNoteDraft(data?.note || "");
+  }, [supabase]);
+
+  const saveCustomerNote = useCallback(async () => {
+    if (!customerDetail) return;
+    const { error } = await supabase.rpc("save_customer_note", {
+      p_contact: customerDetail.contact_key,
+      p_note: customerNoteDraft,
+      p_by: staffEmail || "",
+    });
+    if (error) { console.error("Saving customer note failed:", error.message); return; }
+    setCustomerNoteSaved(true);
+    setTimeout(() => setCustomerNoteSaved(false), 2500);
+  }, [supabase, customerDetail, customerNoteDraft, staffEmail]);
+
+  const loadSampleRequests = useCallback(async () => {
+    const { data, error } = await supabase.from("sample_requests").select("*").order("ts", { ascending: false });
+    if (error) { console.error("Sample requests failed:", error.message); return; }
+    setSampleRequests(data || []);
+  }, [supabase]);
+
+  const setSampleStatus = async (id, status) => {
+    await supabase.from("sample_requests").update({ status, unread: false }).eq("id", id);
+    setSampleRequests((rs) => rs.map((r) => (r.id === id ? { ...r, status, unread: false } : r)));
+  };
+
   const loadHomeSettings = useCallback(async () => {
     const { data } = await supabase.from("settings_home").select("*").eq("id", 1).maybeSingle();
     if (!data) return;
@@ -697,6 +733,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       loadWholesaleAccounts();
       loadTraffic();
       loadCustomerProfiles();
+      loadSampleRequests();
     } else {
       loadMyThread();
     }
@@ -3130,7 +3167,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               })()}
 
               <div style={{ display: "flex", gap: 8, marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>
-                {["overview", "orders", "customers", "sessions", "leads", "messages", "payment", "catalog", "reviews", "promos", "partners", "house"].map((tab) => (
+                {["overview", "orders", "customers", "samples", "sessions", "leads", "messages", "payment", "catalog", "reviews", "promos", "partners", "house"].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setFrontDeskTab(tab)}
@@ -3141,7 +3178,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                     }}
                   >
-                    {tab === "overview" ? t.overviewTab : tab === "customers" ? t.customersTab : tab === "orders" ? t.frontDeskOrders : tab === "sessions" ? t.frontDeskSessionsTab : tab === "leads" ? t.frontDeskLeads : tab === "payment" ? t.frontDeskPayment : tab === "catalog" ? t.catalogTitle : tab === "reviews" ? t.reviewsTitle : tab === "promos" ? t.promosTitle : tab === "partners" ? t.wholesaleAccountsTitle : tab === "house" ? t.frontDeskHouseTab : t.frontDeskMessages}
+                    {tab === "overview" ? t.overviewTab : tab === "customers" ? t.customersTab : tab === "samples" ? t.samplesTab : tab === "orders" ? t.frontDeskOrders : tab === "sessions" ? t.frontDeskSessionsTab : tab === "leads" ? t.frontDeskLeads : tab === "payment" ? t.frontDeskPayment : tab === "catalog" ? t.catalogTitle : tab === "reviews" ? t.reviewsTitle : tab === "promos" ? t.promosTitle : tab === "partners" ? t.wholesaleAccountsTitle : tab === "house" ? t.frontDeskHouseTab : t.frontDeskMessages}
                     {tab === "orders" && unreadOrders > 0 && (
                       <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10.5, padding: "1px 6px" }}>{unreadOrders}</span>
                     )}
@@ -3234,6 +3271,74 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 );
               })()}
 
+              {/* ---------- SAMPLE REQUESTS ---------- */}
+              {frontDeskTab === "samples" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, lineHeight: 1.55, margin: 0 }}>
+                    {t.samplesHint} <code style={{ background: `${TOKENS.brass}1F`, padding: "2px 7px", borderRadius: 6, fontSize: 12 }}>hoanglongtra.com/sample</code>
+                  </p>
+                  {sampleRequests.length === 0 && (
+                    <p style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic" }}>{t.noSamplesYet}</p>
+                  )}
+                  {sampleRequests.map((r) => {
+                    const zalo = (r.phone || "").replace(/\D/g, "").replace(/^84/, "0");
+                    return (
+                      <div key={r.id} style={{ background: TOKENS.paperDeep, borderRadius: 14, padding: "14px 16px", boxShadow: TOKENS.shadowSm }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, color: TOKENS.jade, overflowWrap: "anywhere" }}>
+                              {r.store_name}
+                            </div>
+                            <div style={{ fontSize: 12, color: TOKENS.jadeSoft }}>
+                              {[r.contact_name, r.phone].filter(Boolean).join(" · ")}
+                            </div>
+                          </div>
+                          <span style={{
+                            flexShrink: 0, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 12,
+                            color: r.pack === "50g" ? TOKENS.paper : TOKENS.brassOnPaper,
+                            background: r.pack === "50g" ? TOKENS.jade : `${TOKENS.brass}1F`,
+                          }}>
+                            {r.pack}{r.pack === "50g" ? ` · ${t.free}` : ""}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 12.5, color: TOKENS.jade, marginTop: 8, overflowWrap: "anywhere" }}>{r.address}</div>
+                        {r.note && <div style={{ fontSize: 12, color: TOKENS.jadeSoft, fontStyle: "italic", marginTop: 4 }}>{r.note}</div>}
+
+                        {/* What they promised, so it can be checked before a free pack goes out. */}
+                        {r.pack === "50g" && (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
+                            {[[r.has_shop, t.qualShop], [r.can_reformulate, t.qualRecipe], [r.can_feedback, t.qualFeedback]].map(([ok, label], i) => (
+                              <span key={i} style={{ fontSize: 10.5, fontWeight: 600, borderRadius: 20, padding: "3px 9px", color: ok ? TOKENS.brassOnPaper : TOKENS.lacquer, background: ok ? `${TOKENS.brass}1F` : `${TOKENS.lacquer}14` }}>
+                                {ok ? "✓" : "✕"} {label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 11, alignItems: "center" }}>
+                          <a href={`tel:${(r.phone || "").replace(/\s/g, "")}`} style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 10, background: TOKENS.jade, color: TOKENS.paper, fontSize: 12.5, fontWeight: 600, textDecoration: "none" }}>
+                            <Phone size={13} /> {t.callCustomer}
+                          </a>
+                          <a href={`https://zalo.me/${zalo}`} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 10, background: `${TOKENS.brass}2E`, color: TOKENS.brassOnPaper, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>
+                            <MessageCircle size={13} /> {t.zaloCustomer}
+                          </a>
+                          <select
+                            value={r.status}
+                            onChange={(e) => setSampleStatus(r.id, e.target.value)}
+                            style={{ marginLeft: "auto", padding: "7px 10px", borderRadius: 10, border: `1px solid ${TOKENS.hairline}`, fontSize: 12.5, background: TOKENS.paper, color: TOKENS.jade }}
+                          >
+                            <option value="new">{t.sampleNew}</option>
+                            <option value="sent">{t.sampleSent}</option>
+                            <option value="converted">{t.sampleConverted}</option>
+                            <option value="declined">{t.sampleDeclined}</option>
+                          </select>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* ---------- CUSTOMERS ---------- */}
               {frontDeskTab === "customers" && (() => {
                 const q = customerQuery.trim().toLowerCase();
@@ -3241,6 +3346,148 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   ? customerProfiles.filter((c) =>
                       (c.customer_name || "").toLowerCase().includes(q) || (c.contact || "").toLowerCase().includes(q))
                   : customerProfiles;
+                // ---- one customer, in full ----
+                if (customerDetail) {
+                  const d = customerDetail;
+                  const o = d.latest;
+                  const phone = (o?.contact || "").trim();
+                  // Zalo is keyed by a bare national number; strip punctuation and the +84 form.
+                  const zaloNumber = phone.replace(/\D/g, "").replace(/^84/, "0");
+                  const isPhone = /^[0-9+().\-\s]{8,}$/.test(phone);
+                  const line = (label, value) => value ? (
+                    <div style={{ display: "flex", gap: 10, fontSize: 13, padding: "5px 0" }}>
+                      <span style={{ color: TOKENS.jadeSoft, minWidth: 96, flexShrink: 0 }}>{label}</span>
+                      <span style={{ color: TOKENS.jade, overflowWrap: "anywhere" }}>{value}</span>
+                    </div>
+                  ) : null;
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                      <button
+                        onClick={() => setCustomerDetail(null)}
+                        style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: TOKENS.brassOnPaper, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        <ChevronLeft size={15} /> {t.customersTab}
+                      </button>
+
+                      <div>
+                        <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 22, color: TOKENS.jade, overflowWrap: "anywhere" }}>
+                          {o?.customer_name || d.contact_key}
+                        </div>
+                        <div style={{ fontSize: 13, color: TOKENS.jadeSoft, overflowWrap: "anywhere" }}>{o?.contact || d.contact_key}</div>
+                      </div>
+
+                      {/* Reach them without copying the number out by hand. */}
+                      {isPhone && (
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <a href={`tel:${phone.replace(/\s/g, "")}`}
+                            style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 16px", borderRadius: 12, background: TOKENS.jade, color: TOKENS.paper, fontSize: 13.5, fontWeight: 600, textDecoration: "none" }}>
+                            <Phone size={15} /> {t.callCustomer}
+                          </a>
+                          <a href={`https://zalo.me/${zaloNumber}`} target="_blank" rel="noopener noreferrer"
+                            style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 16px", borderRadius: 12, background: `${TOKENS.brass}2E`, color: TOKENS.brassOnPaper, fontSize: 13.5, fontWeight: 700, textDecoration: "none", boxShadow: `inset 0 0 0 1px ${TOKENS.brass}66` }}>
+                            <MessageCircle size={15} /> {t.zaloCustomer}
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Latest order, in full */}
+                      {o && (
+                        <div style={{ background: TOKENS.paperDeep, borderRadius: 14, padding: "14px 16px", boxShadow: TOKENS.shadowSm }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>
+                            {t.latestOrderTitle}
+                          </div>
+                          {line(t.orderPlacedAt, new Date(o.ts).toLocaleString(lang === "en" ? "en-GB" : "vi-VN"))}
+                          {line(t.custTotal, formatVND(Number(o.estimated_total) || 0))}
+                          {/* Say plainly why a total is lower than list price — otherwise the
+                              number looks like a mistake months later. */}
+                          {o.promo && line(t.orderPromoLine, `${o.promo.code} · −${o.promo.percent}%${o.promo.ownerName ? ` (${o.promo.ownerName})` : ""}`)}
+                          {o.tier && line(t.orderTierLine, `${o.tier.range?.[lang] || o.tier.range?.en || ""} · ${o.tier.off?.[lang] || o.tier.off?.en || ""}`)}
+                          {line(t.recipientName, o.customer_name)}
+                          {line(t.phoneLabel, o.contact)}
+                          {line(t.addressLabel, o.address)}
+                          {line(t.orderNoteLine, o.note)}
+                          <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 5 }}>
+                            {(o.lines || []).map((l, i) => (
+                              <span key={i} style={{ fontSize: 11, borderRadius: 20, padding: "3px 9px", color: TOKENS.jade, background: `${TOKENS.brass}1F` }}>
+                                {(l.name?.[lang] || l.name?.en || l.name)} × {l.qty}{l.unit ? ` ${l.unit}` : ""}
+                              </span>
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => { setFrontDeskTab("orders"); setCustomerDetail(null); }}
+                            style={{ marginTop: 12, background: "none", border: `1px solid ${TOKENS.hairline}`, borderRadius: 10, padding: "8px 12px", fontSize: 12.5, fontWeight: 600, color: TOKENS.jade, cursor: "pointer" }}
+                          >
+                            {t.editInOrders}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Internal note — the house's memory of this person */}
+                      <div style={{ background: TOKENS.paperDeep, borderRadius: 14, padding: "14px 16px", boxShadow: TOKENS.shadowSm }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>
+                          {t.internalNoteTitle}
+                        </div>
+                        <p style={{ fontSize: 11.5, color: TOKENS.jadeSoft, margin: "0 0 8px" }}>{t.internalNoteHint}</p>
+                        <textarea
+                          value={customerNoteDraft}
+                          onChange={(e) => setCustomerNoteDraft(e.target.value)}
+                          rows={3}
+                          placeholder={t.internalNotePh}
+                          style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${TOKENS.hairline}`, fontSize: 13.5, resize: "vertical", fontFamily: "inherit", background: TOKENS.paper, color: TOKENS.jade }}
+                        />
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+                          <button
+                            onClick={saveCustomerNote}
+                            style={{ background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 10, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                          >
+                            {t.saveNote}
+                          </button>
+                          {customerNoteSaved && <span style={{ fontSize: 12, color: TOKENS.brassOnPaper }}>{t.noteSaved}</span>}
+                        </div>
+                      </div>
+
+                      {/* Most-bought, from the whole history */}
+                      {(d.top_items || []).length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>
+                            {t.mostBoughtTitle}
+                          </div>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            {d.top_items.map((it) => (
+                              <span key={it.name} style={{ fontSize: 12, fontWeight: 600, borderRadius: 20, padding: "5px 11px", color: TOKENS.brassOnPaper, background: `${TOKENS.brass}1F` }}>
+                                {it.name} × {it.qty}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Whole history, scrollable */}
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>
+                          {t.orderHistoryTitle} ({(d.history || []).length})
+                        </div>
+                        <div style={{ maxHeight: 300, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+                          {(d.history || []).map((h) => (
+                            <div key={h.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", padding: "9px 12px", background: TOKENS.paperDeep, borderRadius: 10, fontSize: 12.5 }}>
+                              <span style={{ color: TOKENS.jadeSoft, flexShrink: 0 }}>
+                                {new Date(h.ts).toLocaleDateString(lang === "en" ? "en-GB" : "vi-VN")}
+                              </span>
+                              <span style={{ color: TOKENS.jade, fontWeight: 600 }}>
+                                {formatVND(Number(h.total) || 0)}
+                                {h.promo && <span style={{ color: TOKENS.brassOnPaper, fontWeight: 400 }}> · {h.promo.code}</span>}
+                              </span>
+                              <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 10, color: TOKENS.brassOnPaper, background: `${TOKENS.brass}1F` }}>
+                                {STATUS_STEPS.find((s) => s.id === h.status)?.label[lang] || h.status}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {customerProfiles.length > 6 && (
@@ -3255,7 +3502,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       <p style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic" }}>{t.noCustomersYet}</p>
                     )}
                     {list.map((c) => (
-                      <div key={c.contact_key} style={{ background: TOKENS.paperDeep, borderRadius: 14, padding: "14px 16px", boxShadow: TOKENS.shadowSm }}>
+                      <div key={c.contact_key} {...clickable(() => openCustomer(c.contact_key))} className="pcard" style={{ background: TOKENS.paperDeep, borderRadius: 14, padding: "14px 16px", boxShadow: TOKENS.shadowSm, cursor: "pointer" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                           <div style={{ minWidth: 0 }}>
                             <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, color: TOKENS.jade, overflowWrap: "anywhere" }}>
@@ -4354,6 +4601,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
                         {t.sampleOption}
                       </div>
+                      {/* A café reading this should know the money isn't spent, it's carried
+                          forward — that is what turns a sample into a first order. */}
+                      <p style={{ fontSize: 12.5, color: TOKENS.jade, background: `${TOKENS.brass}1A`, borderRadius: 10, padding: "9px 12px", lineHeight: 1.5, margin: "0 0 10px" }}>
+                        {t.sampleCreditNote}
+                      </p>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
                         {catalog.filter((p) => p.line === "sample").map((p) => {
                           const stockTotal = getStockTotal(p);
