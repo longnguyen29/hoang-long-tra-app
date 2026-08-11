@@ -2075,6 +2075,77 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 })}
               </div>
 
+              {/* ── Photographs ──────────────────────────────────────────────────────
+                  Deliberately unlabelled. Every other block on this page announces itself
+                  with a numeral and a heading; photographs do not need telling. It also runs
+                  edge to edge rather than inside the column, so the pictures get the full
+                  width and the page breathes before the dark band that closes it.
+
+                  These are the Gallery's own photographs. They were previously invisible
+                  unless someone opened that section. */}
+              {galleryImages.length > 0 && (
+                <div style={{ marginTop: 40 }}>
+                  <div
+                    className="peekrail"
+                    // No scroll-snap here, unlike the Gallery's own carousel. These photos are
+                    // all different widths, so there is nothing sensible to snap to — and
+                    // snapping pulled the first one flush against the screen edge, eating the
+                    // inset and leaving the strip lopsided.
+                    style={{
+                      display: "flex", gap: 10, overflowX: "auto", padding: "0 20px 4px",
+                      WebkitOverflowScrolling: "touch",
+                    }}
+                  >
+                    {galleryImages.map((g) => (
+                      <button
+                        key={g.id}
+                        onClick={() => setLightboxImage(g)}
+                        style={{
+                          flex: "0 0 auto", border: "none", padding: 0, background: "none",
+                          cursor: "pointer", position: "relative",
+                          borderRadius: TOKENS.radiusSm, overflow: "hidden",
+                          boxShadow: TOKENS.shadowSm, lineHeight: 0,
+                        }}
+                      >
+                        <img
+                          src={g.url}
+                          alt={g.caption?.[lang] || ""}
+                          loading="lazy"
+                          decoding="async"
+                          className="pzoom"
+                          style={{
+                            height: "clamp(150px, 34vw, 220px)", width: "auto", maxWidth: "78vw",
+                            objectFit: "cover", display: "block",
+                          }}
+                        />
+                        {g.caption?.[lang] && (
+                          <span style={{
+                            position: "absolute", left: 0, right: 0, bottom: 0,
+                            padding: "18px 12px 9px", textAlign: "left",
+                            fontSize: 11.5, lineHeight: 1.35, color: TOKENS.paper,
+                            background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%)",
+                          }}>
+                            {g.caption[lang]}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ padding: "12px 20px 0" }}>
+                    <button
+                      onClick={() => { setSection("library"); resetWiki(); }}
+                      style={{
+                        background: "none", border: "none", padding: 0, cursor: "pointer",
+                        fontSize: 12.5, fontWeight: 600, color: TOKENS.brassOnPaper,
+                        display: "flex", alignItems: "center", gap: 5,
+                      }}
+                    >
+                      {t.seeGallery} <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* ── Closing chapter ──────────────────────────────────────────────────
                   Full-bleed and dark, answering the band the page opened with, so the
                   scroll has two covers and everything between them reads as the inside.
