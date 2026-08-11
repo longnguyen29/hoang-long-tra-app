@@ -18,8 +18,19 @@ export async function POST(request) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-  if (!token || !chatId || !serviceKey || !url) {
-    return Response.json({ ok: false, reason: "not_configured" });
+  // Names of whatever is missing, never values. A bare "not_configured" turns setting this
+  // up into guesswork — you cannot tell a misspelled key from one saved to the wrong
+  // environment from a deploy that predates the change. The names are already public in the
+  // README and .env.example, so listing them gives nothing away.
+  const missing = Object.entries({
+    TELEGRAM_BOT_TOKEN: token,
+    TELEGRAM_CHAT_ID: chatId,
+    SUPABASE_SERVICE_ROLE_KEY: serviceKey,
+    NEXT_PUBLIC_SUPABASE_URL: url,
+  }).filter(([, v]) => !v).map(([k]) => k);
+
+  if (missing.length > 0) {
+    return Response.json({ ok: false, reason: "not_configured", missing });
   }
 
   let orderId;
