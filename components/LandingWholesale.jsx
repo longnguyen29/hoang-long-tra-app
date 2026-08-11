@@ -91,6 +91,7 @@ const COPY = {
   errGeneric: "Chưa gửi được. Vui lòng thử lại, hoặc gọi trực tiếp 0903 333 841.",
   phone: "0903 333 841",
   footer: "Nhà làm Trà Hoàng Long · Trà cổ thụ Hà Giang · Từ 1995",
+  privacy: "Chính sách quyền riêng tư",
 };
 
 // A placeholder that is unmistakably a placeholder. A grey box could be mistaken for a
@@ -298,6 +299,13 @@ export default function LandingWholesale() {
           </a>
           <div style={{ fontSize: 11.5, color: `${TOKENS.jadeSoft}AA`, marginTop: 16, letterSpacing: 0.3 }}>
             {COPY.footer}
+          </div>
+          {/* Advertising platforms require a reachable privacy policy before approving a
+              lead campaign, and anyone handing over a phone number deserves to see one. */}
+          <div style={{ marginTop: 10 }}>
+            <a href="/privacy" style={{ fontSize: 12, color: TOKENS.brassOnPaper, fontWeight: 600 }}>
+              {COPY.privacy}
+            </a>
           </div>
         </div>
       </div>

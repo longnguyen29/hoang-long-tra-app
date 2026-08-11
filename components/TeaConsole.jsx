@@ -2195,8 +2195,14 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   </span>
                   <span style={{ fontSize: 14, overflowWrap: "anywhere", minWidth: 0 }}>hotro.trahoanglong@gmail.com</span>
                 </a>
+                <a
+                  href="/privacy"
+                  style={{ fontSize: 11.5, color: `${TOKENS.paper}66`, textDecoration: "none", marginTop: 6 }}
+                >
+                  {t.privacyPolicy}
+                </a>
                 <div aria-hidden="true" style={{
-                  marginTop: 8, fontFamily: "'Noto Serif SC', serif", fontSize: 15,
+                  marginTop: 4, fontFamily: "'Noto Serif SC', serif", fontSize: 15,
                   color: `${TOKENS.brass}77`, letterSpacing: 4, textAlign: "center",
                 }}>
                   皇龍

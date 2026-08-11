@@ -94,6 +94,7 @@ const STR = {
     callUs: "0903 333 841",
     backHome: "House of Hoàng Long",
     seeTheTeas: "See all our teas",
+    privacy: "Privacy policy",
   },
   vi: {
     eyebrow: "Dành cho quán pha chế",
@@ -126,6 +127,7 @@ const STR = {
     callUs: "0903 333 841",
     backHome: "Về trang chủ",
     seeTheTeas: "Xem toàn bộ trà của chúng tôi",
+    privacy: "Chính sách quyền riêng tư",
   },
 };
 
@@ -348,6 +350,14 @@ export default function SampleRequest() {
             </button>
           </>
         )}
+
+        {/* Anyone being asked for a phone number and an address should be able to see what
+            happens to them. */}
+        <div style={{ textAlign: "center", marginTop: 34 }}>
+          <a href="/privacy" style={{ fontSize: 12, color: TOKENS.brassOnPaper, fontWeight: 600 }}>
+            {t.privacy}
+          </a>
+        </div>
       </div>
     </div>
   );
