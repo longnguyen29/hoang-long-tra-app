@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Search, ChevronRight, ChevronLeft, Menu, X, Edit3, Save, Plus, Trash2,
   Leaf, Mountain, Languages, Copy, Check, Lock, Clock, Upload, Sparkles, ShoppingCart, Minus,
-  MessageCircle, Send, Download, Printer, LogOut, Tag, Truck, Loader2, Calendar, Phone, Images, Gift,
+  MessageCircle, Send, Download, Printer, LogOut, Tag, Truck, Loader2, Calendar, Phone, Images, Gift, Undo2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadImage } from "@/lib/supabase/storage";
@@ -33,6 +33,7 @@ import TrackingCodeEditor from "./TrackingCodeEditor";
 import TeaSessionBooking from "./TeaSessionBooking";
 
 // Home grid order, independent of the side menu's. Ids missing from this list sort last.
+const BIN_DAYS = 7; // how long a deleted record can still be brought back
 const HOME_TILE_ORDER = ["wiki", "retail", "wholesale", "library"];
 
 function slugify(s) {
@@ -225,6 +226,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [customerNoteDraft, setCustomerNoteDraft] = useState("");
   const [customerNoteSaved, setCustomerNoteSaved] = useState(false);
   const [sampleRequests, setSampleRequests] = useState([]);
+  const [bin, setBin] = useState([]);
 
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardStep, setOnboardStep] = useState(0);
@@ -744,6 +746,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       loadTraffic();
       loadCustomerProfiles();
       loadSampleRequests();
+      loadBin();
     } else {
       loadMyThread();
     }
@@ -840,47 +843,78 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   // claiming sales that never happened. Stock is deliberately NOT restored — that is a
   // judgement about physical inventory, not a number to be guessed at, and both fields are
   // editable by hand in the Catalog tab.
-  const deleteOrder = async (order) => {
-    for (const l of order.lines || []) {
+  // Everything goes through the bin rather than straight out. archive_and_delete copies the
+  // whole row aside and then removes it, in one transaction, so a restore is lossless.
+  const binRecord = async (table, id, label) => {
+    const { error } = await supabase.rpc("archive_and_delete", {
+      p_table: table, p_id: id, p_label: label || "", p_by: staffEmail || "",
+    });
+    if (error) { console.error(`Bin ${table} failed:`, error.message); return false; }
+    return true;
+  };
+
+  const adjustSold = async (lines, sign) => {
+    for (const l of lines || []) {
       const qty = Math.round(Number(l.qty) || 0);
       if (!l.productId || qty <= 0) continue;
       const p = catalog.find((c) => c.id === l.productId);
       if (!p) continue;
-      const next = Math.max(0, (p.soldCount || 0) - qty);
+      const next = Math.max(0, (p.soldCount || 0) + sign * qty);
       await supabase.from("catalog_products").update({ sold_count: next }).eq("id", l.productId);
     }
-    const { error } = await supabase.from("orders").delete().eq("id", order.id);
-    if (error) { console.error("Delete order failed:", error.message); return; }
+  };
+
+  const deleteOrder = async (order) => {
+    const label = `${order.customerName || ""} · ${formatVND(Number(order.estimatedTotal) || 0)}`;
+    if (!(await binRecord("orders", order.id, label))) return;
+    await adjustSold(order.lines, -1);
     setOrders((os) => os.filter((o) => o.id !== order.id));
     loadCatalog();
     loadCustomerProfiles();
   };
 
-  const deleteLead = async (id) => {
-    const { error } = await supabase.from("leads").delete().eq("id", id);
-    if (error) { console.error("Delete lead failed:", error.message); return; }
-    setLeads((ls) => ls.filter((l) => l.id !== id));
+  const deleteLead = async (l) => {
+    if (!(await binRecord("leads", l.id, `${l.name || ""} · ${l.contact || ""}`))) return;
+    setLeads((ls) => ls.filter((x) => x.id !== l.id));
   };
 
-  const deleteSampleRequest = async (id) => {
-    const { error } = await supabase.from("sample_requests").delete().eq("id", id);
-    if (error) { console.error("Delete sample request failed:", error.message); return; }
-    setSampleRequests((rs) => rs.filter((r) => r.id !== id));
+  const deleteSampleRequest = async (r) => {
+    if (!(await binRecord("sample_requests", r.id, `${r.store_name || ""} · ${r.phone || ""}`))) return;
+    setSampleRequests((rs) => rs.filter((x) => x.id !== r.id));
   };
 
-  const deleteTeaSession = async (id) => {
-    const { error } = await supabase.from("tea_sessions").delete().eq("id", id);
-    if (error) { console.error("Delete session failed:", error.message); return; }
-    setTeaSessions((ss) => ss.filter((s) => s.id !== id));
+  const deleteTeaSession = async (s) => {
+    if (!(await binRecord("tea_sessions", s.id, `${s.date}${s.time ? ` ${s.time}` : ""} · ${s.customerName || ""}`))) return;
+    setTeaSessions((ss) => ss.filter((x) => x.id !== s.id));
+  };
+
+  const loadBin = useCallback(async () => {
+    await supabase.rpc("purge_deleted_records", { p_days: BIN_DAYS }); // forget anything past the window
+    const { data, error } = await supabase
+      .from("deleted_records").select("*").order("deleted_at", { ascending: false });
+    if (error) { console.error("Bin failed:", error.message); return; }
+    setBin(data || []);
+  }, [supabase]);
+
+  const restoreRecord = async (rec) => {
+    const { error } = await supabase.rpc("restore_record", { p_archive_id: rec.id });
+    if (error) { console.error("Restore failed:", error.message); return; }
+    // Putting an order back has to put its sold count back too, or the two drift apart.
+    if (rec.table_name === "orders") await adjustSold(rec.payload?.lines, +1);
+    setBin((b) => b.filter((x) => x.id !== rec.id));
+    loadOrders(); loadLeads(); loadSampleRequests(); loadTeaSessions();
+    loadCatalog(); loadCustomerProfiles();
   };
 
   // Wipes one customer entirely: every order they placed, and the internal note about them.
   // There is no customers table — a customer *is* their orders — so this is the only way to
   // make one disappear, and it is the most destructive control in here.
+  // Each order goes into the bin separately, so an accidental wipe is undone order by order
+  // from the same place as any other deletion.
   const deleteCustomer = async (contactKey) => {
     const theirs = orders.filter((o) => (o.contact || "").trim().toLowerCase() === contactKey);
     for (const o of theirs) await deleteOrder(o);
-    await supabase.from("customer_notes").delete().eq("contact_key", contactKey);
+    await binRecord("customer_notes", contactKey, contactKey);
     setCustomerDetail(null);
     loadCustomerProfiles();
   };
@@ -3309,7 +3343,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               })()}
 
               <div style={{ display: "flex", gap: 8, marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>
-                {["overview", "orders", "customers", "samples", "sessions", "leads", "messages", "payment", "catalog", "reviews", "promos", "partners", "house"].map((tab) => (
+                {["overview", "orders", "customers", "samples", "sessions", "leads", "messages", "payment", "catalog", "reviews", "promos", "partners", "house", "bin"].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setFrontDeskTab(tab)}
@@ -3320,7 +3354,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                     }}
                   >
-                    {tab === "overview" ? t.overviewTab : tab === "customers" ? t.customersTab : tab === "samples" ? t.samplesTab : tab === "orders" ? t.frontDeskOrders : tab === "sessions" ? t.frontDeskSessionsTab : tab === "leads" ? t.frontDeskLeads : tab === "payment" ? t.frontDeskPayment : tab === "catalog" ? t.catalogTitle : tab === "reviews" ? t.reviewsTitle : tab === "promos" ? t.promosTitle : tab === "partners" ? t.wholesaleAccountsTitle : tab === "house" ? t.frontDeskHouseTab : t.frontDeskMessages}
+                    {tab === "overview" ? t.overviewTab : tab === "customers" ? t.customersTab : tab === "samples" ? t.samplesTab : tab === "bin" ? t.binTab : tab === "orders" ? t.frontDeskOrders : tab === "sessions" ? t.frontDeskSessionsTab : tab === "leads" ? t.frontDeskLeads : tab === "payment" ? t.frontDeskPayment : tab === "catalog" ? t.catalogTitle : tab === "reviews" ? t.reviewsTitle : tab === "promos" ? t.promosTitle : tab === "partners" ? t.wholesaleAccountsTitle : tab === "house" ? t.frontDeskHouseTab : t.frontDeskMessages}
                     {tab === "orders" && unreadOrders > 0 && (
                       <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10.5, padding: "1px 6px" }}>{unreadOrders}</span>
                     )}
@@ -3413,6 +3447,58 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 );
               })()}
 
+              {/* ---------- RECYCLE BIN ---------- */}
+              {frontDeskTab === "bin" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, lineHeight: 1.55, margin: 0 }}>
+                    {t.binHint(BIN_DAYS)}
+                  </p>
+                  {bin.length === 0 && (
+                    <p style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic" }}>{t.binEmpty}</p>
+                  )}
+                  {bin.map((rec) => {
+                    const daysGone = (Date.now() - new Date(rec.deleted_at).getTime()) / 86400000;
+                    const left = Math.max(0, Math.ceil(BIN_DAYS - daysGone));
+                    return (
+                      <div key={rec.id} style={{ background: TOKENS.paperDeep, borderRadius: 14, padding: "13px 16px", boxShadow: TOKENS.shadowSm }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.8 }}>
+                              {t.binTableName(rec.table_name)}
+                            </div>
+                            <div style={{ fontSize: 14, color: TOKENS.jade, overflowWrap: "anywhere", marginTop: 2 }}>
+                              {rec.label || rec.record_id}
+                            </div>
+                            <div style={{ fontSize: 11.5, color: TOKENS.jadeSoft, marginTop: 3 }}>
+                              {new Date(rec.deleted_at).toLocaleString(lang === "en" ? "en-GB" : "vi-VN")}
+                              {rec.deleted_by ? ` · ${rec.deleted_by}` : ""}
+                            </div>
+                          </div>
+                          {/* How long is left, so nobody assumes the bin keeps things forever. */}
+                          <span style={{
+                            flexShrink: 0, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 12,
+                            color: left <= 2 ? TOKENS.lacquer : TOKENS.brassOnPaper,
+                            background: left <= 2 ? `${TOKENS.lacquer}18` : `${TOKENS.brass}1F`,
+                          }}>
+                            {t.binDaysLeft(left)}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => restoreRecord(rec)}
+                          style={{
+                            marginTop: 11, display: "flex", alignItems: "center", gap: 6,
+                            background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 10,
+                            padding: "8px 14px", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                          }}
+                        >
+                          <Undo2 size={14} color={TOKENS.brass} /> {t.binRestore}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* ---------- SAMPLE REQUESTS ---------- */}
               {frontDeskTab === "samples" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -3469,7 +3555,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                             compact
                             label={t.delete}
                             confirmLabel={t.deleteConfirm}
-                            onConfirm={() => deleteSampleRequest(r.id)}
+                            onConfirm={() => deleteSampleRequest(r)}
                           />
                           <select
                             value={r.status}
@@ -3739,7 +3825,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           compact
                           label={t.delete}
                           confirmLabel={t.deleteConfirm}
-                          onConfirm={() => deleteLead(l.id)}
+                          onConfirm={() => deleteLead(l)}
                         />
                       </div>
                     </div>
@@ -4397,7 +4483,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           label={t.delete}
                           confirmLabel={t.deleteConfirm}
                           note={t.deleteSessionNote}
-                          onConfirm={() => deleteTeaSession(s.id)}
+                          onConfirm={() => deleteTeaSession(s)}
                         />
                       </div>
                       {s.status !== "cancelled" && (
