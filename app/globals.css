@@ -103,6 +103,21 @@ label:focus-visible,
   display: none;
 }
 
+/* Trade sample bar: phones only. On a wider screen the Shop shows the sample packs without
+   needing anything pinned to the bottom of the window. */
+.samplebar {
+  display: none;
+}
+@media (max-width: 767px) {
+  .samplebar {
+    display: block;
+  }
+  /* Lift the chat button above the bar so the two don't sit on top of each other. */
+  .chatbtn-raised {
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
 /* Admin image-upload spinner (product/gallery/home photo). */
 @keyframes spin {
   to {

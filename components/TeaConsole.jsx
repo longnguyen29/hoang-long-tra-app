@@ -199,6 +199,9 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [leads, setLeads] = useState([]);
   const [myThread, setMyThread] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
+  // Starts closed and opens after mount, so a visitor who dismissed it last time never sees
+  // it flash back on while localStorage is read.
+  const [sampleBarClosed, setSampleBarClosed] = useState(true);
   const [chatName, setChatName] = useState("");
   const [chatDraft, setChatDraft] = useState("");
   const [customerId] = useState(() => {
@@ -681,6 +684,12 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     const { data } = await supabase.rpc("get_customer_thread", { p_customer_id: customerId });
     if (data && data.length > 0) setMyThread(fromThreadRow(data[0]));
   }, [supabase, customerId]);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("hl_samplebar_off") !== "1") setSampleBarClosed(false);
+    } catch { setSampleBarClosed(false); }
+  }, []);
 
   // Page-view tracking. The "session id" is a random string in localStorage — it carries no
   // personal data, it exists only so the dashboard can tell 10 visits by one person from 10
@@ -4977,11 +4986,58 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
         </main>
       </div>
 
+      {/* ---------- TRADE SAMPLE BAR (mobile, customer-facing) ----------
+          Phones only: on a desktop the Shop already shows the sample packs without
+          anything having to follow the scroll. Dismissible and remembered, because a bar
+          that cannot be closed taxes every page for someone who does not run a café. */}
+      {!isAdmin && !sampleBarClosed && (
+        <div className="samplebar" style={{
+          position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 45,
+          background: `linear-gradient(100deg, ${TOKENS.jade} 0%, ${TOKENS.jadeSoft} 100%)`,
+          boxShadow: "0 -6px 20px rgba(28,43,36,0.28)",
+          // Clears the home-button strip on iPhones, which would otherwise sit over the link.
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 12px 11px 16px" }}>
+            <a
+              href="/sample"
+              style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 11, textDecoration: "none" }}
+            >
+              <Leaf size={19} color={TOKENS.brass} strokeWidth={1.7} style={{ flexShrink: 0 }} />
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: TOKENS.paper, lineHeight: 1.25 }}>
+                  {t.sampleBarTitle}
+                </span>
+                <span style={{ display: "block", fontSize: 11.5, color: TOKENS.brassOnDark, lineHeight: 1.3, marginTop: 1 }}>
+                  {t.sampleBarSub}
+                </span>
+              </span>
+              <ChevronRight size={17} color={TOKENS.brass} style={{ flexShrink: 0, marginLeft: "auto" }} />
+            </a>
+            <button
+              onClick={() => {
+                setSampleBarClosed(true);
+                try { localStorage.setItem("hl_samplebar_off", "1"); } catch { /* private mode */ }
+              }}
+              aria-label={t.close}
+              style={{
+                flexShrink: 0, width: 30, height: 30, borderRadius: "50%", border: "none",
+                background: `${TOKENS.paper}1A`, color: `${TOKENS.paper}99`,
+                display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+              }}
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ---------- FLOATING SUPPORT CHAT (customer-facing) ---------- */}
       {!isAdmin && (
         <>
           <button
             onClick={() => setChatOpen((s) => !s)}
+            className={!sampleBarClosed ? "chatbtn-raised" : undefined}
             style={{
               position: "fixed", bottom: 20, right: 20, width: 52, height: 52, borderRadius: "50%",
               background: TOKENS.jade, color: TOKENS.brass, border: `1.5px solid ${TOKENS.brass}`,
