@@ -62,12 +62,44 @@ const COPY = {
     },
   ],
 
-  // Four illustrations. Deliberately obvious placeholders — see the note by PlaceholderImage.
+  // Four photographs, one per beat of the argument.
+  //
+  // Drop the files into public/landing/ with these exact names and they appear. Until then —
+  // or if a name is misspelled, or the extension is wrong — each falls back to a loud
+  // placeholder saying what belongs there, so the page never shows a broken image and it is
+  // obvious at a glance which one is missing.
+  //
+  // `alt` is what a screen reader and a search crawler get; `label` is only for the
+  // placeholder. `ratio` shapes the box before the photo loads, so the page does not jump.
   images: [
-    { id: 1, label: "Cây trà Shan cổ thụ trên núi Hà Giang", ratio: "4 / 3" },
-    { id: 2, label: "Hái trà bằng tay — chỉ tôm và hai lá", ratio: "4 / 3" },
-    { id: 3, label: "Dây chuyền hấp theo công nghệ Nhật Bản", ratio: "4 / 3" },
-    { id: 4, label: "Ly signature pha từ trà nền của chúng tôi", ratio: "4 / 3" },
+    {
+      id: 1,
+      src: "/landing/1.jpg",
+      ratio: "9 / 14",
+      label: "Cây trà Shan cổ thụ mọc hoang trên núi Hà Giang",
+      alt: "Cây trà Shan cổ thụ thân xù xì phủ địa y, mọc hoang giữa cỏ dại trên núi Hà Giang",
+    },
+    {
+      id: 2,
+      src: "/landing/2.jpg",
+      ratio: "9 / 14",
+      label: "Lá trà sau khi héo, trước khi vào máy hấp",
+      alt: "Bàn tay cầm một nắm lá trà đã héo, phía sau là mẻ lá trải trên băng chuyền",
+    },
+    {
+      id: 3,
+      src: "/landing/3.jpg",
+      ratio: "1 / 1",
+      label: "Dây chuyền chế biến theo công nghệ Nhật Bản",
+      alt: "Dây chuyền chế biến trà bằng thép không gỉ theo công nghệ Nhật Bản trong xưởng",
+    },
+    {
+      id: 4,
+      src: "/landing/4.jpg",
+      ratio: "9 / 14",
+      label: "Món signature pha từ trà nền của chúng tôi",
+      alt: "Ly đồ uống nhiều lớp với lớp kem phía trên, pha từ trà nền của chúng tôi",
+    },
   ],
 
   ctaTitle: "Nhận mẫu thử miễn phí",
@@ -94,10 +126,31 @@ const COPY = {
   privacy: "Chính sách quyền riêng tư",
 };
 
-// A placeholder that is unmistakably a placeholder. A grey box could be mistaken for a
-// design choice; this says what belongs here and that it is not the real photograph, so
-// nobody publishes the advert with these still in place by accident.
-function PlaceholderImage({ label, ratio }) {
+// Shows the photograph when there is one, and an unmistakable placeholder when there is not.
+// A grey box could be mistaken for a design choice; this says what belongs here and that it
+// is not the real thing, so an advert cannot be launched with a gap nobody noticed.
+//
+// The fallback is also the error path: if a file is missing or misnamed, onError swaps back
+// to the placeholder rather than leaving a broken-image icon on a page being paid for.
+function Illustration({ src, label, alt, ratio }) {
+  const [failed, setFailed] = useState(false);
+
+  if (src && !failed) {
+    return (
+      <img
+        src={src}
+        alt={alt || label}
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
+        style={{
+          width: "100%", aspectRatio: ratio, objectFit: "cover", display: "block",
+          borderRadius: TOKENS.radius, boxShadow: TOKENS.shadowSm,
+        }}
+      />
+    );
+  }
+
   return (
     <div
       role="img"
@@ -116,7 +169,7 @@ function PlaceholderImage({ label, ratio }) {
         {label}
       </span>
       <span style={{ fontSize: 10.5, letterSpacing: 1, textTransform: "uppercase", color: TOKENS.brassOnPaper }}>
-        Ảnh minh hoạ tạm
+        Chưa có ảnh — đặt file vào public/landing/
       </span>
     </div>
   );
@@ -227,7 +280,7 @@ export default function LandingWholesale() {
               </p>
             ))}
             {COPY.images[i] && (
-              <div style={{ marginTop: 22 }}><PlaceholderImage {...COPY.images[i]} /></div>
+              <div style={{ marginTop: 22 }}><Illustration {...COPY.images[i]} /></div>
             )}
           </section>
         ))}
