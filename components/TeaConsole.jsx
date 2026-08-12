@@ -3826,6 +3826,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           </span>
                         </div>
                         <div style={{ fontSize: 12.5, color: TOKENS.jade, marginTop: 8, overflowWrap: "anywhere" }}>{r.address}</div>
+                        {r.heard_from && (
+                          <div style={{ fontSize: 12, color: TOKENS.brassOnPaper, fontWeight: 600, marginTop: 4 }}>
+                            {t.heardFromLabel}: {t.heardFromName(r.heard_from)}
+                          </div>
+                        )}
                         {r.note && <div style={{ fontSize: 12, color: TOKENS.jadeSoft, fontStyle: "italic", marginTop: 4 }}>{r.note}</div>}
 
                         {/* What they promised, so it can be checked before a free pack goes out. */}

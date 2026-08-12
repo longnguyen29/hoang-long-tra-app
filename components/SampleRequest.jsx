@@ -43,6 +43,17 @@ const PACKS = [
   },
 ];
 
+// Ids, not labels, are what get stored — the database keeps 'tiktok' whichever language the
+// page was in, and submit_sample_request only accepts these four. Worth asking on this page
+// in particular: it is reached only from a link the House posts or hands out, so the answer
+// says which channel actually brings in shops rather than which one collects the most likes.
+const HEARD_OPTIONS = [
+  { id: "threads", label: { en: "Threads", vi: "Threads" } },
+  { id: "tiktok", label: { en: "TikTok", vi: "TikTok" } },
+  { id: "facebook_instagram", label: { en: "Facebook / Instagram", vi: "Facebook / Instagram" } },
+  { id: "word_of_mouth", label: { en: "Someone told me", vi: "Người quen giới thiệu" } },
+];
+
 const QUALIFY = [
   {
     key: "hasShop",
@@ -84,6 +95,7 @@ const STR = {
     phonePh: "Phone number",
     addressPh: "Delivery address",
     notePh: "Anything we should know? (optional)",
+    heardTitle: "Where did you hear about us? (optional)",
     send: "Send me the sample",
     sending: "Sending",
     sentTitle: "On its way",
@@ -117,6 +129,7 @@ const STR = {
     phonePh: "Số điện thoại",
     addressPh: "Địa chỉ nhận hàng",
     notePh: "Điều gì chúng tôi nên biết? (không bắt buộc)",
+    heardTitle: "Bạn nghe đến chúng tôi từ đâu? (không bắt buộc)",
     send: "Gửi mẫu cho tôi",
     sending: "Đang gửi",
     sentTitle: "Đã nhận yêu cầu",
@@ -139,7 +152,7 @@ export default function SampleRequest() {
   const [lang, setLang] = useState("vi"); // a café owner in Hà Nội opens this, not a tourist
   const [pack, setPack] = useState("50g");
   const [checks, setChecks] = useState({ hasShop: false, canReformulate: false, canFeedback: false });
-  const [form, setForm] = useState({ store: "", name: "", phone: "", address: "", note: "" });
+  const [form, setForm] = useState({ store: "", name: "", phone: "", address: "", note: "", heardFrom: "" });
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
@@ -167,6 +180,7 @@ export default function SampleRequest() {
         p_can_reformulate: checks.canReformulate,
         p_can_feedback: checks.canFeedback,
         p_note: form.note.trim(),
+        p_heard_from: form.heardFrom,
       });
       if (e) throw e;
       notifyHouse("sample_requests", data);
@@ -331,6 +345,34 @@ export default function SampleRequest() {
                 rows={2}
                 style={{ width: "100%", padding: "12px 14px", borderRadius: 12, fontSize: 15, border: `1px solid ${TOKENS.hairline}`, background: TOKENS.paper, color: TOKENS.jade, resize: "vertical", fontFamily: "inherit" }}
               />
+
+              {/* Chips rather than a dropdown: every answer is visible without a tap, which is
+                  what makes an optional question get answered. Tapping the chosen one again
+                  clears it — an optional question you cannot un-answer is not optional. */}
+              <div>
+                <div style={{ fontSize: 13, color: TOKENS.jadeSoft, marginBottom: 7 }}>{t.heardTitle}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                  {HEARD_OPTIONS.map((o) => {
+                    const on = form.heardFrom === o.id;
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => setForm({ ...form, heardFrom: on ? "" : o.id })}
+                        style={{
+                          padding: "8px 14px", borderRadius: 20, cursor: "pointer", fontFamily: "inherit",
+                          fontSize: 13.5, fontWeight: 600,
+                          border: `1px solid ${on ? TOKENS.jade : TOKENS.hairline}`,
+                          background: on ? TOKENS.jade : TOKENS.paper,
+                          color: on ? TOKENS.paper : TOKENS.jade,
+                        }}
+                      >
+                        {o.label[lang] || o.label.vi}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             {error && (
