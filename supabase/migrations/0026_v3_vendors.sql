@@ -29,6 +29,14 @@ create index if not exists vendors_active_idx on vendors(active, sort_order);
 
 alter table vendors enable row level security;
 
+-- Dropped first because Postgres has no "create policy if not exists", and without this a
+-- second run of the file dies on the first policy — after the table and columns are already
+-- there, so the error reads like a real conflict rather than "you have already done this".
+drop policy if exists "vendors: staff select" on vendors;
+drop policy if exists "vendors: staff insert" on vendors;
+drop policy if exists "vendors: staff update" on vendors;
+drop policy if exists "vendors: staff delete" on vendors;
+
 create policy "vendors: staff select" on vendors for select using (is_staff());
 create policy "vendors: staff insert" on vendors for insert with check (is_staff());
 create policy "vendors: staff update" on vendors for update using (is_staff());
