@@ -5,7 +5,7 @@ import {
   Search, ChevronRight, ChevronLeft, Menu, X, Edit3, Save, Plus, Trash2,
   Leaf, Mountain, Languages, Copy, Check, Lock, Clock, Upload, Sparkles, ShoppingCart, Minus,
   MessageCircle, Send, Download, Printer, LogOut, Tag, Truck, Loader2, Calendar, Phone, Images, Gift, Undo2,
-  BarChart3, Users, Building2, Package, Ticket, Star, CreditCard, Home, UserPlus, ArrowLeft,
+  BarChart3, Users, Building2, Package, Ticket, Star, CreditCard, Home, UserPlus, ArrowLeft, Sprout,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadImage } from "@/lib/supabase/storage";
@@ -20,7 +20,7 @@ import {
   fromOrderRow, toOrderRow, fromThreadRow,
   fromCatalogRow, toCatalogRow, fromVariantRow, fromPromoRow, toPromoRow,
   fromPaymentRow, toPaymentRow, fromGalleryRow, fromWholesaleAccountRow, fromTeaSessionRow,
-  fromProductReviewRow,
+  fromProductReviewRow, fromVendorRow, toVendorRow,
 } from "@/lib/mappers";
 import ConfirmDelete from "./ConfirmDelete";
 import AuthPanel from "./AuthPanel";
@@ -33,6 +33,7 @@ import BrandSeal from "./BrandSeal";
 import VariantEditorRow from "./VariantEditorRow";
 import TrackingCodeEditor from "./TrackingCodeEditor";
 import TeaSessionBooking from "./TeaSessionBooking";
+import GoodsSection from "./GoodsSection";
 
 // Home grid order, independent of the side menu's. Ids missing from this list sort last.
 const BIN_DAYS = 7; // how long a deleted record can still be brought back
@@ -50,13 +51,13 @@ const HOME_TILE_ORDER = ["wiki", "retail", "wholesale", "library"];
 const DASH_GROUPS = [
   { id: "today", tabs: ["orders", "messages", "leads", "samples", "sessions"] },
   { id: "people", tabs: ["customers", "partners"] },
-  { id: "shop", tabs: ["catalog", "promos", "reviews", "payment"] },
+  { id: "shop", tabs: ["catalog", "vendors", "promos", "reviews", "payment"] },
   { id: "house", tabs: ["overview", "house", "bin"] },
 ];
 const DASH_ICONS = {
   orders: ShoppingCart, messages: MessageCircle, leads: UserPlus, samples: Gift, sessions: Calendar,
   customers: Users, partners: Building2,
-  catalog: Package, promos: Ticket, reviews: Star, payment: CreditCard,
+  catalog: Package, vendors: Sprout, promos: Ticket, reviews: Star, payment: CreditCard,
   overview: BarChart3, house: Home, bin: Trash2,
 };
 
@@ -244,6 +245,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [activeThreadId, setActiveThreadId] = useState(null);
   const [frontDeskTab, setFrontDeskTab] = useState(null); // null = the grouped menu
   const [telegramTest, setTelegramTest] = useState(null); // null | "sending" | "ok" | message
+  const [vendors, setVendors] = useState([]);
+  const [openVendor, setOpenVendor] = useState(null); // vendor id whose story is expanded
+  const [vendorDraft, setVendorDraft] = useState(null); // Dashboard editor
+  const [uploadingVendorPhoto, setUploadingVendorPhoto] = useState(false);
+  const [vendorPhotoError, setVendorPhotoError] = useState(false);
   const [traffic, setTraffic] = useState(null);
   const [customerProfiles, setCustomerProfiles] = useState([]);
   const [customerQuery, setCustomerQuery] = useState("");
@@ -270,6 +276,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     notesEn: "", notesVi: "", brewEn: "", brewVi: "", packSize: "", photoUrl: "",
     price: "", stockHaGiang: "", stockSocSon: "", batch: "", soldCount: "",
     flavorsEn: "", flavorsVi: "", photoPosX: 50, photoPosY: 50,
+    kind: "tea", vendorId: "",
   });
   const [uploadingProductPhoto, setUploadingProductPhoto] = useState(false);
   const [productPhotoError, setProductPhotoError] = useState(false);
@@ -511,20 +518,29 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   // the point is to spotlight an individual tea, not a bundle.
   const teaOfDay = useMemo(() => {
     if (!today) return null;
-    const pool = catalog.filter((p) => p.line !== "sample");
+    const pool = catalog.filter((p) => p.line !== "sample" && p.kind !== "goods");
     if (pool.length === 0) return null;
     const dayNumber = Math.floor(today.getTime() / 86400000);
     return pool[dayNumber % pool.length];
   }, [today, catalog]);
 
-  const wholesaleProducts = catalog.filter((p) => p.line === "everyday");
-  const retailProducts = catalog;
+  // The farm goods share the catalog table — same stock, same cart, same checkout — but they
+  // are not tea, so every tea-facing list has to say so. Splitting them here rather than at
+  // each use site means a new list added later gets it right by default.
+  const teaCatalog = useMemo(() => catalog.filter((p) => p.kind !== "goods"), [catalog]);
+  const goodsCatalog = useMemo(() => catalog.filter((p) => p.kind === "goods"), [catalog]);
+
+  const wholesaleProducts = teaCatalog.filter((p) => p.line === "everyday");
+  const retailProducts = teaCatalog;
 
   const cartLines = wholesaleProducts.map((p) => ({ ...p, qty: Number(cart[p.id]) || 0 })).filter((p) => p.qty > 0);
   const totalKg = cartLines.reduce((sum, p) => sum + p.qty, 0);
   const currentTier = [...PRICE_TIERS].reverse().find((tier) => totalKg >= tier.min) || PRICE_TIERS[0];
 
-  const retailOrderableItems = flattenOrderable(retailProducts);
+  // Browsing is split by kind; the cart is not. Goods are added from their own section but
+  // check out through the same basket, so this has to stay the whole catalog — narrowing it
+  // to tea would let a customer add a jar of honey and watch it disappear at checkout.
+  const retailOrderableItems = flattenOrderable(catalog);
   const retailCartLines = retailOrderableItems.map((item) => ({ ...item, qty: Number(retailCart[item.cartKey]) || 0 })).filter((item) => item.qty > 0);
   const retailTotalItems = retailCartLines.reduce((sum, p) => sum + p.qty, 0);
 
@@ -656,6 +672,22 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     }
   }, [supabase]);
 
+  // Staff read the table, because the Dashboard needs the farmer's phone number and the
+  // House's private notes. Everyone else goes through list_public_vendors(), which does not
+  // return those columns at all — a farmer's phone on a public page is a burden handed to
+  // them, not visibility given to them.
+  const loadVendors = useCallback(async () => {
+    if (isAdmin) {
+      const { data, error } = await supabase.from("vendors").select("*").order("sort_order").order("name");
+      if (error) { console.error("Load vendors failed:", error.message); return; }
+      setVendors((data || []).map(fromVendorRow));
+      return;
+    }
+    const { data, error } = await supabase.rpc("list_public_vendors");
+    if (error) { console.error("Load vendors failed:", error.message); return; }
+    setVendors((data || []).map(fromVendorRow));
+  }, [supabase, isAdmin]);
+
   const loadTestimonials = useCallback(async () => {
     const { data } = await supabase.from("testimonials").select("*");
     if (data) setTestimonials(data);
@@ -751,6 +783,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     loadGalleryImages();
     loadHomeSettings();
     loadCatalog();
+    loadVendors();
     loadTestimonials();
     loadProductReviews();
     loadPayment();
@@ -1006,6 +1039,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
         en: productDraft.flavorsEn.split(",").map((s) => s.trim()).filter(Boolean),
         vi: productDraft.flavorsVi.split(",").map((s) => s.trim()).filter(Boolean),
       },
+      kind: productDraft.kind || "tea",
+      vendorId: productDraft.vendorId || "",
     };
     if (productDraft.id) {
       await supabase.from("catalog_products").update({
@@ -1013,6 +1048,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
         pack_size: fields.packSize, photo_url: fields.photoUrl, photo_position: fields.photoPosition,
         price: fields.price ?? null, stock_ha_giang: fields.stockHaGiang ?? null, stock_soc_son: fields.stockSocSon ?? null,
         batch: fields.batch, sold_count: fields.soldCount, flavors: fields.flavors,
+        // null, not "": vendor_id is a foreign key and "" matches no vendor row.
+        kind: fields.kind, vendor_id: fields.vendorId || null,
       }).eq("id", productDraft.id);
       setCatalog(catalog.map((p) => (p.id === productDraft.id ? { ...p, ...fields } : p)));
     } else {
@@ -1021,7 +1058,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       await supabase.from("catalog_products").insert(toCatalogRow(newRow));
       setCatalog([...catalog, newRow]);
     }
-    setProductDraft({ id: null, nameEn: "", nameVi: "", line: "everyday", notesEn: "", notesVi: "", brewEn: "", brewVi: "", packSize: "", photoUrl: "", price: "", stockHaGiang: "", stockSocSon: "", batch: "", soldCount: "", flavorsEn: "", flavorsVi: "", photoPosX: 50, photoPosY: 50 });
+    setProductDraft({ id: null, nameEn: "", nameVi: "", line: "everyday", notesEn: "", notesVi: "", brewEn: "", brewVi: "", packSize: "", photoUrl: "", price: "", stockHaGiang: "", stockSocSon: "", batch: "", soldCount: "", flavorsEn: "", flavorsVi: "", photoPosX: 50, photoPosY: 50, kind: "tea", vendorId: "" });
   };
   const toggleAvailability = async (id) => {
     const p = catalog.find((x) => x.id === id);
@@ -1063,6 +1100,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       flavorsVi: (p.flavors?.vi || []).join(", "),
       photoPosX: p.photoPosition ? Number(p.photoPosition.split(" ")[0].replace("%", "")) : 50,
       photoPosY: p.photoPosition ? Number(p.photoPosition.split(" ")[1].replace("%", "")) : 50,
+      kind: p.kind || "tea",
+      vendorId: p.vendorId || "",
     });
   };
   const deleteProductFn = async (id) => {
@@ -1081,6 +1120,48 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       setProductPhotoError(e?.message || true);
     } finally {
       setUploadingProductPhoto(false);
+    }
+  };
+
+  const blankVendor = () => ({
+    id: "", name: "", region: "", photo: "", crops: "",
+    story: { vi: "", en: "" }, phone: "", note: "", active: true, sortOrder: vendors.length,
+  });
+
+  const saveVendorDraft = async () => {
+    const v = vendorDraft;
+    if (!v || !v.name.trim()) return;
+    // slugify() appends a timestamp, so an edit must keep the id it already has — generating
+    // a new one would orphan every product pointing at the old row.
+    const id = v.id || slugify(v.name.trim());
+    const row = toVendorRow({ ...v, id, name: v.name.trim() });
+    const { error } = await supabase.from("vendors").upsert(row);
+    if (error) { console.error("Save vendor failed:", error.message); return; }
+    setVendorDraft(null);
+    loadVendors();
+  };
+
+  const deleteVendor = async (v) => {
+    // Through the bin like everything else. The products keep existing — the foreign key is
+    // ON DELETE SET NULL — and reappear under "also from the highlands" rather than vanishing
+    // from a storeroom the House has already paid for.
+    if (!(await binRecord("vendors", v.id, `${v.name}${v.region ? ` · ${v.region}` : ""}`))) return;
+    setVendors((vs) => vs.filter((x) => x.id !== v.id));
+    loadCatalog();
+    loadBin();
+  };
+
+  const uploadVendorPhoto = async (file) => {
+    setVendorPhotoError(false);
+    setUploadingVendorPhoto(true);
+    try {
+      const url = await uploadImage(supabase, file, "vendors");
+      setVendorDraft((d) => ({ ...d, photo: url }));
+    } catch (e) {
+      console.error("Upload failed:", e);
+      setVendorPhotoError(e?.message || true);
+    } finally {
+      setUploadingVendorPhoto(false);
     }
   };
 
@@ -1449,7 +1530,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     overview: t.overviewTab, orders: t.frontDeskOrders, messages: t.frontDeskMessages,
     leads: t.frontDeskLeads, samples: t.samplesTab, sessions: t.frontDeskSessionsTab,
     customers: t.customersTab, partners: t.wholesaleAccountsTitle,
-    catalog: t.catalogTitle, promos: t.promosTitle, reviews: t.reviewsTitle,
+    catalog: t.catalogTitle, vendors: t.vendorsTab, promos: t.promosTitle, reviews: t.reviewsTitle,
     payment: t.frontDeskPayment, house: t.frontDeskHouseTab, bin: t.binTab,
   }[tab] || tab);
 
@@ -3376,6 +3457,21 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
             </div>
           )}
 
+          {/* ---------- TÂY BẮC FARM GOODS ---------- */}
+          {section === "goods" && (
+            <GoodsSection
+              vendors={vendors}
+              goods={goodsCatalog}
+              t={t}
+              lang={lang}
+              retailCart={retailCart}
+              setRetailQty={setRetailQty}
+              formatVND={formatVND}
+              retailTotalItems={retailTotalItems}
+              onGoToShop={() => setSection("retail")}
+            />
+          )}
+
           {/* ---------- FRONT DESK (internal only) ---------- */}
           {section === "frontdesk" && (
             <div>
@@ -3640,6 +3736,99 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   })}
                 </div>
               )}
+
+              {/* ---------- FARMS & VENDORS ---------- */}
+              {frontDeskTab === "vendors" && (() => {
+                const field = { width: "100%", boxSizing: "border-box", padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5, fontFamily: "inherit", background: TOKENS.paper, color: TOKENS.jade };
+                const d = vendorDraft;
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, lineHeight: 1.55, margin: 0 }}>{t.vendorsHint}</p>
+
+                    {!d && (
+                      <button
+                        onClick={() => setVendorDraft(blankVendor())}
+                        style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6, background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 10, padding: "9px 15px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}
+                      >
+                        <Plus size={14} color={TOKENS.brass} /> {t.vendorAdd}
+                      </button>
+                    )}
+
+                    {d && (
+                      <div style={{ background: TOKENS.paperDeep, borderRadius: 14, padding: "15px 16px", boxShadow: TOKENS.shadowSm, display: "flex", flexDirection: "column", gap: 9 }}>
+                        <input style={field} placeholder={t.vendorName} value={d.name} onChange={(e) => setVendorDraft({ ...d, name: e.target.value })} />
+                        <input style={field} placeholder={t.vendorRegion} value={d.region} onChange={(e) => setVendorDraft({ ...d, region: e.target.value })} />
+                        <input style={field} placeholder={t.vendorCrops} value={d.crops} onChange={(e) => setVendorDraft({ ...d, crops: e.target.value })} />
+
+                        <div>
+                          <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, marginBottom: 5 }}>{t.vendorPhoto}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            {d.photo && <img src={d.photo} alt="" style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />}
+                            <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadVendorPhoto(e.target.files[0])} style={{ fontSize: 12, minWidth: 0 }} />
+                            {uploadingVendorPhoto && <Loader2 size={15} className="spin" color={TOKENS.brassOnPaper} />}
+                          </div>
+                          {vendorPhotoError && (
+                            <div style={{ fontSize: 11.5, color: TOKENS.lacquer, marginTop: 4 }}>
+                              {typeof vendorPhotoError === "string" ? vendorPhotoError : t.uploadFailed}
+                            </div>
+                          )}
+                        </div>
+
+                        <textarea style={{ ...field, minHeight: 90, resize: "vertical" }} placeholder={t.vendorStoryVi} value={d.story.vi} onChange={(e) => setVendorDraft({ ...d, story: { ...d.story, vi: e.target.value } })} />
+                        <textarea style={{ ...field, minHeight: 90, resize: "vertical" }} placeholder={t.vendorStoryEn} value={d.story.en} onChange={(e) => setVendorDraft({ ...d, story: { ...d.story, en: e.target.value } })} />
+
+                        {/* Below the fold and labelled twice, because everything above it is public
+                            and these two are not. */}
+                        <input style={field} placeholder={t.vendorPhone} value={d.phone} onChange={(e) => setVendorDraft({ ...d, phone: e.target.value })} />
+                        <input style={field} placeholder={t.vendorNote} value={d.note} onChange={(e) => setVendorDraft({ ...d, note: e.target.value })} />
+
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: TOKENS.jade, cursor: "pointer" }}>
+                          <input type="checkbox" checked={d.active !== false} onChange={(e) => setVendorDraft({ ...d, active: e.target.checked })} />
+                          {t.vendorActive}
+                        </label>
+
+                        <div style={{ display: "flex", gap: 8, marginTop: 3 }}>
+                          <button onClick={saveVendorDraft} style={{ display: "flex", alignItems: "center", gap: 6, background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 10, padding: "9px 16px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+                            <Save size={14} color={TOKENS.brass} /> {t.save}
+                          </button>
+                          <button onClick={() => setVendorDraft(null)} style={{ background: "none", border: `1px solid ${TOKENS.brassDeep}55`, color: TOKENS.jade, borderRadius: 10, padding: "9px 16px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+                            {t.cancel}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {vendors.length === 0 && !d && (
+                      <p style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic" }}>{t.vendorNoneYet}</p>
+                    )}
+
+                    {vendors.map((v) => (
+                      <div key={v.id} style={{ background: TOKENS.paperDeep, borderRadius: 14, padding: "13px 16px", boxShadow: TOKENS.shadowSm }}>
+                        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                          {v.photo
+                            ? <img src={v.photo} alt="" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                            : <div style={{ width: 44, height: 44, borderRadius: "50%", background: `${TOKENS.brass}1F`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Sprout size={18} color={TOKENS.brassOnPaper} /></div>}
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 16.5, color: TOKENS.jade, overflowWrap: "anywhere" }}>{v.name}</div>
+                            <div style={{ fontSize: 12, color: TOKENS.jadeSoft, marginTop: 2 }}>
+                              {[v.region, t.vendorProductCount(goodsCatalog.filter((p) => p.vendorId === v.id).length)].filter(Boolean).join(" · ")}
+                            </div>
+                            {v.active === false && (
+                              <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.lacquer, marginTop: 3 }}>{t.vendorHidden}</div>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 11 }}>
+                          <button onClick={() => setVendorDraft({ ...v, story: { ...v.story } })} style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: `1px solid ${TOKENS.brassDeep}55`, color: TOKENS.jade, borderRadius: 8, padding: "6px 12px", fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+                            <Edit3 size={13} /> {t.edit}
+                          </button>
+                          <ConfirmDelete TOKENS={TOKENS} compact label={t.delete} confirmLabel={t.deleteConfirm} onConfirm={() => deleteVendor(v)} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* ---------- SAMPLE REQUESTS ---------- */}
               {frontDeskTab === "samples" && (
@@ -4052,6 +4241,29 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       <option value="sample">{t.sampleOption}</option>
                     </select>
                     <p style={{ fontSize: 11, color: TOKENS.jadeSoft, margin: "-4px 0 2px", lineHeight: 1.4 }}>{t.productLineHint}</p>
+
+                    {/* Kind decides which page it appears on; the farm decides whose name it
+                        appears under. Farm only matters for goods, so it only shows for goods. */}
+                    <select
+                      value={productDraft.kind || "tea"}
+                      onChange={(e) => setProductDraft({ ...productDraft, kind: e.target.value })}
+                      style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
+                    >
+                      <option value="tea">{t.productKind} — {t.productKindTea}</option>
+                      <option value="goods">{t.productKind} — {t.productKindGoods}</option>
+                    </select>
+                    {productDraft.kind === "goods" && (
+                      <select
+                        value={productDraft.vendorId || ""}
+                        onChange={(e) => setProductDraft({ ...productDraft, vendorId: e.target.value })}
+                        style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
+                      >
+                        <option value="">{t.productVendor} — {t.productVendorNone}</option>
+                        {vendors.map((v) => (
+                          <option key={v.id} value={v.id}>{t.productVendor} — {v.name}</option>
+                        ))}
+                      </select>
+                    )}
                     <input
                       value={productDraft.notesEn}
                       onChange={(e) => setProductDraft({ ...productDraft, notesEn: e.target.value })}
