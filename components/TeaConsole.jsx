@@ -314,7 +314,10 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
   const t = STR[lang];
   const other = lang === "en" ? "vi" : "en";
-  const lineLabel = (l) => (l === "reserve" ? t.reserveOption : l === "sample" ? t.sampleOption : t.everydayOption);
+  // Plain names only. The versions with "(sold by kg — shown in both Wholesale and Shop)"
+  // exist to explain the choice in the admin dropdown; this label is a heading customers
+  // read on the Shop page, where that parenthesis is internal talk leaking into the shop.
+  const lineLabel = (l) => (l === "reserve" ? t.reserveLine : l === "sample" ? t.sampleOption : t.everydayLine);
   const formatVND = (n) => n.toLocaleString("vi-VN") + "đ";
 
   // Decorative 皇龍 mark used as a quiet anchor at the end of a few sections. Deliberately
@@ -5202,8 +5205,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, marginBottom: 18 }}>
                     {[
                       { ref: sampleSectionRef, label: t.sampleOption, show: catalog.some((p) => p.line === "sample") },
-                      { ref: everydaySectionRef, label: t.everydayOption, show: catalog.some((p) => p.line === "everyday") },
-                      { ref: reserveSectionRef, label: t.reserveOption, show: catalog.some((p) => p.line === "reserve") },
+                      { ref: everydaySectionRef, label: t.everydayLine, show: catalog.some((p) => p.line === "everyday") },
+                      { ref: reserveSectionRef, label: t.reserveLine, show: catalog.some((p) => p.line === "reserve") },
                     ].filter((s) => s.show).map((s) => (
                       <button
                         key={s.label}
