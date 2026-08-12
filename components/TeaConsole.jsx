@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadImage } from "@/lib/supabase/storage";
+import { notifyHouse } from "@/lib/notify";
 import {
   TOKENS, NAV, CATEGORIES, LIBRARY_CATEGORIES, PRICE_TIERS, STATUS_STEPS,
   YIELD_GUIDE, CUP_ML_MIN, CUP_ML_MAX,
@@ -1475,6 +1476,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     };
     const { error } = await supabase.from("leads").insert(newLead);
     if (error) { console.error(error); return; }
+    notifyHouse("leads", newLead.id);
     setOrderName(onboardName.trim());
     setOrderContact(onboardContact.trim());
     setOrderConsent(true);
@@ -1606,14 +1608,9 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     setAddTestPack(false);
   };
 
-  // Fire-and-forget: a failed or unconfigured notification must never block a real order.
-  const notifyNewOrder = (orderId) => {
-    fetch("/api/notify-order", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId }),
-    }).catch((e) => console.error("Order notification failed:", e));
-  };
+  // Fire-and-forget: a failed or unconfigured notification must never block a real order,
+  // a lead, or a booking. Nothing here is awaited and nothing shown to the customer.
+  const notifyNewOrder = (orderId) => notifyHouse("orders", orderId);
 
   const mailtoHref = (order) => {
     const subject = encodeURIComponent(`${order.type === "retail" ? "New retail order" : "New wholesale order"} — ${order.customerName}`);
@@ -1891,7 +1888,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
         {/* Content */}
         <main style={{
-          flex: 1, padding: "24px 20px 60px", maxWidth: 860, width: "100%", margin: "0 auto", minWidth: 0,
+          // 860 was a phone column stretched onto a desktop, with more empty paper either side
+          // than page. 1280 fills a laptop window; past that it stops, because a paragraph
+          // running the full width of a 1920 monitor is around 180 characters a line and stops
+          // being readable long before it stops being wide.
+          flex: 1, padding: "24px 20px 60px", maxWidth: 1280, width: "100%", margin: "0 auto", minWidth: 0,
           background: TOKENS.paper, boxShadow: `0 0 60px ${TOKENS.paper}`,
         }}>
           {section === "home" && (
@@ -3392,7 +3393,10 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   { label: t.statsLeads, value: weeklyLeadsCount },
                 ];
                 return (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                  // Capped rather than filling the wider shell: a menu row 1240px long puts
+                  // its label at the far left and its chevron at the far right with a metre
+                  // of nothing between, which is harder to read than the narrow version was.
+                  <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 820 }}>
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
                         {t.statsWeekTitle}
@@ -3412,8 +3416,12 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
                           {t.dashGroup(g.id)}
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(148px, 1fr))", gap: 8 }}>
-                          {g.tabs.map((tab) => {
+                        {/* One per line, not a grid. Side by side, the eye has to sweep across
+                            and back for every row and the group stops reading as a list; a
+                            single column is scanned straight down in one movement. Hairlines
+                            between rows rather than gaps, so a group looks like one object. */}
+                        <div style={{ background: TOKENS.paperDeep, borderRadius: 14, overflow: "hidden", boxShadow: TOKENS.shadowSm }}>
+                          {g.tabs.map((tab, i) => {
                             const Icon = DASH_ICONS[tab];
                             const count = dashBadge(tab);
                             return (
@@ -3421,10 +3429,10 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                                 key={tab}
                                 onClick={() => setFrontDeskTab(tab)}
                                 style={{
-                                  display: "flex", alignItems: "center", gap: 10, textAlign: "left",
-                                  background: TOKENS.paperDeep, border: "none", borderRadius: 14,
-                                  padding: "14px 14px", cursor: "pointer", boxShadow: TOKENS.shadowSm,
-                                  color: TOKENS.jade, fontSize: 14, fontWeight: 600, fontFamily: "inherit",
+                                  display: "flex", alignItems: "center", gap: 12, textAlign: "left", width: "100%",
+                                  background: "none", border: "none", borderTop: i === 0 ? "none" : `1px solid ${TOKENS.hairline}`,
+                                  padding: "13px 15px", cursor: "pointer",
+                                  color: TOKENS.jade, fontSize: 14.5, fontWeight: 600, fontFamily: "inherit",
                                 }}
                               >
                                 <span style={{
@@ -3444,6 +3452,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                                     borderRadius: 10, fontSize: 10.5, fontWeight: 700, padding: "2px 7px",
                                   }}>{count}</span>
                                 )}
+                                <ChevronRight size={15} color={TOKENS.jadeSoft} style={{ flexShrink: 0 }} />
                               </button>
                             );
                           })}

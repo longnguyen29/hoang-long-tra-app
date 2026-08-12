@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, Loader2, Leaf, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { notifyHouse } from "@/lib/notify";
 import { TOKENS } from "@/lib/constants";
 
 // The trade sample page. Reached only by a link the house hands out, so it explains itself
@@ -27,8 +28,8 @@ const PACKS = [
     price: 199000,
     label: { en: "100g of each", vi: "100g mỗi loại" },
     detail: {
-      en: "For working a recipe properly — enough to brew a batch the way you actually serve it.",
-      vi: "Đủ để làm việc với công thức tử tế — pha nguyên mẻ đúng như cách bạn bán.",
+      en: "For working a recipe properly — enough to brew a batch the way you actually serve it, for a short run.",
+      vi: "Đủ để làm việc với công thức tử tế — pha nguyên mẻ đúng như cách bạn bán trong một khoảng thời gian ngắn.",
     },
   },
   {
@@ -36,8 +37,8 @@ const PACKS = [
     price: 299000,
     label: { en: "250g of each — 1kg total", vi: "250g mỗi loại — tổng 1kg" },
     detail: {
-      en: "Enough to run a limited-time item and watch how it sells before committing.",
-      vi: "Đủ để chạy thử một món giới hạn và xem bán thế nào trước khi quyết định.",
+      en: "Enough to run a limited-time item and see how people respond before committing long term.",
+      vi: "Đủ để chạy thử một món giới hạn và xem phản hồi thế nào trước khi quyết định sử dụng dài hạn.",
     },
   },
 ];
@@ -45,15 +46,15 @@ const PACKS = [
 const QUALIFY = [
   {
     key: "hasShop",
-    en: "I'm running a café, tea shop or bar right now — not planning one.",
-    vi: "Tôi đang vận hành quán cà phê, quán trà hoặc bar — không phải đang dự định mở.",
+    en: "I run a café, tea shop or bar, or I'm on an R&D team — or I will be in the near future.",
+    vi: "Tôi đang vận hành quán cà phê, quán trà, bar hoặc trong đội ngũ RnD — hoặc có dự định trong tương lai gần.",
   },
   {
     key: "canReformulate",
     // Deliberately explicit. A shop that only swaps our tea into an existing recipe will
     // judge it against a leaf it was never built for, and conclude wrongly.
-    en: "I can build a drink around this tea — adjust the ratio, the milk, the sugar, the steep — rather than only dropping it into a recipe built for a different leaf.",
-    vi: "Tôi có thể xây công thức quanh loại trà này — chỉnh tỉ lệ, sữa, đường, thời gian ủ — chứ không chỉ thay mỗi nguyên liệu trà trong công thức vốn làm cho loại khác.",
+    en: "I can experiment with a recipe around this tea — adjust the ratio, the milk, the sugar, the steep — rather than only dropping it into a recipe built for a different leaf.",
+    vi: "Tôi có thể thử nghiệm công thức quanh loại trà này — chỉnh tỉ lệ, sữa, đường, thời gian ủ — chứ không chỉ thay mỗi nguyên liệu trà trong công thức vốn làm cho loại khác.",
   },
   {
     key: "canFeedback",
@@ -67,14 +68,14 @@ const STR = {
     eyebrow: "For cafés and tea rooms",
     title: "Try our leaf on your own bar",
     intro:
-      "We grow and process ancient Shan tea in Hà Giang. The only way to know whether it works for you is to brew it where you actually serve — so tell us where to send it.",
+      "We use and process ancient Shan tea from Hà Giang, with Japanese processing. One of the most practical ways to know whether a tea suits your flavour is to brew it right where you trade — so tell us where to send the sample.",
     pickPack: "Which size?",
     free: "Free",
     creditNote:
       "What you pay for this comes off your first wholesale order. It is a deposit, not a cost.",
     qualifyTitle: "Before we send the free pack",
     qualifyIntro:
-      "The free pack is for shops that will genuinely put it through service. Three honest answers:",
+      "The free pack is for shops that will genuinely brew it for service and test it to improve what they serve. Three honest answers:",
     qualifyFail:
       "For the free pack we need all three. If that isn't you yet, the 100g or 250g pack is open to anyone — and what you pay comes off your first wholesale order.",
     detailsTitle: "Where should it go?",
@@ -100,14 +101,14 @@ const STR = {
     eyebrow: "Dành cho quán pha chế",
     title: "Thử trà của chúng tôi ngay trên quầy của bạn",
     intro:
-      "Chúng tôi trồng và chế biến trà Shan cổ thụ ở Hà Giang. Cách duy nhất để biết trà có hợp hay không là pha ngay tại nơi bạn bán — nên hãy cho chúng tôi biết gửi về đâu.",
+      "Chúng tôi sử dụng và chế biến dòng trà Shan cổ thụ ở Hà Giang trên công nghệ của Nhật. Một trong những cách thực tế nhất để biết trà có hợp hương vị hay không là pha ngay tại nơi bạn kinh doanh — hãy cho chúng tôi biết nơi để gửi mẫu về nhé.",
     pickPack: "Chọn cỡ gói",
     free: "Miễn phí",
     creditNote:
       "Số tiền bạn trả cho gói này sẽ được trừ vào đơn sỉ đầu tiên. Đây là tiền cọc, không phải chi phí.",
     qualifyTitle: "Trước khi gửi gói miễn phí",
     qualifyIntro:
-      "Gói miễn phí dành cho quán thật sự đưa trà vào phục vụ. Ba câu trả lời thành thật:",
+      "Gói miễn phí dành cho quán thật sự sẽ thử trà để phục vụ, thử nghiệm nâng cao chất lượng sản phẩm. Ba câu trả lời thành thật:",
     qualifyFail:
       "Gói miễn phí cần đủ cả ba. Nếu chưa phải, gói 100g hoặc 250g mở cho tất cả — và tiền trả sẽ trừ vào đơn sỉ đầu tiên.",
     detailsTitle: "Gửi về đâu?",
@@ -156,7 +157,7 @@ export default function SampleRequest() {
     }
     setSending(true);
     try {
-      const { error: e } = await supabase.rpc("submit_sample_request", {
+      const { data, error: e } = await supabase.rpc("submit_sample_request", {
         p_store_name: form.store.trim(),
         p_contact_name: form.name.trim(),
         p_phone: form.phone.trim(),
@@ -168,6 +169,7 @@ export default function SampleRequest() {
         p_note: form.note.trim(),
       });
       if (e) throw e;
+      notifyHouse("sample_requests", data);
       setSent(true);
     } catch (e) {
       console.error("Sample request failed:", e);

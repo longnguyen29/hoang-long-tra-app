@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Calendar, Send, X } from "lucide-react";
+import { notifyHouse } from "@/lib/notify";
 import PaymentBlock from "./PaymentBlock";
 
 // Free for now — set back to 500000 to re-enable the QR/cash payment step below.
@@ -56,6 +57,7 @@ export default function TeaSessionBooking({ supabase, payment, vietQrUrl, t, TOK
       }
       return;
     }
+    notifyHouse("tea_sessions", data[0].id);
     setBooked({ id: data[0].id, date: data[0].date, time: data[0].session_time?.slice(0, 5) || time, paymentMethod });
   };
 

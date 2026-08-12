@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, Loader2, Leaf, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { notifyHouse } from "@/lib/notify";
 import { TOKENS } from "@/lib/constants";
 
 // Advert landing page for café and milk-tea owners. Deliberately bare: no sidebar, no site
@@ -190,8 +191,9 @@ export default function LandingWholesale() {
     if (!canSend) { setError(COPY.errRequired); return; }
     setSending(true);
     try {
+      const leadId = "lead-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 6);
       const { error: e } = await supabase.from("leads").insert({
-        id: "lead-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 6),
+        id: leadId,
         name: form.name.trim(),
         contact: form.phone.trim(),
         business_name: form.store.trim(),
@@ -202,6 +204,8 @@ export default function LandingWholesale() {
         unread: true,
       });
       if (e) throw e;
+      // The advert's whole point is a fast reply, and nobody watches a dashboard all day.
+      notifyHouse("leads", leadId);
       setSent(true);
     } catch (e) {
       console.error("Landing lead failed:", e);
