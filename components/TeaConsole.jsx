@@ -483,7 +483,16 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     setEditing(false);
   };
 
-  const nav = NAV.filter((n) => n.roles.includes(role));
+  const nav = NAV.filter((n) => {
+    if (!n.roles.includes(role)) return false;
+    // A menu entry that opens onto nothing reads as a half-finished site, so the farm goods
+    // stay hidden from visitors until there is a farm or a product to show. Staff always see
+    // it — otherwise there would be no way in to add the first one.
+    // Reads catalog directly rather than goodsCatalog: that one is derived further down the
+    // component, and referencing it here would throw before it is initialised.
+    if (n.id === "goods") return isAdmin || vendors.length > 0 || catalog.some((p) => p.kind === "goods");
+    return true;
+  });
   // Booking is an action, not a place — it gets its own CTA at the foot of the side menu
   // and its own block on the home page, so it's kept out of the plain list of sections.
   const navSections = nav.filter((n) => n.id !== "sessions");
