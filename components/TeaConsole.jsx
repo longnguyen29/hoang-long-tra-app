@@ -1969,11 +1969,10 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
         {/* Content */}
         <main style={{
-          // 860 was a phone column stretched onto a desktop, with more empty paper either side
-          // than page. 1280 fills a laptop window; past that it stops, because a paragraph
-          // running the full width of a 1920 monitor is around 180 characters a line and stops
-          // being readable long before it stops being wide.
-          flex: 1, padding: "24px 20px 60px", maxWidth: 1280, width: "100%", margin: "0 auto", minWidth: 0,
+          // Tried 1280 to fill a desktop window and it read worse, not better: the line length
+          // went past what the eye tracks comfortably and the page stopped feeling like a page.
+          // The narrow column is the design, not a mobile leftover.
+          flex: 1, padding: "24px 20px 60px", maxWidth: 860, width: "100%", margin: "0 auto", minWidth: 0,
           background: TOKENS.paper, boxShadow: `0 0 60px ${TOKENS.paper}`,
         }}>
           {section === "home" && (
@@ -3489,10 +3488,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   { label: t.statsLeads, value: weeklyLeadsCount },
                 ];
                 return (
-                  // Capped rather than filling the wider shell: a menu row 1240px long puts
-                  // its label at the far left and its chevron at the far right with a metre
-                  // of nothing between, which is harder to read than the narrow version was.
-                  <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 820 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
                         {t.statsWeekTitle}
