@@ -228,7 +228,10 @@ export default function LandingWholesale() {
     />
   );
 
+  // Centred here rather than at each call site, so the two CTAs — the one under the headline
+  // and the one closing the page — cannot drift apart.
   const ctaButton = (big) => (
+    <div style={{ textAlign: "center" }}>
     <button
       onClick={() => { setOpen(true); setTimeout(() => document.getElementById("lp-form")?.scrollIntoView({ behavior: "smooth", block: "center" }), 60); }}
       style={{
@@ -240,6 +243,7 @@ export default function LandingWholesale() {
     >
       <Leaf size={18} color={TOKENS.brass} /> {COPY.cta}
     </button>
+    </div>
   );
 
   return (
