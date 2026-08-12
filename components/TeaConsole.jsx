@@ -259,13 +259,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [sampleRequests, setSampleRequests] = useState([]);
   const [bin, setBin] = useState([]);
 
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [onboardStep, setOnboardStep] = useState(0);
-  const [onboardInterest, setOnboardInterest] = useState("wholesale");
-  const [onboardName, setOnboardName] = useState("");
-  const [onboardContact, setOnboardContact] = useState("");
-  const [onboardConsent, setOnboardConsent] = useState(false);
-
   const [bankList, setBankList] = useState([]);
   const [payment, setPayment] = useState({ bin: "", bankShortName: "", accountNumber: "", accountName: "" });
   const [paymentSaved, setPaymentSaved] = useState(false);
@@ -835,21 +828,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     const id = setInterval(loadMyThread, 4000);
     return () => clearInterval(id);
   }, [isAdmin, chatOpen, loadMyThread]);
-
-  // Onboarding shows once per browser, not on every reload/role switch — checked in an
-  // effect (not the initial useState) so server and first client render both start closed
-  // and stay in sync, avoiding a hydration mismatch.
-  useEffect(() => {
-    if (isAdmin) return;
-    try {
-      if (!window.localStorage.getItem("thl:onboarded")) setShowOnboarding(true);
-    } catch { /* localStorage unavailable — just skip onboarding */ }
-  }, [isAdmin]);
-
-  const markOnboarded = () => {
-    try { window.localStorage.setItem("thl:onboarded", "1"); } catch { /* ignore */ }
-    setShowOnboarding(false);
-  };
 
   // Eligibility for the free "new batch test pack" — checked server-side via RPC since
   // customers have no direct read access to the orders table.
@@ -1556,27 +1534,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     sessions: teaSessions.filter((s) => s.status === "pending").length,
     bin: bin.length,
   }[tab] || 0);
-
-  const submitLead = async () => {
-    if (!onboardName.trim() || !onboardContact.trim() || !onboardConsent) return;
-    const newLead = {
-      id: "lead-" + Date.now().toString(36),
-      ts: new Date().toISOString(),
-      name: onboardName.trim(),
-      contact: onboardContact.trim(),
-      interest: onboardInterest,
-      unread: true,
-    };
-    const { error } = await supabase.from("leads").insert(newLead);
-    if (error) { console.error(error); return; }
-    notifyHouse("leads", newLead.id);
-    setOrderName(onboardName.trim());
-    setOrderContact(onboardContact.trim());
-    setOrderConsent(true);
-    setSection(onboardInterest);
-    markOnboarded();
-    setOnboardConsent(false);
-  };
 
   const applyReorder = (order) => {
     const newCart = {};
@@ -5977,149 +5934,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
         />
       )}
 
-      {/* ---------- FIRST-TIME ONBOARDING FUNNEL ---------- */}
-      {showOnboarding && !isAdmin && (
-        <div
-          style={{
-            position: "fixed", inset: 0, background: "rgba(28,43,36,0.72)", zIndex: 50,
-            display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
-          }}
-        >
-          <div
-            style={{
-              background: TOKENS.paper, borderRadius: 16, width: "min(420px, 100%)", maxHeight: "88vh",
-              overflowY: "auto", position: "relative", boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
-            }}
-          >
-            <button
-              onClick={markOnboarded}
-              style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", color: TOKENS.jadeSoft, cursor: "pointer", fontSize: 12.5, zIndex: 1 }}
-            >
-              {t.onboardSkip}
-            </button>
-
-            <div style={{ background: TOKENS.jade, padding: "28px 24px 22px" }}>
-              <div style={{
-                width: 42, height: 42, borderRadius: "50%", border: `1.5px solid ${TOKENS.brass}`,
-                display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14,
-                fontFamily: "'Noto Serif SC', serif", fontSize: 17, color: TOKENS.brass,
-              }}>
-                皇龍
-              </div>
-              <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: TOKENS.brassOnDark, fontWeight: 600, marginBottom: 4 }}>
-                {t.onboardStepOf(onboardStep + 1, 3)}
-              </div>
-              <div style={{ display: "flex", gap: 5 }}>
-                {[0, 1, 2].map((i) => (
-                  <div key={i} style={{ height: 3, flex: 1, borderRadius: 2, background: i <= onboardStep ? TOKENS.brass : `${TOKENS.paper}33` }} />
-                ))}
-              </div>
-            </div>
-
-            <div style={{ padding: "26px 24px 24px" }}>
-              {onboardStep === 0 && (
-                <div>
-                  <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 22, margin: "0 0 10px" }}>{t.onboardWelcomeTitle}</h2>
-                  <p style={{ fontSize: 14, lineHeight: 1.65, color: TOKENS.jadeSoft, margin: 0 }}>{t.onboardWelcomeBody}</p>
-                </div>
-              )}
-
-              {onboardStep === 1 && (
-                <div>
-                  <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 20, margin: "0 0 16px" }}>{t.onboardOfferTitle}</h2>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 10, background: TOKENS.jade, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <Mountain size={16} color={TOKENS.brass} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 14.5, fontWeight: 600 }}>{t.onboardOriginTitle}</div>
-                        <div style={{ fontSize: 13, color: TOKENS.jadeSoft, lineHeight: 1.5 }}>{t.onboardOriginBody}</div>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 10, background: TOKENS.jade, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <Leaf size={16} color={TOKENS.brass} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 14.5, fontWeight: 600 }}>{t.onboardLibraryTitle}</div>
-                        <div style={{ fontSize: 13, color: TOKENS.jadeSoft, lineHeight: 1.5 }}>{t.onboardLibraryBody}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {onboardStep === 2 && (
-                <div>
-                  <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 20, margin: "0 0 16px" }}>{t.onboardInfoTitle}</h2>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <input
-                      value={onboardName}
-                      onChange={(e) => setOnboardName(e.target.value)}
-                      placeholder={t.onboardNamePh}
-                      style={{ padding: "10px 13px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 14 }}
-                    />
-                    <input
-                      value={onboardContact}
-                      onChange={(e) => setOnboardContact(e.target.value)}
-                      placeholder={t.onboardContactPh}
-                      style={{ padding: "10px 13px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 14 }}
-                    />
-                  </div>
-                  <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 14, fontSize: 12, color: TOKENS.jadeSoft, cursor: "pointer" }}>
-                    <input
-                      type="checkbox"
-                      checked={onboardConsent}
-                      onChange={(e) => setOnboardConsent(e.target.checked)}
-                      style={{ marginTop: 2, flexShrink: 0 }}
-                    />
-                    {t.consentLabel}
-                  </label>
-                </div>
-              )}
-
-              <div style={{ display: "flex", gap: 10, marginTop: 26 }}>
-                {onboardStep > 0 && (
-                  <button
-                    onClick={() => setOnboardStep((s) => s - 1)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 5, background: "transparent", color: TOKENS.jadeSoft,
-                      border: `1px solid ${TOKENS.brassDeep}44`, borderRadius: 8, padding: "11px 16px", fontSize: 13.5, cursor: "pointer",
-                    }}
-                  >
-                    <ChevronLeft size={14} /> {t.back}
-                  </button>
-                )}
-                {onboardStep < 2 ? (
-                  <button
-                    onClick={() => setOnboardStep((s) => s + 1)}
-                    style={{
-                      flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: TOKENS.jade,
-                      color: TOKENS.paper, border: "none", borderRadius: 8, padding: "11px", fontSize: 14, fontWeight: 600, cursor: "pointer",
-                    }}
-                  >
-                    {t.onboardCTA} <ChevronRight size={15} />
-                  </button>
-                ) : (
-                  <button
-                    onClick={submitLead}
-                    disabled={!onboardName.trim() || !onboardContact.trim() || !onboardConsent}
-                    title={!onboardConsent ? t.consentRequired : (!onboardName.trim() || !onboardContact.trim()) ? t.leadRequired : ""}
-                    style={{
-                      flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: TOKENS.brass,
-                      color: TOKENS.jade, border: "none", borderRadius: 8, padding: "11px", fontSize: 14, fontWeight: 700, cursor: "pointer",
-                      opacity: (!onboardName.trim() || !onboardContact.trim() || !onboardConsent) ? 0.5 : 1,
-                    }}
-                  >
-                    {t.onboardCTA}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
