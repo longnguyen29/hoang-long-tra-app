@@ -161,6 +161,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [libraryQuery, setLibraryQuery] = useState("");
   const [galleryImages, setGalleryImages] = useState([]);
   const [galleryDraft, setGalleryDraft] = useState({ url: "", captionEn: "", captionVi: "" });
+  const [galleryEdit, setGalleryEdit] = useState(null); // { id, captionEn, captionVi }
   const [uploadingGalleryPhoto, setUploadingGalleryPhoto] = useState(false);
   const [galleryPhotoError, setGalleryPhotoError] = useState(false);
   // Resolved after mount so the server-rendered HTML can't disagree with the client's clock.
@@ -1273,6 +1274,16 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     await supabase.from("gallery_images").delete().eq("id", id);
     setGalleryImages(galleryImages.filter((g) => g.id !== id));
   };
+  // A caption is the one part of a photo that gets written in a hurry and read for years, so
+  // it has to be fixable without deleting the photo and uploading it again.
+  const saveGalleryCaption = async () => {
+    if (!galleryEdit) return;
+    const caption = { en: galleryEdit.captionEn.trim(), vi: galleryEdit.captionVi.trim() };
+    const { error } = await supabase.from("gallery_images").update({ caption }).eq("id", galleryEdit.id);
+    if (error) { console.error("Save caption failed:", error.message); return; }
+    setGalleryImages(galleryImages.map((g) => (g.id === galleryEdit.id ? { ...g, caption } : g)));
+    setGalleryEdit(null);
+  };
   const uploadGalleryPhoto = async (file) => {
     setGalleryPhotoError(false);
     setUploadingGalleryPhoto(true);
@@ -1827,6 +1838,9 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 <Phone size={12} /> 0903 333 841
               </a>
               <div style={{ opacity: 0.45 }}>Trà Cổ Hà Giang – Công Nghệ Nhật Bản</div>
+              {/* Not wrapped in <address> or linked to a map: it sits under a phone number
+                  people are meant to call, and a tap target here would fight that one. */}
+              <div style={{ opacity: 0.45, marginTop: 3 }}>36b Quốc lộ 2 – Xã Sóc Sơn – Hà Nội</div>
             </div>
           </aside>
         </div>
@@ -2861,19 +2875,55 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                             boxShadow: TOKENS.shadowMd, cursor: "pointer", display: "block",
                           }}
                         />
-                        {g.caption?.[lang] && (
+                        {galleryEdit?.id === g.id ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8, paddingRight: 8 }}>
+                            <input
+                              value={galleryEdit.captionEn}
+                              onChange={(e) => setGalleryEdit({ ...galleryEdit, captionEn: e.target.value })}
+                              placeholder={`${t.captionPh} (EN)`}
+                              style={{ padding: "8px 10px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13, fontFamily: "inherit", background: TOKENS.paper, color: TOKENS.jade }}
+                            />
+                            <input
+                              value={galleryEdit.captionVi}
+                              onChange={(e) => setGalleryEdit({ ...galleryEdit, captionVi: e.target.value })}
+                              placeholder={`${t.captionPh} (VI)`}
+                              style={{ padding: "8px 10px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13, fontFamily: "inherit", background: TOKENS.paper, color: TOKENS.jade }}
+                            />
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button onClick={saveGalleryCaption} style={{ display: "flex", alignItems: "center", gap: 5, background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 8, padding: "7px 13px", fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+                                <Save size={13} color={TOKENS.brass} /> {t.save}
+                              </button>
+                              <button onClick={() => setGalleryEdit(null)} style={{ background: "none", border: `1px solid ${TOKENS.brassDeep}55`, color: TOKENS.jade, borderRadius: 8, padding: "7px 13px", fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+                                {t.cancel}
+                              </button>
+                            </div>
+                          </div>
+                        ) : g.caption?.[lang] ? (
                           <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginTop: 8, paddingRight: 8 }}>{g.caption[lang]}</div>
-                        )}
+                        ) : null}
                         {isAdmin && (
-                          <button
-                            onClick={() => deleteGalleryImage(g.id)}
-                            style={{
-                              position: "absolute", top: 10, left: 10, background: "rgba(28,43,36,0.7)", border: "none",
-                              borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-                            }}
-                          >
-                            <Trash2 size={13} color="#fff" />
-                          </button>
+                          <div style={{ position: "absolute", top: 10, left: 10, display: "flex", gap: 6 }}>
+                            <button
+                              onClick={() => deleteGalleryImage(g.id)}
+                              style={{
+                                background: "rgba(28,43,36,0.7)", border: "none",
+                                borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                              }}
+                            >
+                              <Trash2 size={13} color="#fff" />
+                            </button>
+                            {/* Seeded from the stored caption rather than blank, so fixing one
+                                word doesn't mean retyping the sentence. */}
+                            <button
+                              onClick={() => setGalleryEdit({ id: g.id, captionEn: g.caption?.en || "", captionVi: g.caption?.vi || "" })}
+                              style={{
+                                background: "rgba(28,43,36,0.7)", border: "none",
+                                borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                              }}
+                            >
+                              <Edit3 size={13} color="#fff" />
+                            </button>
+                          </div>
                         )}
                       </div>
                     ))}
