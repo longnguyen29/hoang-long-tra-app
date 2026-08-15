@@ -1832,14 +1832,19 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
             <div style={{ position: "absolute", bottom: 16, left: 20, right: 20, fontSize: 10.5, letterSpacing: 0.3, lineHeight: 1.5 }}>
               <a
-                href="tel:+84903333841"
+                href="https://zalo.me/0903333841"
+                target="_blank"
+                rel="noopener noreferrer"
                 style={{ display: "flex", alignItems: "center", gap: 6, color: TOKENS.brass, opacity: 0.9, textDecoration: "none", fontWeight: 600, marginBottom: 6 }}
               >
-                <Phone size={12} /> 0903 333 841
+                {/* MessageCircle, not Phone — the icon should say what tapping it does. Zalo
+                    over a bare tel: link because most enquiries arrive as chat, not calls, and
+                    Zalo keeps a thread instead of a missed-call notification with no context. */}
+                <MessageCircle size={12} /> 0903 333 841
               </a>
               <div style={{ opacity: 0.45 }}>Trà Cổ Hà Giang – Công Nghệ Nhật Bản</div>
-              {/* Not wrapped in <address> or linked to a map: it sits under a phone number
-                  people are meant to call, and a tap target here would fight that one. */}
+              {/* Not wrapped in <address> or linked to a map: it sits under the Zalo link
+                  people are meant to tap, and a second tap target here would fight that one. */}
               <div style={{ opacity: 0.45, marginTop: 3 }}>36b Quốc lộ 2 – Xã Sóc Sơn – Hà Nội</div>
             </div>
           </aside>
