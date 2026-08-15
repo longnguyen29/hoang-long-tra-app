@@ -5,7 +5,7 @@ import {
   Search, ChevronRight, ChevronLeft, Menu, X, Edit3, Save, Plus, Trash2,
   Leaf, Mountain, Languages, Copy, Check, Lock, Clock, Upload, Sparkles, ShoppingCart, Minus,
   MessageCircle, Send, Download, Printer, LogOut, Tag, Truck, Loader2, Calendar, Phone, Images, Gift, Undo2,
-  BarChart3, Users, Building2, Package, Ticket, Star, CreditCard, Home, UserPlus, ArrowLeft, Sprout,
+  BarChart3, Users, Building2, Package, Ticket, Star, CreditCard, Home, UserPlus, ArrowLeft, Sprout, FileText,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadImage } from "@/lib/supabase/storage";
@@ -52,13 +52,13 @@ const DASH_GROUPS = [
   { id: "today", tabs: ["orders", "messages", "leads", "samples", "sessions"] },
   { id: "people", tabs: ["customers", "partners"] },
   { id: "shop", tabs: ["catalog", "vendors", "promos", "reviews", "payment"] },
-  { id: "house", tabs: ["overview", "house", "bin"] },
+  { id: "house", tabs: ["overview", "reports", "house", "bin"] },
 ];
 const DASH_ICONS = {
   orders: ShoppingCart, messages: MessageCircle, leads: UserPlus, samples: Gift, sessions: Calendar,
   customers: Users, partners: Building2,
   catalog: Package, vendors: Sprout, promos: Ticket, reviews: Star, payment: CreditCard,
-  overview: BarChart3, house: Home, bin: Trash2,
+  overview: BarChart3, reports: FileText, house: Home, bin: Trash2,
 };
 
 function slugify(s) {
@@ -245,6 +245,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   });
   const [activeThreadId, setActiveThreadId] = useState(null);
   const [frontDeskTab, setFrontDeskTab] = useState(null); // null = the grouped menu
+  const [reportMonth, setReportMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [telegramTest, setTelegramTest] = useState(null); // null | "sending" | "ok" | message
   const [vendors, setVendors] = useState([]);
   const [openVendor, setOpenVendor] = useState(null); // vendor id whose story is expanded
@@ -1532,7 +1533,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     leads: t.frontDeskLeads, samples: t.samplesTab, sessions: t.frontDeskSessionsTab,
     customers: t.customersTab, partners: t.wholesaleAccountsTitle,
     catalog: t.catalogTitle, vendors: t.vendorsTab, promos: t.promosTitle, reviews: t.reviewsTitle,
-    payment: t.frontDeskPayment, house: t.frontDeskHouseTab, bin: t.binTab,
+    payment: t.frontDeskPayment, house: t.frontDeskHouseTab, bin: t.binTab, reports: t.reportsTab,
   }[tab] || tab);
 
   // What each section is waiting on. Zero means no badge at all — a row of "0"s reads as
@@ -3700,6 +3701,110 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                           ))}
                         </div>
                       </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* ---------- REPORTS ---------- */}
+              {frontDeskTab === "reports" && (() => {
+                // Reads what orders already carry — no query, no migration. UTC month
+                // boundaries from ts.slice(0,7): the same few-hour edge case as the rest of
+                // the Dashboard's date math, not worth a timezone library for a monthly total.
+                const inMonth = orders.filter((o) => (o.ts || "").slice(0, 7) === reportMonth);
+                const revenue = inMonth.reduce((s, o) => s + (o.estimatedTotal || 0), 0);
+                const retail = inMonth.filter((o) => o.type === "retail");
+                const wholesale = inMonth.filter((o) => o.type === "wholesale");
+                const wholesaleKg = wholesale.reduce((s, o) => s + (o.totalKg || 0), 0);
+                const cash = inMonth.filter((o) => o.paymentMethod === "cash");
+                const transfer = inMonth.filter((o) => o.paymentMethod === "qr");
+                const cashTotal = cash.reduce((s, o) => s + (o.estimatedTotal || 0), 0);
+                const transferTotal = transfer.reduce((s, o) => s + (o.estimatedTotal || 0), 0);
+                // Orders carrying a tax number are the ones a business customer will
+                // eventually want an invoice for — not something this app issues (Vietnam
+                // requires licensed e-invoicing software for that), just the list to work from.
+                const taxable = inMonth.filter((o) => (o.taxNumber || "").trim());
+                const vatEstimate = taxable.reduce((s, o) => s + (o.estimatedTotal || 0) * ((o.vat || 0) / 100), 0);
+
+                const tile = (label, value, sub) => (
+                  <div style={{ background: TOKENS.paperDeep, borderRadius: 14, padding: "12px 14px", boxShadow: TOKENS.shadowSm }}>
+                    <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 22, color: TOKENS.jade, lineHeight: 1.15 }}>{value}</div>
+                    <div style={{ fontSize: 11, color: TOKENS.jadeSoft, marginTop: 2 }}>{label}</div>
+                    {sub && <div style={{ fontSize: 10.5, color: TOKENS.jadeSoft, opacity: 0.75, marginTop: 1 }}>{sub}</div>}
+                  </div>
+                );
+
+                const exportReportCsv = () => {
+                  const headers = [t.reportColOrder, t.reportColDate, t.reportColType, t.reportColCustomer, t.reportColTax, t.reportColTotal, t.reportColPayment];
+                  const rows = inMonth.map((o) => [
+                    o.id, new Date(o.ts).toLocaleString("vi-VN"), o.type, o.customerName,
+                    o.taxNumber || "", o.estimatedTotal || 0, o.paymentMethod === "cash" ? t.payByCash : t.payByQR,
+                  ]);
+                  const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+                  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url; a.download = `bao-cao-${reportMonth}.csv`; a.click();
+                  URL.revokeObjectURL(url);
+                };
+
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, lineHeight: 1.55, margin: 0 }}>{t.reportsHint}</p>
+
+                    <input
+                      type="month"
+                      value={reportMonth}
+                      onChange={(e) => setReportMonth(e.target.value)}
+                      style={{ alignSelf: "flex-start", padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5, fontFamily: "inherit", background: TOKENS.paper, color: TOKENS.jade }}
+                    />
+
+                    {inMonth.length === 0 ? (
+                      <p style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic" }}>{t.reportsEmpty}</p>
+                    ) : (
+                      <>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8 }}>
+                          {tile(t.reportRevenue, formatVND(revenue), t.reportOrderCount(inMonth.length))}
+                          {tile(t.reportWholesaleVolume, `${wholesaleKg} kg`, t.reportOrderCount(wholesale.length))}
+                          {tile(t.reportCash, formatVND(cashTotal), t.reportOrderCount(cash.length))}
+                          {tile(t.reportTransfer, formatVND(transferTotal), t.reportOrderCount(transfer.length))}
+                        </div>
+
+                        <div style={{ background: TOKENS.paperDeep, borderRadius: 14, padding: "14px 16px", boxShadow: TOKENS.shadowSm }}>
+                          <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                            {t.reportTaxTitle}
+                          </div>
+                          <p style={{ fontSize: 12, color: TOKENS.jadeSoft, lineHeight: 1.55, margin: "6px 0 10px" }}>{t.reportTaxHint}</p>
+                          {taxable.length === 0 ? (
+                            <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, fontStyle: "italic", margin: 0 }}>{t.reportTaxEmpty}</p>
+                          ) : (
+                            <>
+                              <div style={{ fontSize: 13.5, color: TOKENS.jade, marginBottom: 8 }}>
+                                {t.reportOrderCount(taxable.length)} · {formatVND(vatEstimate)} {t.reportVatAtRate}
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                {taxable.map((o) => (
+                                  <div key={o.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5, flexWrap: "wrap" }}>
+                                    <span style={{ color: TOKENS.jade, minWidth: 0, overflowWrap: "anywhere" }}>{o.customerName} · {o.taxNumber}</span>
+                                    <span style={{ color: TOKENS.jadeSoft, flexShrink: 0 }}>{formatVND(o.estimatedTotal || 0)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        <button
+                          onClick={exportReportCsv}
+                          style={{
+                            alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6,
+                            background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 10,
+                            padding: "9px 16px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer",
+                          }}
+                        >
+                          <Download size={14} color={TOKENS.brass} /> {t.reportExport}
+                        </button>
+                      </>
                     )}
                   </div>
                 );
