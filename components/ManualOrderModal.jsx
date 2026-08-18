@@ -47,6 +47,13 @@ export default function ManualOrderModal({
 
   const total = lines.reduce((s, l) => s + (l.price ? l.price * l.qty : 0), 0);
 
+  // In priority order, so only one reason ever shows at a time — a wall of "this is missing,
+  // that is missing" is worse than being told the next single thing to fix.
+  const missingReason = !customerName.trim() ? t.manualOrderMissingName
+    : !contact.trim() ? t.manualOrderMissingContact
+    : lines.length === 0 ? t.manualOrderMissingItems
+    : "";
+
   const submit = async () => {
     if (!customerName.trim() || !contact.trim() || lines.length === 0) return;
     setSaving(true);
@@ -140,6 +147,7 @@ export default function ManualOrderModal({
               <input
                 type="number" min="0" inputMode="numeric" value={lineQty}
                 onChange={(e) => setLineQty(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLine(); } }}
                 placeholder={type === "wholesale" ? t.kg : t.pcs}
                 style={{ ...field, width: 70 }}
               />
@@ -172,14 +180,21 @@ export default function ManualOrderModal({
 
           {error && <p style={{ fontSize: 12.5, color: TOKENS.lacquer, margin: 0 }}>{error}</p>}
 
+          {/* Named explicitly rather than just greying the button out — a disabled button
+              with no reason attached reads as broken, not as "you're missing something". */}
+          {!saving && missingReason && (
+            <p style={{ fontSize: 12.5, color: TOKENS.brassOnPaper, margin: 0 }}>{missingReason}</p>
+          )}
+
           <button
             onClick={submit}
-            disabled={saving || !customerName.trim() || !contact.trim() || lines.length === 0}
+            disabled={saving || !!missingReason}
             style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 4,
               background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 10, padding: "11px",
-              fontSize: 14, fontWeight: 700, fontFamily: "inherit", cursor: saving ? "default" : "pointer",
-              opacity: (saving || !customerName.trim() || !contact.trim() || lines.length === 0) ? 0.55 : 1,
+              fontSize: 14, fontWeight: 700, fontFamily: "inherit",
+              cursor: (saving || missingReason) ? "default" : "pointer",
+              opacity: (saving || missingReason) ? 0.55 : 1,
             }}
           >
             {saving ? <Loader2 size={15} className="spin" /> : null}
