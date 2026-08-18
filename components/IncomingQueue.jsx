@@ -1,15 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Phone, MessageCircle, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Phone, MessageCircle, Plus } from "lucide-react";
 import ConfirmDelete from "./ConfirmDelete";
 
 // Leads, sample requests, and tea session bookings are all the same kind of thing from a
 // staff point of view: something a stranger sent in that hasn't become an order yet. They used
-// to be three separate Dashboard tabs sitting next to Orders, which made "where do I look for
-// new business" a five-way guess. This folds all three into one place, reached from Orders
-// itself — collapsed by kind so nothing is hidden, but nothing is shouting either.
-function Group({ kindLabel, count, defaultOpen, children }) {
+// to be three separate Dashboard tabs, then a padded-card accordion — neither made "what's
+// waiting on me" scannable at a glance. This is a dense, Notion-database-style table instead:
+// one line per item, a status pill, grouped and collapsed by kind. Click a row to open the
+// detail and the actions that used to be always-visible on the card.
+//
+// Not a literal multi-column grid: this app is used on a phone as often as a desktop, and a
+// wide table means horizontal scrolling on the one device staff are most likely holding while
+// standing at the counter. Each row fits one line by showing only what identifies the item —
+// everything else (address, note, qualifying answers, buttons) lives in the row's own
+// expansion, one tap away rather than always on screen.
+
+function Group({ kindLabel, count, defaultOpen, headerNote, children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div>
@@ -22,25 +30,54 @@ function Group({ kindLabel, count, defaultOpen, children }) {
       >
         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: "#1C2B24" }}>{kindLabel}</span>
-          {count > 0 && (
-            <span style={{ background: "#9C3B2E", color: "#F7F3EA", borderRadius: 10, fontSize: 10.5, fontWeight: 700, padding: "1px 7px" }}>{count}</span>
-          )}
+          <span style={{ background: "#AD8A4E22", color: "#82602D", borderRadius: 10, fontSize: 10.5, fontWeight: 700, padding: "1px 7px" }}>{count}</span>
         </span>
         <ChevronDown size={16} color="#2E4A40" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 160ms ease-out" }} />
       </button>
-      {open && <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 14 }}>{children}</div>}
+      {open && (
+        <div>
+          {headerNote}
+          <div>{children}</div>
+        </div>
+      )}
     </div>
   );
 }
 
-function KindBadge({ children, TOKENS }) {
+function Pill({ label, color, bg }) {
   return (
     <span style={{
-      display: "inline-block", fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4,
-      color: TOKENS.brassOnPaper, background: `${TOKENS.brass}1F`, borderRadius: 5, padding: "2px 6px", marginBottom: 6,
+      flexShrink: 0, fontSize: 10.5, fontWeight: 700, padding: "2px 9px", borderRadius: 20,
+      color, background: bg, whiteSpace: "nowrap",
     }}>
-      {children}
+      {label}
     </span>
+  );
+}
+
+// One line, click to expand.
+function Row({ title, sub, pill, TOKENS, children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ borderBottom: `1px solid ${TOKENS.brassDeep}1F` }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 2px",
+          background: "none", border: "none", cursor: "pointer", textAlign: "left",
+        }}
+      >
+        <ChevronRight size={13} color={TOKENS.jadeSoft} style={{ flexShrink: 0, transform: open ? "rotate(90deg)" : "none", transition: "transform 140ms ease-out" }} />
+        <div style={{ minWidth: 0, flex: "1 1 auto" }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: TOKENS.jade, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {title}
+          </div>
+          {sub && <div style={{ fontSize: 11.5, color: TOKENS.jadeSoft, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>}
+        </div>
+        {pill}
+      </button>
+      {open && <div style={{ padding: "0 2px 14px 21px" }}>{children}</div>}
+    </div>
   );
 }
 
@@ -55,27 +92,25 @@ export default function IncomingQueue({
   const openSessions = teaSessions.filter((s) => s.status === "pending").length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", divider: "none" }}>
-      <Group kindLabel={t.incomingLeadsGroup} count={openLeads} defaultOpen={openLeads > 0}>
-        {leads.length === 0 && <p style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic", margin: 0 }}>{t.noLeadsYet}</p>}
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <Group kindLabel={t.incomingLeadsGroup} count={leads.length} defaultOpen={openLeads > 0}>
+        {leads.length === 0 && <p style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic", margin: "4px 0 12px" }}>{t.noLeadsYet}</p>}
         {[...leads].reverse().map((l) => (
-          <div key={l.id} style={{ background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}${l.unread ? "88" : "33"}`, borderRadius: 12, padding: 14 }}>
-            <KindBadge TOKENS={TOKENS}>{t.incomingLeadsGroup}</KindBadge>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 600 }}>{l.name}</div>
-                {l.business_name && <div style={{ fontSize: 13, color: TOKENS.jade, overflowWrap: "anywhere" }}>{l.business_name}</div>}
-                <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.contactLabel}: {l.contact}</div>
-                {l.address && (
-                  <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, overflowWrap: "anywhere", marginTop: 2 }}>{t.addressLabel}: {l.address}</div>
-                )}
-                <div style={{ fontSize: 12.5, color: TOKENS.brassOnPaper, marginTop: 2 }}>
-                  {t.interestedIn}: {l.interest === "mau-thu-doanh-nghiep" ? t.leadFromAd : l.interest === "wholesale" ? t.onboardWholesale : t.onboardRetail}
-                </div>
-              </div>
-              {l.unread && <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10.5, fontWeight: 700, padding: "2px 8px", flexShrink: 0 }}>{t.newBadge}</span>}
+          <Row
+            key={l.id}
+            title={l.name}
+            sub={[l.business_name, l.contact].filter(Boolean).join(" · ")}
+            TOKENS={TOKENS}
+            pill={l.unread
+              ? <Pill label={t.incomingStatusNew} color={TOKENS.paper} bg={TOKENS.lacquer} />
+              : <Pill label={t.incomingStatusRead} color={TOKENS.jadeSoft} bg={`${TOKENS.jadeSoft}18`} />}
+          >
+            <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginBottom: 2 }}>{t.contactLabel}: {l.contact}</div>
+            {l.address && <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, overflowWrap: "anywhere", marginBottom: 2 }}>{t.addressLabel}: {l.address}</div>}
+            <div style={{ fontSize: 12.5, color: TOKENS.brassOnPaper, marginBottom: 8 }}>
+              {t.interestedIn}: {l.interest === "mau-thu-doanh-nghiep" ? t.leadFromAd : l.interest === "wholesale" ? t.onboardWholesale : t.onboardRetail}
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               {l.unread && (
                 <button onClick={() => onMarkLeadRead(l.id)} style={{ fontSize: 12.5, color: TOKENS.jadeSoft, background: "none", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>
                   {t.markRead}
@@ -89,42 +124,49 @@ export default function IncomingQueue({
               </button>
               <ConfirmDelete TOKENS={TOKENS} compact label={t.delete} confirmLabel={t.deleteConfirm} onConfirm={() => onDeleteLead(l)} />
             </div>
-          </div>
+          </Row>
         ))}
       </Group>
 
-      <div style={{ borderTop: `1px solid ${TOKENS.brassDeep}22` }} />
+      <div style={{ borderTop: `1px solid ${TOKENS.brassDeep}22`, margin: "4px 0" }} />
 
-      <Group kindLabel={t.incomingSamplesGroup} count={openSamples} defaultOpen={openSamples > 0}>
-        <p style={{ fontSize: 12, color: TOKENS.jadeSoft, lineHeight: 1.55, margin: 0 }}>
-          {t.samplesHint} <code style={{ background: `${TOKENS.brass}1F`, padding: "2px 7px", borderRadius: 6, fontSize: 11.5 }}>hoanglongtra.com/sample</code>
-        </p>
-        {sampleRequests.length === 0 && <p style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic", margin: 0 }}>{t.noSamplesYet}</p>}
+      <Group
+        kindLabel={t.incomingSamplesGroup}
+        count={sampleRequests.length}
+        defaultOpen={openSamples > 0}
+        headerNote={
+          <p style={{ fontSize: 11.5, color: TOKENS.jadeSoft, lineHeight: 1.5, margin: "0 0 6px" }}>
+            {t.samplesHint} <code style={{ background: `${TOKENS.brass}1F`, padding: "1px 6px", borderRadius: 5, fontSize: 11 }}>hoanglongtra.com/sample</code>
+          </p>
+        }
+      >
+        {sampleRequests.length === 0 && <p style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic", margin: "4px 0 12px" }}>{t.noSamplesYet}</p>}
         {sampleRequests.map((r) => {
           const zalo = (r.phone || "").replace(/\D/g, "").replace(/^84/, "0");
+          const statusPill = {
+            new: { label: t.sampleNew, color: TOKENS.brassOnPaper, bg: `${TOKENS.brass}22` },
+            sent: { label: t.sampleSent, color: TOKENS.jade, bg: `${TOKENS.jade}18` },
+            converted: { label: t.sampleConverted, color: TOKENS.paper, bg: TOKENS.jade },
+            declined: { label: t.sampleDeclined, color: TOKENS.lacquer, bg: `${TOKENS.lacquer}18` },
+          }[r.status] || { label: r.status, color: TOKENS.jadeSoft, bg: `${TOKENS.jadeSoft}18` };
           return (
-            <div key={r.id} style={{ background: TOKENS.paperDeep, borderRadius: 14, padding: "14px 16px", boxShadow: TOKENS.shadowSm }}>
-              <KindBadge TOKENS={TOKENS}>{t.incomingSamplesGroup}</KindBadge>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, color: TOKENS.jade, overflowWrap: "anywhere" }}>{r.store_name}</div>
-                  <div style={{ fontSize: 12, color: TOKENS.jadeSoft }}>{[r.contact_name, r.phone].filter(Boolean).join(" · ")}</div>
-                </div>
-                <span style={{
-                  flexShrink: 0, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 12,
-                  color: r.pack === "50g" ? TOKENS.paper : TOKENS.brassOnPaper,
-                  background: r.pack === "50g" ? TOKENS.jade : `${TOKENS.brass}1F`,
-                }}>
-                  {r.pack}{r.pack === "50g" ? ` · ${t.free}` : ""}
-                </span>
+            <Row
+              key={r.id}
+              title={r.store_name}
+              sub={[r.contact_name, r.phone].filter(Boolean).join(" · ")}
+              TOKENS={TOKENS}
+              pill={<Pill {...statusPill} />}
+            >
+              <div style={{ fontSize: 12.5, color: TOKENS.jade, overflowWrap: "anywhere", marginBottom: 4 }}>{r.address}</div>
+              <div style={{ fontSize: 11.5, color: TOKENS.brassOnPaper, fontWeight: 600, marginBottom: 4 }}>
+                {r.pack}{r.pack === "50g" ? ` · ${t.free}` : ""}
               </div>
-              <div style={{ fontSize: 12.5, color: TOKENS.jade, marginTop: 8, overflowWrap: "anywhere" }}>{r.address}</div>
               {r.heard_from && (
-                <div style={{ fontSize: 12, color: TOKENS.brassOnPaper, fontWeight: 600, marginTop: 4 }}>{t.heardFromLabel}: {t.heardFromName(r.heard_from)}</div>
+                <div style={{ fontSize: 12, color: TOKENS.brassOnPaper, marginBottom: 4 }}>{t.heardFromLabel}: {t.heardFromName(r.heard_from)}</div>
               )}
-              {r.note && <div style={{ fontSize: 12, color: TOKENS.jadeSoft, fontStyle: "italic", marginTop: 4 }}>{r.note}</div>}
+              {r.note && <div style={{ fontSize: 12, color: TOKENS.jadeSoft, fontStyle: "italic", marginBottom: 6 }}>{r.note}</div>}
               {r.pack === "50g" && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
                   {[[r.has_shop, t.qualShop], [r.can_reformulate, t.qualRecipe], [r.can_feedback, t.qualFeedback]].map(([ok, label], i) => (
                     <span key={i} style={{ fontSize: 10.5, fontWeight: 600, borderRadius: 20, padding: "3px 9px", color: ok ? TOKENS.brassOnPaper : TOKENS.lacquer, background: ok ? `${TOKENS.brass}1F` : `${TOKENS.lacquer}14` }}>
                       {ok ? "✓" : "✕"} {label}
@@ -132,7 +174,7 @@ export default function IncomingQueue({
                   ))}
                 </div>
               )}
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 11, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                 <a href={`tel:${(r.phone || "").replace(/\s/g, "")}`} style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 10, background: TOKENS.jade, color: TOKENS.paper, fontSize: 12.5, fontWeight: 600, textDecoration: "none" }}>
                   <Phone size={13} /> {t.callCustomer}
                 </a>
@@ -151,49 +193,48 @@ export default function IncomingQueue({
                   <option value="declined">{t.sampleDeclined}</option>
                 </select>
               </div>
-            </div>
+            </Row>
           );
         })}
       </Group>
 
-      <div style={{ borderTop: `1px solid ${TOKENS.brassDeep}22` }} />
+      <div style={{ borderTop: `1px solid ${TOKENS.brassDeep}22`, margin: "4px 0" }} />
 
-      <Group kindLabel={t.incomingSessionsGroup} count={openSessions} defaultOpen={openSessions > 0}>
-        {teaSessions.length === 0 && <p style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic", margin: 0 }}>{t.teaSessionNoneYet}</p>}
-        {[...teaSessions].reverse().map((s) => (
-          <div key={s.id} style={{ background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 12, padding: 16 }}>
-            <KindBadge TOKENS={TOKENS}>{t.incomingSessionsGroup}</KindBadge>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-              <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, fontWeight: 600 }}>{s.date}{s.time ? ` · ${s.time}` : ""}</div>
-              <span style={{
-                fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, padding: "2px 8px", borderRadius: 6, flexShrink: 0,
-                background: s.status === "confirmed" ? `${TOKENS.jade}18` : s.status === "cancelled" ? `${TOKENS.lacquer}18` : `${TOKENS.brass}22`,
-                color: s.status === "confirmed" ? TOKENS.jade : s.status === "cancelled" ? TOKENS.lacquer : TOKENS.brassDeep,
-              }}>
-                {s.status === "confirmed" ? t.teaSessionStatusConfirmed : s.status === "cancelled" ? t.teaSessionStatusCancelled : t.teaSessionStatusPending}
-              </span>
-            </div>
-            <div style={{ fontSize: 13.5, fontWeight: 600 }}>{s.customerName}</div>
-            <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.contactLabel}: {s.contact}</div>
-            <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.paymentMethodLabel}: {s.paymentMethod === "cash" ? t.payByCash : t.payByQR}</div>
-            {s.note && <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginTop: 6, fontStyle: "italic" }}>{t.noteLabel}: {s.note}</div>}
-            <div style={{ marginTop: 12 }}>
-              <ConfirmDelete TOKENS={TOKENS} compact label={t.delete} confirmLabel={t.deleteConfirm} note={t.deleteSessionNote} onConfirm={() => onDeleteSession(s)} />
-            </div>
-            {s.status !== "cancelled" && (
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                {s.status === "pending" && (
+      <Group kindLabel={t.incomingSessionsGroup} count={teaSessions.length} defaultOpen={openSessions > 0}>
+        {teaSessions.length === 0 && <p style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic", margin: "4px 0 12px" }}>{t.teaSessionNoneYet}</p>}
+        {[...teaSessions].reverse().map((s) => {
+          const statusPill = {
+            pending: { label: t.teaSessionStatusPending, color: TOKENS.brassDeep, bg: `${TOKENS.brass}22` },
+            confirmed: { label: t.teaSessionStatusConfirmed, color: TOKENS.jade, bg: `${TOKENS.jade}18` },
+            cancelled: { label: t.teaSessionStatusCancelled, color: TOKENS.lacquer, bg: `${TOKENS.lacquer}18` },
+          }[s.status] || { label: s.status, color: TOKENS.jadeSoft, bg: `${TOKENS.jadeSoft}18` };
+          return (
+            <Row
+              key={s.id}
+              title={`${s.date}${s.time ? ` · ${s.time}` : ""}`}
+              sub={s.customerName}
+              TOKENS={TOKENS}
+              pill={<Pill {...statusPill} />}
+            >
+              <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginBottom: 2 }}>{t.contactLabel}: {s.contact}</div>
+              <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginBottom: 2 }}>{t.paymentMethodLabel}: {s.paymentMethod === "cash" ? t.payByCash : t.payByQR}</div>
+              {s.note && <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, fontStyle: "italic", marginBottom: 8 }}>{t.noteLabel}: {s.note}</div>}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                {s.status !== "cancelled" && s.status === "pending" && (
                   <button onClick={() => onUpdateSessionStatus(s.id, "confirmed")} style={{ background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
                     {t.teaSessionConfirmBtn}
                   </button>
                 )}
-                <button onClick={() => onUpdateSessionStatus(s.id, "cancelled")} style={{ background: "none", border: `1px solid ${TOKENS.lacquer}55`, color: TOKENS.lacquer, borderRadius: 8, padding: "8px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
-                  {t.teaSessionCancelBtn}
-                </button>
+                {s.status !== "cancelled" && (
+                  <button onClick={() => onUpdateSessionStatus(s.id, "cancelled")} style={{ background: "none", border: `1px solid ${TOKENS.lacquer}55`, color: TOKENS.lacquer, borderRadius: 8, padding: "8px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+                    {t.teaSessionCancelBtn}
+                  </button>
+                )}
+                <ConfirmDelete TOKENS={TOKENS} compact label={t.delete} confirmLabel={t.deleteConfirm} note={t.deleteSessionNote} onConfirm={() => onDeleteSession(s)} />
               </div>
-            )}
-          </div>
-        ))}
+            </Row>
+          );
+        })}
       </Group>
     </div>
   );
