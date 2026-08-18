@@ -38,6 +38,7 @@ import TeaSessionBooking from "./TeaSessionBooking";
 import GoodsSection from "./GoodsSection";
 import OrderFlowBoard from "./OrderFlowBoard";
 import ManualOrderModal from "./ManualOrderModal";
+import IncomingQueue from "./IncomingQueue";
 
 // Home grid order, independent of the side menu's. Ids missing from this list sort last.
 const BIN_DAYS = 7; // how long a deleted record can still be brought back
@@ -52,14 +53,17 @@ const HOME_TILE_ORDER = ["wiki", "retail", "wholesale", "library"];
 // So the Dashboard opens on a menu grouped by what a section is *for*, and a section opens
 // on its own with a way back. Within a section you still get its siblings as chips — moving
 // between Orders and Messages is common, moving from Orders to Trash is not.
+// Leads, samples, and sessions used to be standalone tabs here too — five things fighting
+// for space under "Today" when they're really one thing (Orders) and three ways of finding
+// out about work before it's an order (Incoming, reached from inside Orders itself).
 const DASH_GROUPS = [
-  { id: "today", tabs: ["orders", "messages", "leads", "samples", "sessions"] },
+  { id: "today", tabs: ["orders", "messages"] },
   { id: "people", tabs: ["customers", "partners"] },
   { id: "shop", tabs: ["catalog", "vendors", "promos", "reviews", "payment"] },
   { id: "house", tabs: ["overview", "reports", "house", "bin"] },
 ];
 const DASH_ICONS = {
-  orders: ShoppingCart, messages: MessageCircle, leads: UserPlus, samples: Gift, sessions: Calendar,
+  orders: ShoppingCart, messages: MessageCircle,
   customers: Users, partners: Building2,
   catalog: Package, vendors: Sprout, promos: Ticket, reviews: Star, payment: CreditCard,
   overview: BarChart3, reports: FileText, house: Home, bin: Trash2,
@@ -231,7 +235,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   // itself. orderViewMode toggles the existing card list vs. the new kanban board; the list
   // above is completely unaffected by board mode.
   const [orderIssues, setOrderIssues] = useState([]);
-  const [orderViewMode, setOrderViewMode] = useState("list"); // "list" | "board"
+  const [orderViewMode, setOrderViewMode] = useState("list"); // "list" | "board" | "incoming"
   // null, or the prefill for the form: {} for a blank manual order, or a lead's details when
   // opened via "Convert to order". initialStage/leadToClose ride along on the same object so
   // the submit handler knows what to do afterward without a second piece of state.
@@ -1578,23 +1582,26 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const unreadThreads = threads.filter((th) => th.unreadForAdmin && th.messages.length > 0).length;
   const unreadLeads = leads.filter((l) => l.unread).length;
   const frontDeskBadge = unreadOrders + unreadThreads + unreadLeads;
+  // What's waiting in the Incoming queue — leads, samples, sessions folded together, since
+  // they used to be three separate Dashboard tabs each with their own badge.
+  const incomingCount = unreadLeads
+    + sampleRequests.filter((r) => r.status === "new").length
+    + teaSessions.filter((s) => s.status === "pending").length;
 
   const dashLabel = (tab) => ({
     overview: t.overviewTab, orders: t.frontDeskOrders, messages: t.frontDeskMessages,
-    leads: t.frontDeskLeads, samples: t.samplesTab, sessions: t.frontDeskSessionsTab,
     customers: t.customersTab, partners: t.wholesaleAccountsTitle,
     catalog: t.catalogTitle, vendors: t.vendorsTab, promos: t.promosTitle, reviews: t.reviewsTitle,
     payment: t.frontDeskPayment, house: t.frontDeskHouseTab, bin: t.binTab, reports: t.reportsTab,
   }[tab] || tab);
 
   // What each section is waiting on. Zero means no badge at all — a row of "0"s reads as
-  // noise and trains you to ignore the one number that matters.
+  // noise and trains you to ignore the one number that matters. Orders' badge now folds in
+  // incomingCount too, since Leads/Samples/Sessions no longer have their own menu card to
+  // carry that number on.
   const dashBadge = (tab) => ({
-    orders: unreadOrders,
+    orders: unreadOrders + incomingCount,
     messages: unreadThreads,
-    leads: unreadLeads,
-    samples: sampleRequests.filter((r) => r.status === "new").length,
-    sessions: teaSessions.filter((s) => s.status === "pending").length,
     bin: bin.length,
   }[tab] || 0);
 
@@ -4007,85 +4014,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               })()}
 
               {/* ---------- SAMPLE REQUESTS ---------- */}
-              {frontDeskTab === "samples" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, lineHeight: 1.55, margin: 0 }}>
-                    {t.samplesHint} <code style={{ background: `${TOKENS.brass}1F`, padding: "2px 7px", borderRadius: 6, fontSize: 12 }}>hoanglongtra.com/sample</code>
-                  </p>
-                  {sampleRequests.length === 0 && (
-                    <p style={{ fontSize: 13, color: TOKENS.jadeSoft, fontStyle: "italic" }}>{t.noSamplesYet}</p>
-                  )}
-                  {sampleRequests.map((r) => {
-                    const zalo = (r.phone || "").replace(/\D/g, "").replace(/^84/, "0");
-                    return (
-                      <div key={r.id} style={{ background: TOKENS.paperDeep, borderRadius: 14, padding: "14px 16px", boxShadow: TOKENS.shadowSm }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, color: TOKENS.jade, overflowWrap: "anywhere" }}>
-                              {r.store_name}
-                            </div>
-                            <div style={{ fontSize: 12, color: TOKENS.jadeSoft }}>
-                              {[r.contact_name, r.phone].filter(Boolean).join(" · ")}
-                            </div>
-                          </div>
-                          <span style={{
-                            flexShrink: 0, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 12,
-                            color: r.pack === "50g" ? TOKENS.paper : TOKENS.brassOnPaper,
-                            background: r.pack === "50g" ? TOKENS.jade : `${TOKENS.brass}1F`,
-                          }}>
-                            {r.pack}{r.pack === "50g" ? ` · ${t.free}` : ""}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: 12.5, color: TOKENS.jade, marginTop: 8, overflowWrap: "anywhere" }}>{r.address}</div>
-                        {r.heard_from && (
-                          <div style={{ fontSize: 12, color: TOKENS.brassOnPaper, fontWeight: 600, marginTop: 4 }}>
-                            {t.heardFromLabel}: {t.heardFromName(r.heard_from)}
-                          </div>
-                        )}
-                        {r.note && <div style={{ fontSize: 12, color: TOKENS.jadeSoft, fontStyle: "italic", marginTop: 4 }}>{r.note}</div>}
-
-                        {/* What they promised, so it can be checked before a free pack goes out. */}
-                        {r.pack === "50g" && (
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
-                            {[[r.has_shop, t.qualShop], [r.can_reformulate, t.qualRecipe], [r.can_feedback, t.qualFeedback]].map(([ok, label], i) => (
-                              <span key={i} style={{ fontSize: 10.5, fontWeight: 600, borderRadius: 20, padding: "3px 9px", color: ok ? TOKENS.brassOnPaper : TOKENS.lacquer, background: ok ? `${TOKENS.brass}1F` : `${TOKENS.lacquer}14` }}>
-                                {ok ? "✓" : "✕"} {label}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 11, alignItems: "center" }}>
-                          <a href={`tel:${(r.phone || "").replace(/\s/g, "")}`} style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 10, background: TOKENS.jade, color: TOKENS.paper, fontSize: 12.5, fontWeight: 600, textDecoration: "none" }}>
-                            <Phone size={13} /> {t.callCustomer}
-                          </a>
-                          <a href={`https://zalo.me/${zalo}`} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 10, background: `${TOKENS.brass}2E`, color: TOKENS.brassOnPaper, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>
-                            <MessageCircle size={13} /> {t.zaloCustomer}
-                          </a>
-                          <ConfirmDelete
-                            TOKENS={TOKENS}
-                            compact
-                            label={t.delete}
-                            confirmLabel={t.deleteConfirm}
-                            onConfirm={() => deleteSampleRequest(r)}
-                          />
-                          <select
-                            value={r.status}
-                            onChange={(e) => setSampleStatus(r.id, e.target.value)}
-                            style={{ marginLeft: "auto", padding: "7px 10px", borderRadius: 10, border: `1px solid ${TOKENS.hairline}`, fontSize: 12.5, background: TOKENS.paper, color: TOKENS.jade }}
-                          >
-                            <option value="new">{t.sampleNew}</option>
-                            <option value="sent">{t.sampleSent}</option>
-                            <option value="converted">{t.sampleConverted}</option>
-                            <option value="declined">{t.sampleDeclined}</option>
-                          </select>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
               {/* ---------- CUSTOMERS ---------- */}
               {frontDeskTab === "customers" && (() => {
                 const q = customerQuery.trim().toLowerCase();
@@ -4295,67 +4223,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   </div>
                 );
               })()}
-
-              {frontDeskTab === "leads" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {leads.length === 0 && <p style={{ color: TOKENS.jadeSoft, fontSize: 14 }}>{t.noLeadsYet}</p>}
-                  {[...leads].reverse().map((l) => (
-                    <div key={l.id} style={{ background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}${l.unread ? "88" : "33"}`, borderRadius: 12, padding: 16 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 15, fontWeight: 600 }}>{l.name}</div>
-                          {l.business_name && (
-                            <div style={{ fontSize: 13, color: TOKENS.jade, overflowWrap: "anywhere" }}>{l.business_name}</div>
-                          )}
-                          <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.contactLabel}: {l.contact}</div>
-                          {/* A sample lead is useless without somewhere to post it to. */}
-                          {l.address && (
-                            <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, overflowWrap: "anywhere", marginTop: 2 }}>
-                              {t.addressLabel}: {l.address}
-                            </div>
-                          )}
-                          <div style={{ fontSize: 12.5, color: TOKENS.brassOnPaper, marginTop: 2 }}>
-                            {t.interestedIn}:{" "}
-                            {l.interest === "mau-thu-doanh-nghiep" ? t.leadFromAd
-                              : l.interest === "wholesale" ? t.onboardWholesale
-                              : t.onboardRetail}
-                          </div>
-                        </div>
-                        {l.unread && <span style={{ background: TOKENS.lacquer, color: TOKENS.paper, borderRadius: 10, fontSize: 10.5, fontWeight: 700, padding: "2px 8px", flexShrink: 0 }}>{t.newBadge}</span>}
-                      </div>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start", marginTop: 10 }}>
-                        {l.unread && (
-                          <button
-                            onClick={() => markLeadRead(l.id)}
-                            style={{ fontSize: 12.5, color: TOKENS.jadeSoft, background: "none", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}
-                          >
-                            {t.markRead}
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setManualOrderModal({
-                            type: l.interest === "wholesale" ? "wholesale" : "retail",
-                            customerName: l.name || "",
-                            contact: l.contact || "",
-                            address: l.address || "",
-                            sourceLead: l,
-                          })}
-                          style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 700, color: TOKENS.paper, background: TOKENS.jade, border: "none", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}
-                        >
-                          <Plus size={12} color={TOKENS.brass} /> {t.leadConvertToOrder}
-                        </button>
-                        <ConfirmDelete
-                          TOKENS={TOKENS}
-                          compact
-                          label={t.delete}
-                          confirmLabel={t.deleteConfirm}
-                          onConfirm={() => deleteLead(l)}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
 
               {frontDeskTab === "payment" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 420 }}>
@@ -5067,61 +4934,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 );
               })()}
 
-              {frontDeskTab === "sessions" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {teaSessions.length === 0 && <p style={{ color: TOKENS.jadeSoft, fontSize: 14 }}>{t.teaSessionNoneYet}</p>}
-                  {[...teaSessions].reverse().map((s) => (
-                    <div key={s.id} style={{ background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}33`, borderRadius: 12, padding: 16 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                        <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, fontWeight: 600 }}>{s.date}{s.time ? ` · ${s.time}` : ""}</div>
-                        <span
-                          style={{
-                            fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4,
-                            padding: "2px 8px", borderRadius: 6, flexShrink: 0,
-                            background: s.status === "confirmed" ? `${TOKENS.jade}18` : s.status === "cancelled" ? `${TOKENS.lacquer}18` : `${TOKENS.brass}22`,
-                            color: s.status === "confirmed" ? TOKENS.jade : s.status === "cancelled" ? TOKENS.lacquer : TOKENS.brassDeep,
-                          }}
-                        >
-                          {s.status === "confirmed" ? t.teaSessionStatusConfirmed : s.status === "cancelled" ? t.teaSessionStatusCancelled : t.teaSessionStatusPending}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 13.5, fontWeight: 600 }}>{s.customerName}</div>
-                      <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.contactLabel}: {s.contact}</div>
-                      <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft }}>{t.paymentMethodLabel}: {s.paymentMethod === "cash" ? t.payByCash : t.payByQR}</div>
-                      {s.note && <div style={{ fontSize: 12.5, color: TOKENS.jadeSoft, marginTop: 6, fontStyle: "italic" }}>{t.noteLabel}: {s.note}</div>}
-                      <div style={{ marginTop: 12 }}>
-                        <ConfirmDelete
-                          TOKENS={TOKENS}
-                          compact
-                          label={t.delete}
-                          confirmLabel={t.deleteConfirm}
-                          note={t.deleteSessionNote}
-                          onConfirm={() => deleteTeaSession(s)}
-                        />
-                      </div>
-                      {s.status !== "cancelled" && (
-                        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                          {s.status === "pending" && (
-                            <button
-                              onClick={() => updateTeaSessionStatus(s.id, "confirmed")}
-                              style={{ background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
-                            >
-                              {t.teaSessionConfirmBtn}
-                            </button>
-                          )}
-                          <button
-                            onClick={() => updateTeaSessionStatus(s.id, "cancelled")}
-                            style={{ background: "none", border: `1px solid ${TOKENS.lacquer}55`, color: TOKENS.lacquer, borderRadius: 8, padding: "8px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
-                          >
-                            {t.teaSessionCancelBtn}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
               {frontDeskTab === "orders" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
@@ -5147,6 +4959,29 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       >
                         <Plus size={14} color={TOKENS.brass} /> {t.manualOrderNew}
                       </button>
+                      {/* Its own pill, deliberately not folded into the List/Board pair: those
+                          two are different views of the same orders, Incoming is a different
+                          kind of thing entirely — leads/samples/sessions that aren't orders
+                          yet. Keeping it visually separate is the whole point of this change. */}
+                      <button
+                        onClick={() => setOrderViewMode("incoming")}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 8, cursor: "pointer",
+                          border: `1px solid ${TOKENS.brassDeep}55`,
+                          background: orderViewMode === "incoming" ? TOKENS.jade : "transparent",
+                          color: orderViewMode === "incoming" ? TOKENS.paper : TOKENS.jadeSoft,
+                          fontSize: 12.5, fontWeight: 600,
+                        }}
+                      >
+                        {t.incomingTitle}
+                        {incomingCount > 0 && (
+                          <span style={{
+                            background: orderViewMode === "incoming" ? TOKENS.brass : TOKENS.lacquer,
+                            color: orderViewMode === "incoming" ? TOKENS.jade : TOKENS.paper,
+                            borderRadius: 10, fontSize: 10.5, fontWeight: 700, padding: "1px 6px",
+                          }}>{incomingCount}</span>
+                        )}
+                      </button>
                       {/* List/Board toggle — Board is the new Order Flow kanban view; List is the
                           card view above, completely unchanged when Board is selected instead. */}
                       <div style={{ display: "flex", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 8, overflow: "hidden" }}>
@@ -5167,7 +5002,27 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                     </div>
                   </div>
 
-                  {orderViewMode === "board" ? (
+                  {orderViewMode === "incoming" ? (
+                    <IncomingQueue
+                      leads={leads}
+                      sampleRequests={sampleRequests}
+                      teaSessions={teaSessions}
+                      lang={lang}
+                      t={t}
+                      TOKENS={TOKENS}
+                      onMarkLeadRead={markLeadRead}
+                      onDeleteLead={deleteLead}
+                      onConvertLead={(l) => setManualOrderModal({
+                        type: l.interest === "wholesale" ? "wholesale" : "retail",
+                        customerName: l.name || "", contact: l.contact || "", address: l.address || "",
+                        sourceLead: l,
+                      })}
+                      onDeleteSampleRequest={deleteSampleRequest}
+                      onSetSampleStatus={setSampleStatus}
+                      onUpdateSessionStatus={updateTeaSessionStatus}
+                      onDeleteSession={deleteTeaSession}
+                    />
+                  ) : orderViewMode === "board" ? (
                     <OrderFlowBoard
                       orders={orders}
                       orderIssues={orderIssues}
