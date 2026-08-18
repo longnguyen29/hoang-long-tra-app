@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, Printer } from "lucide-react";
+import { AlertTriangle, Printer, Plus } from "lucide-react";
 import { ORDER_STAGES, stageFromStatus } from "@/lib/constants";
 import OrderStepDetail from "./OrderStepDetail";
 
@@ -15,7 +15,7 @@ function stageOf(order) {
 // TrackingCodeEditor/ConfirmDelete elsewhere in this file.
 export default function OrderFlowBoard({
   orders, orderIssues, lang, t, TOKENS,
-  onUpdateStage, onSaveChecklist, onAddIssue, onSetIssueResolved, onDeleteIssue, onPrintInvoice,
+  onUpdateStage, onSaveChecklist, onAddIssue, onSetIssueResolved, onDeleteIssue, onPrintInvoice, onAddOrder,
 }) {
   const [openOrderId, setOpenOrderId] = useState(null);
   const openOrder = orders.find((o) => o.id === openOrderId) || null;
@@ -90,6 +90,20 @@ export default function OrderFlowBoard({
                   <div style={{ fontSize: 11.5, color: TOKENS.jadeSoft, opacity: 0.6, padding: "6px 2px" }}>—</div>
                 )}
               </div>
+
+              {/* Lands the new order directly in this column — a phone order taken while
+                  already mid-call for "Confirm Details" shouldn't have to be dragged there
+                  from New Order afterward. */}
+              <button
+                onClick={() => onAddOrder(stage.id)}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 8,
+                  fontSize: 11.5, fontWeight: 600, padding: "7px", borderRadius: 8, cursor: "pointer",
+                  border: `1px dashed ${TOKENS.brassDeep}66`, background: "none", color: TOKENS.brassOnPaper,
+                }}
+              >
+                <Plus size={12} /> {t.manualOrderAddHere}
+              </button>
             </div>
           );
         })}

@@ -37,6 +37,7 @@ import TrackingCodeEditor from "./TrackingCodeEditor";
 import TeaSessionBooking from "./TeaSessionBooking";
 import GoodsSection from "./GoodsSection";
 import OrderFlowBoard from "./OrderFlowBoard";
+import ManualOrderModal from "./ManualOrderModal";
 
 // Home grid order, independent of the side menu's. Ids missing from this list sort last.
 const BIN_DAYS = 7; // how long a deleted record can still be brought back
@@ -231,6 +232,10 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   // above is completely unaffected by board mode.
   const [orderIssues, setOrderIssues] = useState([]);
   const [orderViewMode, setOrderViewMode] = useState("list"); // "list" | "board"
+  // null, or the prefill for the form: {} for a blank manual order, or a lead's details when
+  // opened via "Convert to order". initialStage/leadToClose ride along on the same object so
+  // the submit handler knows what to do afterward without a second piece of state.
+  const [manualOrderModal, setManualOrderModal] = useState(null);
   const [teaSessions, setTeaSessions] = useState([]);
   const [threads, setThreads] = useState([]);
   const [leads, setLeads] = useState([]);
@@ -1482,6 +1487,51 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   // Moved to lib/documents.js (buildInvoiceHtml + printHtml) so the same HTML builder can
   // also feed the Documents preview modal in Order Flow — behaviour here is unchanged.
   const printInvoice = (order) => printHtml(buildInvoiceHtml(order));
+
+  // Staff creating an order on a customer's behalf — a phone call, a walk-in, a lead that
+  // just converted. Deliberately goes through the exact same paths the customer-facing
+  // checkout uses (submit_retail_order for retail, the same insert shape for wholesale)
+  // rather than a separate staff-only write, so a manually-created order gets the same stock
+  // deduction, the same invoice/CSV shape, and shows up correctly on the Order Flow board —
+  // nothing downstream has to know it didn't come from a customer.
+  const createManualOrder = async ({ type, customerName, contact, address, taxNumber, note, paymentMethod, lines, initialStage }) => {
+    let orderId;
+    if (type === "retail") {
+      const totalItems = lines.reduce((s, l) => s + l.qty, 0);
+      const rawTotal = lines.reduce((s, l) => s + (l.price ? l.price * l.qty : 0), 0);
+      const { data, error } = await supabase.rpc("submit_retail_order", {
+        p_customer_name: customerName, p_contact: contact, p_address: address,
+        p_tax_number: taxNumber, p_note: note, p_lines: lines,
+        p_total_items: totalItems, p_estimated_total: rawTotal || null,
+        p_promo: null, p_payment_method: paymentMethod,
+      });
+      if (error || !data || data.length === 0) throw error || new Error("submit_failed");
+      orderId = data[0].id;
+      loadCatalog(); // stock was just deducted server-side
+    } else {
+      const totalKg = lines.reduce((s, l) => s + l.qty, 0);
+      const rawTotal = lines.reduce((s, l) => s + (l.price ? l.price * l.qty : 0), 0);
+      const tier = [...PRICE_TIERS].reverse().find((tr) => totalKg >= tr.min) || PRICE_TIERS[0];
+      const wholesaleTotal = rawTotal > 0 ? Math.round(rawTotal * (1 - tier.pct / 100)) : null;
+      orderId = "order-" + Date.now().toString(36);
+      const newOrder = {
+        id: orderId, ts: new Date().toISOString(), type: "wholesale",
+        customerName, contact, address, taxNumber, vat: null, promo: null, note, lines,
+        totalKg, totalItems: null, estimatedTotal: wholesaleTotal, tier, paymentMethod,
+        status: "pending", trackingCode: "", unread: true,
+      };
+      const { error } = await supabase.from("orders").insert(toOrderRow(newOrder));
+      if (error) throw error;
+    }
+    // A phone/walk-in order usually isn't landing in "New Order" — the call already covered
+    // what that stage's checklist is for. One extra update only when it actually differs from
+    // the column the row would otherwise start in.
+    if (initialStage) {
+      await supabase.from("orders").update({ stage: initialStage }).eq("id", orderId);
+    }
+    await loadOrders();
+    return orderId;
+  };
 
   const exportOrdersCsv = () => {
     const headers = ["Order ID", "Date", "Type", "Customer", "Contact", "Address", "Tax Number", "Items", "Total", "Tier/VAT", "Estimated Total (VND)", "Promo", "Payment Method", "Status", "Tracking Code", "Note"];
@@ -4282,6 +4332,18 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                             {t.markRead}
                           </button>
                         )}
+                        <button
+                          onClick={() => setManualOrderModal({
+                            type: l.interest === "wholesale" ? "wholesale" : "retail",
+                            customerName: l.name || "",
+                            contact: l.contact || "",
+                            address: l.address || "",
+                            sourceLead: l,
+                          })}
+                          style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 700, color: TOKENS.paper, background: TOKENS.jade, border: "none", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}
+                        >
+                          <Plus size={12} color={TOKENS.brass} /> {t.leadConvertToOrder}
+                        </button>
                         <ConfirmDelete
                           TOKENS={TOKENS}
                           compact
@@ -5075,22 +5137,33 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                         <Download size={14} /> {t.exportCsv}
                       </button>
                     ) : <span />}
-                    {/* List/Board toggle — Board is the new Order Flow kanban view; List is the
-                        card view above, completely unchanged when Board is selected instead. */}
-                    <div style={{ display: "flex", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 8, overflow: "hidden" }}>
-                      {["list", "board"].map((mode) => (
-                        <button
-                          key={mode}
-                          onClick={() => setOrderViewMode(mode)}
-                          style={{
-                            padding: "7px 14px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: "none",
-                            background: orderViewMode === mode ? TOKENS.jade : "transparent",
-                            color: orderViewMode === mode ? TOKENS.paper : TOKENS.jadeSoft,
-                          }}
-                        >
-                          {mode === "list" ? t.orderFlowViewList : t.orderFlowViewBoard}
-                        </button>
-                      ))}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <button
+                        onClick={() => setManualOrderModal({})}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 6, background: TOKENS.jade, color: TOKENS.paper,
+                          border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                        }}
+                      >
+                        <Plus size={14} color={TOKENS.brass} /> {t.manualOrderNew}
+                      </button>
+                      {/* List/Board toggle — Board is the new Order Flow kanban view; List is the
+                          card view above, completely unchanged when Board is selected instead. */}
+                      <div style={{ display: "flex", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 8, overflow: "hidden" }}>
+                        {["list", "board"].map((mode) => (
+                          <button
+                            key={mode}
+                            onClick={() => setOrderViewMode(mode)}
+                            style={{
+                              padding: "7px 14px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: "none",
+                              background: orderViewMode === mode ? TOKENS.jade : "transparent",
+                              color: orderViewMode === mode ? TOKENS.paper : TOKENS.jadeSoft,
+                            }}
+                          >
+                            {mode === "list" ? t.orderFlowViewList : t.orderFlowViewBoard}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
@@ -5107,6 +5180,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       onSetIssueResolved={setOrderIssueResolved}
                       onDeleteIssue={deleteOrderIssue}
                       onPrintInvoice={printInvoice}
+                      onAddOrder={(stageId) => setManualOrderModal({ initialStage: stageId })}
                     />
                   ) : (
                     <>
@@ -6135,6 +6209,31 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
             }
           }}
           onClose={() => setDetailProduct(null)}
+        />
+      )}
+
+      {manualOrderModal && (
+        <ManualOrderModal
+          retailOrderableItems={retailOrderableItems}
+          wholesaleProducts={wholesaleProducts}
+          lang={lang}
+          t={t}
+          TOKENS={TOKENS}
+          formatVND={formatVND}
+          initial={manualOrderModal}
+          onClose={() => setManualOrderModal(null)}
+          onCreate={async (payload) => {
+            const orderId = await createManualOrder(payload);
+            // The lead did its job — it's now a real order, not an open lead waiting on a
+            // reply. Archived rather than deleted outright: it's the same recycle bin every
+            // other deletion goes through, so a mis-click is a restore away from undone.
+            if (manualOrderModal.sourceLead) {
+              const lead = manualOrderModal.sourceLead;
+              const ok = await binRecord("leads", lead.id, `${lead.name || ""} · ${t.manualOrderConvertedLabel(orderId)}`);
+              if (ok) setLeads((ls) => ls.filter((x) => x.id !== lead.id));
+            }
+            return orderId;
+          }}
         />
       )}
 
