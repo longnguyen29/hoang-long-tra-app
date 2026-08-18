@@ -13,6 +13,7 @@ import { notifyHouse } from "@/lib/notify";
 import {
   TOKENS, NAV, CATEGORIES, LIBRARY_CATEGORIES, PRICE_TIERS, STATUS_STEPS,
   YIELD_GUIDE, CUP_ML_MIN, CUP_ML_MAX,
+  ORDER_STAGES, STAGE_CHECKLIST_DEFAULTS, ISSUE_CATEGORIES, ISSUE_PLAYBOOK, stageFromStatus,
   getStockTotal, getVariantMinPrice, getVariantStockTotal,
 } from "@/lib/constants";
 import { STR } from "@/lib/strings";
@@ -20,8 +21,9 @@ import {
   fromOrderRow, toOrderRow, fromThreadRow,
   fromCatalogRow, toCatalogRow, fromVariantRow, fromPromoRow, toPromoRow,
   fromPaymentRow, toPaymentRow, fromGalleryRow, fromWholesaleAccountRow, fromTeaSessionRow,
-  fromProductReviewRow, fromVendorRow, toVendorRow,
+  fromProductReviewRow, fromVendorRow, toVendorRow, fromOrderIssueRow, toOrderIssueRow,
 } from "@/lib/mappers";
+import { buildInvoiceHtml, printHtml } from "@/lib/documents";
 import ConfirmDelete from "./ConfirmDelete";
 import AuthPanel from "./AuthPanel";
 import PaymentBlock from "./PaymentBlock";
@@ -34,6 +36,7 @@ import VariantEditorRow from "./VariantEditorRow";
 import TrackingCodeEditor from "./TrackingCodeEditor";
 import TeaSessionBooking from "./TeaSessionBooking";
 import GoodsSection from "./GoodsSection";
+import OrderFlowBoard from "./OrderFlowBoard";
 
 // Home grid order, independent of the side menu's. Ids missing from this list sort last.
 const BIN_DAYS = 7; // how long a deleted record can still be brought back
@@ -222,6 +225,12 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const reserveSectionRef = useRef(null);
 
   const [orders, setOrders] = useState([]);
+  // Order Flow — staff-only view. orderIssues holds every issue for every order (small table,
+  // filtered per-order in the UI) rather than lazy-loading per order, same approach as orders
+  // itself. orderViewMode toggles the existing card list vs. the new kanban board; the list
+  // above is completely unaffected by board mode.
+  const [orderIssues, setOrderIssues] = useState([]);
+  const [orderViewMode, setOrderViewMode] = useState("list"); // "list" | "board"
   const [teaSessions, setTeaSessions] = useState([]);
   const [threads, setThreads] = useState([]);
   const [leads, setLeads] = useState([]);
@@ -722,6 +731,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     if (data) setOrders(data.map(fromOrderRow));
   }, [supabase]);
 
+  const loadOrderIssues = useCallback(async () => {
+    const { data } = await supabase.from("order_issues").select("*").order("created_at", { ascending: false });
+    if (data) setOrderIssues(data.map(fromOrderIssueRow));
+  }, [supabase]);
+
   const loadTeaSessions = useCallback(async () => {
     const { data } = await supabase.from("tea_sessions").select("*").order("date", { ascending: true });
     if (data) setTeaSessions(data.map(fromTeaSessionRow));
@@ -803,6 +817,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     })();
     if (isAdmin) {
       loadOrders();
+      loadOrderIssues();
       loadTeaSessions();
       loadThreads();
       loadLeads();
@@ -820,9 +835,9 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
   useEffect(() => {
     if (!isAdmin || section !== "frontdesk") return;
-    const id = setInterval(() => { loadOrders(); loadTeaSessions(); loadThreads(); loadLeads(); }, 4000);
+    const id = setInterval(() => { loadOrders(); loadOrderIssues(); loadTeaSessions(); loadThreads(); loadLeads(); }, 4000);
     return () => clearInterval(id);
-  }, [isAdmin, section, loadOrders, loadTeaSessions, loadThreads, loadLeads]);
+  }, [isAdmin, section, loadOrders, loadOrderIssues, loadTeaSessions, loadThreads, loadLeads]);
 
   useEffect(() => {
     if (isAdmin || !chatOpen) return;
@@ -852,6 +867,43 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const updateOrderStatus = async (id, status) => {
     await supabase.from("orders").update({ status }).eq("id", id);
     setOrders(orders.map((o) => (o.id === id ? { ...o, status } : o)));
+  };
+
+  // Order Flow — staff-only stage, independent of the customer-facing status above.
+  const updateOrderStage = async (id, stage) => {
+    await supabase.from("orders").update({ stage }).eq("id", id);
+    setOrders(orders.map((o) => (o.id === id ? { ...o, stage } : o)));
+  };
+
+  // Persists the full checklist array for one stage of one order. Called with the whole
+  // (already-toggled) array rather than a single index, so the caller can seed it from
+  // STAGE_CHECKLIST_DEFAULTS the first time a stage is opened without a second round trip.
+  const saveStageChecklist = async (orderId, stageId, items) => {
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) return;
+    const nextChecklist = { ...(order.stageChecklist || {}), [stageId]: items };
+    await supabase.from("orders").update({ stage_checklist: nextChecklist }).eq("id", orderId);
+    setOrders(orders.map((o) => (o.id === orderId ? { ...o, stageChecklist: nextChecklist } : o)));
+  };
+
+  const addOrderIssue = async (issue) => {
+    const { data, error } = await supabase.from("order_issues").insert(toOrderIssueRow(issue)).select().single();
+    if (error) { console.error("Add issue failed:", error.message); return; }
+    setOrderIssues((prev) => [fromOrderIssueRow(data), ...prev]);
+  };
+
+  const setOrderIssueResolved = async (id, resolved) => {
+    const { error } = await supabase.from("order_issues")
+      .update({ resolved, resolved_at: resolved ? new Date().toISOString() : null })
+      .eq("id", id);
+    if (error) { console.error("Update issue failed:", error.message); return; }
+    setOrderIssues((prev) => prev.map((i) => (i.id === id ? { ...i, resolved, resolvedAt: resolved ? new Date().toISOString() : null } : i)));
+  };
+
+  const deleteOrderIssue = async (id) => {
+    const { error } = await supabase.from("order_issues").delete().eq("id", id);
+    if (error) { console.error("Delete issue failed:", error.message); return; }
+    setOrderIssues((prev) => prev.filter((i) => i.id !== id));
   };
   const updateTeaSessionStatus = async (id, status) => {
     await supabase.from("tea_sessions").update({ status }).eq("id", id);
@@ -1427,60 +1479,9 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     });
   };
 
-  const printInvoice = (order) => {
-    // Escape user-controlled text before interpolating into raw HTML — without this, a malicious
-    // order name/address/note could run arbitrary script in the admin's browser when printing.
-    const esc = (s) =>
-      String(s ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-    const itemRows = order.lines
-      .map((l) => `<tr><td style="padding:8px 0;">${esc(l.name.en || l.name.vi)}${l.price ? ` <span style="color:#AD8A4E;">(${l.price.toLocaleString("vi-VN")}đ)</span>` : ""}</td><td style="padding:8px 0;text-align:right;">${l.qty} ${l.unit === "kg" ? "kg" : l.unit === "pack" ? "pack" : "pcs"}${l.price ? ` = ${(l.price * l.qty).toLocaleString("vi-VN")}đ` : ""}</td></tr>`)
-      .join("");
-    const totalLine =
-      order.type === "retail"
-        ? `<tr><td style="padding:10px 0;font-weight:700;">Total items</td><td style="padding:10px 0;text-align:right;font-weight:700;">${order.totalItems} pcs</td></tr>`
-        : `<tr><td style="padding:10px 0;font-weight:700;">Total volume</td><td style="padding:10px 0;text-align:right;font-weight:700;">${order.totalKg} kg</td></tr>
-           <tr><td colspan="2" style="padding:2px 0 10px;color:#AD8A4E;">${esc(order.tier.range.en)} · ${esc(order.tier.off.en)}</td></tr>`;
-    const estimatedTotalLine = order.estimatedTotal
-      ? `<tr><td style="padding:6px 0;font-weight:700;color:#AD8A4E;">Estimated total</td><td style="padding:6px 0;text-align:right;font-weight:700;color:#AD8A4E;">${order.estimatedTotal.toLocaleString("vi-VN")}đ</td></tr>`
-      : "";
-    const promoLine = order.promo ? `<tr><td colspan="2" style="padding:2px 0 10px;color:#9C3B2E;">Promo: ${esc(order.promo.code)} (-${order.promo.percent}%)</td></tr>` : "";
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice ${esc(order.id)}</title>
-      <style>
-        body{font-family:Georgia,serif;color:#1C2B24;padding:40px;max-width:600px;margin:0 auto;}
-        table{width:100%;border-collapse:collapse;}
-        .seal{width:48px;height:48px;border-radius:50%;border:1.5px solid #AD8A4E;display:flex;align-items:center;justify-content:center;font-size:18px;color:#AD8A4E;margin-bottom:12px;}
-        .brand{font-size:22px;font-weight:600;margin-bottom:2px;}
-        .meta{font-size:13px;color:#2E4A40;margin-bottom:24px;}
-        hr{border:none;border-top:1px solid #AD8A4E55;margin:16px 0;}
-        h2{font-size:14px;text-transform:uppercase;letter-spacing:0.5px;color:#AD8A4E;margin:0 0 10px;}
-      </style></head>
-      <body>
-        <div class="seal">皇龍</div>
-        <div class="brand">House of Hoàng Long</div>
-        <div class="meta">Invoice · Order ${esc(order.id)}<br/>${esc(new Date(order.ts).toLocaleString("vi-VN"))}</div>
-        <hr/>
-        <h2>Customer</h2>
-        <p style="font-size:14px;line-height:1.7;margin:0 0 16px;">
-          ${esc(order.customerName)}<br/>${esc(order.contact)}${order.address ? `<br/>${esc(order.address)}` : ""}${order.taxNumber ? `<br/>Tax No: ${esc(order.taxNumber)}` : ""}
-        </p>
-        <h2>Items</h2>
-        <table>${itemRows}${totalLine}${estimatedTotalLine}${promoLine}</table>
-        ${order.note ? `<p style="font-size:13px;font-style:italic;color:#2E4A40;margin-top:16px;">Note: ${esc(order.note)}</p>` : ""}
-        <hr/>
-        <p style="font-size:11px;color:#2E4A40;">This is a preliminary invoice. Final pricing is confirmed by our team.</p>
-      </body></html>`;
-    const win = window.open("", "_blank", "width=700,height=900");
-    if (!win) return;
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    setTimeout(() => win.print(), 350);
-  };
+  // Moved to lib/documents.js (buildInvoiceHtml + printHtml) so the same HTML builder can
+  // also feed the Documents preview modal in Order Flow — behaviour here is unchanged.
+  const printInvoice = (order) => printHtml(buildInvoiceHtml(order));
 
   const exportOrdersCsv = () => {
     const headers = ["Order ID", "Date", "Type", "Customer", "Contact", "Address", "Tax Number", "Items", "Total", "Tier/VAT", "Estimated Total (VND)", "Promo", "Payment Method", "Status", "Tracking Code", "Note"];
@@ -5061,18 +5062,54 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
               {frontDeskTab === "orders" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {orders.length > 0 && (
-                    <button
-                      onClick={exportOrdersCsv}
-                      style={{
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: 6, alignSelf: "flex-start",
-                        background: TOKENS.paperDeep, color: TOKENS.jade, border: `1px solid ${TOKENS.brassDeep}55`,
-                        borderRadius: 8, padding: "8px 14px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", marginBottom: 4,
-                      }}
-                    >
-                      <Download size={14} /> {t.exportCsv}
-                    </button>
-                  )}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
+                    {orders.length > 0 ? (
+                      <button
+                        onClick={exportOrdersCsv}
+                        style={{
+                          display: "flex", alignItems: "center", justifyContent: "center", gap: 6, alignSelf: "flex-start",
+                          background: TOKENS.paperDeep, color: TOKENS.jade, border: `1px solid ${TOKENS.brassDeep}55`,
+                          borderRadius: 8, padding: "8px 14px", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                        }}
+                      >
+                        <Download size={14} /> {t.exportCsv}
+                      </button>
+                    ) : <span />}
+                    {/* List/Board toggle — Board is the new Order Flow kanban view; List is the
+                        card view above, completely unchanged when Board is selected instead. */}
+                    <div style={{ display: "flex", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 8, overflow: "hidden" }}>
+                      {["list", "board"].map((mode) => (
+                        <button
+                          key={mode}
+                          onClick={() => setOrderViewMode(mode)}
+                          style={{
+                            padding: "7px 14px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: "none",
+                            background: orderViewMode === mode ? TOKENS.jade : "transparent",
+                            color: orderViewMode === mode ? TOKENS.paper : TOKENS.jadeSoft,
+                          }}
+                        >
+                          {mode === "list" ? t.orderFlowViewList : t.orderFlowViewBoard}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {orderViewMode === "board" ? (
+                    <OrderFlowBoard
+                      orders={orders}
+                      orderIssues={orderIssues}
+                      lang={lang}
+                      t={t}
+                      TOKENS={TOKENS}
+                      onUpdateStage={updateOrderStage}
+                      onSaveChecklist={saveStageChecklist}
+                      onAddIssue={addOrderIssue}
+                      onSetIssueResolved={setOrderIssueResolved}
+                      onDeleteIssue={deleteOrderIssue}
+                      onPrintInvoice={printInvoice}
+                    />
+                  ) : (
+                    <>
                   {orders.length === 0 && <p style={{ color: TOKENS.jadeSoft, fontSize: 14 }}>{t.noOrdersYet}</p>}
                   {[...orders].reverse().map((o) => (
                     <div key={o.id} style={{ background: TOKENS.paperDeep, border: `1px solid ${TOKENS.brassDeep}${o.unread ? "88" : "33"}`, borderRadius: 12, padding: 16 }}>
@@ -5218,6 +5255,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       </div>
                     </div>
                   ))}
+                    </>
+                  )}
                 </div>
               )}
 
