@@ -33,6 +33,7 @@ import VariantEditorRow from "./VariantEditorRow";
 import TrackingCodeEditor from "./TrackingCodeEditor";
 import TeaSessionBooking from "./TeaSessionBooking";
 import GoodsSection from "./GoodsSection";
+import HouseHome from "./HouseHome";
 
 // Home grid order, independent of the side menu's. Ids missing from this list sort last.
 const BIN_DAYS = 7; // how long a deleted record can still be brought back
@@ -1936,6 +1937,20 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
           background: TOKENS.paper, boxShadow: `0 0 60px ${TOKENS.paper}`,
         }}>
           {section === "home" && (
+            <HouseHome
+              lang={lang}
+              photos={homePhotos}
+              gallery={galleryImages}
+              teaOfDay={teaOfDay}
+              samples={catalog.filter((product) => product.line === "sample")}
+              houseStory={houseStory}
+              onNavigate={(destination) => { setSection(destination); resetWiki(); }}
+              onOpenTea={(product) => setDetailProduct({ product, cartType: product.line === "everyday" && role === "wholesale" ? "wholesale" : "retail" })}
+              onOpenImage={setLightboxImage}
+            />
+          )}
+
+          {section === "__legacy_home" && (
             <div style={{ margin: "-24px -20px 0", padding: "0 0 40px" }}>
               {/* ── Opening chapter ──────────────────────────────────────────────────
                   Seal, founding line and the house photograph run as one uninterrupted
