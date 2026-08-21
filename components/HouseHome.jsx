@@ -66,7 +66,7 @@ function Action({ children, onClick, secondary = false }) {
   return <button className={secondary ? styles.secondaryAction : styles.primaryAction} onClick={onClick}>{children}<ArrowRight size={15} /></button>;
 }
 
-export default function HouseHome({
+function LegacyHouseHome({
   lang = "vi", photos = [], gallery = [], teaOfDay, samples = [], houseStory = {},
   onNavigate, onOpenTea, onOpenImage,
 }) {
@@ -158,3 +158,158 @@ export default function HouseHome({
     </div>
   );
 }
+
+const INNER_COPY = {
+  en: {
+    eyebrow: "House of Hoàng Long · Vietnamese tea",
+    title: "Start with the drink. Then choose the leaf.",
+    lead: "Tea is only useful when it works in the cup you actually want to serve. Tell us the outcome—quiet daily tea, a milk drink with structure, or a bright fruit tea—and we will help narrow the leaf, extraction, and cost.",
+    shop: "Browse tea",
+    sample: "Request trade samples",
+    choose: "What are you making?",
+    chooseIntro: "Three different drinks ask three different things of the leaf.",
+    straight: "A clear cup",
+    straightBody: "Look for aroma, texture, and a finish that stays interesting without milk or fruit.",
+    milk: "A milk drink",
+    milkBody: "You need enough structure to remain recognizably tea after dilution, sweetness, and ice.",
+    fruit: "A fruit tea",
+    fruitBody: "Choose lift, clean bitterness, and an aroma that gives fruit room instead of fighting it.",
+    seeRetail: "See tea for the table",
+    seeTrade: "See café tea bases",
+    current: "Available from the house",
+    currentIntro: "Real teas from the current catalog—not an imaginary collection.",
+    view: "View tea",
+    method: "How we make a recommendation",
+    methodIntro: "A good recommendation is a small decision process, not a tasting-note contest.",
+    steps: [
+      ["Brief", "What are you serving, to whom, and at what price?"],
+      ["Sample", "We narrow the options so you test a useful set—not every tea we own."],
+      ["Test", "Brew in your water and recipe. Record dose, time, yield, and what changes under dilution."],
+      ["Choose", "Select for flavor, consistency, and cost per finished cup—then keep the result as a working recipe."],
+    ],
+    house: "Why Hoàng Long",
+    houseTitle: "Vietnamese tea should be easier to understand—and easier to use well.",
+    houseBody: "We connect the character of mountain tea with the practical decisions behind a modern tea menu. Origin matters. So do extraction, consistency, and whether a customer asks for the drink again.",
+    story: "Read the house story",
+    tasting: "Book a tea session",
+    tastingBody: "Taste side by side with Long and leave with a clearer choice, not a longer shopping list.",
+    contact: "Tell us what you want to make",
+  },
+  vi: {
+    eyebrow: "House of Hoàng Long · Trà Việt Nam",
+    title: "Bắt đầu từ món muốn làm. Rồi mới chọn lá trà.",
+    lead: "Trà chỉ thật sự hữu ích khi tạo ra đúng ly bạn muốn phục vụ. Hãy nói về kết quả—một chén trà uống hằng ngày, trà sữa có thân vị hay trà trái cây sáng rõ—Hoàng Long sẽ giúp thu hẹp lựa chọn về trà, cách chiết xuất và giá vốn.",
+    shop: "Xem bộ sưu tập trà",
+    sample: "Yêu cầu mẫu thử cho quán",
+    choose: "Bạn đang muốn làm món gì?",
+    chooseIntro: "Ba kiểu đồ uống đòi hỏi ba phẩm chất khác nhau từ lá trà.",
+    straight: "Một chén trà trong",
+    straightBody: "Hãy tìm hương, cấu trúc và hậu vị đủ thú vị khi không có sữa hay trái cây.",
+    milk: "Một ly trà sữa",
+    milkBody: "Trà cần đủ thân vị để vẫn được nhận ra sau khi thêm sữa, đường và đá.",
+    fruit: "Một ly trà trái cây",
+    fruitBody: "Chọn độ nâng hương, vị đắng sạch và nền hương nhường chỗ cho trái cây thay vì đối chọi.",
+    seeRetail: "Xem trà cho bàn trà",
+    seeTrade: "Xem trà nền cho quán",
+    current: "Trà hiện có tại Hoàng Long",
+    currentIntro: "Các sản phẩm thật trong danh mục hiện tại—không phải một bộ sưu tập tưởng tượng.",
+    view: "Xem trà",
+    method: "Cách Hoàng Long đưa ra đề xuất",
+    methodIntro: "Một đề xuất tốt là quy trình ra quyết định ngắn gọn, không phải cuộc thi mô tả hương vị.",
+    steps: [
+      ["Đề bài", "Bạn phục vụ món gì, cho ai và ở mức giá nào?"],
+      ["Mẫu thử", "Chúng tôi thu hẹp lựa chọn để bạn thử một nhóm có ích—không phải mọi loại trà đang có."],
+      ["Kiểm tra", "Pha bằng nguồn nước và công thức của bạn. Ghi lại lượng trà, thời gian, sản lượng và thay đổi khi pha loãng."],
+      ["Lựa chọn", "Chọn theo hương vị, độ ổn định và giá vốn mỗi ly—sau đó lưu lại thành công thức làm việc."],
+    ],
+    house: "Vì sao là Hoàng Long",
+    houseTitle: "Trà Việt cần dễ hiểu hơn—và dễ được sử dụng đúng hơn.",
+    houseBody: "Hoàng Long kết nối cá tính của trà núi với những quyết định thực tế phía sau một menu trà hiện đại. Nguồn gốc quan trọng. Cách chiết xuất, độ ổn định và việc khách có gọi lại món cũng quan trọng.",
+    story: "Đọc câu chuyện nhà trà",
+    tasting: "Đặt một buổi uống trà",
+    tastingBody: "Thử trà cùng Long và ra về với lựa chọn rõ hơn, không phải danh sách mua sắm dài hơn.",
+    contact: "Kể chúng tôi món bạn muốn làm",
+  },
+};
+
+function InnerHome({ lang = "vi", photos = [], gallery = [], catalog = [], houseStory = {}, onNavigate, onOpenTea }) {
+  const c = INNER_COPY[lang] || INNER_COPY.en;
+  const image = photos[0] || gallery[0]?.url || "/landing/1.jpg";
+  const teas = catalog.filter((tea) => tea.kind !== "goods" && tea.line !== "sample").slice(0, 3);
+  const applications = [
+    { mark: "清", title: c.straight, body: c.straightBody, action: c.seeRetail, destination: "retail" },
+    { mark: "醇", title: c.milk, body: c.milkBody, action: c.seeTrade, destination: "wholesale" },
+    { mark: "香", title: c.fruit, body: c.fruitBody, action: c.seeTrade, destination: "wholesale" },
+  ];
+
+  return (
+    <div className={styles.innerPage}>
+      <section className={styles.innerHero}>
+        <div className={styles.innerHeroCopy}>
+          <p className={styles.innerEyebrow}>{c.eyebrow}</p>
+          <h1>{c.title}</h1>
+          <p className={styles.innerLead}>{c.lead}</p>
+          <div className={styles.innerActions}>
+            <button onClick={() => onNavigate("retail")}>{c.shop}<ArrowRight size={15}/></button>
+            <button onClick={() => onNavigate("wholesale")}>{c.sample}<ArrowRight size={15}/></button>
+          </div>
+        </div>
+        <figure className={styles.innerHeroImage}>
+          <img src={image} alt="" />
+          <figcaption><span>皇龍</span><span>Vietnamese mountain tea</span></figcaption>
+        </figure>
+      </section>
+
+      <section className={styles.applicationSection}>
+        <div className={styles.innerSectionHead}><p>{c.choose}</p><h2>{c.chooseIntro}</h2></div>
+        <div className={styles.applicationList}>
+          {applications.map((item) => (
+            <article key={item.mark}>
+              <span className={styles.applicationMark}>{item.mark}</span>
+              <div><h3>{item.title}</h3><p>{item.body}</p></div>
+              <button onClick={() => onNavigate(item.destination)}>{item.action}<ArrowRight size={14}/></button>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {teas.length > 0 && (
+        <section className={styles.catalogSection}>
+          <div className={styles.innerSectionHead}><p>{c.current}</p><h2>{c.currentIntro}</h2></div>
+          <div className={styles.teaRows}>
+            {teas.map((tea) => (
+              <button key={tea.id} onClick={() => onOpenTea(tea)}>
+                <span className={styles.teaThumb}>{tea.photoUrl ? <img src={tea.photoUrl} alt=""/> : <span>茶</span>}</span>
+                <span className={styles.teaName}>{tea.name?.[lang] || tea.name?.en}</span>
+                <span className={styles.teaNote}>{tea.notes?.[lang] || tea.notes?.en || c.view}</span>
+                <ArrowRight size={16}/>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className={styles.methodSection}>
+        <div className={styles.innerSectionHead}><p>{c.method}</p><h2>{c.methodIntro}</h2></div>
+        <ol>
+          {c.steps.map(([title, body], index) => <li key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><h3>{title}</h3><p>{body}</p></div></li>)}
+        </ol>
+      </section>
+
+      <section className={styles.houseSection}>
+        <div>
+          <p className={styles.innerEyebrow}>{c.house}</p><h2>{c.houseTitle}</h2><p>{c.houseBody}</p>
+          {(houseStory.originStats || []).length > 0 && <dl>{houseStory.originStats.slice(0,3).map((stat, i) => <div key={i}><dt>{stat.value}</dt><dd>{stat.label?.[lang] || stat.label?.en}</dd></div>)}</dl>}
+          <button onClick={() => onNavigate("wiki")}>{c.story}<ArrowRight size={15}/></button>
+        </div>
+        {houseStory.producerPhoto && <img src={houseStory.producerPhoto} alt={houseStory.producerName || ""}/>}
+      </section>
+
+      <section className={styles.tastingSection}>
+        <Calendar size={21}/><div><h2>{c.tasting}</h2><p>{c.tastingBody}</p></div><button onClick={() => onNavigate("sessions")}>{c.contact}<ArrowRight size={15}/></button>
+      </section>
+    </div>
+  );
+}
+
+export default InnerHome;

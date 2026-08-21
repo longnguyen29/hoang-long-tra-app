@@ -1941,6 +1941,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
               lang={lang}
               photos={homePhotos}
               gallery={galleryImages}
+              catalog={catalog}
               teaOfDay={teaOfDay}
               samples={catalog.filter((product) => product.line === "sample")}
               houseStory={houseStory}
