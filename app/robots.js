@@ -10,6 +10,8 @@ export default function robots() {
       allow: "/",
       disallow: ["/admin", "/api/"],
     },
-    sitemap: "https://hoanglongtra.com/sitemap.xml",
+    // www, matching sitemap.js — the bare apex 308s here, so pointing at it directly saves
+    // Google's crawler the extra hop.
+    sitemap: "https://www.hoanglongtra.com/sitemap.xml",
   };
 }
