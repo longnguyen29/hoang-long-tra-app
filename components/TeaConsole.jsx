@@ -25,7 +25,6 @@ import {
 import ConfirmDelete from "./ConfirmDelete";
 import AuthPanel from "./AuthPanel";
 import PaymentBlock from "./PaymentBlock";
-import ReorderBox from "./ReorderBox";
 import TrackOrderBox from "./TrackOrderBox";
 import TeaDetailModal from "./TeaDetailModal";
 import ChatThreadPanel from "./ChatThreadPanel";
@@ -1546,34 +1545,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     sessions: teaSessions.filter((s) => s.status === "pending").length,
     bin: bin.length,
   }[tab] || 0);
-
-  const applyReorder = (order) => {
-    const newCart = {};
-    if (order.type === "retail") {
-      order.lines.forEach((l) => {
-        const match = retailProducts.find((p) => l.name.en === p.name.en || l.name.en.startsWith(p.name.en + " ("));
-        if (!match) return;
-        if (match.variants && match.variants.length > 0) {
-          const m = l.name.en.match(/\(([^)]+)\)\s*$/);
-          const weight = (m && match.variants.some((v) => v.weight === m[1])) ? m[1] : match.variants[0].weight;
-          newCart[`${match.id}__${weight}`] = l.qty;
-        } else {
-          newCart[match.id] = l.qty;
-        }
-      });
-      setRetailCart(newCart);
-    } else {
-      order.lines.forEach((l) => {
-        const match = wholesaleProducts.find((p) => p.name.en === l.name.en || p.name.vi === l.name.vi);
-        if (match) newCart[match.id] = l.qty;
-      });
-      setCart(newCart);
-    }
-    setOrderName(order.customerName);
-    setOrderContact(order.contact);
-    setOrderAddress(order.address || "");
-    setOrderTaxNumber(order.taxNumber || "");
-  };
 
   const submitOrder = async (type) => {
     if (!orderName.trim() || !orderContact.trim() || !orderConsent) return;
@@ -3170,7 +3141,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 <>
                   <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 22, margin: "0 0 4px" }}>{t.orderTitle}</h2>
                   <p style={{ color: TOKENS.jadeSoft, fontSize: 13.5, marginBottom: 18 }}>{t.orderHint}</p>
-                  {!isAdmin && <ReorderBox supabase={supabase} type="wholesale" onApply={applyReorder} t={t} TOKENS={TOKENS} />}
 
                   {stepHeader(1, Leaf, t.stepBrowse)}
                   <div style={{ marginBottom: 20, background: TOKENS.paper, boxShadow: TOKENS.shadowSm, borderRadius: TOKENS.radius, padding: 18 }}>
@@ -5342,7 +5312,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       </button>
                     ))}
                   </div>
-                  {!isAdmin && <ReorderBox supabase={supabase} type="retail" onApply={applyReorder} t={t} TOKENS={TOKENS} />}
 
                   {/* Invite a friend. Looked up by the contact they ordered with, matching
                       the "Ordered before?" box above — no account needed, since retail

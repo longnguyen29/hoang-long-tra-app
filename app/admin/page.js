@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Brain } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { TOKENS } from "@/lib/constants";
 import { STR } from "@/lib/strings";
@@ -68,5 +70,24 @@ export default function AdminPage() {
     );
   }
 
-  return <TeaConsole isAdmin={true} staffEmail={email} onLogout={logout} />;
+  return (
+    <>
+      <Link
+        href="/brain"
+        aria-label="Open Institutional Brain"
+        style={{
+          position: "fixed", right: 18, bottom: 18, zIndex: 80,
+          display: "inline-flex", alignItems: "center", gap: 8,
+          minHeight: 42, padding: "0 14px", borderRadius: 4,
+          background: TOKENS.jade, color: TOKENS.paper,
+          border: `1px solid ${TOKENS.brass}`, boxShadow: TOKENS.shadowMd,
+          fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 600,
+          textDecoration: "none", whiteSpace: "nowrap",
+        }}
+      >
+        <Brain size={15} color={TOKENS.brassOnDark} /> Brain
+      </Link>
+      <TeaConsole isAdmin={true} staffEmail={email} onLogout={logout} />
+    </>
+  );
 }

@@ -170,12 +170,11 @@ work; they don't. Verify CORS in a browser, not with `curl -I`.
 - **`track_order` returns only `id` + `status`**, not the customer's name,
   address, etc. — someone who has (or guesses) an order ID only sees shipping
   progress, matching what the UI actually displays.
-- **`reorder_lookup` (phone/email → last order) is a privacy trade-off worth
-  knowing about:** anyone who enters a real customer's phone number or email
-  can see that customer's last order (name, address, items). This mirrors a
-  feature in the original prototype; if that's a concern, consider removing
-  the "Ordered before?" box (`components/ReorderBox.jsx`) from the public
-  pages, or gating it behind a one-time code sent to the customer.
+- **Public reorder lookup is disabled.** Migration
+  `0028_disable_public_reorder_lookup.sql` revokes client execution of the old
+  phone/email lookup, and the public forms no longer render that control. A
+  future reorder flow should verify a one-time code before returning personal
+  details or a previous basket.
 - **Staff roles aren't differentiated yet.** `staff_roles.role` is stored
   (`admin` / `manager` / `employee`) but every row currently grants the same
   full Front Desk access. Add role checks in `is_staff()` or in the UI later

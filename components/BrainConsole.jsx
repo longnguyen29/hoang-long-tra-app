@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, BookOpen, Brain, BriefcaseBusiness, CircleCheck, Command, Home, MessageSquare, Network, PackageOpen, Search, Send, ShoppingBag, Users } from "lucide-react";
+import { answerCommercialQuestion, deriveAttention, deriveCommercialJourney } from "@/lib/domain/commercial";
 import styles from "./BrainConsole.module.css";
 
 const sections = [
@@ -11,32 +12,12 @@ const sections = [
   { id: "ask", label: "Ask Hoàng Long", icon: Brain },
 ];
 const fmtDate = value => value ? new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(new Date(value)) : "—";
-const customerName = row => row.customer_name || row.store_name || row.name || "Unnamed relationship";
-
-function deriveJourney(data) {
-  const rows = [];
-  data.leads.forEach(item => rows.push({ id: item.id, name: item.name, stage: "Qualified", next: "Turn stated interest into a sample or order", at: item.ts, source: "Lead" }));
-  data.samples.forEach(item => rows.push({ id: item.id, name: item.store_name, stage: item.status === "sent" ? "Sample sent" : item.status === "converted" ? "Converted" : "Sample requested", next: item.status === "sent" ? "Capture test feedback" : item.status === "converted" ? "Prepare repeat path" : "Qualify and dispatch", at: item.ts, source: `${item.pack} sample` }));
-  data.orders.forEach(item => rows.push({ id: item.id, name: item.customer_name, stage: item.status === "completed" ? "Completed" : item.status === "shipped" ? "Shipped" : "Order", next: item.status === "pending" ? "Confirm order" : item.status === "confirmed" ? "Prepare dispatch" : "Set next relationship action", at: item.ts, source: item.type }));
-  return rows.sort((a,b) => new Date(b.at) - new Date(a.at));
-}
-
-function makeAnswer(data, question) {
-  const pending = data.orders.filter(order => order.status === "pending");
-  const newSamples = data.samples.filter(sample => sample.status === "new");
-  const unreadThreads = data.threads.filter(thread => thread.unread_for_admin);
-  const unreadLeads = data.leads.filter(lead => lead.unread);
-  const q = question.toLowerCase();
-  if (q.includes("sample") || q.includes("convert")) return { summary: `${newSamples.length} sample request${newSamples.length === 1 ? " is" : "s are"} waiting for a decision. Start with requests that meet all three trade qualifications, then give every dispatched pack a named feedback date.`, actions: [["Qualify new sample requests", "Confirm shop status, reformulation ability, and willingness to give feedback.", "sample_requests"],["Attach the next action before dispatch", "A sent sample without an owner and follow-up date becomes invisible work.", "sample_requests.status"],["Connect converted samples to the first order", "This is required to measure sample-to-order conversion accurately.", "orders + sample_requests"]] };
-  if (q.includes("customer") || q.includes("message") || q.includes("relationship")) return { summary: `${unreadThreads.length} conversation${unreadThreads.length === 1 ? " needs" : "s need"} a reply and ${unreadLeads.length} lead${unreadLeads.length === 1 ? " is" : "s are"} still unread. Resolve direct customer intent before lower-confidence opportunities.`, actions: [["Answer unread conversations", "These contain explicit customer intent and should outrank inferred work.", "support_threads"],["Review unread leads", "Give each viable lead a next action, owner, and date.", "leads"],["Capture durable notes", "Move reusable preferences out of one-off messages into customer memory.", "customer_notes"]] };
-  return { summary: `${pending.length} pending order${pending.length === 1 ? "" : "s"}, ${newSamples.length} new sample request${newSamples.length === 1 ? "" : "s"}, and ${unreadThreads.length} unread conversation${unreadThreads.length === 1 ? "" : "s"} currently need attention.`, actions: [["Protect active revenue", "Confirm pending orders before starting speculative work.", "orders.status = pending"],["Move samples into learning", "Qualify, send, and schedule feedback so sampling produces evidence.", "sample_requests"],["Close the communication loop", "Unread customer messages are the most direct source of objections and demand.", "support_threads"]] };
-}
 
 export default function BrainConsole({ initialData, staffEmail, loadWarning }) {
   const [section, setSection] = useState("home"); const [question, setQuestion] = useState(""); const [answer, setAnswer] = useState(null);
-  const journey = useMemo(() => deriveJourney(initialData), [initialData]);
-  const attention = [...initialData.orders.filter(o => o.status === "pending").map(o => ({ id: o.id, type: "Order", title: `Confirm ${customerName(o)}’s order`, date: o.ts })),...initialData.samples.filter(s => s.status === "new").map(s => ({ id: s.id, type: "Sample", title: `Qualify ${s.store_name}`, date: s.ts })),...initialData.threads.filter(t => t.unread_for_admin).map(t => ({ id: t.id, type: "Message", title: `Reply to ${t.customer_name || "customer"}`, date: t.created_at }))].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 6);
-  const ask = value => { const q = value || question; if (!q.trim()) return; setQuestion(q); setAnswer(makeAnswer(initialData, q)); setSection("ask"); };
+  const journey = useMemo(() => deriveCommercialJourney(initialData), [initialData]);
+  const attention = useMemo(() => deriveAttention(initialData), [initialData]);
+  const ask = value => { const q = value || question; if (!q.trim()) return; setQuestion(q); setAnswer(answerCommercialQuestion(initialData, q)); setSection("ask"); };
 
   return <div className={styles.shell}><aside className={styles.sidebar}><button className={styles.brand} onClick={() => setSection("home")}><span>龍</span><div><strong>HOÀNG LONG</strong><small>INSTITUTIONAL BRAIN</small></div></button><nav>{sections.map(item => { const Icon = item.icon; return <button key={item.id} className={section === item.id ? styles.active : ""} onClick={() => setSection(item.id)}><Icon size={17}/>{item.label}</button> })}</nav><div className={styles.sideFoot}><Link href="/admin"><ShoppingBag size={15}/>Open Front Desk</Link><small>{staffEmail}</small></div></aside>
     <main className={styles.main}><header className={styles.mast}><span>House of Hoàng Long</span><span>Live Supabase workspace</span></header>{loadWarning && <div className={styles.warning}>Some records could not be read: {loadWarning}</div>}
