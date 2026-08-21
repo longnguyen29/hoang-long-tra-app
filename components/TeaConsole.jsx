@@ -1930,10 +1930,9 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
 
         {/* Content */}
         <main style={{
-          // Tried 1280 to fill a desktop window and it read worse, not better: the line length
-          // went past what the eye tracks comfortably and the page stopped feeling like a page.
-          // The narrow column is the design, not a mobile leftover.
-          flex: 1, padding: "24px 20px 60px", maxWidth: 860, width: "100%", margin: "0 auto", minWidth: 0,
+          // The editorial home needs room for image-and-copy compositions. Reading, forms,
+          // checkout, and operational sections keep the narrower measure below.
+          flex: 1, padding: "24px 20px 60px", maxWidth: section === "home" ? 1200 : 860, width: "100%", margin: "0 auto", minWidth: 0,
           background: TOKENS.paper, boxShadow: `0 0 60px ${TOKENS.paper}`,
         }}>
           {section === "home" && (
