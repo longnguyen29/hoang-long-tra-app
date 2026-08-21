@@ -5,13 +5,19 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import BrainConsole from "@/components/BrainConsole";
 import styles from "@/components/BrainConsole.module.css";
+import { brainDemoData } from "@/lib/demo/brain";
 
 export default function BrainPage() {
   const router = useRouter();
+  const demoMode = process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_BRAIN_DEMO_MODE === "true";
   const [supabase] = useState(() => createClient());
   const [state, setState] = useState({ status: "checking", email: "", data: null, error: "" });
 
   useEffect(() => {
+    if (demoMode) {
+      setState({ status: "ready", email: "local-preview@hoanglong", data: brainDemoData, error: "" });
+      return;
+    }
     let cancelled = false;
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -37,7 +43,7 @@ export default function BrainPage() {
       }});
     })();
     return () => { cancelled = true; };
-  }, [router, supabase]);
+  }, [demoMode, router, supabase]);
 
   if (state.status === "checking") return <div className={styles.gate}>Reading the house records…</div>;
   if (state.status === "denied") return <div className={styles.gate}>This room is for House staff.<br/><small>{state.email}</small></div>;

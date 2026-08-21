@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // This repository is often checked out inside a larger workspace that also has a lockfile.
+  // Pin Turbopack to this app so dev mode watches the correct route tree instead of walking
+  // parent directories (which can produce false 404s and exhaust the file watcher).
+  turbopack: { root: process.cwd() },
   // SEO cleanup: hoanglongtra.com used to run a Shopify store, confirmed via the Wayback
   // Machine's archive of this domain (Shopify theme assets, /cdn/shop/, .well-known/shopify/
   // monorail, /checkouts/<id>, real product and collection slugs — dozens of them still
