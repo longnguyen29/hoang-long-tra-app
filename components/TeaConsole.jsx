@@ -258,6 +258,13 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const [customerDetail, setCustomerDetail] = useState(null);
   const [customerNoteDraft, setCustomerNoteDraft] = useState("");
   const [customerNoteSaved, setCustomerNoteSaved] = useState(false);
+  const [customerQuotes, setCustomerQuotes] = useState([]);
+  const [quoteDraft, setQuoteDraft] = useState({
+    productId: "", price: "", unit: "kg", minQuantity: "", quotedAt: new Date().toISOString().slice(0, 10),
+    validUntil: "", includesDelivery: false, includesVat: false, terms: "", reason: "", approvedBy: "", status: "draft",
+  });
+  const [quoteSaving, setQuoteSaving] = useState(false);
+  const [quoteError, setQuoteError] = useState("");
   const [sampleRequests, setSampleRequests] = useState([]);
   const [bin, setBin] = useState([]);
 
@@ -615,10 +622,17 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   const openCustomer = useCallback(async (contact) => {
     setCustomerDetail(null);
     setCustomerNoteSaved(false);
-    const { data, error } = await supabase.rpc("customer_detail", { p_contact: contact });
+    setCustomerQuotes([]);
+    setQuoteError("");
+    const [{ data, error }, { data: quotes, error: quotesError }] = await Promise.all([
+      supabase.rpc("customer_detail", { p_contact: contact }),
+      supabase.from("customer_quotes").select("*").eq("contact_key", contact.trim().toLowerCase()).order("quoted_at", { ascending: false }).order("created_at", { ascending: false }),
+    ]);
     if (error) { console.error("Customer detail failed:", error.message); return; }
+    if (quotesError) console.error("Customer quotes failed:", quotesError.message);
     setCustomerDetail(data || null);
     setCustomerNoteDraft(data?.note || "");
+    setCustomerQuotes(quotes || []);
   }, [supabase]);
 
   const saveCustomerNote = useCallback(async () => {
@@ -632,6 +646,50 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
     setCustomerNoteSaved(true);
     setTimeout(() => setCustomerNoteSaved(false), 2500);
   }, [supabase, customerDetail, customerNoteDraft, staffEmail]);
+
+  const saveCustomerQuote = useCallback(async () => {
+    if (!customerDetail || !quoteDraft.productId || !Number(quoteDraft.price)) {
+      setQuoteError(t.quoteRequiredError);
+      return;
+    }
+    const product = catalog.find((p) => p.id === quoteDraft.productId);
+    if (!product) { setQuoteError(t.quoteProductMissing); return; }
+    setQuoteSaving(true);
+    setQuoteError("");
+    const row = {
+      id: `quote-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      contact_key: customerDetail.contact_key,
+      product_id: product.id,
+      product_name: product.name || {},
+      price: Number(quoteDraft.price),
+      currency: "VND",
+      unit: quoteDraft.unit.trim() || "kg",
+      min_quantity: Number(quoteDraft.minQuantity) || 0,
+      includes_delivery: quoteDraft.includesDelivery,
+      includes_vat: quoteDraft.includesVat,
+      terms: quoteDraft.terms.trim(),
+      reason: quoteDraft.reason.trim(),
+      quoted_at: quoteDraft.quotedAt,
+      valid_until: quoteDraft.validUntil || null,
+      status: quoteDraft.status,
+      approved_by: quoteDraft.approvedBy.trim(),
+      created_by: staffEmail || "",
+    };
+    const { data, error } = await supabase.from("customer_quotes").insert(row).select().single();
+    setQuoteSaving(false);
+    if (error) { setQuoteError(error.message); return; }
+    setCustomerQuotes((quotes) => [data, ...quotes]);
+    setQuoteDraft({
+      productId: "", price: "", unit: "kg", minQuantity: "", quotedAt: new Date().toISOString().slice(0, 10),
+      validUntil: "", includesDelivery: false, includesVat: false, terms: "", reason: "", approvedBy: "", status: "draft",
+    });
+  }, [supabase, customerDetail, quoteDraft, catalog, staffEmail, t]);
+
+  const setQuoteStatus = async (id, status) => {
+    const { error } = await supabase.from("customer_quotes").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
+    if (error) { setQuoteError(error.message); return; }
+    setCustomerQuotes((quotes) => quotes.map((quote) => quote.id === id ? { ...quote, status } : quote));
+  };
 
   const loadSampleRequests = useCallback(async () => {
     const { data, error } = await supabase.from("sample_requests").select("*").order("ts", { ascending: false });
@@ -4124,6 +4182,122 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                             {t.saveNote}
                           </button>
                           {customerNoteSaved && <span style={{ fontSize: 12, color: TOKENS.brassOnPaper }}>{t.noteSaved}</span>}
+                        </div>
+                      </div>
+
+                      {/* Customer-specific commercial terms. Quotes are append-only records:
+                          a new negotiation makes a new row; old promises remain legible. */}
+                      <div style={{ background: TOKENS.paperDeep, borderRadius: 14, padding: "16px", boxShadow: TOKENS.shadowSm }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+                          <div>
+                            <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 18, color: TOKENS.jade }}>{t.quoteHistoryTitle}</div>
+                            <p style={{ fontSize: 11.5, lineHeight: 1.5, color: TOKENS.jadeSoft, margin: "4px 0 0", maxWidth: 560 }}>{t.quoteHistoryHint}</p>
+                          </div>
+                          <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, background: `${TOKENS.brass}1F`, borderRadius: 20, padding: "4px 9px" }}>
+                            {customerQuotes.length}
+                          </span>
+                        </div>
+
+                        <div style={{ borderTop: `1px solid ${TOKENS.hairline}`, paddingTop: 14 }}>
+                          <div style={{ fontSize: 10.5, fontWeight: 750, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 10 }}>{t.newQuoteTitle}</div>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+                            <label style={{ gridColumn: "1 / -1", fontSize: 11, color: TOKENS.jadeSoft }}>
+                              {t.quoteProduct}
+                              <select value={quoteDraft.productId} onChange={(e) => setQuoteDraft({ ...quoteDraft, productId: e.target.value })}
+                                style={{ width: "100%", marginTop: 4, padding: "9px 10px", borderRadius: 9, border: `1px solid ${TOKENS.hairline}`, background: TOKENS.paper, color: TOKENS.jade }}>
+                                <option value="">{t.quoteChooseProduct}</option>
+                                {catalog.filter((p) => p.kind !== "goods").map((p) => <option key={p.id} value={p.id}>{p.name?.[lang] || p.name?.en || p.id}</option>)}
+                              </select>
+                            </label>
+                            <label style={{ fontSize: 11, color: TOKENS.jadeSoft }}>
+                              {t.quotePrice}
+                              <input type="number" min="0" inputMode="decimal" value={quoteDraft.price} onChange={(e) => setQuoteDraft({ ...quoteDraft, price: e.target.value })} placeholder="165000"
+                                style={{ width: "100%", marginTop: 4, padding: "9px 10px", borderRadius: 9, border: `1px solid ${TOKENS.hairline}`, background: TOKENS.paper, color: TOKENS.jade }} />
+                            </label>
+                            <label style={{ fontSize: 11, color: TOKENS.jadeSoft }}>
+                              {t.quoteUnit}
+                              <input value={quoteDraft.unit} onChange={(e) => setQuoteDraft({ ...quoteDraft, unit: e.target.value })} placeholder="kg"
+                                style={{ width: "100%", marginTop: 4, padding: "9px 10px", borderRadius: 9, border: `1px solid ${TOKENS.hairline}`, background: TOKENS.paper, color: TOKENS.jade }} />
+                            </label>
+                            <label style={{ fontSize: 11, color: TOKENS.jadeSoft }}>
+                              {t.quoteMinQty}
+                              <input type="number" min="0" inputMode="decimal" value={quoteDraft.minQuantity} onChange={(e) => setQuoteDraft({ ...quoteDraft, minQuantity: e.target.value })} placeholder="20"
+                                style={{ width: "100%", marginTop: 4, padding: "9px 10px", borderRadius: 9, border: `1px solid ${TOKENS.hairline}`, background: TOKENS.paper, color: TOKENS.jade }} />
+                            </label>
+                            <label style={{ fontSize: 11, color: TOKENS.jadeSoft }}>
+                              {t.quoteStatus}
+                              <select value={quoteDraft.status} onChange={(e) => setQuoteDraft({ ...quoteDraft, status: e.target.value })}
+                                style={{ width: "100%", marginTop: 4, padding: "9px 10px", borderRadius: 9, border: `1px solid ${TOKENS.hairline}`, background: TOKENS.paper, color: TOKENS.jade }}>
+                                {["draft", "sent", "accepted"].map((status) => <option key={status} value={status}>{t.quoteStatusLabel(status)}</option>)}
+                              </select>
+                            </label>
+                            <label style={{ fontSize: 11, color: TOKENS.jadeSoft }}>
+                              {t.quoteDate}
+                              <input type="date" value={quoteDraft.quotedAt} onChange={(e) => setQuoteDraft({ ...quoteDraft, quotedAt: e.target.value })}
+                                style={{ width: "100%", marginTop: 4, padding: "9px 10px", borderRadius: 9, border: `1px solid ${TOKENS.hairline}`, background: TOKENS.paper, color: TOKENS.jade }} />
+                            </label>
+                            <label style={{ fontSize: 11, color: TOKENS.jadeSoft }}>
+                              {t.quoteValidUntil}
+                              <input type="date" min={quoteDraft.quotedAt} value={quoteDraft.validUntil} onChange={(e) => setQuoteDraft({ ...quoteDraft, validUntil: e.target.value })}
+                                style={{ width: "100%", marginTop: 4, padding: "9px 10px", borderRadius: 9, border: `1px solid ${TOKENS.hairline}`, background: TOKENS.paper, color: TOKENS.jade }} />
+                            </label>
+                            <label style={{ fontSize: 11, color: TOKENS.jadeSoft }}>
+                              {t.quoteApprovedBy}
+                              <input value={quoteDraft.approvedBy} onChange={(e) => setQuoteDraft({ ...quoteDraft, approvedBy: e.target.value })}
+                                style={{ width: "100%", marginTop: 4, padding: "9px 10px", borderRadius: 9, border: `1px solid ${TOKENS.hairline}`, background: TOKENS.paper, color: TOKENS.jade }} />
+                            </label>
+                            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 8, paddingTop: 14 }}>
+                              <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11.5, color: TOKENS.jade }}><input type="checkbox" checked={quoteDraft.includesDelivery} onChange={(e) => setQuoteDraft({ ...quoteDraft, includesDelivery: e.target.checked })} /> {t.quoteDelivery}</label>
+                              <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11.5, color: TOKENS.jade }}><input type="checkbox" checked={quoteDraft.includesVat} onChange={(e) => setQuoteDraft({ ...quoteDraft, includesVat: e.target.checked })} /> {t.quoteVat}</label>
+                            </div>
+                            <label style={{ gridColumn: "1 / -1", fontSize: 11, color: TOKENS.jadeSoft }}>
+                              {t.quoteReason}
+                              <input value={quoteDraft.reason} onChange={(e) => setQuoteDraft({ ...quoteDraft, reason: e.target.value })} placeholder={t.quoteReasonPh}
+                                style={{ width: "100%", marginTop: 4, padding: "9px 10px", borderRadius: 9, border: `1px solid ${TOKENS.hairline}`, background: TOKENS.paper, color: TOKENS.jade }} />
+                            </label>
+                            <label style={{ gridColumn: "1 / -1", fontSize: 11, color: TOKENS.jadeSoft }}>
+                              {t.quoteTerms}
+                              <textarea rows={2} value={quoteDraft.terms} onChange={(e) => setQuoteDraft({ ...quoteDraft, terms: e.target.value })} placeholder={t.quoteTermsPh}
+                                style={{ width: "100%", marginTop: 4, padding: "9px 10px", borderRadius: 9, border: `1px solid ${TOKENS.hairline}`, background: TOKENS.paper, color: TOKENS.jade, resize: "vertical", fontFamily: "inherit" }} />
+                            </label>
+                          </div>
+                          {quoteError && <p role="alert" style={{ fontSize: 11.5, color: TOKENS.lacquer, margin: "8px 0 0" }}>{quoteError}</p>}
+                          <button onClick={saveCustomerQuote} disabled={quoteSaving}
+                            style={{ marginTop: 10, background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 9, padding: "9px 15px", fontSize: 12.5, fontWeight: 700, cursor: quoteSaving ? "default" : "pointer", opacity: quoteSaving ? 0.6 : 1 }}>
+                            {quoteSaving ? t.quoteSaving : t.quoteSave}
+                          </button>
+                        </div>
+
+                        <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 8 }}>
+                          {customerQuotes.length === 0 && <p style={{ margin: 0, fontSize: 12, color: TOKENS.jadeSoft, fontStyle: "italic" }}>{t.quoteNone}</p>}
+                          {customerQuotes.map((quote) => {
+                            const expiredByDate = quote.valid_until && quote.valid_until < new Date().toISOString().slice(0, 10) && !["accepted", "replaced"].includes(quote.status);
+                            const displayStatus = expiredByDate ? "expired" : quote.status;
+                            return (
+                              <div key={quote.id} style={{ borderTop: `1px solid ${TOKENS.hairline}`, paddingTop: 12 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontFamily: "Lora, Georgia, serif", fontSize: 16, color: TOKENS.jade }}>{quote.product_name?.[lang] || quote.product_name?.en || quote.product_id}</div>
+                                    <div style={{ marginTop: 3, fontSize: 18, fontWeight: 750, color: TOKENS.brassOnPaper }}>{formatVND(Number(quote.price) || 0)} <span style={{ fontSize: 11, fontWeight: 500, color: TOKENS.jadeSoft }}>/ {quote.unit}</span></div>
+                                  </div>
+                                  <select value={displayStatus} onChange={(e) => setQuoteStatus(quote.id, e.target.value)}
+                                    style={{ padding: "6px 8px", borderRadius: 20, border: `1px solid ${TOKENS.hairline}`, fontSize: 10.5, fontWeight: 700, background: TOKENS.paper, color: displayStatus === "accepted" ? TOKENS.brassOnPaper : TOKENS.jade }}>
+                                    {["draft", "sent", "accepted", "expired", "replaced"].map((status) => <option key={status} value={status}>{t.quoteStatusLabel(status)}</option>)}
+                                  </select>
+                                </div>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", marginTop: 8, fontSize: 10.5, color: TOKENS.jadeSoft }}>
+                                  <span>{new Date(`${quote.quoted_at}T00:00:00`).toLocaleDateString(lang === "en" ? "en-GB" : "vi-VN")}</span>
+                                  <span>{quote.valid_until ? `${t.quoteValidThrough}: ${new Date(`${quote.valid_until}T00:00:00`).toLocaleDateString(lang === "en" ? "en-GB" : "vi-VN")}` : t.quoteNoExpiry}</span>
+                                  {Number(quote.min_quantity) > 0 && <span>{t.quoteMin}: {Number(quote.min_quantity)} {quote.unit}</span>}
+                                  {quote.includes_delivery && <span>✓ {t.quoteDelivery}</span>}
+                                  {quote.includes_vat && <span>✓ {t.quoteVat}</span>}
+                                </div>
+                                {quote.reason && <p style={{ fontSize: 11.5, color: TOKENS.jade, margin: "8px 0 0" }}><b>{t.quoteReason}:</b> {quote.reason}</p>}
+                                {quote.terms && <p style={{ fontSize: 11.5, lineHeight: 1.5, color: TOKENS.jadeSoft, margin: "4px 0 0" }}>{quote.terms}</p>}
+                                {(quote.approved_by || quote.created_by) && <p style={{ fontSize: 10, color: TOKENS.jadeSoft, margin: "7px 0 0" }}>{quote.approved_by ? `${t.quoteApprovedBy}: ${quote.approved_by}` : `${t.quoteCreatedBy}: ${quote.created_by}`}</p>}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
 
