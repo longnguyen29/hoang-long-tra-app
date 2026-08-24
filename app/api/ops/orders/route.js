@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { OPS_AUTH_COOKIE, isOpsAuthedToken } from "@/lib/ops-auth";
 import { OPS_STAGES } from "@/lib/ops-stages";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logOrderEvent } from "@/lib/ops-events";
 
 async function requireOpsAuth() {
   const cookie = (await cookies()).get(OPS_AUTH_COOKIE)?.value;
@@ -39,7 +40,7 @@ export async function POST(request) {
     return Response.json({ ok: false }, { status: 400 });
   }
 
-  const { customerName, contact, type, stage, paymentMethod, note } = body || {};
+  const { customerName, contact, type, stage, paymentMethod, note, actor } = body || {};
   if (
     typeof customerName !== "string" || !customerName.trim() ||
     typeof contact !== "string" || !contact.trim() ||
@@ -63,8 +64,11 @@ export async function POST(request) {
     stage,
   };
 
-  const { data, error } = await createAdminClient().from("orders").insert(row).select().single();
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("orders").insert(row).select().single();
   if (error) return Response.json({ ok: false }, { status: 500 });
+
+  await logOrderEvent(admin, { orderId: data.id, kind: "created", message: "Order created", actor });
 
   return Response.json({ ok: true, order: data });
 }
