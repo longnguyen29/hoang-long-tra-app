@@ -1,0 +1,2296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Flow — House of Hoàng Long</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Hallmark-informed redesign v2 · macrostructure: sidebar ops console (adopted from the
+ * user's own "Leaf & Lane Operations" reference mockup — sidebar nav, toolbar with search,
+ * table-based Issues, side-by-side Documents panel) · theme: tea-ledger-craft.
+ * Brand tokens preserved verbatim from the real app's TOKENS. This version changes the actual
+ * page SHAPE, not just its surface — see the shell/topbar/panel/table rules below. */
+
+  :root {
+    color-scheme: light;
+    --paper: #F7F3EA;
+    --paperDeep: #F4EEE1;
+    --paperRaised: #FFFDF8;
+    --jade: #1C2B24;
+    --jadeSoft: #2E4A40;
+    --brass: #B08D57;
+    --brassDeep: #AD8A4E;
+    --lacquer: #9C3B2E;
+    --brassOnPaper: #82602D;
+    /* Neutral, jade-tinted structural borders — NOT gold. Gold is reserved for meaningful
+       accents only (active states, the seal ring, priority-high, the stage spine) so it still
+       means something instead of decorating every card, table, and input on the page. */
+    --hairline: rgba(28,43,36,0.10);
+    --hairlineStrong: rgba(28,43,36,0.20);
+    --shadowXs: 0 1px 2px rgba(28,43,36,0.05);
+    --shadowSm: 0 2px 10px rgba(28,43,36,0.06), 0 1px 2px rgba(28,43,36,0.04);
+    --shadowMd: 0 8px 24px rgba(28,43,36,0.09), 0 2px 6px rgba(28,43,36,0.05);
+    --shadowLg: 0 20px 48px rgba(28,43,36,0.16), 0 4px 12px rgba(28,43,36,0.08);
+    --focusRing: 0 0 0 3px rgba(173,138,78,0.35);
+    --ink: #191512;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #191512;
+    --paperDeep: #241E19;
+    --paperRaised: #2C241D;
+    --jade: #F7F3EA;
+    --jadeSoft: #D9B876;
+    --brass: #D9B876;
+    --brassDeep: #D9B876;
+    --lacquer: #E0665F;
+    --brassOnPaper: #D9B876;
+    --hairline: rgba(247,243,234,0.12);
+    --hairlineStrong: rgba(247,243,234,0.22);
+    --shadowXs: 0 1px 2px rgba(0,0,0,0.25);
+    --shadowSm: 0 2px 10px rgba(0,0,0,0.28), 0 1px 2px rgba(0,0,0,0.2);
+    --shadowMd: 0 8px 24px rgba(0,0,0,0.36), 0 2px 6px rgba(0,0,0,0.22);
+    --shadowLg: 0 24px 56px rgba(0,0,0,0.5), 0 4px 14px rgba(0,0,0,0.3);
+    --focusRing: 0 0 0 3px rgba(217,184,118,0.4);
+  }
+  :root {
+    --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px;
+    --radius-sm: 7px; --radius-md: 11px; --radius-lg: 16px; --radius-xl: 22px; --radius-full: 999px;
+    --ease-out: cubic-bezier(.16,1,.3,1);
+    --dur-fast: 120ms; --dur-base: 200ms; --dur-slow: 340ms;
+    --sidebar-w: 224px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; overflow-x: clip; }
+  body {
+    background: var(--paper); color: var(--jade);
+    font-family: 'Inter', system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    transition: background var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+  }
+  h1, h2, h3, .display { font-family: 'Lora', Georgia, serif; font-style: normal; }
+  a { color: inherit; }
+  button { font-family: inherit; }
+  ::placeholder { color: var(--jadeSoft); opacity: .55; }
+  :focus-visible { outline: none; box-shadow: var(--focusRing); border-radius: var(--radius-sm); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+
+  /* ---------- Shell: sidebar + main, adopted from the reference mockup ---------- */
+  .app-shell { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: var(--sidebar-w); flex: none; background: var(--paperDeep); border-right: 1px solid var(--hairline);
+    padding: 18px 12px; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  .sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 6px 8px 16px; }
+  .sidebar-seal {
+    width: 34px; height: 34px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: var(--brassDeep); background: color-mix(in oklab, var(--brass) 10%, var(--paperRaised));
+    box-shadow: inset 0 0 0 1.5px var(--brassDeep), inset 0 0 0 3px var(--paper);
+  }
+  .sidebar-brand-name { font-size: 13.5px; font-weight: 700; line-height: 1.25; }
+  .sidebar-brand-sub { font-size: 10px; color: var(--brassOnPaper); text-transform: uppercase; letter-spacing: .1em; font-weight: 600; }
+  .nav-list { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 10px; border-radius: var(--radius-md);
+    border: none; background: none; cursor: pointer; color: var(--jadeSoft); font-size: 13px; font-weight: 600;
+    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  }
+  .nav-item:hover { background: color-mix(in srgb, var(--brass) 10%, transparent); color: var(--jade); }
+  .nav-item.active { background: var(--jade); color: var(--paper); box-shadow: var(--shadowSm); }
+  .nav-ico { flex: none; width: 18px; display: flex; align-items: center; justify-content: center; opacity: .85; }
+  .nav-item.active .nav-ico { opacity: 1; }
+  .nav-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nav-count { font-size: 10.5px; font-weight: 700; color: var(--jadeSoft); background: var(--paperDeep); border-radius: var(--radius-full); min-width: 19px; height: 19px; padding: 0 5px; display: flex; align-items: center; justify-content: center; flex: none; }
+  .nav-item.active .nav-count { background: color-mix(in srgb, var(--paper) 18%, transparent); color: var(--paper); }
+  .sidebar-foot { display: flex; gap: 6px; padding: 12px 8px 4px; border-top: 1px solid var(--hairline); margin-top: 8px; }
+
+  .hamburger-btn {
+    display: none; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--radius-sm);
+    background: var(--paperDeep); border: 1px solid var(--hairline); cursor: pointer; flex: none; color: var(--jade);
+  }
+  .sidebar-scrim { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.42); z-index: 75; }
+  .sidebar-scrim.show { display: block; }
+
+  @media (max-width: 880px) {
+    .hamburger-btn { display: flex; }
+    .sidebar {
+      position: fixed; left: 0; top: 0; bottom: 0; z-index: 80; width: 250px;
+      transform: translateX(-104%); transition: transform var(--dur-base) var(--ease-out); box-shadow: var(--shadowLg);
+    }
+    .sidebar.open { transform: translateX(0); }
+  }
+
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+  /* ---------- Topbar: title/breadcrumb + search + filter + new order + lang/theme ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 40; background: color-mix(in srgb, var(--paper) 92%, transparent);
+    backdrop-filter: blur(6px); padding: 16px 5vw; border-bottom: 1px solid var(--hairline);
+    display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .topbar-crumb { font-size: 11px; color: var(--jadeSoft); margin: 0 0 2px; }
+  .topbar-title { font-size: 19px; margin: 0; letter-spacing: -.01em; }
+  .topbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .search-wrap { position: relative; }
+  .search-ico { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); display: flex; opacity: .55; pointer-events: none; }
+  .search-input {
+    font-size: 12.5px; padding: 8px 12px 8px 30px; border-radius: var(--radius-full); border: 1px solid var(--hairline);
+    background: var(--paperDeep); color: var(--jade); width: 170px; transition: border-color var(--dur-fast) var(--ease-out), width var(--dur-base) var(--ease-out);
+  }
+  .search-input:focus-visible { border-color: var(--brassDeep); width: 210px; }
+  .search-wrap .search-input { padding: 8px 12px 8px 30px; }
+  .filter-seg { display: flex; gap: 2px; padding: 3px; background: var(--paperDeep); border: 1px solid var(--hairline); border-radius: var(--radius-full); }
+  .filter-seg-btn { border: none; background: transparent; color: var(--jadeSoft); border-radius: var(--radius-full); padding: 7px 12px; font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+  .filter-seg-btn:hover { color: var(--jade); }
+  .filter-seg-btn.active { background: var(--jade); color: var(--paper); }
+  .btn-primary {
+    display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; padding: 9px 15px; border-radius: var(--radius-full);
+    border: none; background: var(--jade); color: var(--paper); cursor: pointer; white-space: nowrap;
+    transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+  }
+  .btn-primary:hover { box-shadow: var(--shadowMd); transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .pill-controls { display: flex; gap: 2px; padding: 3px; background: var(--paperDeep); border: 1px solid var(--hairline); border-radius: var(--radius-full); }
+  .pill-btn {
+    border: none; background: transparent; color: var(--jadeSoft); border-radius: var(--radius-full); padding: 8px 13px;
+    font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  }
+  .pill-btn:hover { color: var(--jade); background: color-mix(in oklab, var(--brass) 12%, transparent); }
+
+  .new-order-banner {
+    display: none; align-items: flex-start; gap: 10px; margin: 14px 5vw 0; padding: 12px 14px; border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--brass) 12%, var(--paperDeep)); border: 1px solid var(--hairlineStrong);
+  }
+  .new-order-banner.show { display: flex; }
+  .new-order-banner .body { flex: 1; font-size: 12.5px; color: var(--jadeSoft); line-height: 1.55; }
+  .new-order-banner .title { font-weight: 700; color: var(--brassOnPaper); margin-bottom: 2px; font-size: 12.5px; }
+  .new-order-banner button { flex: none; font-size: 11.5px; font-weight: 700; padding: 6px 11px; border-radius: var(--radius-sm); border: 1px solid var(--hairlineStrong); background: var(--paperRaised); color: var(--jade); cursor: pointer; }
+
+  main.content { padding: 18px 5vw 0; max-width: 1300px; margin: 0 auto; width: 100%; }
+  .hint-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; margin: 0 0 14px; }
+  .hint { font-size: 11.5px; color: var(--jadeSoft); margin: 0; }
+  .legend-row { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--jadeSoft); flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+
+  .priority-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+  .priority-dot.high { background: var(--lacquer); }
+  .priority-dot.new { background: var(--brassDeep); }
+  .priority-dot.onTrack { background: var(--jadeSoft); opacity: .55; }
+
+  .board { display: flex; gap: 12px; overflow-x: auto; padding: 2px 2px 16px; }
+  .col { flex: 0 0 240px; background: var(--paperDeep); border-radius: var(--radius-lg); padding: 3px 10px 10px; max-height: 68vh; display: flex; flex-direction: column; box-shadow: var(--shadowSm); border: 1px solid var(--hairline); overflow: hidden; }
+  .col-spine { height: 3px; margin: 0 -10px 9px; flex: none; }
+  .col-head { display: flex; align-items: center; gap: 8px; padding: 2px 2px 10px; border-bottom: 1px solid var(--hairline); margin-bottom: 9px; }
+  .col-title { font-size: 12.5px; font-weight: 700; flex: 1; letter-spacing: -.005em; }
+  .col-count { font-size: 10.5px; font-weight: 700; color: var(--brassOnPaper); background: var(--paperRaised); border-radius: var(--radius-full); width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px var(--hairlineStrong); }
+  .col-body { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 1px 1px 4px; mask-image: linear-gradient(to bottom, transparent, black 10px, black calc(100% - 10px), transparent); }
+  .col-empty { font-size: 11.5px; color: var(--jadeSoft); opacity: .55; padding: 10px 4px; text-align: center; }
+  @media (max-width: 720px) {
+    .board { flex-direction: column; overflow-x: visible; gap: 14px; }
+    .col { flex: none; width: 100%; max-height: none; }
+    .col-body { overflow-y: visible; max-height: none; mask-image: none; }
+  }
+
+  .card {
+    display: block; width: 100%; text-align: left; background: var(--paper); border-radius: var(--radius-md); padding: 11px 12px;
+    cursor: pointer; border: 1px solid var(--hairline); box-shadow: var(--shadowXs); position: relative;
+    transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: var(--shadowMd); border-color: var(--hairlineStrong); }
+  .card:active { transform: translateY(-1px) scale(.995); }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
+  .type-badge { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .type-badge.retail { color: var(--jadeSoft); }
+  .type-badge.wholesale { color: var(--brassOnPaper); }
+  .card-flags { display: flex; align-items: center; gap: 7px; }
+  .issue-flag { display: flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700; color: var(--lacquer); }
+  .card-id-row { display: flex; align-items: center; justify-content: space-between; gap: 9px; margin-top: 9px; }
+  .card-name { font-size: 13px; font-weight: 600; line-height: 1.3; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-meta { font-size: 11px; color: var(--jadeSoft); margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+  .card-priority { display: flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; flex: none; }
+  .card-priority.high { color: var(--lacquer); }
+  .card-priority.new { color: var(--brassOnPaper); }
+  .card-priority.onTrack { color: var(--jadeSoft); opacity: .7; font-weight: 600; }
+
+  footer.app-footer { margin: 30px 5vw 0; padding: 18px 0 26px; border-top: 1px solid var(--hairline); font-size: 12px; color: var(--jadeSoft); max-width: 1300px; margin-left: auto; margin-right: auto; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
+  /* ---------- Detail panel: right-anchored slide-over (was a centered modal) ---------- */
+  .panel-overlay { position: fixed; inset: 0; background: color-mix(in srgb, var(--ink) 55%, transparent); backdrop-filter: blur(1.5px); z-index: 60; }
+  .panel {
+    position: fixed; top: 0; right: 0; bottom: 0; width: min(680px, 100%); background: var(--paperRaised);
+    box-shadow: var(--shadowLg); overflow-y: auto; border-left: 1px solid var(--hairline);
+    transform: translateX(100%); transition: transform var(--dur-slow) var(--ease-out);
+  }
+  .panel.shown { transform: translateX(0); }
+  .panel.no-anim { transition: none; transform: translateX(0); }
+  .panel-topbar { height: 3px; background: linear-gradient(90deg, var(--jadeSoft), var(--brassDeep)); position: sticky; top: 0; z-index: 2; }
+  .panel-head { padding: 18px 24px 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .panel-crumb { font-size: 11px; color: var(--jadeSoft); margin: 0 0 6px; }
+  .panel-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .panel-title { font-size: 22px; margin: 0; letter-spacing: -.01em; }
+  .status-pill { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: var(--radius-full); text-transform: uppercase; letter-spacing: .03em; }
+  .status-pill.inprogress { background: color-mix(in srgb, var(--brass) 20%, transparent); color: var(--brassOnPaper); }
+  .status-pill.done { background: color-mix(in srgb, var(--jadeSoft) 20%, transparent); color: var(--jadeSoft); }
+  .panel-actions { display: flex; gap: 6px; flex: none; }
+  .icon-btn { background: var(--paperDeep); border: 1px solid var(--hairline); border-radius: var(--radius-sm); width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+  .icon-btn:hover { border-color: var(--brassDeep); }
+  .icon-btn:active { transform: scale(.92); }
+
+  .meta-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; padding: 16px 24px 0; }
+  @media (max-width: 620px) { .meta-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  .meta-item { background: var(--paperDeep); border: 1px solid var(--hairline); border-radius: var(--radius-md); padding: 9px 11px; min-width: 0; }
+  .meta-label { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--jadeSoft); margin-bottom: 3px; }
+  .meta-value { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .stepper-row { display: flex; align-items: center; gap: 10px; padding: 16px 24px 0; }
+  .stepper-col { flex: 1; min-width: 0; }
+  .stepper-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--jadeSoft); margin: 0 0 8px; }
+  .stepper { display: flex; align-items: center; gap: 3px; overflow-x: auto; padding-bottom: 4px; }
+  .step-btn { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 7px 11px 7px 9px; border-radius: var(--radius-full); cursor: pointer; white-space: nowrap; border: 1px solid var(--hairline); background: var(--paperDeep); color: var(--jadeSoft); transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
+  .step-btn .step-ico { display: flex; align-items: center; }
+  .step-btn:hover { border-color: var(--brassDeep); }
+  .step-btn.done { color: var(--brassOnPaper); border-color: transparent; background: color-mix(in srgb, var(--brass) 16%, transparent); }
+  .step-btn.active { background: var(--jade); color: var(--paper); font-weight: 700; border-color: transparent; box-shadow: var(--shadowSm); }
+  .mark-complete-btn { flex: none; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 9px 14px; border-radius: var(--radius-full); border: none; background: var(--jade); color: var(--paper); cursor: pointer; white-space: nowrap; transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+  .mark-complete-btn:hover { box-shadow: var(--shadowMd); transform: translateY(-1px); }
+
+  .quick-actions { display: flex; gap: 8px; padding: 14px 24px 0; }
+  .quick-btn { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; padding: 7px 13px 7px 7px; border-radius: var(--radius-full); cursor: pointer; border: 1px solid var(--hairline); background: var(--paperDeep); color: var(--jade); text-decoration: none; transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+  .quick-btn .ico { width: 22px; height: 22px; border-radius: 50%; background: var(--paperRaised); display: flex; align-items: center; justify-content: center; color: var(--brassOnPaper); box-shadow: inset 0 0 0 1px var(--hairlineStrong); }
+  .quick-btn:hover { border-color: var(--brassDeep); box-shadow: var(--shadowXs); transform: translateY(-1px); }
+  .quick-actions-empty { font-size: 11.5px; color: var(--jadeSoft); opacity: .7; padding: 0 24px; margin-top: 8px; }
+
+  .tabs { display: flex; gap: 2px; padding: 18px 24px 0; border-bottom: 1px solid var(--hairline); overflow-x: auto; }
+  .tab-btn { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 8px 12px 10px; background: none; border: none; cursor: pointer; color: var(--jadeSoft); border-bottom: 2px solid transparent; border-radius: var(--radius-sm) var(--radius-sm) 0 0; flex: 0 0 auto; white-space: nowrap; transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+  .tab-btn:hover { color: var(--jade); background: color-mix(in srgb, var(--brass) 8%, transparent); }
+  .tab-btn.active { color: var(--jade); border-bottom-color: var(--brassDeep); background: color-mix(in srgb, var(--brass) 10%, transparent); }
+  .tab-badge { background: var(--lacquer); color: var(--paper); border-radius: var(--radius-full); font-size: 10px; font-weight: 700; padding: 1px 6px; }
+  .tab-body { padding: 20px 24px 28px; }
+
+  .check-item { display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer; background: var(--paperDeep); border: 1px solid var(--hairline); border-radius: var(--radius-md); padding: 10px 12px; width: 100%; margin-bottom: 6px; transition: border-color var(--dur-fast) var(--ease-out); }
+  .check-item:hover { border-color: var(--hairlineStrong); }
+  .check-box { width: 18px; height: 18px; border-radius: 5px; flex: none; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--brassDeep); transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); font-size: 11px; color: var(--paper); }
+  .check-box.done { background: var(--jade); border-color: var(--jade); transform: scale(1.05); }
+  .check-label { font-size: 13.5px; transition: color var(--dur-fast) var(--ease-out); }
+  .check-label.done { color: var(--jadeSoft); text-decoration: line-through; }
+  .add-row { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+
+  /* ---------- Tasks: assignment (apply/release) + proof-of-process uploads ---------- */
+  .acting-as-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--paperRaised); border: 1px solid var(--hairline); border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 16px; }
+  .acting-as-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--jadeSoft); flex: none; }
+  .acting-as-select { flex: 0 1 160px; min-width: 110px; }
+  .acting-as-hint { font-size: 11px; color: var(--jadeSoft); opacity: .75; }
+  .task-item { background: var(--paperDeep); border: 1px solid var(--hairline); border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 8px; transition: border-color var(--dur-fast) var(--ease-out); }
+  .task-item:hover { border-color: var(--hairlineStrong); }
+  .task-item-main { display: flex; align-items: center; gap: 10px; }
+  .check-box-btn { display: flex; flex: none; border: none; background: none; padding: 0; cursor: pointer; }
+  .task-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 9px 0 0 28px; }
+  .assignee-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--jadeSoft); background: var(--paperRaised); border-radius: var(--radius-full); padding: 4px 9px; box-shadow: inset 0 0 0 1px var(--hairline); }
+  .assignee-chip.assigned { color: var(--brassOnPaper); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brass) 35%, var(--hairline)); }
+  .pill-mini { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: var(--radius-full); border: 1px solid var(--hairline); background: var(--paper); color: var(--jade); cursor: pointer; transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+  .pill-mini:hover { border-color: var(--brassDeep); }
+  .pill-mini.active { background: var(--jade); color: var(--paper); border-color: transparent; }
+  .proof-panel { margin: 10px 0 0 28px; padding-top: 10px; border-top: 1px solid var(--hairline); }
+  .proof-empty { font-size: 11.5px; color: var(--jadeSoft); opacity: .7; margin: 0 0 8px; }
+  .proof-chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .proof-chip { display: flex; align-items: center; gap: 7px; background: var(--paper); border: 1px solid var(--hairline); border-radius: var(--radius-md); padding: 5px 8px; max-width: 220px; }
+  .proof-thumb { width: 28px; height: 28px; border-radius: 5px; object-fit: cover; flex: none; box-shadow: inset 0 0 0 1px var(--hairlineStrong); }
+  .proof-file-ico { width: 28px; height: 28px; border-radius: 5px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--paperDeep); color: var(--brassOnPaper); }
+  .proof-chip-text { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .proof-chip-name { font-size: 11px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px; }
+  .proof-chip-meta { font-size: 9.5px; color: var(--jadeSoft); white-space: nowrap; }
+  .proof-chip-remove { flex: none; border: none; background: none; color: var(--jadeSoft); cursor: pointer; display: flex; padding: 2px; }
+  .proof-chip-remove:hover { color: var(--lacquer); }
+  .proof-upload-btn { position: relative; overflow: hidden; display: inline-flex; }
+  .proof-file-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+  .team-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .team-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; background: var(--paperDeep); border: 1px solid var(--hairline); border-radius: var(--radius-full); padding: 6px 8px 6px 11px; }
+  .team-chip-remove { flex: none; border: none; background: none; color: var(--jadeSoft); cursor: pointer; display: flex; padding: 2px; }
+  .team-chip-remove:hover { color: var(--lacquer); }
+  .team-example-note { font-size: 11px; color: var(--jadeSoft); opacity: .75; margin: 4px 0 0; }
+  @media (max-width: 520px) {
+    .task-controls, .proof-panel { margin-left: 0; }
+  }
+  .text-input { flex: 1; min-width: 120px; font-size: 13px; padding: 9px 11px; border-radius: var(--radius-md); border: 1px solid var(--hairline); background: var(--paper); color: var(--jade); transition: border-color var(--dur-fast) var(--ease-out); }
+  .text-input:focus-visible { border-color: var(--brassDeep); }
+  .ghost-btn { display: flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; padding: 9px 13px; border-radius: var(--radius-md); cursor: pointer; border: 1px solid var(--hairline); background: none; color: var(--jade); transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); white-space: nowrap; }
+  .ghost-btn:hover { border-color: var(--brassDeep); background: color-mix(in srgb, var(--brass) 8%, transparent); }
+
+  /* ---------- Issues: a real table, not stacked cards (adopted from the mockup) ---------- */
+  .cat-filter-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .chip { font-size: 11px; padding: 6px 11px; border-radius: var(--radius-full); cursor: pointer; border: 1px solid var(--hairline); background: none; color: var(--jadeSoft); transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+  .chip:hover { border-color: var(--brassDeep); }
+  .chip.active { background: var(--jade); color: var(--paper); border-color: transparent; font-weight: 700; }
+  .issues-table-wrap { overflow-x: auto; border: 1px solid var(--hairline); border-radius: var(--radius-md); }
+  table.issues-table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 560px; }
+  .issues-table th { text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--jadeSoft); background: var(--paperDeep); padding: 9px 12px; white-space: nowrap; border-bottom: 1px solid var(--hairline); }
+  .issues-table td { padding: 11px 12px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+  .issues-table tr:last-child td { border-bottom: none; }
+  .issues-table tr.resolved { opacity: .5; }
+  .issues-table tr.resolved .issue-row-title { text-decoration: line-through; }
+  .issue-row-title { font-weight: 600; }
+  .issue-row-cat { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--jadeSoft); background: var(--paperDeep); border-radius: 5px; padding: 2px 6px; white-space: nowrap; }
+  .impact-badge { font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+  .issue-row-actions { display: flex; gap: 5px; white-space: nowrap; }
+  .small-btn { font-size: 11px; font-weight: 600; padding: 5px 9px; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid var(--hairline); background: none; color: var(--jade); transition: border-color var(--dur-fast) var(--ease-out); white-space: nowrap; }
+  .small-btn:hover { border-color: var(--brassDeep); }
+  .small-btn.danger { color: var(--lacquer); border-color: color-mix(in srgb, var(--lacquer) 40%, var(--hairline)); }
+
+  .issue-form { background: var(--paperDeep); border: 1px solid var(--hairline); border-radius: var(--radius-md); padding: 13px; margin-top: 12px; box-shadow: var(--shadowXs); }
+  .playbook-hint { font-size: 11px; color: var(--jadeSoft); margin-bottom: 6px; }
+  .chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .field-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .field-label { font-size: 11.5px; color: var(--jadeSoft); display: flex; flex-direction: column; gap: 4px; }
+  select, textarea { font-family: inherit; font-size: 12.5px; padding: 7px 9px; border-radius: var(--radius-sm); border: 1px solid var(--hairline); background: var(--paper); color: var(--jade); transition: border-color var(--dur-fast) var(--ease-out); }
+  select:focus-visible, textarea:focus-visible { border-color: var(--brassDeep); }
+  textarea { width: 100%; resize: vertical; font-size: 13px; padding: 9px 11px; }
+
+  .escalate-callout { display: flex; gap: 9px; background: color-mix(in srgb, var(--lacquer) 8%, var(--paperDeep)); border: 1px solid color-mix(in srgb, var(--lacquer) 28%, var(--hairline)); border-radius: var(--radius-md); padding: 12px 13px; margin-top: 14px; }
+  .escalate-callout .icon { color: var(--lacquer); flex: none; display: flex; padding-top: 1px; }
+  .escalate-callout .body { font-size: 12px; color: var(--jadeSoft); line-height: 1.55; }
+  .escalate-callout .title { font-size: 12.5px; font-weight: 700; color: var(--lacquer); margin-bottom: 2px; }
+
+  .guide-steps { margin: 0 0 14px; padding-left: 21px; font-size: 13.5px; line-height: 1.95; }
+  .guide-steps li { margin-bottom: 3px; }
+  .guide-steps li::marker { color: var(--brassOnPaper); font-weight: 700; }
+  .guide-keypoint { display: flex; gap: 9px; background: color-mix(in srgb, var(--brass) 13%, var(--paperDeep)); border: 1px solid color-mix(in srgb, var(--brassDeep) 32%, var(--hairline)); border-radius: var(--radius-md); padding: 12px 13px; }
+  .guide-keypoint .icon { color: var(--brassOnPaper); flex: none; display: flex; padding-top: 1px; }
+  .guide-keypoint .body { font-size: 12.5px; color: var(--jade); line-height: 1.55; }
+  .guide-keypoint .title { font-size: 11.5px; font-weight: 700; color: var(--brassOnPaper); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+
+  /* ---------- Documents: two-column side-by-side panel (adopted from the mockup) ---------- */
+  .doc-columns { display: grid; grid-template-columns: 220px 1fr; gap: 22px; align-items: start; }
+  @media (max-width: 720px) { .doc-columns { grid-template-columns: 1fr; } }
+  .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--jadeSoft); margin: 20px 0 9px; }
+  .section-label:first-child { margin-top: 0; }
+  .quick-tile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .quick-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px 10px; border-radius: var(--radius-md); border: 1px solid var(--hairline); background: var(--paperDeep); cursor: pointer; text-decoration: none; color: var(--jade); transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+  .quick-tile:hover { border-color: var(--brassDeep); box-shadow: var(--shadowXs); transform: translateY(-1px); }
+  .quick-tile .ico { width: 26px; height: 26px; border-radius: 50%; background: var(--paperRaised); display: flex; align-items: center; justify-content: center; color: var(--brassOnPaper); box-shadow: inset 0 0 0 1px var(--hairlineStrong); }
+  .quick-tile .lbl { font-size: 11.5px; font-weight: 600; line-height: 1.3; }
+  .resource-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--paperDeep); border: 1px solid var(--hairline); border-radius: var(--radius-md); padding: 9px 11px; margin-bottom: 6px; }
+  .resource-link { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; text-decoration: none; color: var(--jade); overflow: hidden; min-width: 0; }
+  .resource-link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .resource-link svg { flex: none; color: var(--jadeSoft); }
+  .resource-remove { background: none; border: none; cursor: pointer; color: var(--jadeSoft); display: flex; align-items: center; justify-content: center; flex: none; border-radius: var(--radius-sm); padding: 3px; }
+  .resource-remove:hover { color: var(--lacquer); }
+  .doclog-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 12px; padding: 7px 0; border-bottom: 1px solid var(--hairline); }
+  .doclog-row:last-child { border-bottom: none; }
+  .doclog-kind { font-weight: 600; }
+  .doclog-meta { color: var(--jadeSoft); font-size: 10.5px; white-space: nowrap; }
+  .doc-right { min-width: 0; }
+  .doc-kind-switch { display: flex; gap: 6px; margin-bottom: 12px; }
+  .doc-kind-btn { font-size: 12px; font-weight: 600; padding: 7px 13px; border-radius: var(--radius-md); cursor: pointer; border: 1px solid var(--hairline); background: transparent; color: var(--jadeSoft); transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+  .doc-kind-btn.active { background: var(--jade); color: var(--paper); border-color: transparent; }
+  .doc-frame-wrap { border-radius: var(--radius-md); border: 1px solid var(--hairline); background: #fff; min-height: 360px; box-shadow: var(--shadowXs); overflow: hidden; }
+  .doc-frame-wrap iframe { width: 100%; height: 400px; border: none; display: block; }
+  .doc-right-foot { display: flex; justify-content: flex-end; margin-top: 12px; }
+  .print-btn { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; padding: 10px 18px; border-radius: var(--radius-md); cursor: pointer; border: none; background: var(--jade); color: var(--paper); transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+  .print-btn:hover { box-shadow: var(--shadowMd); transform: translateY(-1px); }
+
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--jade); color: var(--paper); font-size: 12.5px; font-weight: 600; padding: 10px 18px; border-radius: var(--radius-full); opacity: 0; pointer-events: none; transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out); z-index: 90; box-shadow: var(--shadowMd); max-width: min(340px, 80vw); text-align: center; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ---------- Other sidebar sections: master tables, tasks, reports, templates, contacts ---------- */
+  .issues-table tr[data-open] { cursor: pointer; transition: background var(--dur-fast) var(--ease-out); }
+  .issues-table tr[data-open]:hover { background: color-mix(in srgb, var(--brass) 6%, transparent); }
+  .doc-columns.two-col { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 720px) { .doc-columns.two-col { grid-template-columns: 1fr; } }
+  .chip.with-icon { display: inline-flex; align-items: center; gap: 5px; }
+
+  .task-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; text-align: left; }
+  .task-meta { font-size: 10.5px; color: var(--jadeSoft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .info-note { display: flex; gap: 9px; background: color-mix(in srgb, var(--brass) 10%, var(--paperDeep)); border: 1px solid var(--hairlineStrong); border-radius: var(--radius-md); padding: 11px 13px; margin-bottom: 16px; font-size: 12px; color: var(--jadeSoft); line-height: 1.55; }
+  .info-note svg { flex: none; color: var(--brassOnPaper); margin-top: 1px; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 24px; }
+
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 12.5px; }
+  .bar-label { width: 150px; flex: none; color: var(--jadeSoft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-track { flex: 1; height: 8px; border-radius: var(--radius-full); background: var(--paperDeep); overflow: hidden; }
+  .bar-fill { display: block; height: 100%; border-radius: var(--radius-full); background: var(--brassDeep); }
+  .bar-count { width: 30px; flex: none; text-align: right; font-weight: 700; }
+
+  .template-stage-block { margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--hairline); }
+  .template-stage-block:last-child { border-bottom: none; }
+  .template-stage-title { font-family: 'Lora', Georgia, serif; font-size: 14.5px; font-weight: 600; margin-bottom: 6px; }
+
+  /* ---------- Flow Map: editable, top-to-bottom stage diagram ---------- */
+  .flowmap-list { display: flex; flex-direction: column; align-items: stretch; max-width: 900px; margin: 0 auto; }
+  .flowmap-connector { display: flex; justify-content: center; color: var(--brassOnPaper); opacity: .55; margin: 3px 0; }
+  .flowmap-node {
+    background: var(--paperRaised); border: 1px solid var(--hairline); border-radius: var(--radius-lg);
+    padding: 14px 16px; box-shadow: var(--shadowXs); transition: border-color var(--dur-fast) var(--ease-out);
+  }
+  .flowmap-node:hover { border-color: var(--hairlineStrong); }
+  .flowmap-node-head { display: flex; align-items: center; gap: 10px; }
+  .flowmap-node-ico {
+    width: 30px; height: 30px; border-radius: 50%; background: var(--paperDeep); display: flex; align-items: center;
+    justify-content: center; flex: none; box-shadow: inset 0 0 0 1px var(--hairlineStrong); color: var(--brassOnPaper);
+  }
+  .flowmap-node-labels { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0; }
+  .flowmap-label-input { font-size: 13.5px; font-weight: 700; padding: 6px 9px; }
+  .flowmap-node-controls { display: flex; gap: 4px; flex: none; }
+  .flowmap-node-body {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--hairline);
+  }
+  @media (max-width: 720px) { .flowmap-node-body { grid-template-columns: 1fr; } }
+  .flowmap-sub .section-label { margin-top: 0; }
+  .flowmap-item-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+  .flowmap-item-row .text-input { flex: 1; min-width: 0; font-size: 12.5px; padding: 7px 9px; }
+  .flowmap-add-node { border-style: dashed; background: transparent; box-shadow: none; }
+  .icon-btn:disabled { opacity: .35; cursor: default; }
+  .icon-btn:disabled:hover { border-color: var(--hairline); }
+
+  /* ---------- Government/legal documents ---------- */
+  .section-label.legal { display: flex; align-items: center; gap: 6px; color: var(--lacquer); }
+  .legal-ico { display: inline-flex; color: var(--lacquer); }
+  .flowmap-legal { grid-column: 1 / -1; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--hairline); }
+  .legal-disclaimer { background: color-mix(in srgb, var(--lacquer) 9%, var(--paperDeep)); border-color: color-mix(in srgb, var(--lacquer) 30%, var(--hairlineStrong)); }
+  .legal-disclaimer svg { color: var(--lacquer); }
+  .prereq-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .prereq-card { background: var(--paperRaised); border: 1px solid var(--hairline); border-radius: var(--radius-md); padding: 12px 14px; }
+  .prereq-name { font-family: 'Lora', Georgia, serif; font-size: 13.5px; font-weight: 600; margin-bottom: 4px; }
+  .prereq-desc { font-size: 12px; color: var(--jadeSoft); line-height: 1.5; margin-bottom: 8px; }
+  .prereq-basis { display: flex; align-items: flex-start; gap: 5px; font-size: 11px; color: var(--lacquer); line-height: 1.4; }
+</style>
+</head>
+<body data-theme="light">
+
+<div class="app-shell">
+  <div class="sidebar-scrim" id="sidebarScrim"></div>
+  <aside class="sidebar" id="sidebar"></aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger-btn" id="hamburgerBtn" aria-label="Menu"></button>
+        <div>
+          <p class="topbar-crumb" id="topbarCrumb">House of Hoàng Long</p>
+          <h1 class="topbar-title" id="topbarTitle">Order Flow</h1>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="search-wrap" id="searchWrap">
+          <span class="search-ico"></span>
+          <input class="text-input search-input" id="searchInput" type="text">
+        </div>
+        <div class="filter-seg" id="filterSeg">
+          <button type="button" class="filter-seg-btn active" data-filter="all" id="filterAllBtn"></button>
+          <button type="button" class="filter-seg-btn" data-filter="wholesale" id="filterWholesaleBtn"></button>
+          <button type="button" class="filter-seg-btn" data-filter="retail" id="filterRetailBtn"></button>
+        </div>
+        <button class="btn-primary" id="newOrderBtn"></button>
+        <div class="pill-controls">
+          <button class="pill-btn" id="themeToggle"></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="new-order-banner" id="newOrderBanner">
+      <div class="body"><div class="title" id="newOrderBannerTitle"></div><span id="newOrderBannerText"></span></div>
+      <button id="newOrderBannerDismiss"></button>
+    </div>
+
+    <main class="content">
+      <div class="hint-row" id="hintRow">
+        <p class="hint" id="hintLabel"></p>
+        <div class="legend-row" id="legendRow"></div>
+      </div>
+      <div id="viewHost"></div>
+    </main>
+
+    <footer class="app-footer">
+      <span id="footerNote"></span>
+      <span>Last updated 2026-08-18</span>
+    </footer>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- Content ported directly from the real app's lib/constants.js /
+   lib/documents.js, so this tracker and the eventual in-app version share the
+   same model. Update both together if the real business process changes. ---------- */
+
+const ORDER_STAGES = [
+  { id: "new_order", label: { en: "New Order", vi: "Đơn mới" } },
+  { id: "confirm_details", label: { en: "Confirm Details", vi: "Xác nhận thông tin" } },
+  { id: "prepare_materials", label: { en: "Prepare Materials", vi: "Chuẩn bị nguyên liệu" } },
+  { id: "production", label: { en: "Production", vi: "Sản xuất / đóng gói" } },
+  { id: "packing", label: { en: "Packing", vi: "Đóng gói" } },
+  { id: "shipping", label: { en: "Shipping", vi: "Giao hàng" } },
+  { id: "completed", label: { en: "Completed", vi: "Hoàn tất" } },
+];
+
+// One icon key per stage (rendered through the icon() line-icon system below, not emoji) — used
+// on both the panel's stage stepper and the mark-complete state so the flow reads as one system.
+const STAGE_ICONS = {
+  new_order: "edit", confirm_details: "clipboard-list", prepare_materials: "leaf",
+  production: "scale", packing: "package", shipping: "truck", completed: "check-circle",
+};
+
+// Sidebar nav, modeled on the reference "Leaf & Lane Operations" mockup's left rail. Every
+// section is a real view over real (or clearly-marked example) data — badges only appear where
+// there's a real number behind them, never invented.
+const NAV_ITEMS = [
+  { id: "orderflow", icon: "clipboard-list", key: "flowLabel" },
+  { id: "flowmap", icon: "share-2", key: "navFlowMap", badgeCount: () => ORDER_STAGES.length },
+  { id: "orders", icon: "file-text", key: "navOrders", badgeCount: () => ORDERS.length },
+  { id: "tasks", icon: "check-square", key: "navTasks", badgeCount: () => getAllTasks().filter((t2) => !t2.done).length },
+  { id: "issues", icon: "alert-triangle", key: "issues", badgeCount: () => ISSUES.filter((i) => !i.resolved).length },
+  { id: "inventory", icon: "leaf", key: "navInventory", badgeCount: () => INVENTORY.filter((i) => i.onHand <= i.reorderAt).length },
+  { id: "documents", icon: "file-text", key: "documents" },
+  { id: "reports", icon: "bar-chart", key: "navReports" },
+  { id: "templates", icon: "layout-template", key: "navTemplates" },
+  { id: "contacts", icon: "user", key: "navContacts" },
+  { id: "settings", icon: "settings", key: "navSettings" },
+];
+
+const STAGE_CHECKLIST_DEFAULTS = {
+  confirm_details: [
+    { en: "Confirm items, quantity, and delivery address", vi: "Xác nhận sản phẩm, số lượng và địa chỉ giao hàng" },
+    { en: "Confirm price/tier and payment method", vi: "Xác nhận giá/mức chiết khấu và hình thức thanh toán" },
+  ],
+  prepare_materials: [
+    { en: "Confirm tea grade & quantity on hand", vi: "Kiểm tra loại trà & số lượng tồn" },
+    { en: "Prepare packaging (pouches/boxes)", vi: "Chuẩn bị bao bì (túi/hộp)" },
+    { en: "Print labels", vi: "In nhãn" },
+  ],
+  production: [
+    { en: "Weigh & pack to order", vi: "Cân & đóng gói theo đơn" },
+    { en: "Quality check before sealing", vi: "Kiểm tra chất lượng trước khi niêm phong" },
+  ],
+  packing: [
+    { en: "Seal & box, moisture-safe", vi: "Niêm phong & đóng thùng, chống ẩm" },
+    { en: "Attach invoice/packing slip", vi: "Đính kèm hoá đơn/phiếu đóng gói" },
+  ],
+  shipping: [
+    { en: "Book courier & get tracking code", vi: "Đặt vận chuyển & lấy mã vận đơn" },
+    { en: "Photo of packed parcel", vi: "Chụp ảnh kiện hàng đã đóng gói" },
+  ],
+};
+
+// Read-only "how to do this stage" reference, distinct from the checklist (which is what gets
+// physically ticked off). New/part-time staff read this; the checklist is what they act on.
+const STAGE_GUIDE = {
+  new_order: {
+    steps: [
+      { en: "Log the inquiry with what the customer wants", vi: "Ghi lại yêu cầu của khách" },
+      { en: "Reply confirming you received it", vi: "Trả lời xác nhận đã nhận được yêu cầu" },
+      { en: "Note down quantity, product, and any special requests", vi: "Ghi chú số lượng, sản phẩm và yêu cầu đặc biệt" },
+    ],
+    keyPoint: { en: "Respond quickly — a fast reply is often what wins the order.", vi: "Trả lời nhanh — phản hồi nhanh thường là yếu tố giữ được đơn hàng." },
+  },
+  confirm_details: {
+    steps: [
+      { en: "Review the order and customer details", vi: "Xem lại đơn hàng và thông tin khách" },
+      { en: "Verify product, quantity, and packaging specs", vi: "Kiểm tra sản phẩm, số lượng và quy cách đóng gói" },
+      { en: "Confirm requested delivery date and address", vi: "Xác nhận ngày giao và địa chỉ yêu cầu" },
+      { en: "Validate pricing and payment terms", vi: "Xác nhận giá và điều khoản thanh toán" },
+      { en: "Communicate any discrepancies to the customer", vi: "Trao đổi với khách nếu có sai lệch" },
+      { en: "Update order notes and save confirmation", vi: "Cập nhật ghi chú đơn và lưu xác nhận" },
+    ],
+    keyPoint: { en: "Confirm everything with the customer before moving to Prepare Materials.", vi: "Xác nhận mọi thứ với khách trước khi chuyển sang Chuẩn bị nguyên liệu." },
+  },
+  prepare_materials: {
+    steps: [
+      { en: "Check tea grade and quantity on hand", vi: "Kiểm tra loại trà và số lượng tồn" },
+      { en: "Prepare packaging (pouches/boxes)", vi: "Chuẩn bị bao bì (túi/hộp)" },
+      { en: "Print labels for this order", vi: "In nhãn cho đơn này" },
+    ],
+    keyPoint: { en: "Don't start production until packaging is confirmed ready.", vi: "Đừng bắt đầu sản xuất khi bao bì chưa sẵn sàng." },
+  },
+  production: {
+    steps: [
+      { en: "Weigh and pack tea to the order spec", vi: "Cân và đóng gói trà theo đúng quy cách đơn hàng" },
+      { en: "Run a quality check before sealing", vi: "Kiểm tra chất lượng trước khi niêm phong" },
+    ],
+    keyPoint: { en: "A quality check now is cheaper than a return later.", vi: "Kiểm tra chất lượng bây giờ rẻ hơn nhận hàng trả lại sau." },
+  },
+  packing: {
+    steps: [
+      { en: "Seal and box with moisture-safe packaging", vi: "Niêm phong và đóng thùng chống ẩm" },
+      { en: "Attach the invoice or packing slip", vi: "Đính kèm hoá đơn hoặc phiếu đóng gói" },
+    ],
+    keyPoint: { en: "Tea is moisture-sensitive — double-seal before boxing.", vi: "Trà rất nhạy ẩm — niêm phong hai lớp trước khi đóng thùng." },
+  },
+  shipping: {
+    steps: [
+      { en: "Book the courier and get a tracking code", vi: "Đặt vận chuyển và lấy mã vận đơn" },
+      { en: "Photograph the packed parcel before it leaves", vi: "Chụp ảnh kiện hàng trước khi gửi đi" },
+    ],
+    keyPoint: { en: "Share the tracking code with the customer as soon as you have it.", vi: "Gửi mã vận đơn cho khách ngay khi có." },
+  },
+  completed: {
+    steps: [
+      { en: "Confirm delivery with the customer", vi: "Xác nhận đã giao hàng với khách" },
+      { en: "Ask for feedback or a review", vi: "Xin phản hồi hoặc đánh giá từ khách" },
+    ],
+    keyPoint: { en: "A quick follow-up message turns a sale into a repeat customer.", vi: "Một tin nhắn hỏi thăm biến một đơn hàng thành khách quay lại." },
+  },
+};
+
+// Government/legal documents relevant at each stage — researched against current Vietnamese
+// regulations (Aug 2026) for a household business (hộ kinh doanh) trading tea domestically.
+// INFORMATIONAL ONLY, not legal or tax advice — see LEGAL_DISCLAIMER below. Editable like the
+// checklist/guide above, since real requirements vary by business (wholesale mix, self-packaged
+// vs. resold product, revenue level) and this is meant as a starting point, not a fixed rule.
+const STAGE_REQUIRED_DOCS = {
+  new_order: [
+    { en: "If this is a wholesale order, plan to collect the buyer's company name and tax code (mã số thuế) — you'll need it for the invoice later.", vi: "Nếu là đơn sỉ, hãy chuẩn bị thu thập tên công ty và mã số thuế của khách — sẽ cần cho hoá đơn sau này." },
+  ],
+  confirm_details: [
+    { en: "Wholesale: buyer's tax code (mã số thuế) and company details — required on the e-invoice.", vi: "Đơn sỉ: mã số thuế và thông tin công ty của khách — bắt buộc phải có trên hoá đơn điện tử." },
+    { en: "Retail: no tax ID needed unless the customer asks for a full VAT invoice.", vi: "Bán lẻ: không cần mã số thuế trừ khi khách yêu cầu xuất hoá đơn VAT đầy đủ." },
+  ],
+  prepare_materials: [
+    { en: "Confirm the product's label (nhãn hàng hóa) is compliant — name, origin, net weight, production/expiry dates.", vi: "Kiểm tra nhãn sản phẩm đã hợp lệ — tên, xuất xứ, khối lượng tịnh, ngày sản xuất/hạn dùng." },
+    { en: "If this is a self-packaged/private-label SKU, confirm it has completed tự công bố sản phẩm before selling.", vi: "Nếu là sản phẩm tự đóng gói/gắn thương hiệu riêng, xác nhận đã hoàn tất tự công bố sản phẩm trước khi bán." },
+  ],
+  production: [],
+  packing: [
+    { en: "Prepare the e-invoice (hoá đơn điện tử) to accompany the shipment.", vi: "Chuẩn bị hoá đơn điện tử để đi kèm lô hàng." },
+    { en: "Only if moving stock between your own storage locations (no sale yet): use a phiếu xuất kho kiêm vận chuyển nội bộ instead.", vi: "Chỉ khi chuyển hàng giữa các kho của chính mình (chưa bán): dùng phiếu xuất kho kiêm vận chuyển nội bộ thay cho hoá đơn." },
+  ],
+  shipping: [
+    { en: "The e-invoice (or a delivery note referencing it) should travel with the goods in transit.", vi: "Hoá đơn điện tử (hoặc phiếu giao hàng có tham chiếu đến hoá đơn) nên đi kèm hàng hoá khi vận chuyển." },
+  ],
+  completed: [
+    { en: "Invoice finalized — revenue now counts toward your quarterly/annual tax declaration.", vi: "Hoá đơn đã hoàn tất — doanh thu này được tính vào kê khai thuế theo quý/năm." },
+  ],
+};
+
+// One-time business-level prerequisites — not tied to any single order, so shown separately
+// (Templates tab) rather than per-stage. Same informational-only caveat applies.
+const BUSINESS_PREREQUISITES = [
+  { en: "Household business registration certificate", vi: "Giấy chứng nhận đăng ký hộ kinh doanh",
+    desc_en: "The foundational registration that establishes the business legally — required before anything else here.",
+    desc_vi: "Giấy tờ đăng ký nền tảng để hộ kinh doanh tồn tại hợp pháp — cần có trước mọi bước khác ở đây.",
+    basis: "Nghị định 01/2021/NĐ-CP" },
+  { en: "Tax code (mã số thuế)", vi: "Mã số thuế",
+    desc_en: "Issued alongside registration. Required before any invoice — e-invoice or otherwise — can legally be issued.",
+    desc_vi: "Được cấp cùng lúc đăng ký kinh doanh. Bắt buộc phải có trước khi xuất bất kỳ hoá đơn nào.",
+    basis: "Issued together with household business registration" },
+  { en: "E-invoice registration with the tax authority", vi: "Đăng ký sử dụng hoá đơn điện tử với cơ quan thuế",
+    desc_en: "Mandatory once annual revenue reaches roughly 1 billion VND — either tax-authority-coded e-invoices or e-invoices generated from a connected cash register. Below that, e-invoicing isn't mandatory, though a one-off e-invoice can still be requested from the tax authority if a customer needs a proper invoice. This threshold is exactly the kind of number that gets revised by circular — confirm the current figure with your accountant.",
+    desc_vi: "Bắt buộc khi doanh thu năm đạt khoảng 1 tỷ đồng trở lên — dùng hoá đơn điện tử có mã của cơ quan thuế hoặc hoá đơn khởi tạo từ máy tính tiền. Dưới mức này chưa bắt buộc, nhưng vẫn có thể xin hoá đơn điện tử theo từng lần phát sinh nếu khách cần. Ngưỡng doanh thu này có thể được điều chỉnh — hãy xác nhận con số hiện hành với kế toán.",
+    basis: "Nghị định 70/2025/NĐ-CP; Thông tư 32/2025/TT-BTC (effective 1 June 2025)" },
+  { en: "Product self-declaration (tự công bố sản phẩm)", vi: "Tự công bố sản phẩm",
+    desc_en: "Required once per product line, only if House of Hoàng Long packages or brands the tea itself. Not required if simply reselling another supplier's already-packaged, already-declared product.",
+    desc_vi: "Cần thực hiện một lần cho mỗi dòng sản phẩm, chỉ khi House of Hoàng Long tự đóng gói hoặc gắn thương hiệu riêng cho trà. Không cần nếu chỉ bán lại sản phẩm đã đóng gói và đã công bố sẵn từ nhà cung cấp khác.",
+    basis: "Nghị định 15/2018/NĐ-CP" },
+  { en: "Food safety facility certificate", vi: "Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm",
+    desc_en: "Generally NOT required for a small-scale household food business (kinh doanh thực phẩm nhỏ lẻ) — but general hygiene and food-safety practice is still expected regardless.",
+    desc_vi: "Thường KHÔNG bắt buộc đối với hộ kinh doanh thực phẩm nhỏ lẻ — nhưng vẫn cần đảm bảo vệ sinh và an toàn thực phẩm trong thực tế.",
+    basis: "Nghị định 15/2018/NĐ-CP, Article 12" },
+  { en: "Product labeling (nhãn hàng hóa)", vi: "Nhãn hàng hóa",
+    desc_en: "Every packaged tea product needs a compliant Vietnamese-language label: product name, trader name & address, origin, net weight, production/expiry dates, storage instructions.",
+    desc_vi: "Mỗi sản phẩm trà đóng gói cần có nhãn tiếng Việt hợp lệ: tên sản phẩm, tên & địa chỉ thương nhân, xuất xứ, khối lượng tịnh, ngày sản xuất/hạn dùng, hướng dẫn bảo quản.",
+    basis: "Nghị định 43/2017/NĐ-CP, as amended by Nghị định 111/2021/NĐ-CP" },
+];
+
+const ISSUE_CATEGORIES = [
+  { id: "material", label: { en: "Material", vi: "Nguyên liệu" } },
+  { id: "customer", label: { en: "Customer", vi: "Khách hàng" } },
+  { id: "documentation", label: { en: "Documentation", vi: "Giấy tờ" } },
+  { id: "logistics", label: { en: "Logistics", vi: "Vận chuyển" } },
+  { id: "other", label: { en: "Other", vi: "Khác" } },
+];
+
+const ISSUE_PLAYBOOK = [
+  { category: "customer", title: { en: "Customer details mismatch", vi: "Thông tin khách hàng không khớp" }, impact: "medium",
+    suggestedFix: { en: "Verify the latest details with the customer before moving on.", vi: "Xác nhận lại thông tin mới nhất với khách trước khi tiếp tục." } },
+  { category: "material", title: { en: "Tea or packaging material low/out of stock", vi: "Trà hoặc bao bì sắp hết/hết hàng" }, impact: "high",
+    suggestedFix: { en: "Check stock, substitute, or let the customer know about the delay.", vi: "Kiểm tra tồn kho, thay thế, hoặc báo khách về việc chậm trễ." } },
+  { category: "documentation", title: { en: "VAT invoice / tax number missing", vi: "Thiếu mã số thuế / hoá đơn VAT" }, impact: "medium",
+    suggestedFix: { en: "Request the tax number and confirm invoicing needs before shipping.", vi: "Yêu cầu mã số thuế và xác nhận nhu cầu xuất hoá đơn trước khi giao." } },
+  { category: "logistics", title: { en: "Delivery running late / due date at risk", vi: "Giao hàng trễ / có nguy cơ trễ hẹn" }, impact: "high",
+    suggestedFix: { en: "Contact the courier, update the customer proactively.", vi: "Liên hệ đơn vị vận chuyển, chủ động báo khách." } },
+];
+
+const STR = {
+  en: {
+    hint: "Click any card to open it — checklist, issues, and documents for that order.",
+    footer: "Living tracker — tell Claude in chat to add real orders, log issues, or adjust stages. Same model as the in-app Order Flow branch.",
+    checklist: "Checklist", issues: "Issues", documents: "Documents",
+    checklistEmpty: "No checklist items for this stage yet.", addItem: "Add item", newItem: "New checklist item…",
+    issuesEmpty: "No issues logged for this order.", reportIssue: "Report an issue", whatWrong: "What went wrong?",
+    category: "Category", impact: "Impact", suggestedFix: "Suggested fix", howFix: "How would you fix it?",
+    escalateTo: "Escalate to", whoKnow: "Who should know? (optional)", logIssue: "Log issue", cancel: "Cancel",
+    resolve: "Mark resolved", reopen: "Reopen", remove: "Remove", playbookHint: "Common problems — tap to prefill",
+    low: "Low", medium: "Medium", high: "High",
+    docsHint: "Generate a preview, then print or save as PDF.", invoice: "Generate Invoice", packingSlip: "Generate Packing Slip",
+    printSave: "Print / Save as PDF", stage: "Stage", retail: "Shop", wholesale: "Build an Order",
+    kg: "kg", pcs: "pcs", addOrder: "+ New Order",
+    addOrderTip: "Tell Claude in chat — e.g. \"Add a wholesale order for [customer], currently at [stage]\" — and it'll be added here.",
+    guide: "Guide", keyPoint: "Key point", guideEmpty: "No guide written for this stage yet.",
+    call: "Call", message: "Message", noContactMethod: "No phone or email on file for this order.",
+    allCategories: "All", escalateWhen: "When to escalate", escalateWhenText: "If an issue is High impact and unresolved for more than a day, or a customer is waiting on it, loop in the family workshop or a senior staff member directly rather than leaving it in the log.",
+    resources: "Resources", addResource: "Add a link", resourceLabel: "Label (e.g. \"Drive folder\")", resourceUrl: "https://…",
+    resourcesEmpty: "No linked resources yet.", recentDocuments: "Recent documents (this session)", noDocsYet: "Nothing generated yet this session.",
+    generated: "Generated", printed: "Printed",
+    flowLabel: "Order Flow", navOrders: "Orders", navTasks: "Tasks", navInventory: "Inventory", navReports: "Reports",
+    navTemplates: "Templates", navContacts: "Contacts", navSettings: "Settings",
+    searchPlaceholder: "Search orders…", gotIt: "Got it",
+    priorityHigh: "High priority", priorityNew: "New", priorityOnTrack: "On track", legendLabel: "Card color:",
+    inProgress: "In Progress", markComplete: "Mark Complete",
+    metaOrderId: "Order", metaCustomer: "Customer", metaType: "Type", metaContact: "Contact",
+    colIssueCol: "Issue", colActionsCol: "Actions", quickActionsLabel: "Quick Actions",
+    viewOrdersHint: "Every order in one table. Click a row to open it.",
+    colOrder: "Order", colCustomer: "Customer", colType: "Type", colStage: "Stage", colPriority: "Priority", colOpenIssues: "Open issues",
+    viewTasksHint: "Open checklist items from every order, plus any task you add here directly. Apply for an open task to take it on, and attach proof once it's done.",
+    addTask: "Add task", newTaskPlaceholder: "New task…", tasksEmpty: "No open tasks — everything's checked off.",
+    tasksDoneSection: "Done", tasksOpenSection: "Open", standaloneTask: "Standalone",
+    actingAs: "Acting as", actingAsHint: "No login yet — pick who you are to apply for tasks and upload proof as them.",
+    applyForTask: "Apply for task", releaseTask: "Release", unassigned: "Unassigned", assignedTo: "Assigned to",
+    proofOfProcess: "Proof of process", addProof: "Add proof", noProofYet: "No proof uploaded yet.",
+    uploadedBy: "Uploaded by", teamTitle: "Team", addWorker: "Add team member", newWorkerPlaceholder: "Name…",
+    teamExampleNote: "Starter team — example data. Add your real team members here.",
+    cantRemoveLastWorker: "Can't remove the last team member.",
+    viewIssuesHint: "Every issue logged across every order, in one place.",
+    colOrderShort: "Order",
+    viewInventoryHint: "Stock levels for tea and packaging materials.",
+    invExampleNote: "Starter stock levels — example data. Tell Claude your real counts to replace them.",
+    colItem: "Item", colOnHand: "On hand", colReorderAt: "Reorder at", colStatus: "Status", invLow: "Low stock", invOk: "OK",
+    viewDocumentsHint: "Documents generated and links saved across every order this session.",
+    recentDocsAcrossOrders: "Recent documents", allResourcesTitle: "Linked resources", noDocsAnywhere: "Nothing generated yet in this session.",
+    noResourcesAnywhere: "No linked resources yet.", openOrder: "Open order",
+    viewReportsHint: "A quick read on where things stand, computed from the orders and issues above.",
+    reportOrdersByStage: "Orders by stage", reportOrdersByType: "Orders by type", reportIssuesByCategory: "Open issues by category",
+    reportIssuesByImpact: "Open issues by impact", reportChecklistCompletion: "Checklist completion (in-progress orders)",
+    noDataYet: "Not enough data yet.",
+    viewTemplatesHint: "The reference material every new order is seeded from — checklist defaults, stage guides, and the issue playbook.",
+    templatesChecklistTitle: "Checklist defaults by stage", templatesGuideTitle: "Stage guides", templatesPlaybookTitle: "Issue playbook",
+    viewContactsHint: "Contacts pulled from every order on file.",
+    contactsEmpty: "No contacts on file yet.", ordersWord: "orders", orderWord: "order",
+    viewSettingsHint: "What's real here: the theme control. Everything else is example data, held in memory for this session only.",
+    settingsLanguage: "Language", settingsTheme: "Appearance", settingsDataTitle: "About this data",
+    settingsDataText: "Orders, issues, and inventory levels shown here are example starting data — nothing is saved between sessions. Tell Claude in chat to swap in your real orders and stock levels.",
+    light: "Light", dark: "Dark",
+    navFlowMap: "Flow Map",
+    viewFlowMapHint: "The whole order flow, top to bottom. Edit stage names, checklist defaults, and guide steps here — switch to any other tab and the change is already there.",
+    addStage: "Add stage", moveUp: "Move up", moveDown: "Move down", stageInUse: "Can't remove — an order is currently at this stage",
+    reqDocsLabel: "Government documents",
+    legalDisclaimerTitle: "Not legal or tax advice",
+    legalDisclaimerText: "Researched against Vietnamese regulations current as of August 2026 (e-invoicing under Nghị định 70/2025/NĐ-CP & Thông tư 32/2025/TT-BTC; food safety under Nghị định 15/2018/NĐ-CP). Thresholds and rules change by decree/circular — confirm with your accountant or local tax office before relying on this for compliance.",
+    businessPrereqTitle: "Business prerequisites (one-time)",
+    legalBasisLabel: "Legal basis",
+    templatesGovDocsTitle: "Government documents by stage", noGovDocs: "No specific document requirements flagged for this stage.",
+  },
+  vi: {
+    hint: "Nhấn vào thẻ đơn hàng để mở — checklist, vấn đề và giấy tờ cho đơn đó.",
+    footer: "Tài liệu sống — nhắn Claude để thêm đơn thật, ghi nhận vấn đề, hoặc chỉnh giai đoạn. Cùng mô hình với nhánh Order Flow trong ứng dụng.",
+    checklist: "Checklist", issues: "Vấn đề", documents: "Giấy tờ",
+    checklistEmpty: "Chưa có mục checklist cho bước này.", addItem: "Thêm mục", newItem: "Mục checklist mới…",
+    issuesEmpty: "Chưa ghi nhận vấn đề nào cho đơn này.", reportIssue: "Báo cáo vấn đề", whatWrong: "Đã xảy ra chuyện gì?",
+    category: "Loại", impact: "Mức độ ảnh hưởng", suggestedFix: "Cách khắc phục đề xuất", howFix: "Bạn sẽ xử lý thế nào?",
+    escalateTo: "Báo cho ai", whoKnow: "Ai cần biết? (tuỳ chọn)", logIssue: "Ghi nhận vấn đề", cancel: "Huỷ",
+    resolve: "Đánh dấu đã xử lý", reopen: "Mở lại", remove: "Xoá", playbookHint: "Vấn đề thường gặp — nhấn để điền sẵn",
+    low: "Thấp", medium: "Trung bình", high: "Cao",
+    docsHint: "Tạo bản xem trước, sau đó in hoặc lưu thành PDF.", invoice: "Tạo hoá đơn", packingSlip: "Tạo phiếu đóng gói",
+    printSave: "In / Lưu thành PDF", stage: "Giai đoạn", retail: "Cửa hàng", wholesale: "Tạo đơn hàng",
+    kg: "kg", pcs: "cái", addOrder: "+ Đơn mới",
+    addOrderTip: "Nhắn Claude trong chat — vd: \"Thêm đơn sỉ cho [khách], hiện ở [giai đoạn]\" — mình sẽ thêm vào đây.",
+    guide: "Hướng dẫn", keyPoint: "Điểm cần lưu ý", guideEmpty: "Chưa có hướng dẫn cho bước này.",
+    call: "Gọi điện", message: "Nhắn tin", noContactMethod: "Đơn này chưa có số điện thoại hoặc email.",
+    allCategories: "Tất cả", escalateWhen: "Khi nào cần báo cấp trên", escalateWhenText: "Nếu vấn đề ở mức Cao và chưa xử lý sau hơn một ngày, hoặc khách đang chờ, hãy báo trực tiếp cho xưởng gia đình hoặc nhân viên phụ trách thay vì chỉ ghi vào đây.",
+    resources: "Tài liệu liên quan", addResource: "Thêm liên kết", resourceLabel: "Tên (vd: \"Thư mục Drive\")", resourceUrl: "https://…",
+    resourcesEmpty: "Chưa có liên kết nào.", recentDocuments: "Giấy tờ đã tạo (phiên này)", noDocsYet: "Chưa tạo giấy tờ nào trong phiên này.",
+    generated: "Đã tạo", printed: "Đã in",
+    flowLabel: "Luồng đơn hàng", navOrders: "Đơn hàng", navTasks: "Công việc", navInventory: "Tồn kho", navReports: "Báo cáo",
+    navTemplates: "Mẫu", navContacts: "Liên hệ", navSettings: "Cài đặt",
+    searchPlaceholder: "Tìm đơn hàng…", gotIt: "Đã hiểu",
+    priorityHigh: "Ưu tiên cao", priorityNew: "Mới", priorityOnTrack: "Đang ổn định", legendLabel: "Màu thẻ:",
+    inProgress: "Đang xử lý", markComplete: "Đánh dấu hoàn tất",
+    metaOrderId: "Đơn hàng", metaCustomer: "Khách hàng", metaType: "Loại", metaContact: "Liên hệ",
+    colIssueCol: "Vấn đề", colActionsCol: "Hành động", quickActionsLabel: "Thao tác nhanh",
+    viewOrdersHint: "Toàn bộ đơn hàng trong một bảng. Nhấn vào dòng để mở.",
+    colOrder: "Đơn hàng", colCustomer: "Khách hàng", colType: "Loại", colStage: "Giai đoạn", colPriority: "Ưu tiên", colOpenIssues: "Vấn đề chưa xử lý",
+    viewTasksHint: "Các mục checklist chưa xong từ mọi đơn hàng, cộng với việc bạn thêm trực tiếp ở đây. Nhận một việc đang mở để đảm nhận, và đính kèm bằng chứng khi xong.",
+    addTask: "Thêm việc", newTaskPlaceholder: "Việc cần làm mới…", tasksEmpty: "Không có việc nào đang mở — mọi thứ đã hoàn tất.",
+    tasksDoneSection: "Đã xong", tasksOpenSection: "Đang mở", standaloneTask: "Việc riêng",
+    actingAs: "Đang thao tác với vai trò", actingAsHint: "Chưa có đăng nhập — chọn bạn là ai để nhận việc và tải bằng chứng.",
+    applyForTask: "Nhận việc", releaseTask: "Bỏ nhận", unassigned: "Chưa có người nhận", assignedTo: "Đã giao cho",
+    proofOfProcess: "Bằng chứng thực hiện", addProof: "Thêm bằng chứng", noProofYet: "Chưa có bằng chứng nào.",
+    uploadedBy: "Tải lên bởi", teamTitle: "Đội ngũ", addWorker: "Thêm thành viên", newWorkerPlaceholder: "Tên…",
+    teamExampleNote: "Đội ngũ mẫu ban đầu — dữ liệu ví dụ. Thêm thành viên thật của bạn ở đây.",
+    cantRemoveLastWorker: "Không thể xoá thành viên cuối cùng.",
+    viewIssuesHint: "Tất cả vấn đề đã ghi nhận từ mọi đơn hàng, ở một nơi.",
+    colOrderShort: "Đơn",
+    viewInventoryHint: "Mức tồn kho trà và bao bì.",
+    invExampleNote: "Mức tồn kho ban đầu — dữ liệu ví dụ. Nhắn Claude số liệu thật để thay thế.",
+    colItem: "Mặt hàng", colOnHand: "Tồn kho", colReorderAt: "Mức đặt thêm", colStatus: "Trạng thái", invLow: "Sắp hết", invOk: "Ổn định",
+    viewDocumentsHint: "Giấy tờ đã tạo và liên kết đã lưu trên mọi đơn hàng trong phiên này.",
+    recentDocsAcrossOrders: "Giấy tờ gần đây", allResourcesTitle: "Tài liệu liên kết", noDocsAnywhere: "Chưa tạo giấy tờ nào trong phiên này.",
+    noResourcesAnywhere: "Chưa có liên kết nào.", openOrder: "Mở đơn hàng",
+    viewReportsHint: "Cái nhìn nhanh về tình hình hiện tại, tính từ các đơn hàng và vấn đề ở trên.",
+    reportOrdersByStage: "Đơn hàng theo giai đoạn", reportOrdersByType: "Đơn hàng theo loại", reportIssuesByCategory: "Vấn đề chưa xử lý theo loại",
+    reportIssuesByImpact: "Vấn đề chưa xử lý theo mức ảnh hưởng", reportChecklistCompletion: "Tỉ lệ hoàn thành checklist (đơn đang xử lý)",
+    noDataYet: "Chưa đủ dữ liệu.",
+    viewTemplatesHint: "Tài liệu tham khảo mà mọi đơn hàng mới dùng làm mẫu — checklist mặc định, hướng dẫn từng giai đoạn và cẩm nang xử lý vấn đề.",
+    templatesChecklistTitle: "Checklist mặc định theo giai đoạn", templatesGuideTitle: "Hướng dẫn từng giai đoạn", templatesPlaybookTitle: "Cẩm nang xử lý vấn đề",
+    viewContactsHint: "Danh bạ được lấy từ mọi đơn hàng đang có.",
+    contactsEmpty: "Chưa có liên hệ nào.", ordersWord: "đơn", orderWord: "đơn",
+    viewSettingsHint: "Phần thật ở đây: tuỳ chọn ngôn ngữ và giao diện. Mọi thứ khác là dữ liệu ví dụ, chỉ lưu trong bộ nhớ của phiên này.",
+    settingsLanguage: "Ngôn ngữ", settingsTheme: "Giao diện", settingsDataTitle: "Về dữ liệu này",
+    settingsDataText: "Đơn hàng, vấn đề và tồn kho hiển thị ở đây là dữ liệu ví dụ ban đầu — không có gì được lưu giữa các phiên. Nhắn Claude trong chat để thay bằng đơn hàng và tồn kho thật của bạn.",
+    light: "Sáng", dark: "Tối",
+    navFlowMap: "Sơ đồ luồng",
+    viewFlowMapHint: "Toàn bộ luồng đơn hàng, từ trên xuống dưới. Sửa tên giai đoạn, checklist mặc định và hướng dẫn ở đây — chuyển sang tab khác là thấy thay đổi ngay.",
+    addStage: "Thêm giai đoạn", moveUp: "Chuyển lên", moveDown: "Chuyển xuống", stageInUse: "Không thể xoá — đang có đơn hàng ở giai đoạn này",
+    reqDocsLabel: "Giấy tờ theo quy định",
+    legalDisclaimerTitle: "Không phải tư vấn pháp lý hoặc thuế",
+    legalDisclaimerText: "Được nghiên cứu dựa trên quy định hiện hành của Việt Nam tính đến tháng 8/2026 (hoá đơn điện tử theo Nghị định 70/2025/NĐ-CP & Thông tư 32/2025/TT-BTC; an toàn thực phẩm theo Nghị định 15/2018/NĐ-CP). Ngưỡng và quy định có thể thay đổi theo nghị định/thông tư mới — hãy xác nhận với kế toán hoặc cơ quan thuế trước khi dựa vào đây để tuân thủ.",
+    businessPrereqTitle: "Điều kiện kinh doanh cần có (một lần)",
+    legalBasisLabel: "Căn cứ pháp lý",
+    templatesGovDocsTitle: "Giấy tờ theo quy định, theo giai đoạn", noGovDocs: "Không có yêu cầu giấy tờ riêng cho bước này.",
+  },
+};
+
+/* ---------- Example orders — clearly marked, replace with real ones via chat ---------- */
+let ORDERS = [
+  {
+    id: "ORD-1001", type: "wholesale", customerName: "Trần Văn A", contact: "090xxxxxxx",
+    lines: [{ name: { en: "Oolong", vi: "Ô Long" }, qty: 100, unit: "kg", price: 300000 }],
+    totalKg: 100, tier: { range: { en: "Under 200 kg", vi: "Dưới 200kg" }, off: { en: "Base price", vi: "Giá gốc" } },
+    estimatedTotal: 30000000, taxNumber: "", note: "", trackingCode: "",
+    stage: "prepare_materials", stageChecklist: {}, unread: true, example: true,
+    resources: [{ label: "Order thread (Zalo)", url: "https://zalo.me/" }], docLog: [],
+  },
+  {
+    id: "ORD-1002", type: "retail", customerName: "Chị Lan (Hà Nội)", contact: "lan@example.com",
+    lines: [{ name: { en: "Shan Tuyet Gift Set", vi: "Bộ quà Shan Tuyết" }, qty: 1, unit: "pack", price: 450000 }],
+    totalItems: 1, estimatedTotal: 450000, taxNumber: "", note: "Gói quà giúp mình nhé",
+    trackingCode: "VN1234567", stage: "shipping",
+    stageChecklist: { shipping: [{ label: "Book courier & get tracking code", done: true }, { label: "Photo of packed parcel", done: false }] },
+    unread: false, example: true, resources: [], docLog: [],
+  },
+  {
+    id: "ORD-1003", type: "wholesale", customerName: "Công ty Xanh", contact: "buyer@congtyxanh.vn",
+    lines: [{ name: { en: "Shan Tuyet", vi: "Shan Tuyết" }, qty: 50, unit: "kg", price: 280000 }],
+    totalKg: 50, tier: { range: { en: "Under 200 kg", vi: "Dưới 200kg" }, off: { en: "Base price", vi: "Giá gốc" } },
+    estimatedTotal: 14000000, taxNumber: "0312345678", note: "", trackingCode: "",
+    stage: "new_order", stageChecklist: {}, unread: true, example: true,
+    resources: [], docLog: [],
+  },
+];
+
+let ISSUES = [
+  { id: "i1", orderId: "ORD-1003", category: "material", title: "Shan Tuyết sắp hết trong kho", impact: "high",
+    suggestedFix: "Kiểm tra tồn kho với xưởng gia đình trước khi xác nhận đơn.", escalateTo: "Xưởng sản xuất",
+    resolved: false, createdAt: "2026-08-15T04:00:00Z" },
+];
+
+// Ad-hoc tasks that aren't tied to any one order's checklist — e.g. "restock boxes", "call the
+// courier about next week". Real order-stage checklist items also show up in the Tasks view
+// (derived below), so this list only holds tasks that don't belong to a specific order.
+let STANDALONE_TASKS = [];
+
+// Example starter team — clearly marked as example data. There's no login system here, so
+// "acting as" a worker (picked in the Tasks view) stands in for a real auth session, letting
+// self-assignment ("apply for a task") and proof-of-process uploads be attributed to someone.
+let WORKERS = [
+  { id: "w-minh", name: "Minh", example: true },
+  { id: "w-lan", name: "Lan", example: true },
+  { id: "w-duc", name: "Đức", example: true },
+];
+let currentWorkerId = WORKERS[0].id;
+function workerName(id) {
+  const w = WORKERS.find((w2) => w2.id === id);
+  return w ? w.name : null;
+}
+
+// Resolves a task's id+source back to a live read/write handle on the underlying object — either
+// a STANDALONE_TASKS entry, or one item inside an order's stage checklist (which has to be
+// re-saved as a whole array via saveChecklist, unlike the standalone list).
+function findTaskRef(id, source) {
+  if (source === "checklist") {
+    const sep = id.lastIndexOf("__");
+    const orderId = id.slice(0, sep), idx = Number(id.slice(sep + 2));
+    const order = ORDERS.find((o) => o.id === orderId);
+    if (!order) return null;
+    const items = effectiveChecklist(order);
+    if (!items[idx]) return null;
+    return { get: () => items[idx], set: (patch) => { items[idx] = { ...items[idx], ...patch }; saveChecklist(order, items); } };
+  }
+  const tk = STANDALONE_TASKS.find((s) => s.id === id);
+  if (!tk) return null;
+  return { get: () => tk, set: (patch) => Object.assign(tk, patch) };
+}
+function claimTask(id, source) {
+  const ref = findTaskRef(id, source);
+  if (!ref) return;
+  const tk = ref.get();
+  if (tk.assigneeId) return;
+  ref.set({ assigneeId: currentWorkerId });
+  renderCurrentView(); renderSidebar();
+}
+function releaseTask(id, source) {
+  const ref = findTaskRef(id, source);
+  if (!ref) return;
+  const tk = ref.get();
+  if (tk.assigneeId !== currentWorkerId) return;
+  ref.set({ assigneeId: null });
+  renderCurrentView(); renderSidebar();
+}
+function addProofToTask(id, source, files) {
+  const ref = findTaskRef(id, source);
+  if (!ref) return;
+  const tk = ref.get();
+  const added = Array.from(files).map((f) => ({
+    name: f.name, url: URL.createObjectURL(f), type: f.type,
+    uploadedBy: currentWorkerId, uploadedAt: new Date(),
+  }));
+  ref.set({ proof: [...(tk.proof || []), ...added] });
+  renderCurrentView();
+}
+function removeProofFromTask(id, source, proofIdx) {
+  const ref = findTaskRef(id, source);
+  if (!ref) return;
+  const tk = ref.get();
+  const proof = [...(tk.proof || [])];
+  proof.splice(proofIdx, 1);
+  ref.set({ proof });
+  renderCurrentView();
+}
+
+// Starter inventory ledger — clearly marked as example data (like the example orders above),
+// since there's no real stock-tracking system behind this yet. Replace via chat with real counts.
+let INVENTORY = [
+  { id: "inv-1", name: { en: "Shan Tuyet — raw leaf", vi: "Trà Shan Tuyết — nguyên liệu" }, unit: { en: "kg", vi: "kg" }, onHand: 85, reorderAt: 30, example: true },
+  { id: "inv-2", name: { en: "Oolong — raw leaf", vi: "Trà Ô Long — nguyên liệu" }, unit: { en: "kg", vi: "kg" }, onHand: 22, reorderAt: 30, example: true },
+  { id: "inv-3", name: { en: "Gift boxes", vi: "Hộp quà" }, unit: { en: "pcs", vi: "cái" }, onHand: 140, reorderAt: 50, example: true },
+  { id: "inv-4", name: { en: "Vacuum pouches", vi: "Túi hút chân không" }, unit: { en: "pcs", vi: "cái" }, onHand: 60, reorderAt: 100, example: true },
+];
+
+// Tasks derived from real, in-progress checklist items across all orders — not invented, just
+// surfaced in one place. Each carries enough to jump back to its order.
+function getAllTasks() {
+  const fromChecklists = ORDERS.flatMap((o) => {
+    const stageLabel = ORDER_STAGES.find((s) => s.id === o.stage)?.label[lang] || o.stage;
+    return effectiveChecklist(o).map((it, idx) => ({
+      id: `${o.id}__${idx}`, source: "checklist", orderId: o.id, orderName: o.customerName,
+      stageLabel, idx, label: it.label, done: it.done, assigneeId: it.assigneeId || null, proof: it.proof || [],
+    }));
+  });
+  const standalone = STANDALONE_TASKS.map((t2) => ({ ...t2, source: "standalone", assigneeId: t2.assigneeId || null, proof: t2.proof || [] }));
+  return [...fromChecklists, ...standalone];
+}
+function toggleOrderChecklistItem(orderId, idx) {
+  const order = ORDERS.find((o) => o.id === orderId);
+  if (!order) return;
+  const items = effectiveChecklist(order);
+  items[idx] = { ...items[idx], done: !items[idx].done };
+  saveChecklist(order, items);
+}
+
+// Documents and linked resources, aggregated across every order — real entries only, generated
+// from the same docLog/resources each order already tracks.
+function allDocLogEntries() {
+  return ORDERS.flatMap((o) => (o.docLog || []).map((d) => ({ ...d, orderId: o.id, orderName: o.customerName })))
+    .sort((a, b) => b.at - a.at);
+}
+function allResourceEntries() {
+  return ORDERS.flatMap((o) => (o.resources || []).map((r, idx) => ({ ...r, orderId: o.id, orderName: o.customerName, idx })));
+}
+
+// Contacts deduped from real orders — one row per unique phone/email on file.
+function allContacts() {
+  const map = new Map();
+  ORDERS.forEach((o) => {
+    if (!o.contact) return;
+    if (!map.has(o.contact)) map.set(o.contact, { contact: o.contact, name: o.customerName, type: o.type, orderIds: [o.id] });
+    else map.get(o.contact).orderIds.push(o.id);
+  });
+  return [...map.values()];
+}
+
+let lang = "en";
+let theme = "light";
+let currentView = "orderflow";
+let activeIssueCategoryMaster = "all"; // category filter for the master Issues view (separate from the per-order tab's filter)
+let openOrderId = null;
+let activeTab = "checklist";
+let activeIssueCategory = "all";
+let docModalKind = "invoice"; // which kind shows in the Documents tab's live preview column
+let lastRenderedOrderId = null; // fresh-open vs. re-render (checkbox tick etc.) — only fresh opens animate
+let searchQuery = "";
+let expandedProofTaskId = null; // which task's proof-of-process panel is expanded, in the Tasks view
+let typeFilter = "all"; // "all" | "wholesale" | "retail"
+let sidebarOpen = false;
+let newOrderBannerOpen = false;
+
+function t() { return STR[lang]; }
+function esc(s) {
+  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+/* ---------- One small line-icon system, used everywhere instead of emoji ----------
+   Emoji render in a different color/style on every platform and don't belong to the same visual
+   system as the rest of the UI — that mismatch was the single biggest thing making this look
+   thrown-together rather than designed. These are plain stroke icons (single color, via
+   currentColor) so an icon next to text always reads as part of one consistent product. */
+const ICON_PATHS = {
+  menu: '<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>',
+  search: '<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+  x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/>',
+  moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+  printer: '<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  "check-circle": '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+  edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  "clipboard-list": '<rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="15" y2="16"/>',
+  leaf: '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>',
+  scale: '<line x1="12" y1="3" x2="12" y2="21"/><path d="M5 8l-3 6a4 4 0 0 0 6 0Z"/><path d="M19 8l-3 6a4 4 0 0 0 6 0Z"/><path d="M5 8h14"/><path d="M9 21h6"/>',
+  package: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
+  truck: '<rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
+  "book-open": '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+  "file-text": '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+  "alert-triangle": '<path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/>',
+  "message-circle": '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/>',
+  mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  "bar-chart": '<line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>',
+  "layout-template": '<path d="M4 20V10a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/>',
+  user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  "check-square": '<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  lightbulb: '<path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5.7.7 1.23 1.49 1.41 2.5"/>',
+  "share-2": '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>',
+  "arrow-up": '<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>',
+  "arrow-down": '<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>',
+  trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  paperclip: '<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+  "user-plus": '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>',
+};
+function icon(name, size) {
+  const s = size || 15;
+  return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex:none">${ICON_PATHS[name] || ""}</svg>`;
+}
+// Best-effort guess at how to reach a customer from the free-text `contact` field
+// (phone numbers and emails are both stored there as plain text, real app does the same).
+function contactKind(contact) {
+  const c = (contact || "").trim();
+  if (!c) return null;
+  if (c.includes("@")) return "email";
+  if (/[\d+]/.test(c)) return "phone";
+  return null;
+}
+function logDoc(order, kind, action) {
+  order.docLog = order.docLog || [];
+  order.docLog.unshift({ kind, action, at: new Date() });
+}
+// Priority is derived from real state, not invented: an open high-impact issue outranks
+// "unread", which outranks "on track" — mirrors the mockup's priority dots honestly.
+function orderPriority(order) {
+  const hasHighIssue = ISSUES.some((i) => i.orderId === order.id && !i.resolved && i.impact === "high");
+  if (hasHighIssue) return "high";
+  if (order.unread) return "new";
+  return "onTrack";
+}
+function showToast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.classList.add("show");
+  clearTimeout(showToast._t); showToast._t = setTimeout(() => el.classList.remove("show"), 2400);
+}
+
+/* ---------- Document templates — identical markup/copy to lib/documents.js in the real
+   codebase, so a printed invoice from here looks exactly like one printed from the app. ---------- */
+const DOC_STYLE = `
+  body{font-family:Georgia,serif;color:#1C2B24;padding:40px;max-width:600px;margin:0 auto;}
+  table{width:100%;border-collapse:collapse;}
+  .seal{width:48px;height:48px;border-radius:50%;border:1.5px solid #AD8A4E;display:flex;align-items:center;justify-content:center;font-size:18px;color:#AD8A4E;margin-bottom:12px;}
+  .brand{font-size:22px;font-weight:600;margin-bottom:2px;}
+  .meta{font-size:13px;color:#2E4A40;margin-bottom:24px;}
+  hr{border:none;border-top:1px solid #AD8A4E55;margin:16px 0;}
+  h2{font-size:14px;text-transform:uppercase;letter-spacing:0.5px;color:#AD8A4E;margin:0 0 10px;}
+`;
+function buildInvoiceHtml(order) {
+  const itemRows = order.lines.map((l) =>
+    `<tr><td style="padding:8px 0;">${esc(l.name.en)}${l.price ? ` <span style="color:#AD8A4E;">(${l.price.toLocaleString("vi-VN")}đ)</span>` : ""}</td>
+     <td style="padding:8px 0;text-align:right;">${l.qty} ${l.unit === "kg" ? "kg" : l.unit === "pack" ? "pack" : "pcs"}${l.price ? ` = ${(l.price * l.qty).toLocaleString("vi-VN")}đ` : ""}</td></tr>`
+  ).join("");
+  const totalLine = order.type === "retail"
+    ? `<tr><td style="padding:10px 0;font-weight:700;">Total items</td><td style="padding:10px 0;text-align:right;font-weight:700;">${order.totalItems} pcs</td></tr>`
+    : `<tr><td style="padding:10px 0;font-weight:700;">Total volume</td><td style="padding:10px 0;text-align:right;font-weight:700;">${order.totalKg} kg</td></tr>
+       <tr><td colspan="2" style="padding:2px 0 10px;color:#AD8A4E;">${esc(order.tier.range.en)} · ${esc(order.tier.off.en)}</td></tr>`;
+  const estLine = order.estimatedTotal
+    ? `<tr><td style="padding:6px 0;font-weight:700;color:#AD8A4E;">Estimated total</td><td style="padding:6px 0;text-align:right;font-weight:700;color:#AD8A4E;">${order.estimatedTotal.toLocaleString("vi-VN")}đ</td></tr>` : "";
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice ${esc(order.id)}</title><style>${DOC_STYLE}</style></head>
+    <body>
+      <div class="seal">皇龍</div>
+      <div class="brand">House of Hoàng Long</div>
+      <div class="meta">Invoice · Order ${esc(order.id)}<br/>${esc(new Date().toLocaleString("vi-VN"))}</div>
+      <hr/>
+      <h2>Customer</h2>
+      <p style="font-size:14px;line-height:1.7;margin:0 0 16px;">${esc(order.customerName)}<br/>${esc(order.contact)}${order.taxNumber ? `<br/>Tax No: ${esc(order.taxNumber)}` : ""}</p>
+      <h2>Items</h2>
+      <table>${itemRows}${totalLine}${estLine}</table>
+      ${order.note ? `<p style="font-size:13px;font-style:italic;color:#2E4A40;margin-top:16px;">Note: ${esc(order.note)}</p>` : ""}
+      <hr/>
+      <p style="font-size:11px;color:#2E4A40;">This is a preliminary invoice. Final pricing is confirmed by our team.</p>
+    </body></html>`;
+}
+function buildPackingSlipHtml(order) {
+  const itemRows = order.lines.map((l) =>
+    `<tr><td style="padding:8px 0;width:24px;"><span style="display:inline-block;width:14px;height:14px;border:1.5px solid #AD8A4E;border-radius:3px;"></span></td>
+     <td style="padding:8px 0;">${esc(l.name.en)}</td><td style="padding:8px 0;text-align:right;">${l.qty} ${l.unit === "kg" ? "kg" : l.unit === "pack" ? "pack" : "pcs"}</td></tr>`
+  ).join("");
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Packing Slip ${esc(order.id)}</title><style>${DOC_STYLE}</style></head>
+    <body>
+      <div class="seal">皇龍</div>
+      <div class="brand">House of Hoàng Long</div>
+      <div class="meta">Packing Slip · Order ${esc(order.id)}<br/>${esc(new Date().toLocaleString("vi-VN"))}</div>
+      <hr/>
+      <h2>Ship to</h2>
+      <p style="font-size:14px;line-height:1.7;margin:0 0 16px;">${esc(order.customerName)}<br/>${esc(order.contact)}</p>
+      <h2>Items to pack</h2>
+      <table>${itemRows}</table>
+      <hr/>
+      <h2>Tracking code</h2>
+      <p style="font-size:14px;">${order.trackingCode ? esc(order.trackingCode) : "_________________________"}</p>
+      ${order.note ? `<p style="font-size:13px;font-style:italic;color:#2E4A40;margin-top:16px;">Note: ${esc(order.note)}</p>` : ""}
+      <hr/>
+      <p style="font-size:11px;color:#2E4A40;">Internal document — not shown to the customer.</p>
+    </body></html>`;
+}
+function printHtml(html) {
+  const win = window.open("", "_blank", "width=700,height=900");
+  if (!win) return;
+  win.document.write(html); win.document.close(); win.focus();
+  setTimeout(() => win.print(), 350);
+}
+
+/* ---------- Rendering ---------- */
+const ORDER_LIST_VIEWS = ["orderflow", "orders"]; // views with the type filter + priority legend
+const SEARCH_VIEWS = ["orderflow", "orders", "issues", "tasks", "inventory", "contacts"]; // views with a meaningful search box
+const VIEW_HINTS = {
+  orderflow: () => t().hint, flowmap: () => t().viewFlowMapHint, orders: () => t().viewOrdersHint, tasks: () => t().viewTasksHint,
+  issues: () => t().viewIssuesHint, inventory: () => t().viewInventoryHint, documents: () => t().viewDocumentsHint,
+  reports: () => t().viewReportsHint, templates: () => t().viewTemplatesHint, contacts: () => t().viewContactsHint,
+  settings: () => t().viewSettingsHint,
+};
+
+function renderAll() {
+  const activeNav = NAV_ITEMS.find((n) => n.id === currentView) || NAV_ITEMS[0];
+  document.getElementById("topbarCrumb").textContent = "House of Hoàng Long";
+  document.getElementById("topbarTitle").textContent = t()[activeNav.key];
+  document.getElementById("hintLabel").textContent = (VIEW_HINTS[currentView] || VIEW_HINTS.orderflow)();
+  document.getElementById("footerNote").textContent = t().footer;
+  document.getElementById("themeToggle").innerHTML = icon(theme === "light" ? "moon" : "sun", 14);
+  document.getElementById("hamburgerBtn").innerHTML = icon("menu", 18);
+  document.querySelector(".search-ico").innerHTML = icon("search", 13);
+  document.getElementById("searchInput").placeholder = t().searchPlaceholder;
+  document.getElementById("filterAllBtn").textContent = t().allCategories;
+  document.getElementById("filterWholesaleBtn").textContent = t().wholesale;
+  document.getElementById("filterRetailBtn").textContent = t().retail;
+  document.getElementById("newOrderBtn").textContent = t().addOrder;
+  document.getElementById("newOrderBannerTitle").textContent = t().addOrder.replace(/^\+\s*/, "");
+  document.getElementById("newOrderBannerText").textContent = t().addOrderTip;
+  document.getElementById("newOrderBannerDismiss").textContent = t().gotIt;
+
+  const showOrderControls = ORDER_LIST_VIEWS.includes(currentView);
+  document.getElementById("filterSeg").style.display = showOrderControls ? "" : "none";
+  document.getElementById("legendRow").style.display = showOrderControls ? "" : "none";
+  document.getElementById("searchWrap").style.display = SEARCH_VIEWS.includes(currentView) ? "" : "none";
+  document.getElementById("legendRow").innerHTML = `
+    <span>${t().legendLabel}</span>
+    <span class="legend-item"><span class="priority-dot high"></span>${t().priorityHigh}</span>
+    <span class="legend-item"><span class="priority-dot new"></span>${t().priorityNew}</span>
+    <span class="legend-item"><span class="priority-dot onTrack"></span>${t().priorityOnTrack}</span>`;
+  renderSidebar();
+  renderCurrentView();
+  renderPanel();
+}
+
+function renderSidebar() {
+  const sidebar = document.getElementById("sidebar");
+  sidebar.innerHTML = `
+    <div class="sidebar-brand">
+      <div class="sidebar-seal">皇龍</div>
+      <div><div class="sidebar-brand-name">House of Hoàng Long</div><div class="sidebar-brand-sub">Ops</div></div>
+    </div>
+    <div class="nav-list">
+      ${NAV_ITEMS.map((n) => {
+        const count = n.badgeCount ? n.badgeCount() : null; // real, derived numbers only — never a fake placeholder
+        const isActive = currentView === n.id;
+        return `
+        <button type="button" class="nav-item ${isActive ? "active" : ""}" data-nav="${n.id}">
+          <span class="nav-ico">${icon(n.icon, 15)}</span><span class="nav-label">${t()[n.key]}</span>
+          ${count ? `<span class="nav-count">${count}</span>` : ""}
+        </button>`;
+      }).join("")}
+    </div>
+  `;
+  sidebar.querySelectorAll("[data-nav]").forEach((btn) => btn.addEventListener("click", () => {
+    currentView = btn.dataset.nav;
+    searchQuery = ""; document.getElementById("searchInput").value = "";
+    sidebarOpen = false; document.getElementById("sidebar").classList.remove("open"); document.getElementById("sidebarScrim").classList.remove("show");
+    renderAll();
+  }));
+}
+
+function matchesFilters(o) {
+  if (typeFilter !== "all" && o.type !== typeFilter) return false;
+  if (searchQuery.trim()) {
+    const q = searchQuery.trim().toLowerCase();
+    if (!o.customerName.toLowerCase().includes(q) && !o.id.toLowerCase().includes(q)) return false;
+  }
+  return true;
+}
+function matchesSearch(text) {
+  const q = searchQuery.trim().toLowerCase();
+  if (!q) return true;
+  return String(text || "").toLowerCase().includes(q);
+}
+
+function openOrder(id) {
+  openOrderId = id; activeTab = "checklist"; activeIssueCategory = "all"; docModalKind = "invoice"; renderPanel();
+}
+
+function renderOrderFlowView() {
+  const host = document.getElementById("viewHost");
+  host.innerHTML = `<div class="board" id="board"></div>`;
+  const board = document.getElementById("board");
+  ORDER_STAGES.forEach((stage, stageIdx) => {
+    const stageOrders = ORDERS.filter((o) => o.stage === stage.id && matchesFilters(o)).slice().reverse();
+    // Spine color walks jade → brass across the seven stages, so the column itself hints at
+    // how far along the flow it sits — real information, not decoration.
+    const pct = ORDER_STAGES.length > 1 ? (stageIdx / (ORDER_STAGES.length - 1)) * 100 : 0;
+    const col = document.createElement("div");
+    col.className = "col";
+    col.innerHTML = `
+      <div class="col-spine" style="background:color-mix(in oklab, var(--brassDeep) ${pct}%, var(--jadeSoft))"></div>
+      <div class="col-head">
+        <span class="col-title">${stage.label[lang]}</span>
+        <span class="col-count">${stageOrders.length}</span>
+      </div>
+      <div class="col-body">
+        ${stageOrders.map((o) => {
+          const openIssues = ISSUES.filter((i) => i.orderId === o.id && !i.resolved).length;
+          const totalLine = o.type === "retail"
+            ? `${icon("package", 12)} ${o.totalItems || 0} ${t().pcs}`
+            : `${icon("leaf", 12)} ${o.totalKg || 0} ${t().kg}`;
+          const pr = orderPriority(o);
+          const prLabel = t()["priority" + pr.charAt(0).toUpperCase() + pr.slice(1)];
+          return `<button type="button" class="card ${o.type}" data-open="${o.id}">
+            <div class="card-top">
+              <span class="type-badge ${o.type}">${o.type === "retail" ? t().retail : t().wholesale}</span>
+              <span class="card-flags">
+                ${openIssues > 0 ? `<span class="issue-flag">${icon("alert-triangle", 11)} ${openIssues}</span>` : ""}
+              </span>
+            </div>
+            <div class="card-id-row">
+              <span class="card-name">${esc(o.customerName)}</span>
+              <span class="card-priority ${pr}"><span class="priority-dot ${pr}"></span>${prLabel}</span>
+            </div>
+            <div class="card-meta">${totalLine}</div>
+          </button>`;
+        }).join("") || `<div class="col-empty">—</div>`}
+      </div>`;
+    board.appendChild(col);
+  });
+  board.querySelectorAll("[data-open]").forEach((el) => el.addEventListener("click", () => openOrder(el.dataset.open)));
+}
+
+/* ---------- Other sidebar sections — each a real view over real (or clearly-marked example)
+   data, not a faked page. ---------- */
+function renderCurrentView() {
+  if (currentView === "flowmap") renderFlowMapView();
+  else if (currentView === "orders") renderOrdersView();
+  else if (currentView === "tasks") renderTasksView();
+  else if (currentView === "issues") renderIssuesMasterView();
+  else if (currentView === "inventory") renderInventoryView();
+  else if (currentView === "documents") renderDocumentsMasterView();
+  else if (currentView === "reports") renderReportsView();
+  else if (currentView === "templates") renderTemplatesView();
+  else if (currentView === "contacts") renderContactsView();
+  else if (currentView === "settings") renderSettingsView();
+  else renderOrderFlowView();
+}
+
+/* ---------- Flow Map: the order flow's stages, top to bottom, editable in place. Stage data
+   (ORDER_STAGES / STAGE_CHECKLIST_DEFAULTS / STAGE_GUIDE / STAGE_ICONS) is the same shared state
+   the Order Flow board, the panel stepper, Templates, and Reports all read from — so an edit here
+   shows up the instant you switch to any other tab, no export/import step needed. ---------- */
+function slugify(s) {
+  return String(s || "step").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "step";
+}
+function uniqueStageId(base) {
+  let id = slugify(base), i = 2;
+  while (ORDER_STAGES.some((s) => s.id === id)) { id = slugify(base) + "_" + i; i++; }
+  return id;
+}
+
+function flowNodeHtml(stage, idx) {
+  const checklist = STAGE_CHECKLIST_DEFAULTS[stage.id] || [];
+  const guide = STAGE_GUIDE[stage.id] || { steps: [], keyPoint: { en: "", vi: "" } };
+  const reqDocs = STAGE_REQUIRED_DOCS[stage.id] || [];
+  const inUse = ORDERS.some((o) => o.stage === stage.id);
+  return `
+  <div class="flowmap-node" data-stage="${stage.id}">
+    <div class="flowmap-node-head">
+      <span class="flowmap-node-ico">${icon(STAGE_ICONS[stage.id] || "edit", 15)}</span>
+      <div class="flowmap-node-labels">
+        <input class="text-input flowmap-label-input" data-editlabel="${stage.id}" data-lang="en" value="${esc(stage.label.en)}" placeholder="Stage name">
+      </div>
+      <div class="flowmap-node-controls">
+        <button type="button" class="icon-btn" data-moveup="${stage.id}" title="${t().moveUp}" ${idx === 0 ? "disabled" : ""}>${icon("arrow-up", 14)}</button>
+        <button type="button" class="icon-btn" data-movedown="${stage.id}" title="${t().moveDown}" ${idx === ORDER_STAGES.length - 1 ? "disabled" : ""}>${icon("arrow-down", 14)}</button>
+        <button type="button" class="icon-btn" data-deletestage="${stage.id}" title="${inUse ? t().stageInUse : t().remove}" ${inUse ? "disabled" : ""}>${icon("trash", 14)}</button>
+      </div>
+    </div>
+    <div class="flowmap-node-body">
+      <div class="flowmap-sub">
+        <div class="section-label">${t().checklist}</div>
+        ${checklist.map((it, i2) => `
+          <div class="flowmap-item-row">
+            <input class="text-input" data-checklistedit="${stage.id}" data-idx="${i2}" data-lang="en" value="${esc(it.en)}" placeholder="Checklist item">
+            <button type="button" class="resource-remove" data-checklistremove="${stage.id}" data-idx="${i2}" title="${t().remove}">${icon("x", 13)}</button>
+          </div>`).join("")}
+        <button type="button" class="ghost-btn" data-checklistadd="${stage.id}">+ ${t().addItem}</button>
+      </div>
+      <div class="flowmap-sub">
+        <div class="section-label">${t().guide}</div>
+        ${guide.steps.map((s, i2) => `
+          <div class="flowmap-item-row">
+            <input class="text-input" data-guideedit="${stage.id}" data-idx="${i2}" data-lang="en" value="${esc(s.en)}" placeholder="Guide step">
+            <button type="button" class="resource-remove" data-guideremove="${stage.id}" data-idx="${i2}" title="${t().remove}">${icon("x", 13)}</button>
+          </div>`).join("")}
+        <button type="button" class="ghost-btn" data-guideadd="${stage.id}">+ ${t().addItem}</button>
+        <div class="section-label" style="margin-top:12px;">${t().keyPoint}</div>
+        <div class="flowmap-item-row">
+          <input class="text-input" data-keypointedit="${stage.id}" data-lang="en" value="${esc(guide.keyPoint.en || "")}" placeholder="Key point">
+        </div>
+      </div>
+    </div>
+    <div class="flowmap-legal">
+      <div class="section-label legal"><span class="legal-ico">${icon("alert-triangle", 12)}</span>${t().reqDocsLabel}</div>
+      ${reqDocs.map((d, i2) => `
+        <div class="flowmap-item-row">
+          <input class="text-input" data-reqdocedit="${stage.id}" data-idx="${i2}" data-lang="en" value="${esc(d.en)}" placeholder="Required document">
+          <button type="button" class="resource-remove" data-reqdocremove="${stage.id}" data-idx="${i2}" title="${t().remove}">${icon("x", 13)}</button>
+        </div>`).join("")}
+      <button type="button" class="ghost-btn" data-reqdocadd="${stage.id}">+ ${t().addItem}</button>
+    </div>
+  </div>`;
+}
+
+function legalDisclaimerHtml() {
+  return `
+    <div class="info-note legal-disclaimer">
+      <span>${icon("alert-triangle", 14)}</span>
+      <span><strong>${t().legalDisclaimerTitle}.</strong> ${t().legalDisclaimerText}</span>
+    </div>`;
+}
+
+function renderFlowMapView() {
+  const host = document.getElementById("viewHost");
+  const connector = `<div class="flowmap-connector">${icon("arrow-down", 16)}</div>`;
+  host.innerHTML = `
+    ${legalDisclaimerHtml()}
+    <div class="flowmap-list">
+      ${ORDER_STAGES.map((stage, idx) => flowNodeHtml(stage, idx)).join(connector)}
+      ${connector}
+      <div class="flowmap-node flowmap-add-node">
+        <div class="section-label">${t().addStage}</div>
+        <div class="flowmap-item-row">
+          <input class="text-input" id="newStageEn" placeholder="Stage name">
+          <button type="button" class="ghost-btn" id="addStageBtn">+ ${t().addStage}</button>
+        </div>
+      </div>
+    </div>`;
+  wireFlowMapEvents(host);
+}
+
+function wireFlowMapEvents(host) {
+  host.querySelectorAll("[data-editlabel]").forEach((inp) => inp.addEventListener("change", () => {
+    const stage = ORDER_STAGES.find((s) => s.id === inp.dataset.editlabel);
+    if (stage) stage.label[inp.dataset.lang] = inp.value;
+    renderSidebar(); renderCurrentView(); renderPanel();
+  }));
+
+  host.querySelectorAll("[data-moveup]").forEach((b) => b.addEventListener("click", () => {
+    const idx = ORDER_STAGES.findIndex((s) => s.id === b.dataset.moveup);
+    if (idx > 0) { const [s] = ORDER_STAGES.splice(idx, 1); ORDER_STAGES.splice(idx - 1, 0, s); renderCurrentView(); renderPanel(); }
+  }));
+  host.querySelectorAll("[data-movedown]").forEach((b) => b.addEventListener("click", () => {
+    const idx = ORDER_STAGES.findIndex((s) => s.id === b.dataset.movedown);
+    if (idx < ORDER_STAGES.length - 1) { const [s] = ORDER_STAGES.splice(idx, 1); ORDER_STAGES.splice(idx + 1, 0, s); renderCurrentView(); renderPanel(); }
+  }));
+  host.querySelectorAll("[data-deletestage]").forEach((b) => b.addEventListener("click", () => {
+    const id = b.dataset.deletestage;
+    if (ORDERS.some((o) => o.stage === id)) { showToast(t().stageInUse); return; }
+    const idx = ORDER_STAGES.findIndex((s) => s.id === id);
+    if (idx !== -1) ORDER_STAGES.splice(idx, 1);
+    delete STAGE_CHECKLIST_DEFAULTS[id]; delete STAGE_GUIDE[id]; delete STAGE_ICONS[id]; delete STAGE_REQUIRED_DOCS[id];
+    renderSidebar(); renderCurrentView(); renderPanel();
+  }));
+
+  host.querySelectorAll("[data-checklistedit]").forEach((inp) => inp.addEventListener("change", () => {
+    const list = STAGE_CHECKLIST_DEFAULTS[inp.dataset.checklistedit];
+    if (list) list[Number(inp.dataset.idx)][inp.dataset.lang] = inp.value;
+  }));
+  host.querySelectorAll("[data-checklistadd]").forEach((b) => b.addEventListener("click", () => {
+    const id = b.dataset.checklistadd;
+    STAGE_CHECKLIST_DEFAULTS[id] = STAGE_CHECKLIST_DEFAULTS[id] || [];
+    STAGE_CHECKLIST_DEFAULTS[id].push({ en: "", vi: "" });
+    renderCurrentView();
+  }));
+  host.querySelectorAll("[data-checklistremove]").forEach((b) => b.addEventListener("click", () => {
+    const list = STAGE_CHECKLIST_DEFAULTS[b.dataset.checklistremove];
+    if (list) list.splice(Number(b.dataset.idx), 1);
+    renderCurrentView();
+  }));
+
+  host.querySelectorAll("[data-guideedit]").forEach((inp) => inp.addEventListener("change", () => {
+    const g = STAGE_GUIDE[inp.dataset.guideedit];
+    if (g) g.steps[Number(inp.dataset.idx)][inp.dataset.lang] = inp.value;
+  }));
+  host.querySelectorAll("[data-guideadd]").forEach((b) => b.addEventListener("click", () => {
+    const id = b.dataset.guideadd;
+    STAGE_GUIDE[id] = STAGE_GUIDE[id] || { steps: [], keyPoint: { en: "", vi: "" } };
+    STAGE_GUIDE[id].steps.push({ en: "", vi: "" });
+    renderCurrentView();
+  }));
+  host.querySelectorAll("[data-guideremove]").forEach((b) => b.addEventListener("click", () => {
+    const g = STAGE_GUIDE[b.dataset.guideremove];
+    if (g) g.steps.splice(Number(b.dataset.idx), 1);
+    renderCurrentView();
+  }));
+  host.querySelectorAll("[data-keypointedit]").forEach((inp) => inp.addEventListener("change", () => {
+    const g = STAGE_GUIDE[inp.dataset.keypointedit];
+    if (g) { g.keyPoint = g.keyPoint || { en: "", vi: "" }; g.keyPoint[inp.dataset.lang] = inp.value; }
+  }));
+
+  host.querySelectorAll("[data-reqdocedit]").forEach((inp) => inp.addEventListener("change", () => {
+    const list = STAGE_REQUIRED_DOCS[inp.dataset.reqdocedit];
+    if (list) list[Number(inp.dataset.idx)][inp.dataset.lang] = inp.value;
+  }));
+  host.querySelectorAll("[data-reqdocadd]").forEach((b) => b.addEventListener("click", () => {
+    const id = b.dataset.reqdocadd;
+    STAGE_REQUIRED_DOCS[id] = STAGE_REQUIRED_DOCS[id] || [];
+    STAGE_REQUIRED_DOCS[id].push({ en: "", vi: "" });
+    renderCurrentView();
+  }));
+  host.querySelectorAll("[data-reqdocremove]").forEach((b) => b.addEventListener("click", () => {
+    const list = STAGE_REQUIRED_DOCS[b.dataset.reqdocremove];
+    if (list) list.splice(Number(b.dataset.idx), 1);
+    renderCurrentView();
+  }));
+
+  document.getElementById("addStageBtn").addEventListener("click", () => {
+    const enInput = document.getElementById("newStageEn");
+    const en = enInput.value.trim();
+    if (!en) return;
+    const label = { vi: en, en };
+    const id = uniqueStageId(en);
+    const newStage = { id, label };
+    if (ORDER_STAGES.length > 0) ORDER_STAGES.splice(ORDER_STAGES.length - 1, 0, newStage);
+    else ORDER_STAGES.push(newStage);
+    STAGE_ICONS[id] = "edit";
+    STAGE_CHECKLIST_DEFAULTS[id] = [];
+    STAGE_GUIDE[id] = { steps: [], keyPoint: { en: "", vi: "" } };
+    STAGE_REQUIRED_DOCS[id] = [];
+    renderSidebar(); renderCurrentView(); renderPanel();
+  });
+}
+
+function renderOrdersView() {
+  const host = document.getElementById("viewHost");
+  const rows = ORDERS.filter(matchesFilters);
+  host.innerHTML = rows.length === 0 ? `<p style="font-size:13px;color:var(--jadeSoft);">${t().issuesEmpty}</p>` : `
+    <div class="issues-table-wrap">
+      <table class="issues-table">
+        <thead><tr>
+          <th>${t().colOrder}</th><th>${t().colCustomer}</th><th>${t().colType}</th><th>${t().colStage}</th><th>${t().colPriority}</th><th>${t().colOpenIssues}</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map((o) => {
+            const openIssues = ISSUES.filter((i) => i.orderId === o.id && !i.resolved).length;
+            const pr = orderPriority(o);
+            const prLabel = t()["priority" + pr.charAt(0).toUpperCase() + pr.slice(1)];
+            const stageLabel = ORDER_STAGES.find((s) => s.id === o.stage)?.label[lang] || o.stage;
+            return `<tr data-open="${o.id}">
+              <td><strong>${o.id}</strong>${o.example ? ` <span style="color:var(--jadeSoft);font-weight:400;">· EXAMPLE</span>` : ""}</td>
+              <td>${esc(o.customerName)}</td>
+              <td>${o.type === "retail" ? t().retail : t().wholesale}</td>
+              <td>${stageLabel}</td>
+              <td><span class="card-priority ${pr}" style="display:inline-flex;"><span class="priority-dot ${pr}"></span>${prLabel}</span></td>
+              <td>${openIssues || "—"}</td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>`;
+  host.querySelectorAll("[data-open]").forEach((el) => el.addEventListener("click", () => openOrder(el.dataset.open)));
+}
+
+function renderTasksView() {
+  const host = document.getElementById("viewHost");
+  const all = getAllTasks().filter((tk) => matchesSearch(tk.label));
+  const open = all.filter((tk) => !tk.done);
+  const done = all.filter((tk) => tk.done);
+
+  function proofChip(p, tk, pi) {
+    const isImg = (p.type || "").startsWith("image/");
+    return `<span class="proof-chip">
+      ${isImg ? `<img class="proof-thumb" src="${p.url}" alt="">` : `<span class="proof-file-ico">${icon("file-text", 12)}</span>`}
+      <span class="proof-chip-text">
+        <span class="proof-chip-name">${esc(p.name)}</span>
+        <span class="proof-chip-meta">${t().uploadedBy} ${esc(workerName(p.uploadedBy) || "—")}</span>
+      </span>
+      <button type="button" class="proof-chip-remove" data-proofremove="${tk.id}" data-source="${tk.source}" data-pidx="${pi}" title="${t().remove}">${icon("x", 11)}</button>
+    </span>`;
+  }
+
+  function taskRow(tk) {
+    const meta = tk.source === "checklist" ? `${esc(tk.orderName)} · ${esc(tk.stageLabel)}` : t().standaloneTask;
+    const assigned = !!tk.assigneeId;
+    const mine = tk.assigneeId === currentWorkerId;
+    const proofOpen = expandedProofTaskId === tk.id;
+    return `<div class="task-item ${tk.done ? "done" : ""}">
+      <div class="task-item-main">
+        <button type="button" class="check-box-btn" data-taskdone="${tk.id}" data-source="${tk.source}">
+          <span class="check-box ${tk.done ? "done" : ""}">${tk.done ? icon("check", 12) : ""}</span>
+        </button>
+        <span class="task-text">
+          <span class="check-label ${tk.done ? "done" : ""}">${esc(tk.label)}</span>
+          <span class="task-meta">${meta}</span>
+        </span>
+      </div>
+      <div class="task-controls">
+        <span class="assignee-chip ${assigned ? "assigned" : "open"}">${icon("user", 11)}${assigned ? `${t().assignedTo} ${esc(workerName(tk.assigneeId) || "—")}` : t().unassigned}</span>
+        ${!assigned ? `<button type="button" class="pill-mini" data-claim="${tk.id}" data-source="${tk.source}">${icon("user-plus", 12)}${t().applyForTask}</button>` : ""}
+        ${assigned && mine ? `<button type="button" class="pill-mini" data-release="${tk.id}" data-source="${tk.source}">${t().releaseTask}</button>` : ""}
+        <button type="button" class="pill-mini ${proofOpen ? "active" : ""}" data-prooftoggle="${tk.id}">${icon("paperclip", 12)}${t().proofOfProcess}${tk.proof.length ? ` (${tk.proof.length})` : ""}</button>
+      </div>
+      ${proofOpen ? `
+        <div class="proof-panel">
+          ${tk.proof.length === 0 ? `<p class="proof-empty">${t().noProofYet}</p>` : `<div class="proof-chip-row">${tk.proof.map((p, pi) => proofChip(p, tk, pi)).join("")}</div>`}
+          <label class="ghost-btn proof-upload-btn">
+            ${icon("upload", 13)}${t().addProof}
+            <input type="file" accept="image/*,.pdf" multiple class="proof-file-input" data-proofinput="${tk.id}" data-source="${tk.source}">
+          </label>
+        </div>` : ""}
+    </div>`;
+  }
+
+  const workerOptions = WORKERS.map((w) => `<option value="${w.id}" ${w.id === currentWorkerId ? "selected" : ""}>${esc(w.name)}</option>`).join("");
+
+  host.innerHTML = `
+    <div class="acting-as-row">
+      <span class="acting-as-label">${icon("user", 13)}${t().actingAs}</span>
+      <select class="text-input acting-as-select" id="actingAsSelect">${workerOptions}</select>
+      <span class="acting-as-hint">${t().actingAsHint}</span>
+    </div>
+    ${open.length === 0 && done.length === 0 ? `<p style="font-size:13px;color:var(--jadeSoft);">${t().tasksEmpty}</p>` : ""}
+    ${open.length > 0 ? `<div class="section-label">${t().tasksOpenSection}</div>${open.map(taskRow).join("")}` : ""}
+    <div class="add-row">
+      <input class="text-input" id="newTaskInput" placeholder="${t().newTaskPlaceholder}">
+      <button class="ghost-btn" id="addTaskBtn">+ ${t().addTask}</button>
+    </div>
+    ${done.length > 0 ? `<div class="section-label">${t().tasksDoneSection}</div>${done.map(taskRow).join("")}` : ""}
+  `;
+
+  document.getElementById("actingAsSelect").addEventListener("change", (e) => {
+    currentWorkerId = e.target.value; renderCurrentView();
+  });
+  host.querySelectorAll("[data-taskdone]").forEach((el) => el.addEventListener("click", () => {
+    const id = el.dataset.taskdone, source = el.dataset.source;
+    if (source === "checklist") {
+      const sep = id.lastIndexOf("__");
+      toggleOrderChecklistItem(id.slice(0, sep), Number(id.slice(sep + 2)));
+    } else {
+      const tk = STANDALONE_TASKS.find((s) => s.id === id);
+      if (tk) tk.done = !tk.done;
+      renderCurrentView(); renderSidebar();
+    }
+  }));
+  host.querySelectorAll("[data-claim]").forEach((el) => el.addEventListener("click", () => claimTask(el.dataset.claim, el.dataset.source)));
+  host.querySelectorAll("[data-release]").forEach((el) => el.addEventListener("click", () => releaseTask(el.dataset.release, el.dataset.source)));
+  host.querySelectorAll("[data-prooftoggle]").forEach((el) => el.addEventListener("click", () => {
+    const id = el.dataset.prooftoggle;
+    expandedProofTaskId = expandedProofTaskId === id ? null : id;
+    renderCurrentView();
+  }));
+  host.querySelectorAll("[data-proofinput]").forEach((el) => el.addEventListener("change", () => {
+    if (el.files && el.files.length) addProofToTask(el.dataset.proofinput, el.dataset.source, el.files);
+  }));
+  host.querySelectorAll("[data-proofremove]").forEach((el) => el.addEventListener("click", () => {
+    removeProofFromTask(el.dataset.proofremove, el.dataset.source, Number(el.dataset.pidx));
+  }));
+  document.getElementById("addTaskBtn").addEventListener("click", () => {
+    const input = document.getElementById("newTaskInput");
+    const val = input.value.trim();
+    if (!val) return;
+    STANDALONE_TASKS.push({ id: "task-" + Date.now() + "-" + Math.floor(Math.random() * 1000), label: val, done: false, assigneeId: null, proof: [] });
+    renderCurrentView(); renderSidebar();
+  });
+}
+
+function renderIssuesMasterView() {
+  const host = document.getElementById("viewHost");
+  const filtered = (activeIssueCategoryMaster === "all" ? ISSUES : ISSUES.filter((i) => i.category === activeIssueCategoryMaster))
+    .filter((i) => matchesSearch(i.title));
+  const sorted = [...filtered.filter((i) => !i.resolved), ...filtered.filter((i) => i.resolved)];
+  const catFilterHtml = `
+    <div class="cat-filter-row">
+      <button type="button" class="chip ${activeIssueCategoryMaster === "all" ? "active" : ""}" data-catfilter="all">${t().allCategories}</button>
+      ${ISSUE_CATEGORIES.map((c) => `<button type="button" class="chip ${activeIssueCategoryMaster === c.id ? "active" : ""}" data-catfilter="${c.id}">${c.label[lang]}</button>`).join("")}
+    </div>`;
+  const tableHtml = sorted.length === 0 ? `<p style="font-size:13px;color:var(--jadeSoft);">${t().issuesEmpty}</p>` : `
+    <div class="issues-table-wrap">
+      <table class="issues-table">
+        <thead><tr>
+          <th>${t().colOrderShort}</th><th>${t().colIssueCol}</th><th>${t().category}</th><th>${t().impact}</th><th>${t().suggestedFix}</th><th>${t().escalateTo}</th><th>${t().colActionsCol}</th>
+        </tr></thead>
+        <tbody>
+          ${sorted.map((i) => {
+            const order = ORDERS.find((o) => o.id === i.orderId);
+            return `<tr class="${i.resolved ? "resolved" : ""}">
+              <td>${order ? `<a href="#" data-open="${order.id}" style="color:var(--jade);font-weight:600;text-decoration:none;">${order.id}</a>` : "—"}</td>
+              <td><div class="issue-row-title">${esc(i.title)}</div></td>
+              <td><span class="issue-row-cat">${(ISSUE_CATEGORIES.find((c) => c.id === i.category)?.label[lang]) || i.category}</span></td>
+              <td><span class="impact-badge" style="color:${i.impact === "high" ? "var(--lacquer)" : i.impact === "medium" ? "var(--brassOnPaper)" : "var(--jadeSoft)"};">${i.impact === "high" ? t().high : i.impact === "medium" ? t().medium : t().low}</span></td>
+              <td style="max-width:220px;">${esc(i.suggestedFix) || "—"}</td>
+              <td>${esc(i.escalateTo) || "—"}</td>
+              <td><div class="issue-row-actions">
+                <button class="small-btn" data-resolve="${i.id}">${i.resolved ? t().reopen : t().resolve}</button>
+                <button class="small-btn danger" data-remove="${i.id}">${t().remove}</button>
+              </div></td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>`;
+  host.innerHTML = `${catFilterHtml}${tableHtml}`;
+  host.querySelectorAll("[data-catfilter]").forEach((b) => b.addEventListener("click", () => { activeIssueCategoryMaster = b.dataset.catfilter; renderCurrentView(); }));
+  host.querySelectorAll("[data-open]").forEach((el) => el.addEventListener("click", (e) => { e.preventDefault(); openOrder(el.dataset.open); }));
+  host.querySelectorAll("[data-resolve]").forEach((b) => b.addEventListener("click", () => {
+    const iss = ISSUES.find((x) => x.id === b.dataset.resolve);
+    if (iss) iss.resolved = !iss.resolved;
+    renderCurrentView(); renderSidebar();
+  }));
+  host.querySelectorAll("[data-remove]").forEach((b) => b.addEventListener("click", () => {
+    ISSUES = ISSUES.filter((x) => x.id !== b.dataset.remove);
+    renderCurrentView(); renderSidebar();
+  }));
+}
+
+function renderInventoryView() {
+  const host = document.getElementById("viewHost");
+  const rows = INVENTORY.filter((i) => matchesSearch(i.name[lang]));
+  host.innerHTML = `
+    <div class="info-note"><span>${icon("lightbulb", 14)}</span><span>${t().invExampleNote}</span></div>
+    <div class="issues-table-wrap">
+      <table class="issues-table">
+        <thead><tr><th>${t().colItem}</th><th>${t().colOnHand}</th><th>${t().colReorderAt}</th><th>${t().colStatus}</th></tr></thead>
+        <tbody>
+          ${rows.map((i) => {
+            const low = i.onHand <= i.reorderAt;
+            return `<tr>
+              <td>${esc(i.name[lang])}</td>
+              <td><input type="number" class="text-input" style="width:90px;padding:5px 8px;" min="0" data-invqty="${i.id}" value="${i.onHand}"> ${i.unit[lang]}</td>
+              <td>${i.reorderAt} ${i.unit[lang]}</td>
+              <td><span class="impact-badge" style="color:${low ? "var(--lacquer)" : "var(--jadeSoft)"};">${low ? t().invLow : t().invOk}</span></td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>`;
+  host.querySelectorAll("[data-invqty]").forEach((inp) => inp.addEventListener("change", () => {
+    const item = INVENTORY.find((i) => i.id === inp.dataset.invqty);
+    if (item) item.onHand = Math.max(0, Number(inp.value) || 0);
+    renderCurrentView(); renderSidebar();
+  }));
+}
+
+function renderDocumentsMasterView() {
+  const host = document.getElementById("viewHost");
+  const docs = allDocLogEntries();
+  const resources = allResourceEntries();
+  host.innerHTML = `
+    <div class="doc-columns two-col">
+      <div>
+        <div class="section-label">${t().recentDocsAcrossOrders}</div>
+        ${docs.length === 0 ? `<p style="font-size:12px;color:var(--jadeSoft);">${t().noDocsAnywhere}</p>` : docs.slice(0, 30).map((d) => `
+          <div class="doclog-row">
+            <span class="doclog-kind">${d.action === "printed" ? t().printed : t().generated} — ${d.kind === "invoice" ? t().invoice : t().packingSlip} <a href="#" data-open="${d.orderId}" style="color:var(--jadeSoft);font-weight:400;">(${esc(d.orderName)})</a></span>
+            <span class="doclog-meta">${esc(d.at.toLocaleTimeString(lang === "vi" ? "vi-VN" : "en-US", { hour: "2-digit", minute: "2-digit" }))}</span>
+          </div>`).join("")}
+      </div>
+      <div>
+        <div class="section-label">${t().allResourcesTitle}</div>
+        ${resources.length === 0 ? `<p style="font-size:12px;color:var(--jadeSoft);">${t().noResourcesAnywhere}</p>` : resources.map((r) => `
+          <div class="resource-row">
+            <a class="resource-link" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${icon("link", 13)}<span>${esc(r.label)} · ${esc(r.orderName)}</span></a>
+          </div>`).join("")}
+      </div>
+    </div>`;
+  host.querySelectorAll("[data-open]").forEach((el) => el.addEventListener("click", (e) => { e.preventDefault(); openOrder(el.dataset.open); }));
+}
+
+function renderReportsView() {
+  const host = document.getElementById("viewHost");
+  const totalOrders = ORDERS.length;
+  const openIssuesCount = ISSUES.filter((i) => !i.resolved).length;
+  const inProgress = ORDERS.filter((o) => o.stage !== "completed");
+  let doneItems = 0, totalItems = 0;
+  inProgress.forEach((o) => { effectiveChecklist(o).forEach((it) => { totalItems++; if (it.done) doneItems++; }); });
+  const completionPct = totalItems === 0 ? null : Math.round((doneItems / totalItems) * 100);
+
+  function barSection(title, rows) {
+    const max = Math.max(1, ...rows.map((r) => r.count));
+    return `
+      <div class="section-label">${title}</div>
+      ${rows.length === 0 ? `<p style="font-size:12.5px;color:var(--jadeSoft);">${t().noDataYet}</p>` : rows.map((r) => `
+        <div class="bar-row">
+          <span class="bar-label">${esc(r.label)}</span>
+          <span class="bar-track"><span class="bar-fill" style="width:${(r.count / max) * 100}%"></span></span>
+          <span class="bar-count">${r.count}</span>
+        </div>`).join("")}`;
+  }
+
+  const byStage = ORDER_STAGES.map((s) => ({ label: s.label[lang], count: ORDERS.filter((o) => o.stage === s.id).length })).filter((r) => r.count > 0);
+  const byType = [
+    { label: t().wholesale, count: ORDERS.filter((o) => o.type === "wholesale").length },
+    { label: t().retail, count: ORDERS.filter((o) => o.type === "retail").length },
+  ].filter((r) => r.count > 0);
+  const byCategory = ISSUE_CATEGORIES.map((c) => ({ label: c.label[lang], count: ISSUES.filter((i) => i.category === c.id && !i.resolved).length })).filter((r) => r.count > 0);
+  const byImpact = [
+    { label: t().high, count: ISSUES.filter((i) => i.impact === "high" && !i.resolved).length },
+    { label: t().medium, count: ISSUES.filter((i) => i.impact === "medium" && !i.resolved).length },
+    { label: t().low, count: ISSUES.filter((i) => i.impact === "low" && !i.resolved).length },
+  ].filter((r) => r.count > 0);
+
+  host.innerHTML = `
+    <div class="stat-grid">
+      <div class="meta-item"><div class="meta-label">${t().navOrders}</div><div class="meta-value">${totalOrders}</div></div>
+      <div class="meta-item"><div class="meta-label">${t().issues}</div><div class="meta-value">${openIssuesCount}</div></div>
+      <div class="meta-item"><div class="meta-label">${t().reportChecklistCompletion}</div><div class="meta-value">${completionPct === null ? "—" : completionPct + "%"}</div></div>
+    </div>
+    ${barSection(t().reportOrdersByStage, byStage)}
+    ${barSection(t().reportOrdersByType, byType)}
+    ${barSection(t().reportIssuesByCategory, byCategory)}
+    ${barSection(t().reportIssuesByImpact, byImpact)}
+  `;
+}
+
+function renderTemplatesView() {
+  const host = document.getElementById("viewHost");
+  const checklistHtml = Object.keys(STAGE_CHECKLIST_DEFAULTS).map((stageId) => {
+    const stage = ORDER_STAGES.find((s) => s.id === stageId);
+    const items = STAGE_CHECKLIST_DEFAULTS[stageId];
+    return `<div class="template-stage-block">
+      <div class="template-stage-title">${stage ? stage.label[lang] : stageId}</div>
+      <ul class="guide-steps">${items.map((it) => `<li>${esc(it[lang])}</li>`).join("")}</ul>
+    </div>`;
+  }).join("");
+
+  const guideHtml = Object.keys(STAGE_GUIDE).map((stageId) => {
+    const stage = ORDER_STAGES.find((s) => s.id === stageId);
+    const g = STAGE_GUIDE[stageId];
+    return `<div class="template-stage-block">
+      <div class="template-stage-title">${stage ? stage.label[lang] : stageId}</div>
+      <ol class="guide-steps">${g.steps.map((s) => `<li>${esc(s[lang])}</li>`).join("")}</ol>
+      <div class="guide-keypoint"><span class="icon">${icon("lightbulb", 14)}</span><div class="body"><div class="title">${t().keyPoint}</div>${esc(g.keyPoint[lang])}</div></div>
+    </div>`;
+  }).join("");
+
+  const playbookHtml = `
+    <div class="issues-table-wrap">
+      <table class="issues-table">
+        <thead><tr><th>${t().category}</th><th>${t().colIssueCol}</th><th>${t().impact}</th><th>${t().suggestedFix}</th></tr></thead>
+        <tbody>
+          ${ISSUE_PLAYBOOK.map((p) => `<tr>
+            <td><span class="issue-row-cat">${(ISSUE_CATEGORIES.find((c) => c.id === p.category)?.label[lang]) || p.category}</span></td>
+            <td>${esc(p.title[lang])}</td>
+            <td><span class="impact-badge" style="color:${p.impact === "high" ? "var(--lacquer)" : p.impact === "medium" ? "var(--brassOnPaper)" : "var(--jadeSoft)"};">${p.impact === "high" ? t().high : p.impact === "medium" ? t().medium : t().low}</span></td>
+            <td>${esc(p.suggestedFix[lang])}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+
+  const prereqHtml = `
+    <div class="prereq-grid">
+      ${BUSINESS_PREREQUISITES.map((p) => `
+        <div class="prereq-card">
+          <div class="prereq-name">${esc(p[lang])}</div>
+          <div class="prereq-desc">${esc(p["desc_" + lang])}</div>
+          <div class="prereq-basis"><span class="legal-ico">${icon("alert-triangle", 12)}</span>${t().legalBasisLabel}: ${esc(p.basis)}</div>
+        </div>`).join("")}
+    </div>`;
+
+  const govDocsHtml = Object.keys(STAGE_REQUIRED_DOCS).map((stageId) => {
+    const stage = ORDER_STAGES.find((s) => s.id === stageId);
+    const items = STAGE_REQUIRED_DOCS[stageId];
+    if (!items.length) return "";
+    return `<div class="template-stage-block">
+      <div class="template-stage-title">${stage ? stage.label[lang] : stageId}</div>
+      <ul class="guide-steps">${items.map((it) => `<li>${esc(it[lang])}</li>`).join("")}</ul>
+    </div>`;
+  }).join("") || `<p style="font-size:13px;color:var(--jadeSoft);">${t().noGovDocs}</p>`;
+
+  host.innerHTML = `
+    <div class="section-label">${t().templatesChecklistTitle}</div>
+    ${checklistHtml}
+    <div class="section-label">${t().templatesGuideTitle}</div>
+    ${guideHtml}
+    <div class="section-label">${t().templatesPlaybookTitle}</div>
+    ${playbookHtml}
+    ${legalDisclaimerHtml()}
+    <div class="section-label legal"><span class="legal-ico">${icon("alert-triangle", 12)}</span>${t().businessPrereqTitle}</div>
+    ${prereqHtml}
+    <div class="section-label legal"><span class="legal-ico">${icon("alert-triangle", 12)}</span>${t().templatesGovDocsTitle}</div>
+    ${govDocsHtml}
+  `;
+}
+
+function renderContactsView() {
+  const host = document.getElementById("viewHost");
+  const contacts = allContacts().filter((c) => matchesSearch(c.name) || matchesSearch(c.contact));
+  host.innerHTML = contacts.length === 0 ? `<p style="font-size:13px;color:var(--jadeSoft);">${t().contactsEmpty}</p>` : contacts.map((c) => {
+    const kind = contactKind(c.contact);
+    const orderWord = c.orderIds.length === 1 ? t().orderWord : t().ordersWord;
+    return `<div class="resource-row" style="align-items:center;">
+      <div style="min-width:0;">
+        <div style="font-weight:600;font-size:13px;">${esc(c.name)}</div>
+        <div style="font-size:11.5px;color:var(--jadeSoft);">${esc(c.contact)} · ${c.orderIds.length} ${orderWord}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex:none;">
+        ${kind === "phone" ? `<a class="icon-btn" href="tel:${esc(c.contact)}" title="${t().call}">${icon("phone", 15)}</a>` : ""}
+        ${kind ? `<a class="icon-btn" href="${kind === "phone" ? "sms:" : "mailto:"}${esc(c.contact)}" title="${t().message}">${icon(kind === "phone" ? "message-circle" : "mail", 15)}</a>` : ""}
+        <button type="button" class="icon-btn" data-open="${c.orderIds[c.orderIds.length - 1]}" title="${t().openOrder}">${icon("file-text", 15)}</button>
+      </div>
+    </div>`;
+  }).join("");
+  host.querySelectorAll("[data-open]").forEach((el) => el.addEventListener("click", () => openOrder(el.dataset.open)));
+}
+
+function renderSettingsView() {
+  const host = document.getElementById("viewHost");
+  host.innerHTML = `
+    <div class="section-label">${t().settingsTheme}</div>
+    <div class="chip-row">
+      <button type="button" class="chip with-icon ${theme === "light" ? "active" : ""}" data-settheme="light">${icon("sun", 12)}${t().light}</button>
+      <button type="button" class="chip with-icon ${theme === "dark" ? "active" : ""}" data-settheme="dark">${icon("moon", 12)}${t().dark}</button>
+    </div>
+    <div class="section-label">${t().teamTitle}</div>
+    <div class="team-list">
+      ${WORKERS.map((w) => `
+        <span class="team-chip">${icon("user", 12)}${esc(w.name)}
+          <button type="button" class="team-chip-remove" data-removeworker="${w.id}" title="${t().remove}">${icon("x", 11)}</button>
+        </span>`).join("")}
+    </div>
+    <div class="add-row">
+      <input class="text-input" id="newWorkerInput" placeholder="${t().newWorkerPlaceholder}">
+      <button class="ghost-btn" id="addWorkerBtn">+ ${t().addWorker}</button>
+    </div>
+    <p class="team-example-note">${t().teamExampleNote}</p>
+    <div class="section-label">${t().settingsDataTitle}</div>
+    <div class="info-note"><span>${icon("lightbulb", 14)}</span><span>${t().settingsDataText}</span></div>
+  `;
+  host.querySelectorAll("[data-settheme]").forEach((b) => b.addEventListener("click", () => {
+    theme = b.dataset.settheme; document.body.setAttribute("data-theme", theme); renderAll();
+  }));
+  document.getElementById("addWorkerBtn").addEventListener("click", () => {
+    const input = document.getElementById("newWorkerInput");
+    const val = input.value.trim();
+    if (!val) return;
+    WORKERS.push({ id: "w-" + Date.now() + "-" + Math.floor(Math.random() * 1000), name: val });
+    renderCurrentView();
+  });
+  host.querySelectorAll("[data-removeworker]").forEach((b) => b.addEventListener("click", () => {
+    const id = b.dataset.removeworker;
+    if (WORKERS.length <= 1) { showToast(t().cantRemoveLastWorker); return; }
+    WORKERS = WORKERS.filter((w) => w.id !== id);
+    if (currentWorkerId === id) currentWorkerId = WORKERS[0].id;
+    renderCurrentView();
+  }));
+}
+
+function effectiveChecklist(order) {
+  const saved = order.stageChecklist?.[order.stage];
+  if (saved) return saved;
+  return (STAGE_CHECKLIST_DEFAULTS[order.stage] || []).map((d) => ({ label: d[lang], done: false, assigneeId: null, proof: [] }));
+}
+function saveChecklist(order, items) {
+  order.stageChecklist = { ...(order.stageChecklist || {}), [order.stage]: items };
+  renderCurrentView(); renderPanel();
+}
+
+function renderPanel() {
+  let host = document.getElementById("panelHost");
+  if (host) host.remove();
+  if (!openOrderId) { lastRenderedOrderId = null; return; }
+  const order = ORDERS.find((o) => o.id === openOrderId);
+  if (!order) { openOrderId = null; lastRenderedOrderId = null; return; }
+  const issues = ISSUES.filter((i) => i.orderId === order.id);
+  const openCount = issues.filter((i) => !i.resolved).length;
+  const isFreshOpen = openOrderId !== lastRenderedOrderId;
+  lastRenderedOrderId = openOrderId;
+
+  host = document.createElement("div");
+  host.id = "panelHost";
+  host.className = "panel-overlay";
+  host.addEventListener("click", () => { openOrderId = null; renderPanel(); });
+
+  const currentIdx = ORDER_STAGES.findIndex((s) => s.id === order.stage);
+  const isDone = order.stage === "completed";
+  const stepsHtml = ORDER_STAGES.map((s, idx) => {
+    const cls = idx === currentIdx ? "active" : idx < currentIdx ? "done" : "";
+    const ico = idx < currentIdx ? icon("check", 12) : icon(STAGE_ICONS[s.id], 12);
+    return `<button type="button" class="step-btn ${cls}" data-stage="${s.id}"><span class="step-ico">${ico}</span>${s.label[lang]}</button>`;
+  }).join("");
+
+  const tabsHtml = `
+    <button class="tab-btn ${activeTab === "checklist" ? "active" : ""}" data-tab="checklist">${icon("clipboard-list", 14)} ${t().checklist}</button>
+    <button class="tab-btn ${activeTab === "issues" ? "active" : ""}" data-tab="issues">${icon("alert-triangle", 14)} ${t().issues}${openCount ? ` <span class="tab-badge">${openCount}</span>` : ""}</button>
+    <button class="tab-btn ${activeTab === "documents" ? "active" : ""}" data-tab="documents">${icon("file-text", 14)} ${t().documents}</button>
+    <button class="tab-btn ${activeTab === "guide" ? "active" : ""}" data-tab="guide">${icon("book-open", 14)} ${t().guide}</button>
+  `;
+
+  const kind = contactKind(order.contact);
+  let quickActionsHtml;
+  if (kind === "phone") {
+    quickActionsHtml = `<div class="quick-actions">
+        <a class="quick-btn" href="tel:${esc(order.contact)}"><span class="ico">${icon("phone", 11)}</span>${t().call}</a>
+        <a class="quick-btn" href="sms:${esc(order.contact)}"><span class="ico">${icon("message-circle", 11)}</span>${t().message}</a>
+      </div>`;
+  } else if (kind === "email") {
+    quickActionsHtml = `<div class="quick-actions">
+        <a class="quick-btn" href="mailto:${esc(order.contact)}"><span class="ico">${icon("mail", 11)}</span>${t().message}</a>
+      </div>`;
+  } else {
+    quickActionsHtml = `<p class="quick-actions-empty">${t().noContactMethod}</p>`;
+  }
+
+  let bodyHtml = "";
+  if (activeTab === "checklist") {
+    const items = effectiveChecklist(order);
+    bodyHtml = `
+      ${items.length === 0 ? `<p style="font-size:13px;color:var(--jadeSoft);">${t().checklistEmpty}</p>` : ""}
+      ${items.map((it, idx) => `
+        <button type="button" class="check-item" data-toggle="${idx}">
+          <span class="check-box ${it.done ? "done" : ""}">${it.done ? icon("check", 12) : ""}</span>
+          <span class="check-label ${it.done ? "done" : ""}">${esc(it.label)}</span>
+        </button>`).join("")}
+      <div class="add-row">
+        <input class="text-input" id="newChecklistItem" placeholder="${t().newItem}">
+        <button class="ghost-btn" id="addChecklistBtn">+ ${t().addItem}</button>
+      </div>`;
+  } else if (activeTab === "issues") {
+    const filtered = activeIssueCategory === "all" ? issues : issues.filter((i) => i.category === activeIssueCategory);
+    const sorted = [...filtered.filter((i) => !i.resolved), ...filtered.filter((i) => i.resolved)];
+    const catFilterHtml = `
+      <div class="cat-filter-row">
+        <button type="button" class="chip ${activeIssueCategory === "all" ? "active" : ""}" data-catfilter="all">${t().allCategories}</button>
+        ${ISSUE_CATEGORIES.map((c) => `<button type="button" class="chip ${activeIssueCategory === c.id ? "active" : ""}" data-catfilter="${c.id}">${c.label[lang]}</button>`).join("")}
+      </div>`;
+    const tableHtml = sorted.length === 0 ? "" : `
+      <div class="issues-table-wrap">
+        <table class="issues-table">
+          <thead><tr>
+            <th>${t().colIssueCol}</th><th>${t().category}</th><th>${t().impact}</th><th>${t().suggestedFix}</th><th>${t().escalateTo}</th><th>${t().colActionsCol}</th>
+          </tr></thead>
+          <tbody>
+            ${sorted.map((i) => `
+              <tr class="${i.resolved ? "resolved" : ""}">
+                <td><div class="issue-row-title">${esc(i.title)}</div></td>
+                <td><span class="issue-row-cat">${(ISSUE_CATEGORIES.find((c) => c.id === i.category)?.label[lang]) || i.category}</span></td>
+                <td><span class="impact-badge" style="color:${i.impact === "high" ? "var(--lacquer)" : i.impact === "medium" ? "var(--brassOnPaper)" : "var(--jadeSoft)"};">${i.impact === "high" ? t().high : i.impact === "medium" ? t().medium : t().low}</span></td>
+                <td style="max-width:220px;">${esc(i.suggestedFix) || "—"}</td>
+                <td>${esc(i.escalateTo) || "—"}</td>
+                <td><div class="issue-row-actions">
+                  <button class="small-btn" data-resolve="${i.id}">${i.resolved ? t().reopen : t().resolve}</button>
+                  <button class="small-btn danger" data-remove="${i.id}">${t().remove}</button>
+                </div></td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>`;
+    bodyHtml = `
+      ${issues.length > 0 ? catFilterHtml : ""}
+      ${issues.length === 0 ? `<p style="font-size:13px;color:var(--jadeSoft);">${t().issuesEmpty}</p>` : ""}
+      ${filtered.length === 0 && issues.length > 0 ? `<p style="font-size:13px;color:var(--jadeSoft);">${t().issuesEmpty}</p>` : ""}
+      ${tableHtml}
+      <button class="ghost-btn" id="openIssueForm" style="border-style:dashed;margin-top:12px;">+ ${t().reportIssue}</button>
+      <div id="issueFormHost"></div>
+      <div class="escalate-callout">
+        <span class="icon">${icon("alert-triangle", 15)}</span>
+        <div class="body"><div class="title">${t().escalateWhen}</div>${t().escalateWhenText}</div>
+      </div>`;
+  } else if (activeTab === "documents") {
+    const resources = order.resources || [];
+    const docLog = order.docLog || [];
+    const previewHtml = docModalKind === "invoice" ? buildInvoiceHtml(order) : buildPackingSlipHtml(order);
+    bodyHtml = `
+      <div class="doc-columns">
+        <div class="doc-left">
+          <div class="section-label">${t().quickActionsLabel}</div>
+          <div class="quick-tile-grid">
+            ${kind === "phone" ? `<a class="quick-tile" href="tel:${esc(order.contact)}"><span class="ico">${icon("phone", 13)}</span><span class="lbl">${t().call}</span></a>` : ""}
+            ${kind ? `<a class="quick-tile" href="${kind === "phone" ? "sms:" : "mailto:"}${esc(order.contact)}"><span class="ico">${icon("message-circle", 13)}</span><span class="lbl">${t().message}</span></a>` : ""}
+            <button type="button" class="quick-tile" data-doc="invoice"><span class="ico">${icon("file-text", 13)}</span><span class="lbl">${t().invoice}</span></button>
+            <button type="button" class="quick-tile" data-doc="packing-slip"><span class="ico">${icon("package", 13)}</span><span class="lbl">${t().packingSlip}</span></button>
+          </div>
+
+          <div class="section-label">${t().resources}</div>
+          ${resources.length === 0 ? `<p style="font-size:12px;color:var(--jadeSoft);margin:0 0 8px;">${t().resourcesEmpty}</p>` : ""}
+          ${resources.map((r, idx) => `
+            <div class="resource-row">
+              <a class="resource-link" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${icon("link", 13)}<span>${esc(r.label)}</span></a>
+              <button class="resource-remove" data-removeresource="${idx}" title="${t().remove}">${icon("x", 13)}</button>
+            </div>`).join("")}
+          <div class="add-row">
+            <input class="text-input" id="newResourceLabel" placeholder="${t().resourceLabel}">
+            <input class="text-input" id="newResourceUrl" placeholder="${t().resourceUrl}">
+            <button class="ghost-btn" id="addResourceBtn">+ ${t().addResource}</button>
+          </div>
+
+          <div class="section-label">${t().recentDocuments}</div>
+          ${docLog.length === 0 ? `<p style="font-size:12px;color:var(--jadeSoft);margin:0;">${t().noDocsYet}</p>` : `
+            <div>${docLog.slice(0, 6).map((d) => `
+              <div class="doclog-row">
+                <span class="doclog-kind">${d.action === "printed" ? t().printed : t().generated} — ${d.kind === "invoice" ? t().invoice : t().packingSlip}</span>
+                <span class="doclog-meta">${esc(d.at.toLocaleTimeString(lang === "vi" ? "vi-VN" : "en-US", { hour: "2-digit", minute: "2-digit" }))}</span>
+              </div>`).join("")}</div>`}
+        </div>
+        <div class="doc-right">
+          <div class="doc-kind-switch">
+            <button type="button" class="doc-kind-btn ${docModalKind === "invoice" ? "active" : ""}" data-previewkind="invoice">${t().invoice}</button>
+            <button type="button" class="doc-kind-btn ${docModalKind === "packing-slip" ? "active" : ""}" data-previewkind="packing-slip">${t().packingSlip}</button>
+          </div>
+          <div class="doc-frame-wrap"><iframe srcdoc="${esc(previewHtml)}"></iframe></div>
+          <div class="doc-right-foot"><button class="print-btn" id="printDocBtn">${icon("printer", 15)} ${t().printSave}</button></div>
+        </div>
+      </div>
+      `;
+  } else {
+    const guide = STAGE_GUIDE[order.stage];
+    bodyHtml = !guide ? `<p style="font-size:13px;color:var(--jadeSoft);">${t().guideEmpty}</p>` : `
+      <ol class="guide-steps">${guide.steps.map((s) => `<li>${esc(s[lang])}</li>`).join("")}</ol>
+      <div class="guide-keypoint">
+        <span class="icon">${icon("lightbulb", 15)}</span>
+        <div class="body"><div class="title">${t().keyPoint}</div>${esc(guide.keyPoint[lang])}</div>
+      </div>`;
+  }
+
+  host.innerHTML = `
+    <div class="panel ${isFreshOpen ? "" : "no-anim"}" id="panelEl">
+      <div class="panel-topbar"></div>
+      <div class="panel-head">
+        <div>
+          <p class="panel-crumb">${t().flowLabel} / ${order.stage ? ORDER_STAGES.find((s) => s.id === order.stage)?.label[lang] : ""} / ${order.id}${order.example ? " · EXAMPLE" : ""}</p>
+          <div class="panel-title-row">
+            <h2 class="panel-title">${esc(order.customerName)}</h2>
+            <span class="status-pill ${isDone ? "done" : "inprogress"}">${isDone ? ORDER_STAGES[ORDER_STAGES.length - 1].label[lang] : t().inProgress}</span>
+          </div>
+        </div>
+        <div class="panel-actions">
+          <button class="icon-btn" id="quickPrint" title="${t().invoice}">${icon("printer", 15)}</button>
+          <button class="icon-btn" id="closePanel">${icon("x", 16)}</button>
+        </div>
+      </div>
+
+      <div class="meta-grid">
+        <div class="meta-item"><div class="meta-label">${t().metaOrderId}</div><div class="meta-value">${order.id}</div></div>
+        <div class="meta-item"><div class="meta-label">${t().metaCustomer}</div><div class="meta-value">${esc(order.customerName)}</div></div>
+        <div class="meta-item"><div class="meta-label">${t().metaType}</div><div class="meta-value">${order.type === "retail" ? t().retail : t().wholesale}</div></div>
+        <div class="meta-item"><div class="meta-label">${t().metaContact}</div><div class="meta-value">${esc(order.contact) || "—"}</div></div>
+      </div>
+
+      <div class="stepper-row">
+        <div class="stepper-col">
+          <p class="stepper-label">${t().stage}</p>
+          <div class="stepper">${stepsHtml}</div>
+        </div>
+        ${!isDone ? `<button type="button" class="mark-complete-btn" id="markCompleteBtn">${icon("check", 14)} ${t().markComplete}</button>` : ""}
+      </div>
+
+      ${quickActionsHtml}
+      <div class="tabs">${tabsHtml}</div>
+      <div class="tab-body">${bodyHtml}</div>
+    </div>
+  `;
+  document.body.appendChild(host);
+  const panelEl = host.querySelector(".panel");
+  panelEl.addEventListener("click", (e) => e.stopPropagation());
+  if (isFreshOpen) requestAnimationFrame(() => panelEl.classList.add("shown"));
+
+  host.querySelector("#closePanel").addEventListener("click", () => { openOrderId = null; renderPanel(); });
+  host.querySelector("#quickPrint").addEventListener("click", () => { logDoc(order, "invoice", "printed"); printHtml(buildInvoiceHtml(order)); });
+  const markBtn = host.querySelector("#markCompleteBtn");
+  if (markBtn) markBtn.addEventListener("click", () => { order.stage = "completed"; renderCurrentView(); renderPanel(); });
+  host.querySelectorAll("[data-stage]").forEach((b) => b.addEventListener("click", () => { order.stage = b.dataset.stage; renderCurrentView(); renderPanel(); }));
+  host.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => { activeTab = b.dataset.tab; renderPanel(); }));
+
+  if (activeTab === "checklist") {
+    host.querySelectorAll("[data-toggle]").forEach((b) => b.addEventListener("click", () => {
+      const items = effectiveChecklist(order);
+      const idx = parseInt(b.dataset.toggle, 10);
+      items[idx] = { ...items[idx], done: !items[idx].done };
+      saveChecklist(order, items);
+    }));
+    host.querySelector("#addChecklistBtn").addEventListener("click", () => {
+      const input = host.querySelector("#newChecklistItem");
+      const label = input.value.trim();
+      if (!label) return;
+      saveChecklist(order, [...effectiveChecklist(order), { label, done: false }]);
+    });
+  }
+
+  if (activeTab === "issues") {
+    host.querySelectorAll("[data-catfilter]").forEach((b) => b.addEventListener("click", () => {
+      activeIssueCategory = b.dataset.catfilter; renderPanel();
+    }));
+    host.querySelectorAll("[data-resolve]").forEach((b) => b.addEventListener("click", () => {
+      const i = ISSUES.find((x) => x.id === b.dataset.resolve);
+      i.resolved = !i.resolved;
+      renderCurrentView(); renderPanel();
+    }));
+    host.querySelectorAll("[data-remove]").forEach((b) => b.addEventListener("click", () => {
+      ISSUES = ISSUES.filter((x) => x.id !== b.dataset.remove);
+      renderCurrentView(); renderPanel();
+    }));
+    host.querySelector("#openIssueForm").addEventListener("click", () => renderIssueForm(host, order));
+  }
+
+  if (activeTab === "documents") {
+    host.querySelectorAll("[data-doc]").forEach((b) => b.addEventListener("click", () => {
+      docModalKind = b.dataset.doc;
+      logDoc(order, docModalKind, "generated");
+      renderPanel();
+    }));
+    host.querySelectorAll("[data-previewkind]").forEach((b) => b.addEventListener("click", () => {
+      docModalKind = b.dataset.previewkind;
+      logDoc(order, docModalKind, "generated");
+      renderPanel();
+    }));
+    host.querySelector("#printDocBtn").addEventListener("click", () => {
+      logDoc(order, docModalKind, "printed");
+      printHtml(docModalKind === "invoice" ? buildInvoiceHtml(order) : buildPackingSlipHtml(order));
+      renderPanel();
+    });
+    host.querySelectorAll("[data-removeresource]").forEach((b) => b.addEventListener("click", () => {
+      const idx = parseInt(b.dataset.removeresource, 10);
+      order.resources = (order.resources || []).filter((_, i) => i !== idx);
+      renderPanel();
+    }));
+    host.querySelector("#addResourceBtn").addEventListener("click", () => {
+      const labelInput = host.querySelector("#newResourceLabel");
+      const urlInput = host.querySelector("#newResourceUrl");
+      const label = labelInput.value.trim();
+      let url = urlInput.value.trim();
+      if (!label || !url) return;
+      if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+      order.resources = [...(order.resources || []), { label, url }];
+      renderPanel();
+    });
+  }
+}
+
+function renderIssueForm(host, order) {
+  const formHost = host.querySelector("#issueFormHost");
+  formHost.innerHTML = `
+    <div class="issue-form">
+      <div class="playbook-hint">${t().playbookHint}</div>
+      <div class="chip-row">${ISSUE_PLAYBOOK.map((p, idx) => `<button type="button" class="chip" data-prefill="${idx}">${p.title[lang]}</button>`).join("")}</div>
+      <input class="text-input" id="issueTitle" placeholder="${t().whatWrong}" style="width:100%;margin-bottom:8px;">
+      <div class="field-row">
+        <label class="field-label">${t().category}
+          <select id="issueCategory">${ISSUE_CATEGORIES.map((c) => `<option value="${c.id}">${c.label[lang]}</option>`).join("")}</select>
+        </label>
+        <label class="field-label">${t().impact}
+          <select id="issueImpact"><option value="low">${t().low}</option><option value="medium" selected>${t().medium}</option><option value="high">${t().high}</option></select>
+        </label>
+      </div>
+      <textarea id="issueFix" rows="2" placeholder="${t().howFix}" style="margin-bottom:8px;"></textarea>
+      <input class="text-input" id="issueEscalate" placeholder="${t().whoKnow}" style="width:100%;margin-bottom:10px;">
+      <div style="display:flex;gap:8px;">
+        <button class="ghost-btn" id="saveIssueBtn" style="background:var(--jade);color:var(--paper);border:none;">${t().logIssue}</button>
+        <button class="ghost-btn" id="cancelIssueBtn">${t().cancel}</button>
+      </div>
+    </div>`;
+  formHost.querySelectorAll("[data-prefill]").forEach((chip) => chip.addEventListener("click", () => {
+    const p = ISSUE_PLAYBOOK[parseInt(chip.dataset.prefill, 10)];
+    formHost.querySelector("#issueTitle").value = p.title[lang];
+    formHost.querySelector("#issueCategory").value = p.category;
+    formHost.querySelector("#issueImpact").value = p.impact;
+    formHost.querySelector("#issueFix").value = p.suggestedFix[lang];
+  }));
+  formHost.querySelector("#cancelIssueBtn").addEventListener("click", () => { formHost.innerHTML = ""; });
+  formHost.querySelector("#saveIssueBtn").addEventListener("click", () => {
+    const title = formHost.querySelector("#issueTitle").value.trim();
+    if (!title) return;
+    ISSUES.unshift({
+      id: "i" + (ISSUES.length + 1) + "-" + Date.now().toString(36),
+      orderId: order.id,
+      category: formHost.querySelector("#issueCategory").value,
+      title,
+      impact: formHost.querySelector("#issueImpact").value,
+      suggestedFix: formHost.querySelector("#issueFix").value.trim(),
+      escalateTo: formHost.querySelector("#issueEscalate").value.trim(),
+      resolved: false,
+      createdAt: new Date().toISOString(),
+    });
+    renderCurrentView(); renderPanel();
+    showToast(lang === "vi" ? "Đã ghi nhận vấn đề" : "Issue logged");
+  });
+}
+
+/* ---------- Chrome: sidebar, topbar search/filter, new-order banner, lang/theme ---------- */
+document.getElementById("hamburgerBtn").addEventListener("click", () => {
+  sidebarOpen = !sidebarOpen;
+  document.getElementById("sidebar").classList.toggle("open", sidebarOpen);
+  document.getElementById("sidebarScrim").classList.toggle("show", sidebarOpen);
+});
+document.getElementById("sidebarScrim").addEventListener("click", () => {
+  sidebarOpen = false;
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("sidebarScrim").classList.remove("show");
+});
+document.getElementById("searchInput").addEventListener("input", (e) => { searchQuery = e.target.value; renderCurrentView(); });
+document.getElementById("filterSeg").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-filter]");
+  if (!btn) return;
+  typeFilter = btn.dataset.filter;
+  document.querySelectorAll(".filter-seg-btn").forEach((b) => b.classList.toggle("active", b === btn));
+  renderCurrentView();
+});
+document.getElementById("newOrderBtn").addEventListener("click", () => {
+  newOrderBannerOpen = !newOrderBannerOpen;
+  document.getElementById("newOrderBanner").classList.toggle("show", newOrderBannerOpen);
+});
+document.getElementById("newOrderBannerDismiss").addEventListener("click", () => {
+  newOrderBannerOpen = false;
+  document.getElementById("newOrderBanner").classList.remove("show");
+});
+document.getElementById("themeToggle").addEventListener("click", () => {
+  theme = theme === "light" ? "dark" : "light";
+  document.body.setAttribute("data-theme", theme);
+  renderAll();
+});
+
+renderAll();
+</script>
+</body>
+</html>
