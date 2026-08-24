@@ -745,6 +745,8 @@ const STR = {
     orderCreated: "Order created", orderCreateFailed: "Couldn't create order — try again.",
     ordersLoadFailed: "Couldn't load orders — refresh to retry.",
     stageSaveFailed: "Couldn't save the stage change — try again.",
+    removeOrderConfirm: "Remove the order for {name}? It'll move to the recycle bin (recoverable for 7 days, same as /admin).",
+    orderRemoved: "Order removed", orderRemoveFailed: "Couldn't remove the order — try again.",
     guide: "Guide", keyPoint: "Key point", guideEmpty: "No guide written for this stage yet.",
     call: "Call", message: "Message", noContactMethod: "No phone or email on file for this order.",
     allCategories: "All", escalateWhen: "When to escalate", escalateWhenText: "If an issue is High impact and unresolved for more than a day, or a customer is waiting on it, loop in the family workshop or a senior staff member directly rather than leaving it in the log.",
@@ -819,6 +821,8 @@ const STR = {
     orderCreated: "Đã tạo đơn", orderCreateFailed: "Không tạo được đơn — thử lại nhé.",
     ordersLoadFailed: "Không tải được đơn hàng — làm mới trang để thử lại.",
     stageSaveFailed: "Không lưu được thay đổi giai đoạn — thử lại nhé.",
+    removeOrderConfirm: "Xoá đơn của {name}? Đơn sẽ chuyển vào thùng rác (khôi phục được trong 7 ngày, giống /admin).",
+    orderRemoved: "Đã xoá đơn", orderRemoveFailed: "Không xoá được đơn — thử lại nhé.",
     guide: "Hướng dẫn", keyPoint: "Điểm cần lưu ý", guideEmpty: "Chưa có hướng dẫn cho bước này.",
     call: "Gọi điện", message: "Nhắn tin", noContactMethod: "Đơn này chưa có số điện thoại hoặc email.",
     allCategories: "Tất cả", escalateWhen: "Khi nào cần báo cấp trên", escalateWhenText: "Nếu vấn đề ở mức Cao và chưa xử lý sau hơn một ngày, hoặc khách đang chờ, hãy báo trực tiếp cho xưởng gia đình hoặc nhân viên phụ trách thay vì chỉ ghi vào đây.",
@@ -914,6 +918,24 @@ function setOrderStage(order, stage) {
   }).then((res) => {
     if (!res.ok) throw new Error("request_failed");
   }).catch(() => showToast(t().stageSaveFailed));
+}
+
+// Server side archives the row into deleted_records before deleting it (recoverable there
+// for 7 days, same as a delete from the real /admin dashboard) — see the DELETE handler in
+// app/api/ops/orders/[id]/route.js.
+async function removeOrder(order) {
+  if (!confirm(t().removeOrderConfirm.replace("{name}", order.customerName))) return;
+  try {
+    const res = await fetch(`/api/ops/orders/${order.id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("request_failed");
+    ORDERS = ORDERS.filter((o) => o.id !== order.id);
+    openOrderId = null;
+    renderCurrentView();
+    renderPanel();
+    showToast(t().orderRemoved);
+  } catch {
+    showToast(t().orderRemoveFailed);
+  }
 }
 
 let ISSUES = [
@@ -2136,6 +2158,7 @@ function renderPanel() {
         </div>
         <div class="panel-actions">
           <button class="icon-btn" id="quickPrint" title="${t().invoice}">${icon("printer", 15)}</button>
+          <button class="icon-btn" id="removeOrderBtn" title="${t().remove}">${icon("trash", 15)}</button>
           <button class="icon-btn" id="closePanel">${icon("x", 16)}</button>
         </div>
       </div>
@@ -2167,6 +2190,7 @@ function renderPanel() {
 
   host.querySelector("#closePanel").addEventListener("click", () => { openOrderId = null; renderPanel(); });
   host.querySelector("#quickPrint").addEventListener("click", () => { logDoc(order, "invoice", "printed"); printHtml(buildInvoiceHtml(order)); });
+  host.querySelector("#removeOrderBtn").addEventListener("click", () => removeOrder(order));
   const markBtn = host.querySelector("#markCompleteBtn");
   if (markBtn) markBtn.addEventListener("click", () => { setOrderStage(order, "completed"); renderCurrentView(); renderPanel(); });
   host.querySelectorAll("[data-stage]").forEach((b) => b.addEventListener("click", () => { setOrderStage(order, b.dataset.stage); renderCurrentView(); renderPanel(); }));
