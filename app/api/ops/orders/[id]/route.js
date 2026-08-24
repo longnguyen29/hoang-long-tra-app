@@ -3,6 +3,7 @@ import { OPS_AUTH_COOKIE, isOpsAuthedToken } from "@/lib/ops-auth";
 import { OPS_STAGES } from "@/lib/ops-stages";
 import { OPS_HEALTH_STATES, OPS_WAITING_ON } from "@/lib/ops-health";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logOrderEvent } from "@/lib/ops-events";
 
 // Persists the stage-stepper / "Mark complete" actions and the health/waiting-on control in
 // public/ops/index.html's order panel — two independent things an order can carry (stage is
@@ -24,7 +25,7 @@ export async function PATCH(request, { params }) {
     return Response.json({ ok: false }, { status: 400 });
   }
 
-  const { stage, health, waitingOn, healthNote } = body || {};
+  const { stage, health, waitingOn, healthNote, actor } = body || {};
   const update = {};
 
   if (stage !== undefined) {
@@ -51,7 +52,8 @@ export async function PATCH(request, { params }) {
     return Response.json({ ok: false, error: "empty_update" }, { status: 400 });
   }
 
-  const { data, error } = await createAdminClient()
+  const admin = createAdminClient();
+  const { data, error } = await admin
     .from("orders")
     .update(update)
     .eq("id", id)
@@ -59,6 +61,15 @@ export async function PATCH(request, { params }) {
     .maybeSingle();
   if (error) return Response.json({ ok: false }, { status: 500 });
   if (!data) return Response.json({ ok: false }, { status: 404 });
+
+  if (stage !== undefined) {
+    await logOrderEvent(admin, { orderId: id, kind: "stage_change", message: `Moved to stage: ${stage}`, actor });
+  }
+  if (health !== undefined) {
+    const waitingPart = update.waiting_on ? ` (waiting on ${update.waiting_on})` : "";
+    const notePart = update.health_note ? `: ${update.health_note}` : "";
+    await logOrderEvent(admin, { orderId: id, kind: "health_change", message: `Health set to ${health}${waitingPart}${notePart}`, actor });
+  }
 
   return Response.json({ ok: true, order: data });
 }
@@ -78,6 +89,13 @@ export async function DELETE(request, { params }) {
   const { id } = await params;
   const admin = createAdminClient();
 
+  let actor;
+  try {
+    ({ actor } = await request.json());
+  } catch {
+    // DELETE is sent with no body in most clients; actor is optional either way.
+  }
+
   const { data: row, error: readError } = await admin.from("orders").select("*").eq("id", id).maybeSingle();
   if (readError) return Response.json({ ok: false }, { status: 500 });
   if (!row) return Response.json({ ok: false }, { status: 404 });
@@ -90,6 +108,11 @@ export async function DELETE(request, { params }) {
     deleted_by: "ops-console",
   });
   if (archiveError) return Response.json({ ok: false }, { status: 500 });
+
+  // Logged before the delete, not after — order_events has no FK to orders.id (see the
+  // migration), so writing it before or after makes no functional difference, but "before"
+  // means a crash between the two calls still leaves a record that a deletion was attempted.
+  await logOrderEvent(admin, { orderId: id, kind: "deleted", message: "Order deleted", actor });
 
   const { error: deleteError } = await admin.from("orders").delete().eq("id", id);
   if (deleteError) return Response.json({ ok: false }, { status: 500 });

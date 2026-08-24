@@ -290,6 +290,11 @@
   .health-btn.active.blocked { background: var(--lacquer); color: var(--paperRaised); font-weight: 700; border-color: transparent; }
   .health-detail-row { display: flex; gap: 8px; margin-top: 8px; }
   .health-next { padding: 14px 24px 0; }
+  .activity-list { display: flex; flex-direction: column; gap: 12px; }
+  .activity-row { padding-left: 14px; border-left: 2px solid var(--hairlineStrong); }
+  .activity-time { font-size: 10.5px; color: var(--jadeSoft); margin-bottom: 2px; }
+  .activity-msg { font-size: 13px; color: var(--jade); line-height: 1.5; }
+  .activity-actor { color: var(--jadeSoft); font-weight: 600; }
   .mark-complete-btn { flex: none; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 9px 14px; border-radius: var(--radius-full); border: none; background: var(--jade); color: var(--paper); cursor: pointer; white-space: nowrap; transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
   .mark-complete-btn:hover { box-shadow: var(--shadowMd); transform: translateY(-1px); }
 
@@ -793,6 +798,8 @@ const STR = {
     "waitingOn_us": "Us", "waitingOn_customer": "Customer", "waitingOn_supplier": "Supplier",
     "waitingOn_production": "Production", "waitingOn_carrier": "Carrier", nextLabel: "Next",
     healthSaveFailed: "Couldn't save — try again.",
+    activity: "Activity", activityLoading: "Loading…", activityEmpty: "Nothing logged yet.",
+    activityLoadFailed: "Couldn't load activity — try again.",
     guide: "Guide", keyPoint: "Key point", guideEmpty: "No guide written for this stage yet.",
     call: "Call", message: "Message", noContactMethod: "No phone or email on file for this order.",
     allCategories: "All", escalateWhen: "When to escalate", escalateWhenText: "If an issue is High impact and unresolved for more than a day, or a customer is waiting on it, loop in the family workshop or a senior staff member directly rather than leaving it in the log.",
@@ -877,6 +884,8 @@ const STR = {
     "waitingOn_us": "Mình", "waitingOn_customer": "Khách hàng", "waitingOn_supplier": "Nhà cung cấp",
     "waitingOn_production": "Sản xuất", "waitingOn_carrier": "Đơn vị vận chuyển", nextLabel: "Tiếp theo",
     healthSaveFailed: "Không lưu được — thử lại nhé.",
+    activity: "Hoạt động", activityLoading: "Đang tải…", activityEmpty: "Chưa có hoạt động nào.",
+    activityLoadFailed: "Không tải được hoạt động — thử lại nhé.",
     guide: "Hướng dẫn", keyPoint: "Điểm cần lưu ý", guideEmpty: "Chưa có hướng dẫn cho bước này.",
     call: "Gọi điện", message: "Nhắn tin", noContactMethod: "Đơn này chưa có số điện thoại hoặc email.",
     allCategories: "Tất cả", escalateWhen: "Khi nào cần báo cấp trên", escalateWhenText: "Nếu vấn đề ở mức Cao và chưa xử lý sau hơn một ngày, hoặc khách đang chờ, hãy báo trực tiếp cho xưởng gia đình hoặc nhân viên phụ trách thay vì chỉ ghi vào đây.",
@@ -988,7 +997,7 @@ function setOrderStage(order, stage) {
   fetch(`/api/ops/orders/${order.id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ stage }),
+    body: JSON.stringify({ stage, actor: currentActor() }),
   }).then((res) => {
     if (!res.ok) throw new Error("request_failed");
   }).catch(() => showToast(t().stageSaveFailed));
@@ -1005,10 +1014,18 @@ function setOrderHealth(order, { health, waitingOn, healthNote }) {
   fetch(`/api/ops/orders/${order.id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ health, waitingOn: order.waitingOn, healthNote: order.healthNote }),
+    body: JSON.stringify({ health, waitingOn: order.waitingOn, healthNote: order.healthNote, actor: currentActor() }),
   }).then((res) => {
     if (!res.ok) throw new Error("request_failed");
   }).catch(() => showToast(t().healthSaveFailed));
+}
+
+function loadOrderEvents(orderId) {
+  fetch(`/api/ops/orders/${orderId}/events`)
+    .then((res) => { if (!res.ok) throw new Error("request_failed"); return res.json(); })
+    .then((body) => { orderEventsCache[orderId] = body.events || []; })
+    .catch(() => { orderEventsCache[orderId] = []; showToast(t().activityLoadFailed); })
+    .finally(() => { if (openOrderId === orderId) renderPanel(); });
 }
 
 // Server side archives the row into deleted_records before deleting it (recoverable there
@@ -1017,7 +1034,11 @@ function setOrderHealth(order, { health, waitingOn, healthNote }) {
 async function removeOrder(order) {
   if (!confirm(t().removeOrderConfirm.replace("{name}", order.customerName))) return;
   try {
-    const res = await fetch(`/api/ops/orders/${order.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/ops/orders/${order.id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actor: currentActor() }),
+    });
     if (!res.ok) throw new Error("request_failed");
     ORDERS = ORDERS.filter((o) => o.id !== order.id);
     openOrderId = null;
@@ -1052,6 +1073,12 @@ let currentWorkerId = WORKERS[0].id;
 function workerName(id) {
   const w = WORKERS.find((w2) => w2.id === id);
   return w ? w.name : null;
+}
+// Attribution for order_events — self-attested via the "acting as" picker (Tasks view), same
+// trust level as task-claim/proof-of-process attribution already in this file. Not a real
+// login; a shared PIN unlocks the whole console, so this can be wrong or stale, not a guarantee.
+function currentActor() {
+  return workerName(currentWorkerId) || "";
 }
 
 // Resolves a task's id+source back to a live read/write handle on the underlying object — either
@@ -1168,6 +1195,7 @@ let activeTab = "checklist";
 let activeIssueCategory = "all";
 let docModalKind = "invoice"; // which kind shows in the Documents tab's live preview column
 let lastRenderedOrderId = null; // fresh-open vs. re-render (checkbox tick etc.) — only fresh opens animate
+let orderEventsCache = {}; // orderId -> events array, fetched lazily the first time its Activity tab opens
 let searchQuery = "";
 let expandedProofTaskId = null; // which task's proof-of-process panel is expanded, in the Tasks view
 let typeFilter = "all"; // "all" | "wholesale" | "retail"
@@ -2164,6 +2192,7 @@ function renderPanel() {
     <button class="tab-btn ${activeTab === "issues" ? "active" : ""}" data-tab="issues">${icon("alert-triangle", 14)} ${t().issues}${openCount ? ` <span class="tab-badge">${openCount}</span>` : ""}</button>
     <button class="tab-btn ${activeTab === "documents" ? "active" : ""}" data-tab="documents">${icon("file-text", 14)} ${t().documents}</button>
     <button class="tab-btn ${activeTab === "guide" ? "active" : ""}" data-tab="guide">${icon("book-open", 14)} ${t().guide}</button>
+    <button class="tab-btn ${activeTab === "activity" ? "active" : ""}" data-tab="activity">${icon("bar-chart", 14)} ${t().activity}</button>
   `;
 
   const kind = contactKind(order.contact);
@@ -2282,7 +2311,7 @@ function renderPanel() {
         </div>
       </div>
       `;
-  } else {
+  } else if (activeTab === "guide") {
     const guide = STAGE_GUIDE[order.stage];
     bodyHtml = !guide ? `<p style="font-size:13px;color:var(--jadeSoft);">${t().guideEmpty}</p>` : `
       <ol class="guide-steps">${guide.steps.map((s) => `<li>${esc(s[lang])}</li>`).join("")}</ol>
@@ -2290,6 +2319,17 @@ function renderPanel() {
         <span class="icon">${icon("lightbulb", 15)}</span>
         <div class="body"><div class="title">${t().keyPoint}</div>${esc(guide.keyPoint[lang])}</div>
       </div>`;
+  } else {
+    const events = orderEventsCache[order.id];
+    bodyHtml = events === undefined
+      ? `<p style="font-size:13px;color:var(--jadeSoft);">${t().activityLoading}</p>`
+      : events.length === 0
+      ? `<p style="font-size:13px;color:var(--jadeSoft);">${t().activityEmpty}</p>`
+      : `<div class="activity-list">${events.map((ev) => `
+          <div class="activity-row">
+            <div class="activity-time">${esc(new Date(ev.created_at).toLocaleString(lang === "vi" ? "vi-VN" : "en-US", { dateStyle: "medium", timeStyle: "short" }))}</div>
+            <div class="activity-msg">${esc(ev.message)}${ev.actor ? ` <span class="activity-actor">— ${esc(ev.actor)}</span>` : ""}</div>
+          </div>`).join("")}</div>`;
   }
 
   host.innerHTML = `
@@ -2363,7 +2403,11 @@ function renderPanel() {
   const markBtn = host.querySelector("#markCompleteBtn");
   if (markBtn) markBtn.addEventListener("click", () => { setOrderStage(order, "completed"); renderAttention(); renderCurrentView(); renderPanel(); });
   host.querySelectorAll("[data-stage]").forEach((b) => b.addEventListener("click", () => { setOrderStage(order, b.dataset.stage); renderAttention(); renderCurrentView(); renderPanel(); }));
-  host.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => { activeTab = b.dataset.tab; renderPanel(); }));
+  host.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => {
+    activeTab = b.dataset.tab;
+    renderPanel();
+    if (activeTab === "activity" && orderEventsCache[order.id] === undefined) loadOrderEvents(order.id);
+  }));
 
   host.querySelectorAll("[data-health]").forEach((b) => b.addEventListener("click", () => {
     setOrderHealth(order, { health: b.dataset.health, waitingOn: order.waitingOn, healthNote: order.healthNote });
@@ -2546,6 +2590,7 @@ function renderNewOrderForm() {
           stage: formHost.querySelector("#newOrderStage").value,
           paymentMethod: formHost.querySelector("#newOrderPaymentMethod").value,
           note: formHost.querySelector("#newOrderNote").value.trim(),
+          actor: currentActor(),
         }),
       });
       if (!res.ok) throw new Error("request_failed");
