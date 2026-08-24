@@ -1,10 +1,14 @@
 import { cookies } from "next/headers";
 import { OPS_AUTH_COOKIE, isOpsAuthedToken } from "@/lib/ops-auth";
 import { OPS_STAGES } from "@/lib/ops-stages";
+import { OPS_HEALTH_STATES, OPS_WAITING_ON } from "@/lib/ops-health";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// Persists the stage-stepper / "Mark complete" actions in public/ops/index.html's order
-// panel. Same PIN-cookie gate and service-role write path as app/api/ops/orders/route.js.
+// Persists the stage-stepper / "Mark complete" actions and the health/waiting-on control in
+// public/ops/index.html's order panel — two independent things an order can carry (stage is
+// where it is in the flow, health is whether it's actually moving). Same PIN-cookie gate and
+// service-role write path as app/api/ops/orders/route.js. Body may include either or both;
+// at least one must be present.
 export async function PATCH(request, { params }) {
   const cookie = (await cookies()).get(OPS_AUTH_COOKIE)?.value;
   if (!(await isOpsAuthedToken(cookie))) {
@@ -13,19 +17,43 @@ export async function PATCH(request, { params }) {
 
   const { id } = await params;
 
-  let stage;
+  let body;
   try {
-    ({ stage } = await request.json());
+    body = await request.json();
   } catch {
     return Response.json({ ok: false }, { status: 400 });
   }
-  if (!OPS_STAGES.includes(stage)) {
-    return Response.json({ ok: false, error: "invalid_stage" }, { status: 400 });
+
+  const { stage, health, waitingOn, healthNote } = body || {};
+  const update = {};
+
+  if (stage !== undefined) {
+    if (!OPS_STAGES.includes(stage)) {
+      return Response.json({ ok: false, error: "invalid_stage" }, { status: 400 });
+    }
+    update.stage = stage;
+  }
+
+  if (health !== undefined) {
+    if (!OPS_HEALTH_STATES.includes(health)) {
+      return Response.json({ ok: false, error: "invalid_health" }, { status: 400 });
+    }
+    if (waitingOn !== undefined && waitingOn !== null && !OPS_WAITING_ON.includes(waitingOn)) {
+      return Response.json({ ok: false, error: "invalid_waiting_on" }, { status: 400 });
+    }
+    update.health = health;
+    update.waiting_on = health === "on_track" ? null : waitingOn ?? null;
+    update.health_note = typeof healthNote === "string" ? healthNote.trim() : "";
+    update.health_changed_at = new Date().toISOString();
+  }
+
+  if (Object.keys(update).length === 0) {
+    return Response.json({ ok: false, error: "empty_update" }, { status: 400 });
   }
 
   const { data, error } = await createAdminClient()
     .from("orders")
-    .update({ stage })
+    .update(update)
     .eq("id", id)
     .select()
     .maybeSingle();

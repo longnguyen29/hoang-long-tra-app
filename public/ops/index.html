@@ -220,7 +220,23 @@
   .card-priority.high { color: var(--lacquer); }
   .card-priority.new { color: var(--brassOnPaper); }
   .card-priority.onTrack { color: var(--jadeSoft); opacity: .7; font-weight: 600; }
+  .health-flag { display: flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700; }
+  .health-flag.waiting { color: var(--brassOnPaper); }
+  .health-flag.blocked { color: var(--lacquer); }
+  .card-next { font-size: 10.5px; color: var(--jadeSoft); margin-top: 6px; line-height: 1.4; }
+  .card-quick-action {
+    display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 10.5px; font-weight: 700;
+    color: var(--brassOnPaper); text-decoration: none;
+  }
+  .card-quick-action:hover { text-decoration: underline; }
 
+  .today-strip {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin: 16px 5vw 14px; padding: 12px 16px;
+    border-radius: var(--radius-md); background: var(--paperDeep); border: 1px solid var(--hairline);
+    font-size: 12.5px; color: var(--jadeSoft);
+  }
+  .today-strip strong { color: var(--jade); font-size: 15px; margin-right: 4px; }
+  .today-strip-value { margin-left: auto; font-weight: 600; color: var(--brassOnPaper); }
   .attention-section { margin: 0 5vw 18px; }
   .attention-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--jade); margin: 0 0 10px; }
   .attention-count { font-size: 11px; font-weight: 700; color: var(--paperRaised); background: var(--lacquer); border-radius: var(--radius-full); padding: 1px 8px; }
@@ -266,6 +282,14 @@
   .step-btn:hover { border-color: var(--brassDeep); }
   .step-btn.done { color: var(--brassOnPaper); border-color: transparent; background: color-mix(in srgb, var(--brass) 16%, transparent); }
   .step-btn.active { background: var(--jade); color: var(--paper); font-weight: 700; border-color: transparent; box-shadow: var(--shadowSm); }
+  .health-row { padding: 14px 24px 0; }
+  .health-toggle { display: flex; gap: 8px; }
+  .health-btn { flex: 0 0 auto; font-size: 11px; font-weight: 600; padding: 7px 12px; border-radius: var(--radius-full); cursor: pointer; border: 1px solid var(--hairline); background: var(--paperDeep); color: var(--jadeSoft); }
+  .health-btn.active.on_track { background: var(--jade); color: var(--paper); font-weight: 700; border-color: transparent; }
+  .health-btn.active.waiting { background: var(--brassDeep); color: var(--paperRaised); font-weight: 700; border-color: transparent; }
+  .health-btn.active.blocked { background: var(--lacquer); color: var(--paperRaised); font-weight: 700; border-color: transparent; }
+  .health-detail-row { display: flex; gap: 8px; margin-top: 8px; }
+  .health-next { padding: 14px 24px 0; }
   .mark-complete-btn { flex: none; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 9px 14px; border-radius: var(--radius-full); border: none; background: var(--jade); color: var(--paper); cursor: pointer; white-space: nowrap; transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
   .mark-complete-btn:hover { box-shadow: var(--shadowMd); transform: translateY(-1px); }
 
@@ -513,6 +537,7 @@
     </div>
 
     <main class="content">
+      <div id="todayStripHost"></div>
       <div id="attentionHost"></div>
       <div class="hint-row" id="hintRow">
         <p class="hint" id="hintLabel"></p>
@@ -544,6 +569,12 @@ const ORDER_STAGES = [
   { id: "shipping", label: { en: "Shipping", vi: "Giao hàng" } },
   { id: "completed", label: { en: "Completed", vi: "Hoàn tất" } },
 ];
+
+// Must match supabase/migrations/0029_v3_order_health.sql's check constraints and
+// lib/ops-health.js exactly — duplicated here since this static file has no build step/imports,
+// same reason ORDER_STAGES above duplicates lib/ops-stages.js.
+const OPS_HEALTH_STATES = ["on_track", "waiting", "blocked"];
+const OPS_WAITING_ON = ["us", "customer", "supplier", "production", "carrier"];
 
 // One icon key per stage (rendered through the icon() line-icon system below, not emoji) — used
 // on both the panel's stage stepper and the mark-complete state so the flow reads as one system.
@@ -755,7 +786,13 @@ const STR = {
     removeOrderConfirm: "Remove the order for {name}? It'll move to the recycle bin (recoverable for 7 days, same as /admin).",
     orderRemoved: "Order removed", orderRemoveFailed: "Couldn't remove the order — try again.",
     attentionTitle: "Needs attention", attentionUnread: "New — not yet reviewed",
-    attentionStale: "Open {h}h — check in",
+    statAttention: "need attention", statOnTrack: "on track", statWaiting: "waiting", statBlocked: "blocked",
+    statActiveValue: "in active orders",
+    healthOnTrack: "On track", healthWaiting: "Waiting", healthBlocked: "Blocked", healthLabel: "Health",
+    waitingOnLabel: "Waiting on", healthNotePlaceholder: "Why? (optional)",
+    "waitingOn_us": "Us", "waitingOn_customer": "Customer", "waitingOn_supplier": "Supplier",
+    "waitingOn_production": "Production", "waitingOn_carrier": "Carrier", nextLabel: "Next",
+    healthSaveFailed: "Couldn't save — try again.",
     guide: "Guide", keyPoint: "Key point", guideEmpty: "No guide written for this stage yet.",
     call: "Call", message: "Message", noContactMethod: "No phone or email on file for this order.",
     allCategories: "All", escalateWhen: "When to escalate", escalateWhenText: "If an issue is High impact and unresolved for more than a day, or a customer is waiting on it, loop in the family workshop or a senior staff member directly rather than leaving it in the log.",
@@ -833,7 +870,13 @@ const STR = {
     removeOrderConfirm: "Xoá đơn của {name}? Đơn sẽ chuyển vào thùng rác (khôi phục được trong 7 ngày, giống /admin).",
     orderRemoved: "Đã xoá đơn", orderRemoveFailed: "Không xoá được đơn — thử lại nhé.",
     attentionTitle: "Cần chú ý", attentionUnread: "Mới — chưa xem",
-    attentionStale: "Đã mở {h} giờ — kiểm tra lại",
+    statAttention: "cần chú ý", statOnTrack: "đang ổn định", statWaiting: "đang chờ", statBlocked: "bị chặn",
+    statActiveValue: "trong các đơn đang xử lý",
+    healthOnTrack: "Đang ổn định", healthWaiting: "Đang chờ", healthBlocked: "Bị chặn", healthLabel: "Tình trạng",
+    waitingOnLabel: "Đang chờ", healthNotePlaceholder: "Vì sao? (tuỳ chọn)",
+    "waitingOn_us": "Mình", "waitingOn_customer": "Khách hàng", "waitingOn_supplier": "Nhà cung cấp",
+    "waitingOn_production": "Sản xuất", "waitingOn_carrier": "Đơn vị vận chuyển", nextLabel: "Tiếp theo",
+    healthSaveFailed: "Không lưu được — thử lại nhé.",
     guide: "Hướng dẫn", keyPoint: "Điểm cần lưu ý", guideEmpty: "Chưa có hướng dẫn cho bước này.",
     call: "Gọi điện", message: "Nhắn tin", noContactMethod: "Đơn này chưa có số điện thoại hoặc email.",
     allCategories: "Tất cả", escalateWhen: "Khi nào cần báo cấp trên", escalateWhenText: "Nếu vấn đề ở mức Cao và chưa xử lý sau hơn một ngày, hoặc khách đang chờ, hãy báo trực tiếp cho xưởng gia đình hoặc nhân viên phụ trách thay vì chỉ ghi vào đây.",
@@ -902,19 +945,25 @@ function mapOrderRow(row) {
     tier: row.tier ?? undefined, estimatedTotal: row.estimated_total ?? undefined,
     taxNumber: row.tax_number || "", note: row.note || "", trackingCode: row.tracking_code || "",
     stage: row.stage, stageChecklist: {}, unread: row.unread, resources: [], docLog: [],
+    health: row.health || "on_track", waitingOn: row.waiting_on || null,
+    healthNote: row.health_note || "", healthChangedAt: row.health_changed_at,
   };
 }
 
-// "Needs attention" surfaces two signals computed purely from data already on the order row —
-// no new schema. A stage-transition timestamp (so this could read "time in this stage" rather
-// than "time since created") doesn't exist yet; ts is the honest signal available today.
-const ATTENTION_STALE_HOURS = 48;
+// "Needs attention" — unread is still the strongest, unconditional signal. The rest reads the
+// real health/waiting-on state (supabase/migrations/0029_v3_order_health.sql) now that it
+// exists, rather than the earlier "time since created" proxy: blocked orders always need a
+// look; waiting orders only once they've actually been waiting a while.
+const ATTENTION_WAITING_HOURS = 24;
 function getAttentionItems() {
   const now = Date.now();
   return ORDERS.filter((o) => o.stage !== "completed").map((o) => {
-    const hoursOpen = o.ts ? (now - new Date(o.ts).getTime()) / 3_600_000 : 0;
     if (o.unread) return { order: o, reason: "unread" };
-    if (hoursOpen >= ATTENTION_STALE_HOURS) return { order: o, reason: "stale", hours: Math.floor(hoursOpen) };
+    if (o.health === "blocked") return { order: o, reason: "blocked" };
+    if (o.health === "waiting") {
+      const hoursWaiting = o.healthChangedAt ? (now - new Date(o.healthChangedAt).getTime()) / 3_600_000 : 0;
+      if (hoursWaiting >= ATTENTION_WAITING_HOURS) return { order: o, reason: "waiting", hours: Math.floor(hoursWaiting) };
+    }
     return null;
   }).filter(Boolean);
 }
@@ -943,6 +992,23 @@ function setOrderStage(order, stage) {
   }).then((res) => {
     if (!res.ok) throw new Error("request_failed");
   }).catch(() => showToast(t().stageSaveFailed));
+}
+
+// Same immediate-mutation-then-persist pattern as setOrderStage above. waitingOn is cleared
+// server-side whenever health is set back to on_track (see the PATCH handler), so it's cleared
+// here too to keep local state matching what the server will actually hold.
+function setOrderHealth(order, { health, waitingOn, healthNote }) {
+  order.health = health;
+  order.waitingOn = health === "on_track" ? null : waitingOn ?? null;
+  order.healthNote = healthNote ?? "";
+  order.healthChangedAt = new Date().toISOString();
+  fetch(`/api/ops/orders/${order.id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ health, waitingOn: order.waitingOn, healthNote: order.healthNote }),
+  }).then((res) => {
+    if (!res.ok) throw new Error("request_failed");
+  }).catch(() => showToast(t().healthSaveFailed));
 }
 
 // Server side archives the row into deleted_records before deleting it (recoverable there
@@ -1340,7 +1406,30 @@ function openOrder(id) {
   openOrderId = id; activeTab = "checklist"; activeIssueCategory = "all"; docModalKind = "invoice"; renderPanel();
 }
 
+function attentionReasonText({ reason, order: o, hours }) {
+  if (reason === "unread") return t().attentionUnread;
+  if (reason === "blocked") return o.healthNote ? `${t().healthBlocked}: ${esc(o.healthNote)}` : t().healthBlocked;
+  return `${t().healthWaiting}${o.waitingOn ? ` (${t()["waitingOn_" + o.waitingOn]})` : ""} · ${hours}h`;
+}
+
 function renderAttention() {
+  const strip = document.getElementById("todayStripHost");
+  const active = ORDERS.filter((o) => o.stage !== "completed");
+  const counts = { attention: getAttentionItems().length, on_track: 0, waiting: 0, blocked: 0 };
+  let totalValue = 0;
+  active.forEach((o) => {
+    counts[o.health] = (counts[o.health] || 0) + 1;
+    totalValue += o.estimatedTotal || 0;
+  });
+  strip.innerHTML = `
+    <div class="today-strip">
+      <span><strong>${counts.attention}</strong> ${t().statAttention}</span>
+      <span><strong>${counts.on_track}</strong> ${t().statOnTrack}</span>
+      <span><strong>${counts.waiting}</strong> ${t().statWaiting}</span>
+      <span><strong>${counts.blocked}</strong> ${t().statBlocked}</span>
+      <span class="today-strip-value">${totalValue.toLocaleString("vi-VN")}đ ${t().statActiveValue}</span>
+    </div>`;
+
   const host = document.getElementById("attentionHost");
   const items = getAttentionItems();
   if (items.length === 0) { host.innerHTML = ""; return; }
@@ -1349,13 +1438,13 @@ function renderAttention() {
     <div class="attention-section">
       <p class="attention-title">${icon("alert-triangle", 14)} ${t().attentionTitle} <span class="attention-count">${items.length}</span></p>
       <div class="attention-grid">
-        ${items.map(({ order: o, reason, hours }) => `
-          <button type="button" class="card ${o.type}" data-open="${o.id}">
+        ${items.map((item) => `
+          <button type="button" class="card ${item.order.type}" data-open="${item.order.id}">
             <div class="card-top">
-              <span class="type-badge ${o.type}">${o.type === "retail" ? t().retail : t().wholesale}</span>
+              <span class="type-badge ${item.order.type}">${item.order.type === "retail" ? t().retail : t().wholesale}</span>
             </div>
-            <div class="card-id-row"><span class="card-name">${esc(o.customerName)}</span></div>
-            <div class="attention-reason">${icon("alert-triangle", 11)} ${reason === "unread" ? t().attentionUnread : t().attentionStale.replace("{h}", hours)}</div>
+            <div class="card-id-row"><span class="card-name">${esc(item.order.customerName)}</span></div>
+            <div class="attention-reason">${icon("alert-triangle", 11)} ${attentionReasonText(item)}</div>
           </button>`).join("")}
       </div>
     </div>`;
@@ -1385,12 +1474,19 @@ function renderOrderFlowView() {
           const totalLine = o.type === "retail"
             ? `${icon("package", 12)} ${o.totalItems || 0} ${t().pcs}`
             : `${icon("leaf", 12)} ${o.totalKg || 0} ${t().kg}`;
+          const priceLine = o.estimatedTotal ? `${o.estimatedTotal.toLocaleString("vi-VN")}đ` : "";
           const pr = orderPriority(o);
           const prLabel = t()["priority" + pr.charAt(0).toUpperCase() + pr.slice(1)];
-          return `<button type="button" class="card ${o.type}" data-open="${o.id}">
+          const keyPoint = STAGE_GUIDE[o.stage]?.keyPoint?.[lang];
+          const kind = contactKind(o.contact);
+          const quickAction = kind === "phone"
+            ? `<a class="card-quick-action" href="sms:${esc(o.contact)}" data-stop>${icon("message-circle", 11)} ${t().message}</a>`
+            : kind === "email" ? `<a class="card-quick-action" href="mailto:${esc(o.contact)}" data-stop>${icon("mail", 11)} ${t().message}</a>` : "";
+          return `<div class="card ${o.type}" data-open="${o.id}">
             <div class="card-top">
               <span class="type-badge ${o.type}">${o.type === "retail" ? t().retail : t().wholesale}</span>
               <span class="card-flags">
+                ${o.health !== "on_track" ? `<span class="health-flag ${o.health}">${icon("alert-triangle", 11)} ${o.health === "blocked" ? t().healthBlocked : t().healthWaiting}</span>` : ""}
                 ${openIssues > 0 ? `<span class="issue-flag">${icon("alert-triangle", 11)} ${openIssues}</span>` : ""}
               </span>
             </div>
@@ -1398,13 +1494,16 @@ function renderOrderFlowView() {
               <span class="card-name">${esc(o.customerName)}</span>
               <span class="card-priority ${pr}"><span class="priority-dot ${pr}"></span>${prLabel}</span>
             </div>
-            <div class="card-meta">${totalLine}</div>
-          </button>`;
+            <div class="card-meta">${totalLine}${priceLine ? ` · ${priceLine}` : ""}</div>
+            ${keyPoint ? `<div class="card-next">${t().nextLabel}: ${esc(keyPoint)}</div>` : ""}
+            ${quickAction}
+          </div>`;
         }).join("") || `<div class="col-empty">—</div>`}
       </div>`;
     board.appendChild(col);
   });
   board.querySelectorAll("[data-open]").forEach((el) => el.addEventListener("click", () => openOrder(el.dataset.open)));
+  board.querySelectorAll("[data-stop]").forEach((el) => el.addEventListener("click", (e) => e.stopPropagation()));
 }
 
 /* ---------- Other sidebar sections — each a real view over real (or clearly-marked example)
@@ -2226,6 +2325,28 @@ function renderPanel() {
         ${!isDone ? `<button type="button" class="mark-complete-btn" id="markCompleteBtn">${icon("check", 14)} ${t().markComplete}</button>` : ""}
       </div>
 
+      <div class="health-row">
+        <p class="stepper-label">${t().healthLabel}</p>
+        <div class="health-toggle">
+          ${OPS_HEALTH_STATES.map((h) => `<button type="button" class="health-btn ${h} ${order.health === h ? "active" : ""}" data-health="${h}">${t()["health" + h.split("_").map((w) => w[0].toUpperCase() + w.slice(1)).join("")]}</button>`).join("")}
+        </div>
+        ${order.health !== "on_track" ? `
+        <div class="health-detail-row">
+          <select class="text-input" id="waitingOnSelect">
+            <option value="">${t().waitingOnLabel}…</option>
+            ${OPS_WAITING_ON.map((w) => `<option value="${w}" ${order.waitingOn === w ? "selected" : ""}>${t()["waitingOn_" + w]}</option>`).join("")}
+          </select>
+          <input class="text-input" id="healthNoteInput" placeholder="${t().healthNotePlaceholder}" value="${esc(order.healthNote || "")}">
+        </div>` : ""}
+      </div>
+      ${STAGE_GUIDE[order.stage]?.keyPoint ? `
+      <div class="health-next">
+        <div class="guide-keypoint">
+          <span class="icon">${icon("lightbulb", 15)}</span>
+          <div class="body"><div class="title">${t().nextLabel}</div>${esc(STAGE_GUIDE[order.stage].keyPoint[lang])}</div>
+        </div>
+      </div>` : ""}
+
       ${quickActionsHtml}
       <div class="tabs">${tabsHtml}</div>
       <div class="tab-body">${bodyHtml}</div>
@@ -2243,6 +2364,21 @@ function renderPanel() {
   if (markBtn) markBtn.addEventListener("click", () => { setOrderStage(order, "completed"); renderAttention(); renderCurrentView(); renderPanel(); });
   host.querySelectorAll("[data-stage]").forEach((b) => b.addEventListener("click", () => { setOrderStage(order, b.dataset.stage); renderAttention(); renderCurrentView(); renderPanel(); }));
   host.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => { activeTab = b.dataset.tab; renderPanel(); }));
+
+  host.querySelectorAll("[data-health]").forEach((b) => b.addEventListener("click", () => {
+    setOrderHealth(order, { health: b.dataset.health, waitingOn: order.waitingOn, healthNote: order.healthNote });
+    renderAttention(); renderCurrentView(); renderPanel();
+  }));
+  const waitingOnSelect = host.querySelector("#waitingOnSelect");
+  if (waitingOnSelect) waitingOnSelect.addEventListener("change", (e) => {
+    setOrderHealth(order, { health: order.health, waitingOn: e.target.value || null, healthNote: order.healthNote });
+    renderAttention(); renderCurrentView(); renderPanel();
+  });
+  const healthNoteInput = host.querySelector("#healthNoteInput");
+  if (healthNoteInput) healthNoteInput.addEventListener("change", (e) => {
+    setOrderHealth(order, { health: order.health, waitingOn: order.waitingOn, healthNote: e.target.value });
+    renderAttention(); renderCurrentView();
+  });
 
   if (activeTab === "checklist") {
     host.querySelectorAll("[data-toggle]").forEach((b) => b.addEventListener("click", () => {
