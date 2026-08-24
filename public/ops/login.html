@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Flow — House of Hoàng Long</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #F7F3EA;
+    --paperRaised: #FFFDF8;
+    --jade: #1C2B24;
+    --jadeSoft: #2E4A40;
+    --brass: #B08D57;
+    --lacquer: #9C3B2E;
+    --hairline: rgba(28,43,36,0.14);
+    --shadowLg: 0 20px 48px rgba(28,43,36,0.16), 0 4px 12px rgba(28,43,36,0.08);
+    --focusRing: 0 0 0 3px rgba(173,138,78,0.35);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --paper: #191512;
+      --paperRaised: #241E19;
+      --jade: #F7F3EA;
+      --jadeSoft: #D9B876;
+      --brass: #D9B876;
+      --lacquer: #E0665F;
+      --hairline: rgba(247,243,234,0.16);
+      --shadowLg: 0 24px 56px rgba(0,0,0,0.5), 0 4px 14px rgba(0,0,0,0.3);
+      --focusRing: 0 0 0 3px rgba(217,184,118,0.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--paper);
+    color: var(--jade);
+    font-family: "Inter", system-ui, sans-serif;
+    padding: 24px;
+  }
+  form {
+    width: 100%;
+    max-width: 320px;
+    background: var(--paperRaised);
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    box-shadow: var(--shadowLg);
+    padding: 32px 28px;
+  }
+  h1 {
+    font-family: "Lora", serif;
+    font-size: 20px;
+    margin: 0 0 4px;
+  }
+  p.sub {
+    margin: 0 0 24px;
+    font-size: 13px;
+    color: var(--jadeSoft);
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin-bottom: 6px;
+  }
+  input {
+    width: 100%;
+    font-size: 18px;
+    letter-spacing: 0.3em;
+    text-align: center;
+    padding: 12px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--hairline);
+    background: var(--paper);
+    color: var(--jade);
+    font-family: "Inter", system-ui, sans-serif;
+  }
+  input:focus {
+    outline: none;
+    box-shadow: var(--focusRing);
+  }
+  button {
+    width: 100%;
+    margin-top: 16px;
+    padding: 11px;
+    border: none;
+    border-radius: 8px;
+    background: var(--brass);
+    color: var(--paperRaised);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.6; cursor: default; }
+  .error {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--lacquer);
+    min-height: 16px;
+  }
+</style>
+</head>
+<body>
+<form id="pinForm">
+  <h1>Order Flow</h1>
+  <p class="sub">Enter the ops PIN to continue.</p>
+  <label for="pin">PIN</label>
+  <input id="pin" name="pin" type="password" inputmode="numeric" autocomplete="off" autofocus>
+  <button id="submitBtn" type="submit">Unlock</button>
+  <div class="error" id="errorMsg"></div>
+</form>
+<script>
+  const form = document.getElementById("pinForm");
+  const pinInput = document.getElementById("pin");
+  const submitBtn = document.getElementById("submitBtn");
+  const errorMsg = document.getElementById("errorMsg");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    errorMsg.textContent = "";
+    try {
+      const res = await fetch("/api/ops-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin: pinInput.value }),
+      });
+      if (res.ok) {
+        const isOpsHost = window.location.hostname.startsWith("ops.");
+        window.location.href = isOpsHost ? "/" : "/ops";
+        return;
+      }
+      errorMsg.textContent = res.status === 503
+        ? "Ops console isn't configured yet — ask an admin to set OPS_PIN."
+        : "Wrong PIN.";
+    } catch {
+      errorMsg.textContent = "Network error — try again.";
+    } finally {
+      submitBtn.disabled = false;
+      pinInput.select();
+    }
+  });
+</script>
+</body>
+</html>
