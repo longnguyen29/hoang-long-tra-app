@@ -498,7 +498,11 @@
     </div>
 
     <div class="new-order-banner" id="newOrderBanner">
-      <div class="body"><div class="title" id="newOrderBannerTitle"></div><span id="newOrderBannerText"></span></div>
+      <div class="body">
+        <div class="title" id="newOrderBannerTitle"></div>
+        <div id="newOrderFormHost"></div>
+        <span id="newOrderBannerText"></span>
+      </div>
       <button id="newOrderBannerDismiss"></button>
     </div>
 
@@ -723,7 +727,7 @@ const ISSUE_PLAYBOOK = [
 const STR = {
   en: {
     hint: "Click any card to open it — checklist, issues, and documents for that order.",
-    footer: "Living tracker — tell Claude in chat to add real orders, log issues, or adjust stages. Same model as the in-app Order Flow branch.",
+    footer: "Orders are live (Supabase-backed). Issues, tasks, and inventory below are still session-only examples.",
     checklist: "Checklist", issues: "Issues", documents: "Documents",
     checklistEmpty: "No checklist items for this stage yet.", addItem: "Add item", newItem: "New checklist item…",
     issuesEmpty: "No issues logged for this order.", reportIssue: "Report an issue", whatWrong: "What went wrong?",
@@ -734,7 +738,15 @@ const STR = {
     docsHint: "Generate a preview, then print or save as PDF.", invoice: "Generate Invoice", packingSlip: "Generate Packing Slip",
     printSave: "Print / Save as PDF", stage: "Stage", retail: "Shop", wholesale: "Build an Order",
     kg: "kg", pcs: "pcs", addOrder: "+ New Order",
-    addOrderTip: "Tell Claude in chat — e.g. \"Add a wholesale order for [customer], currently at [stage]\" — and it'll be added here.",
+    addOrderTip: "Or tell Claude in chat — e.g. \"Add a wholesale order for [customer], currently at [stage]\" — and it'll be added here too.",
+    newOrderCustomer: "Customer name", newOrderContact: "Phone or email", newOrderTypeLabel: "Type",
+    newOrderTypeWholesale: "Wholesale", newOrderTypeRetail: "Retail", newOrderPayment: "Payment method",
+    paymentQr: "QR transfer", paymentCash: "Cash", newOrderNote: "Note (optional)", createOrder: "Create order",
+    orderCreated: "Order created", orderCreateFailed: "Couldn't create order — try again.",
+    ordersLoadFailed: "Couldn't load orders — refresh to retry.",
+    stageSaveFailed: "Couldn't save the stage change — try again.",
+    removeOrderConfirm: "Remove the order for {name}? It'll move to the recycle bin (recoverable for 7 days, same as /admin).",
+    orderRemoved: "Order removed", orderRemoveFailed: "Couldn't remove the order — try again.",
     guide: "Guide", keyPoint: "Key point", guideEmpty: "No guide written for this stage yet.",
     call: "Call", message: "Message", noContactMethod: "No phone or email on file for this order.",
     allCategories: "All", escalateWhen: "When to escalate", escalateWhenText: "If an issue is High impact and unresolved for more than a day, or a customer is waiting on it, loop in the family workshop or a senior staff member directly rather than leaving it in the log.",
@@ -791,7 +803,7 @@ const STR = {
   },
   vi: {
     hint: "Nhấn vào thẻ đơn hàng để mở — checklist, vấn đề và giấy tờ cho đơn đó.",
-    footer: "Tài liệu sống — nhắn Claude để thêm đơn thật, ghi nhận vấn đề, hoặc chỉnh giai đoạn. Cùng mô hình với nhánh Order Flow trong ứng dụng.",
+    footer: "Đơn hàng đã kết nối Supabase, dữ liệu thật. Vấn đề, công việc và tồn kho bên dưới vẫn là dữ liệu mẫu trong phiên này.",
     checklist: "Checklist", issues: "Vấn đề", documents: "Giấy tờ",
     checklistEmpty: "Chưa có mục checklist cho bước này.", addItem: "Thêm mục", newItem: "Mục checklist mới…",
     issuesEmpty: "Chưa ghi nhận vấn đề nào cho đơn này.", reportIssue: "Báo cáo vấn đề", whatWrong: "Đã xảy ra chuyện gì?",
@@ -802,7 +814,15 @@ const STR = {
     docsHint: "Tạo bản xem trước, sau đó in hoặc lưu thành PDF.", invoice: "Tạo hoá đơn", packingSlip: "Tạo phiếu đóng gói",
     printSave: "In / Lưu thành PDF", stage: "Giai đoạn", retail: "Cửa hàng", wholesale: "Tạo đơn hàng",
     kg: "kg", pcs: "cái", addOrder: "+ Đơn mới",
-    addOrderTip: "Nhắn Claude trong chat — vd: \"Thêm đơn sỉ cho [khách], hiện ở [giai đoạn]\" — mình sẽ thêm vào đây.",
+    addOrderTip: "Hoặc nhắn Claude trong chat — vd: \"Thêm đơn sỉ cho [khách], hiện ở [giai đoạn]\" — mình cũng sẽ thêm vào đây.",
+    newOrderCustomer: "Tên khách hàng", newOrderContact: "Số điện thoại hoặc email", newOrderTypeLabel: "Loại đơn",
+    newOrderTypeWholesale: "Bán sỉ", newOrderTypeRetail: "Bán lẻ", newOrderPayment: "Phương thức thanh toán",
+    paymentQr: "Chuyển khoản QR", paymentCash: "Tiền mặt", newOrderNote: "Ghi chú (tuỳ chọn)", createOrder: "Tạo đơn",
+    orderCreated: "Đã tạo đơn", orderCreateFailed: "Không tạo được đơn — thử lại nhé.",
+    ordersLoadFailed: "Không tải được đơn hàng — làm mới trang để thử lại.",
+    stageSaveFailed: "Không lưu được thay đổi giai đoạn — thử lại nhé.",
+    removeOrderConfirm: "Xoá đơn của {name}? Đơn sẽ chuyển vào thùng rác (khôi phục được trong 7 ngày, giống /admin).",
+    orderRemoved: "Đã xoá đơn", orderRemoveFailed: "Không xoá được đơn — thử lại nhé.",
     guide: "Hướng dẫn", keyPoint: "Điểm cần lưu ý", guideEmpty: "Chưa có hướng dẫn cho bước này.",
     call: "Gọi điện", message: "Nhắn tin", noContactMethod: "Đơn này chưa có số điện thoại hoặc email.",
     allCategories: "Tất cả", escalateWhen: "Khi nào cần báo cấp trên", escalateWhenText: "Nếu vấn đề ở mức Cao và chưa xử lý sau hơn một ngày, hoặc khách đang chờ, hãy báo trực tiếp cho xưởng gia đình hoặc nhân viên phụ trách thay vì chỉ ghi vào đây.",
@@ -859,33 +879,64 @@ const STR = {
   },
 };
 
-/* ---------- Example orders — clearly marked, replace with real ones via chat ---------- */
-let ORDERS = [
-  {
-    id: "ORD-1001", type: "wholesale", customerName: "Trần Văn A", contact: "090xxxxxxx",
-    lines: [{ name: { en: "Oolong", vi: "Ô Long" }, qty: 100, unit: "kg", price: 300000 }],
-    totalKg: 100, tier: { range: { en: "Under 200 kg", vi: "Dưới 200kg" }, off: { en: "Base price", vi: "Giá gốc" } },
-    estimatedTotal: 30000000, taxNumber: "", note: "", trackingCode: "",
-    stage: "prepare_materials", stageChecklist: {}, unread: true, example: true,
-    resources: [{ label: "Order thread (Zalo)", url: "https://zalo.me/" }], docLog: [],
-  },
-  {
-    id: "ORD-1002", type: "retail", customerName: "Chị Lan (Hà Nội)", contact: "lan@example.com",
-    lines: [{ name: { en: "Shan Tuyet Gift Set", vi: "Bộ quà Shan Tuyết" }, qty: 1, unit: "pack", price: 450000 }],
-    totalItems: 1, estimatedTotal: 450000, taxNumber: "", note: "Gói quà giúp mình nhé",
-    trackingCode: "VN1234567", stage: "shipping",
-    stageChecklist: { shipping: [{ label: "Book courier & get tracking code", done: true }, { label: "Photo of packed parcel", done: false }] },
-    unread: false, example: true, resources: [], docLog: [],
-  },
-  {
-    id: "ORD-1003", type: "wholesale", customerName: "Công ty Xanh", contact: "buyer@congtyxanh.vn",
-    lines: [{ name: { en: "Shan Tuyet", vi: "Shan Tuyết" }, qty: 50, unit: "kg", price: 280000 }],
-    totalKg: 50, tier: { range: { en: "Under 200 kg", vi: "Dưới 200kg" }, off: { en: "Base price", vi: "Giá gốc" } },
-    estimatedTotal: 14000000, taxNumber: "0312345678", note: "", trackingCode: "",
-    stage: "new_order", stageChecklist: {}, unread: true, example: true,
-    resources: [], docLog: [],
-  },
-];
+/* ---------- Orders — loaded from Supabase via /api/ops/orders, see loadOrders() near the
+ * bottom of this script. Empty until that first load resolves. ---------- */
+let ORDERS = [];
+let ordersLoadError = null;
+
+function mapOrderRow(row) {
+  return {
+    id: row.id, type: row.type, customerName: row.customer_name, contact: row.contact,
+    lines: row.lines || [], totalKg: row.total_kg ?? undefined, totalItems: row.total_items ?? undefined,
+    tier: row.tier ?? undefined, estimatedTotal: row.estimated_total ?? undefined,
+    taxNumber: row.tax_number || "", note: row.note || "", trackingCode: row.tracking_code || "",
+    stage: row.stage, stageChecklist: {}, unread: row.unread, resources: [], docLog: [],
+  };
+}
+
+async function loadOrders() {
+  ordersLoadError = null;
+  try {
+    const res = await fetch("/api/ops/orders");
+    if (!res.ok) throw new Error("request_failed");
+    const body = await res.json();
+    ORDERS = (body.orders || []).map(mapOrderRow);
+  } catch {
+    ordersLoadError = true;
+  }
+}
+
+// Mutates locally first for instant feedback (matches every other in-place order edit in this
+// file), then persists — a failed PATCH surfaces as a toast rather than silently reverting,
+// since this is a single shared-PIN tool with no per-user undo/retry queue to build against.
+function setOrderStage(order, stage) {
+  order.stage = stage;
+  fetch(`/api/ops/orders/${order.id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ stage }),
+  }).then((res) => {
+    if (!res.ok) throw new Error("request_failed");
+  }).catch(() => showToast(t().stageSaveFailed));
+}
+
+// Server side archives the row into deleted_records before deleting it (recoverable there
+// for 7 days, same as a delete from the real /admin dashboard) — see the DELETE handler in
+// app/api/ops/orders/[id]/route.js.
+async function removeOrder(order) {
+  if (!confirm(t().removeOrderConfirm.replace("{name}", order.customerName))) return;
+  try {
+    const res = await fetch(`/api/ops/orders/${order.id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("request_failed");
+    ORDERS = ORDERS.filter((o) => o.id !== order.id);
+    openOrderId = null;
+    renderCurrentView();
+    renderPanel();
+    showToast(t().orderRemoved);
+  } catch {
+    showToast(t().orderRemoveFailed);
+  }
+}
 
 let ISSUES = [
   { id: "i1", orderId: "ORD-1003", category: "material", title: "Shan Tuyết sắp hết trong kho", impact: "high",
@@ -2107,6 +2158,7 @@ function renderPanel() {
         </div>
         <div class="panel-actions">
           <button class="icon-btn" id="quickPrint" title="${t().invoice}">${icon("printer", 15)}</button>
+          <button class="icon-btn" id="removeOrderBtn" title="${t().remove}">${icon("trash", 15)}</button>
           <button class="icon-btn" id="closePanel">${icon("x", 16)}</button>
         </div>
       </div>
@@ -2138,9 +2190,10 @@ function renderPanel() {
 
   host.querySelector("#closePanel").addEventListener("click", () => { openOrderId = null; renderPanel(); });
   host.querySelector("#quickPrint").addEventListener("click", () => { logDoc(order, "invoice", "printed"); printHtml(buildInvoiceHtml(order)); });
+  host.querySelector("#removeOrderBtn").addEventListener("click", () => removeOrder(order));
   const markBtn = host.querySelector("#markCompleteBtn");
-  if (markBtn) markBtn.addEventListener("click", () => { order.stage = "completed"; renderCurrentView(); renderPanel(); });
-  host.querySelectorAll("[data-stage]").forEach((b) => b.addEventListener("click", () => { order.stage = b.dataset.stage; renderCurrentView(); renderPanel(); }));
+  if (markBtn) markBtn.addEventListener("click", () => { setOrderStage(order, "completed"); renderCurrentView(); renderPanel(); });
+  host.querySelectorAll("[data-stage]").forEach((b) => b.addEventListener("click", () => { setOrderStage(order, b.dataset.stage); renderCurrentView(); renderPanel(); }));
   host.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => { activeTab = b.dataset.tab; renderPanel(); }));
 
   if (activeTab === "checklist") {
@@ -2257,6 +2310,75 @@ function renderIssueForm(host, order) {
   });
 }
 
+function renderNewOrderForm() {
+  const formHost = document.getElementById("newOrderFormHost");
+  formHost.innerHTML = `
+    <div class="issue-form">
+      <div class="field-row">
+        <input class="text-input" id="newOrderCustomer" placeholder="${t().newOrderCustomer}" style="width:100%;margin-bottom:8px;">
+      </div>
+      <div class="field-row">
+        <input class="text-input" id="newOrderContact" placeholder="${t().newOrderContact}" style="width:100%;margin-bottom:8px;">
+      </div>
+      <div class="field-row">
+        <label class="field-label">${t().newOrderTypeLabel}
+          <select class="text-input" id="newOrderType">
+            <option value="wholesale">${t().newOrderTypeWholesale}</option>
+            <option value="retail">${t().newOrderTypeRetail}</option>
+          </select>
+        </label>
+        <label class="field-label">${t().stage}
+          <select class="text-input" id="newOrderStage">${ORDER_STAGES.map((s) => `<option value="${s.id}">${s.label[lang]}</option>`).join("")}</select>
+        </label>
+      </div>
+      <div class="field-row">
+        <label class="field-label">${t().newOrderPayment}
+          <select class="text-input" id="newOrderPaymentMethod">
+            <option value="qr">${t().paymentQr}</option>
+            <option value="cash">${t().paymentCash}</option>
+          </select>
+        </label>
+      </div>
+      <textarea id="newOrderNote" rows="2" placeholder="${t().newOrderNote}" style="margin-bottom:8px;"></textarea>
+      <div style="display:flex;gap:8px;">
+        <button class="ghost-btn" id="submitNewOrderBtn" style="background:var(--jade);color:var(--paper);border:none;">${t().createOrder}</button>
+      </div>
+    </div>`;
+
+  formHost.querySelector("#submitNewOrderBtn").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const customerName = formHost.querySelector("#newOrderCustomer").value.trim();
+    const contact = formHost.querySelector("#newOrderContact").value.trim();
+    if (!customerName || !contact) return;
+
+    btn.disabled = true;
+    try {
+      const res = await fetch("/api/ops/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerName, contact,
+          type: formHost.querySelector("#newOrderType").value,
+          stage: formHost.querySelector("#newOrderStage").value,
+          paymentMethod: formHost.querySelector("#newOrderPaymentMethod").value,
+          note: formHost.querySelector("#newOrderNote").value.trim(),
+        }),
+      });
+      if (!res.ok) throw new Error("request_failed");
+      const body = await res.json();
+      ORDERS.unshift(mapOrderRow(body.order));
+      newOrderBannerOpen = false;
+      document.getElementById("newOrderBanner").classList.remove("show");
+      formHost.innerHTML = "";
+      renderCurrentView();
+      showToast(t().orderCreated);
+    } catch {
+      showToast(t().orderCreateFailed);
+      btn.disabled = false;
+    }
+  });
+}
+
 /* ---------- Chrome: sidebar, topbar search/filter, new-order banner, lang/theme ---------- */
 document.getElementById("hamburgerBtn").addEventListener("click", () => {
   sidebarOpen = !sidebarOpen;
@@ -2279,10 +2401,12 @@ document.getElementById("filterSeg").addEventListener("click", (e) => {
 document.getElementById("newOrderBtn").addEventListener("click", () => {
   newOrderBannerOpen = !newOrderBannerOpen;
   document.getElementById("newOrderBanner").classList.toggle("show", newOrderBannerOpen);
+  if (newOrderBannerOpen) renderNewOrderForm();
 });
 document.getElementById("newOrderBannerDismiss").addEventListener("click", () => {
   newOrderBannerOpen = false;
   document.getElementById("newOrderBanner").classList.remove("show");
+  document.getElementById("newOrderFormHost").innerHTML = "";
 });
 document.getElementById("themeToggle").addEventListener("click", () => {
   theme = theme === "light" ? "dark" : "light";
@@ -2290,7 +2414,12 @@ document.getElementById("themeToggle").addEventListener("click", () => {
   renderAll();
 });
 
-renderAll();
+(async () => {
+  document.getElementById("viewHost").innerHTML = `<p class="hint">${lang === "vi" ? "Đang tải…" : "Loading…"}</p>`;
+  await loadOrders();
+  if (ordersLoadError) showToast(t().ordersLoadFailed);
+  renderAll();
+})();
 </script>
 </body>
 </html>

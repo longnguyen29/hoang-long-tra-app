@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
-import { OPS_AUTH_COOKIE, opsAuthToken } from "@/lib/ops-auth";
+import { OPS_AUTH_COOKIE, isOpsAuthedToken } from "@/lib/ops-auth";
 
 // ops.hoanglongtra.com routes to the internal ops console (public/ops/index.html) — a
 // self-contained static file, not a real authenticated route yet, so it's handled here
@@ -9,13 +9,6 @@ import { OPS_AUTH_COOKIE, opsAuthToken } from "@/lib/ops-auth";
 // Gated by a single shared PIN (OPS_PIN) rather than real accounts, same tier as the console
 // itself — see public/ops/login.html and app/api/ops-auth/route.js. No OPS_PIN configured
 // means no cookie can ever match, so the console fails closed rather than open.
-async function isOpsAuthed(request) {
-  const opsPin = process.env.OPS_PIN;
-  if (!opsPin) return false;
-  const cookie = request.cookies.get(OPS_AUTH_COOKIE)?.value;
-  return !!cookie && cookie === (await opsAuthToken(opsPin));
-}
-
 export default async function proxy(request) {
   const host = request.headers.get("host") || "";
   const pathname = request.nextUrl.pathname;
@@ -23,7 +16,8 @@ export default async function proxy(request) {
   const isOpsPath = pathname === "/ops" || pathname === "/ops/";
 
   if (isOpsHost || isOpsPath) {
-    if (!(await isOpsAuthed(request))) {
+    const cookie = request.cookies.get(OPS_AUTH_COOKIE)?.value;
+    if (!(await isOpsAuthedToken(cookie))) {
       if (isOpsHost) {
         const url = request.nextUrl.clone();
         url.pathname = "/ops/login.html";
