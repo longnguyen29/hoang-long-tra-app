@@ -181,14 +181,14 @@
   .legend-row { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--jadeSoft); flex-wrap: wrap; }
   .legend-item { display: flex; align-items: center; gap: 4px; }
 
-  .priority-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
-  .priority-dot.high { background: var(--lacquer); }
-  .priority-dot.new { background: var(--brassDeep); }
+  .priority-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+  .priority-dot.high { background: var(--lacquer); box-shadow: 0 0 0 3px color-mix(in srgb, var(--lacquer) 22%, transparent); }
+  .priority-dot.new { background: var(--brassDeep); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brassDeep) 20%, transparent); }
   .priority-dot.onTrack { background: var(--jadeSoft); opacity: .55; }
 
   .board { display: flex; gap: 12px; overflow-x: auto; padding: 2px 2px 16px; }
   .col { flex: 0 0 240px; background: var(--paperDeep); border-radius: var(--radius-lg); padding: 3px 10px 10px; max-height: 68vh; display: flex; flex-direction: column; box-shadow: var(--shadowSm); border: 1px solid var(--hairline); overflow: hidden; }
-  .col-spine { height: 3px; margin: 0 -10px 9px; flex: none; }
+  .col-spine { height: 5px; margin: 0 -10px 9px; flex: none; }
   .col-head { display: flex; align-items: center; gap: 8px; padding: 2px 2px 10px; border-bottom: 1px solid var(--hairline); margin-bottom: 9px; }
   .col-title { font-size: 12.5px; font-weight: 700; flex: 1; letter-spacing: -.005em; }
   .col-count { font-size: 10.5px; font-weight: 700; color: var(--brassOnPaper); background: var(--paperRaised); border-radius: var(--radius-full); width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px var(--hairlineStrong); }
@@ -202,17 +202,22 @@
 
   .card {
     display: block; width: 100%; text-align: left; background: var(--paper); border-radius: var(--radius-md); padding: 11px 12px;
-    cursor: pointer; border: 1px solid var(--hairline); box-shadow: var(--shadowXs); position: relative;
+    cursor: pointer; border: 1px solid var(--hairline); border-left: 4px solid var(--hairline); box-shadow: var(--shadowXs); position: relative;
     transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
   }
   .card:hover { transform: translateY(-2px); box-shadow: var(--shadowMd); border-color: var(--hairlineStrong); }
   .card:active { transform: translateY(-1px) scale(.995); }
+  .card.health-waiting { border-left-color: var(--brassDeep); }
+  .card.health-blocked { border-left-color: var(--lacquer); box-shadow: 0 0 0 1px color-mix(in srgb, var(--lacquer) 18%, transparent), var(--shadowXs); }
   .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
   .type-badge { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
   .type-badge.retail { color: var(--jadeSoft); }
   .type-badge.wholesale { color: var(--brassOnPaper); }
   .card-flags { display: flex; align-items: center; gap: 7px; }
-  .issue-flag { display: flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700; color: var(--lacquer); }
+  .issue-flag {
+    display: flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; color: var(--paperRaised);
+    background: var(--lacquer); border-radius: var(--radius-full); padding: 2px 7px 2px 5px;
+  }
   .card-id-row { display: flex; align-items: center; justify-content: space-between; gap: 9px; margin-top: 9px; }
   .card-name { font-size: 13px; font-weight: 600; line-height: 1.3; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .card-meta { font-size: 11px; color: var(--jadeSoft); margin-top: 6px; display: flex; align-items: center; gap: 4px; }
@@ -220,9 +225,12 @@
   .card-priority.high { color: var(--lacquer); }
   .card-priority.new { color: var(--brassOnPaper); }
   .card-priority.onTrack { color: var(--jadeSoft); opacity: .7; font-weight: 600; }
-  .health-flag { display: flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700; }
-  .health-flag.waiting { color: var(--brassOnPaper); }
-  .health-flag.blocked { color: var(--lacquer); }
+  .health-flag {
+    display: flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+    color: var(--paperRaised); border-radius: var(--radius-full); padding: 2px 8px 2px 6px;
+  }
+  .health-flag.waiting { background: var(--brassDeep); }
+  .health-flag.blocked { background: var(--lacquer); }
   .card-next { font-size: 10.5px; color: var(--jadeSoft); margin-top: 6px; line-height: 1.4; }
   .card-quick-action {
     display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 10.5px; font-weight: 700;
@@ -231,17 +239,41 @@
   .card-quick-action:hover { text-decoration: underline; }
 
   .today-strip {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin: 16px 5vw 14px; padding: 12px 16px;
-    border-radius: var(--radius-md); background: var(--paperDeep); border: 1px solid var(--hairline);
-    font-size: 12.5px; color: var(--jadeSoft);
+    display: flex; flex-wrap: wrap; align-items: stretch; gap: 0; margin: 16px 5vw 16px; padding: 4px;
+    border-radius: var(--radius-lg); background: var(--paperRaised); border: 1px solid var(--hairline); box-shadow: var(--shadowSm);
   }
-  .today-strip strong { color: var(--jade); font-size: 15px; margin-right: 4px; }
-  .today-strip-value { margin-left: auto; font-weight: 600; color: var(--brassOnPaper); }
-  .attention-section { margin: 0 5vw 18px; }
-  .attention-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--jade); margin: 0 0 10px; }
-  .attention-count { font-size: 11px; font-weight: 700; color: var(--paperRaised); background: var(--lacquer); border-radius: var(--radius-full); padding: 1px 8px; }
+  .stat-item {
+    display: flex; flex-direction: column; justify-content: center; gap: 1px; padding: 10px 20px; min-width: 96px;
+    border-right: 1px solid var(--hairline);
+  }
+  .stat-item:first-child { border-radius: var(--radius-md) 0 0 var(--radius-md); }
+  .stat-num { font-size: 26px; font-weight: 800; line-height: 1.05; letter-spacing: -.01em; color: var(--jade); }
+  .stat-label { font-size: 11px; font-weight: 600; color: var(--jadeSoft); text-transform: uppercase; letter-spacing: .03em; }
+  .stat-item.attention { background: color-mix(in srgb, var(--lacquer) 10%, transparent); border-radius: var(--radius-md); }
+  .stat-item.attention .stat-num { color: var(--lacquer); }
+  .stat-item.attention .stat-label { color: var(--lacquer); opacity: .85; }
+  .stat-item.waiting .stat-num { color: var(--brassOnPaper); }
+  .stat-item.blocked .stat-num { color: var(--lacquer); }
+  .today-strip-value {
+    margin-left: auto; display: flex; align-items: center; gap: 8px; padding: 10px 20px; font-size: 18px; font-weight: 800; color: var(--brassOnPaper);
+  }
+  .today-strip-value .stat-label { font-size: 11px; font-weight: 600; color: var(--jadeSoft); text-transform: none; letter-spacing: 0; }
+
+  .attention-section { margin: 0 5vw 20px; }
+  .attention-title {
+    display: flex; align-items: center; gap: 9px; font-size: 15px; font-weight: 800; color: var(--jade); margin: 0 0 12px;
+  }
+  .attention-title .icon-badge {
+    display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--lacquer); color: var(--paperRaised); flex: none;
+  }
+  .attention-count { font-size: 12px; font-weight: 800; color: var(--paperRaised); background: var(--lacquer); border-radius: var(--radius-full); padding: 2px 10px; }
   .attention-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; max-width: 1300px; }
-  .attention-reason { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--lacquer); margin-top: 6px; }
+  .attention-reason { display: flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; margin-top: 6px; }
+  .attention-grid .card.sev-red { border-left-color: var(--lacquer); background: color-mix(in srgb, var(--lacquer) 5%, var(--paper)); }
+  .attention-grid .card.sev-red .attention-reason { color: var(--lacquer); }
+  .attention-grid .card.sev-amber { border-left-color: var(--brassDeep); background: color-mix(in srgb, var(--brass) 6%, var(--paper)); }
+  .attention-grid .card.sev-amber .attention-reason { color: var(--brassOnPaper); }
 
   footer.app-footer { margin: 30px 5vw 0; padding: 18px 0 26px; border-top: 1px solid var(--hairline); font-size: 12px; color: var(--jadeSoft); max-width: 1300px; margin-left: auto; margin-right: auto; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 
@@ -1439,6 +1471,9 @@ function attentionReasonText({ reason, order: o, hours }) {
   if (reason === "blocked") return o.healthNote ? `${t().healthBlocked}: ${esc(o.healthNote)}` : t().healthBlocked;
   return `${t().healthWaiting}${o.waitingOn ? ` (${t()["waitingOn_" + o.waitingOn]})` : ""} · ${hours}h`;
 }
+function attentionSeverity({ reason }) {
+  return reason === "blocked" ? "sev-red" : "sev-amber";
+}
 
 function renderAttention() {
   const strip = document.getElementById("todayStripHost");
@@ -1451,11 +1486,11 @@ function renderAttention() {
   });
   strip.innerHTML = `
     <div class="today-strip">
-      <span><strong>${counts.attention}</strong> ${t().statAttention}</span>
-      <span><strong>${counts.on_track}</strong> ${t().statOnTrack}</span>
-      <span><strong>${counts.waiting}</strong> ${t().statWaiting}</span>
-      <span><strong>${counts.blocked}</strong> ${t().statBlocked}</span>
-      <span class="today-strip-value">${totalValue.toLocaleString("vi-VN")}đ ${t().statActiveValue}</span>
+      <div class="stat-item attention"><span class="stat-num">${counts.attention}</span><span class="stat-label">${t().statAttention}</span></div>
+      <div class="stat-item on-track"><span class="stat-num">${counts.on_track}</span><span class="stat-label">${t().statOnTrack}</span></div>
+      <div class="stat-item waiting"><span class="stat-num">${counts.waiting}</span><span class="stat-label">${t().statWaiting}</span></div>
+      <div class="stat-item blocked"><span class="stat-num">${counts.blocked}</span><span class="stat-label">${t().statBlocked}</span></div>
+      <div class="today-strip-value">${totalValue.toLocaleString("vi-VN")}đ<span class="stat-label">${t().statActiveValue}</span></div>
     </div>`;
 
   const host = document.getElementById("attentionHost");
@@ -1464,10 +1499,10 @@ function renderAttention() {
 
   host.innerHTML = `
     <div class="attention-section">
-      <p class="attention-title">${icon("alert-triangle", 14)} ${t().attentionTitle} <span class="attention-count">${items.length}</span></p>
+      <p class="attention-title"><span class="icon-badge">${icon("alert-triangle", 13)}</span>${t().attentionTitle} <span class="attention-count">${items.length}</span></p>
       <div class="attention-grid">
         ${items.map((item) => `
-          <button type="button" class="card ${item.order.type}" data-open="${item.order.id}">
+          <button type="button" class="card ${item.order.type} ${attentionSeverity(item)}" data-open="${item.order.id}">
             <div class="card-top">
               <span class="type-badge ${item.order.type}">${item.order.type === "retail" ? t().retail : t().wholesale}</span>
             </div>
@@ -1510,7 +1545,7 @@ function renderOrderFlowView() {
           const quickAction = kind === "phone"
             ? `<a class="card-quick-action" href="sms:${esc(o.contact)}" data-stop>${icon("message-circle", 11)} ${t().message}</a>`
             : kind === "email" ? `<a class="card-quick-action" href="mailto:${esc(o.contact)}" data-stop>${icon("mail", 11)} ${t().message}</a>` : "";
-          return `<div class="card ${o.type}" data-open="${o.id}">
+          return `<div class="card ${o.type} ${o.health !== "on_track" ? "health-" + o.health.replace("_", "-") : ""}" data-open="${o.id}">
             <div class="card-top">
               <span class="type-badge ${o.type}">${o.type === "retail" ? t().retail : t().wholesale}</span>
               <span class="card-flags">
