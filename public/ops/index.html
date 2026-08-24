@@ -221,6 +221,12 @@
   .card-priority.new { color: var(--brassOnPaper); }
   .card-priority.onTrack { color: var(--jadeSoft); opacity: .7; font-weight: 600; }
 
+  .attention-section { margin: 0 5vw 18px; }
+  .attention-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--jade); margin: 0 0 10px; }
+  .attention-count { font-size: 11px; font-weight: 700; color: var(--paperRaised); background: var(--lacquer); border-radius: var(--radius-full); padding: 1px 8px; }
+  .attention-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; max-width: 1300px; }
+  .attention-reason { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--lacquer); margin-top: 6px; }
+
   footer.app-footer { margin: 30px 5vw 0; padding: 18px 0 26px; border-top: 1px solid var(--hairline); font-size: 12px; color: var(--jadeSoft); max-width: 1300px; margin-left: auto; margin-right: auto; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 
   /* ---------- Detail panel: right-anchored slide-over (was a centered modal) ---------- */
@@ -507,6 +513,7 @@
     </div>
 
     <main class="content">
+      <div id="attentionHost"></div>
       <div class="hint-row" id="hintRow">
         <p class="hint" id="hintLabel"></p>
         <div class="legend-row" id="legendRow"></div>
@@ -747,6 +754,8 @@ const STR = {
     stageSaveFailed: "Couldn't save the stage change — try again.",
     removeOrderConfirm: "Remove the order for {name}? It'll move to the recycle bin (recoverable for 7 days, same as /admin).",
     orderRemoved: "Order removed", orderRemoveFailed: "Couldn't remove the order — try again.",
+    attentionTitle: "Needs attention", attentionUnread: "New — not yet reviewed",
+    attentionStale: "Open {h}h — check in",
     guide: "Guide", keyPoint: "Key point", guideEmpty: "No guide written for this stage yet.",
     call: "Call", message: "Message", noContactMethod: "No phone or email on file for this order.",
     allCategories: "All", escalateWhen: "When to escalate", escalateWhenText: "If an issue is High impact and unresolved for more than a day, or a customer is waiting on it, loop in the family workshop or a senior staff member directly rather than leaving it in the log.",
@@ -823,6 +832,8 @@ const STR = {
     stageSaveFailed: "Không lưu được thay đổi giai đoạn — thử lại nhé.",
     removeOrderConfirm: "Xoá đơn của {name}? Đơn sẽ chuyển vào thùng rác (khôi phục được trong 7 ngày, giống /admin).",
     orderRemoved: "Đã xoá đơn", orderRemoveFailed: "Không xoá được đơn — thử lại nhé.",
+    attentionTitle: "Cần chú ý", attentionUnread: "Mới — chưa xem",
+    attentionStale: "Đã mở {h} giờ — kiểm tra lại",
     guide: "Hướng dẫn", keyPoint: "Điểm cần lưu ý", guideEmpty: "Chưa có hướng dẫn cho bước này.",
     call: "Gọi điện", message: "Nhắn tin", noContactMethod: "Đơn này chưa có số điện thoại hoặc email.",
     allCategories: "Tất cả", escalateWhen: "Khi nào cần báo cấp trên", escalateWhenText: "Nếu vấn đề ở mức Cao và chưa xử lý sau hơn một ngày, hoặc khách đang chờ, hãy báo trực tiếp cho xưởng gia đình hoặc nhân viên phụ trách thay vì chỉ ghi vào đây.",
@@ -886,12 +897,26 @@ let ordersLoadError = null;
 
 function mapOrderRow(row) {
   return {
-    id: row.id, type: row.type, customerName: row.customer_name, contact: row.contact,
+    id: row.id, ts: row.ts, type: row.type, customerName: row.customer_name, contact: row.contact,
     lines: row.lines || [], totalKg: row.total_kg ?? undefined, totalItems: row.total_items ?? undefined,
     tier: row.tier ?? undefined, estimatedTotal: row.estimated_total ?? undefined,
     taxNumber: row.tax_number || "", note: row.note || "", trackingCode: row.tracking_code || "",
     stage: row.stage, stageChecklist: {}, unread: row.unread, resources: [], docLog: [],
   };
+}
+
+// "Needs attention" surfaces two signals computed purely from data already on the order row —
+// no new schema. A stage-transition timestamp (so this could read "time in this stage" rather
+// than "time since created") doesn't exist yet; ts is the honest signal available today.
+const ATTENTION_STALE_HOURS = 48;
+function getAttentionItems() {
+  const now = Date.now();
+  return ORDERS.filter((o) => o.stage !== "completed").map((o) => {
+    const hoursOpen = o.ts ? (now - new Date(o.ts).getTime()) / 3_600_000 : 0;
+    if (o.unread) return { order: o, reason: "unread" };
+    if (hoursOpen >= ATTENTION_STALE_HOURS) return { order: o, reason: "stale", hours: Math.floor(hoursOpen) };
+    return null;
+  }).filter(Boolean);
 }
 
 async function loadOrders() {
@@ -930,6 +955,7 @@ async function removeOrder(order) {
     if (!res.ok) throw new Error("request_failed");
     ORDERS = ORDERS.filter((o) => o.id !== order.id);
     openOrderId = null;
+    renderAttention();
     renderCurrentView();
     renderPanel();
     showToast(t().orderRemoved);
@@ -938,11 +964,10 @@ async function removeOrder(order) {
   }
 }
 
-let ISSUES = [
-  { id: "i1", orderId: "ORD-1003", category: "material", title: "Shan Tuyết sắp hết trong kho", impact: "high",
-    suggestedFix: "Kiểm tra tồn kho với xưởng gia đình trước khi xác nhận đơn.", escalateTo: "Xưởng sản xuất",
-    resolved: false, createdAt: "2026-08-15T04:00:00Z" },
-];
+// Was seeded with one example issue referencing an example order id (ORD-1003) that no
+// longer exists now that ORDERS loads real rows from Supabase — left empty rather than
+// dangling. Issues themselves are still in-memory only; see the PR description for why.
+let ISSUES = [];
 
 // Ad-hoc tasks that aren't tied to any one order's checklist — e.g. "restock boxes", "call the
 // courier about next week". Real order-stage checklist items also show up in the Tasks view
@@ -1265,6 +1290,7 @@ function renderAll() {
     <span class="legend-item"><span class="priority-dot new"></span>${t().priorityNew}</span>
     <span class="legend-item"><span class="priority-dot onTrack"></span>${t().priorityOnTrack}</span>`;
   renderSidebar();
+  renderAttention();
   renderCurrentView();
   renderPanel();
 }
@@ -1312,6 +1338,28 @@ function matchesSearch(text) {
 
 function openOrder(id) {
   openOrderId = id; activeTab = "checklist"; activeIssueCategory = "all"; docModalKind = "invoice"; renderPanel();
+}
+
+function renderAttention() {
+  const host = document.getElementById("attentionHost");
+  const items = getAttentionItems();
+  if (items.length === 0) { host.innerHTML = ""; return; }
+
+  host.innerHTML = `
+    <div class="attention-section">
+      <p class="attention-title">${icon("alert-triangle", 14)} ${t().attentionTitle} <span class="attention-count">${items.length}</span></p>
+      <div class="attention-grid">
+        ${items.map(({ order: o, reason, hours }) => `
+          <button type="button" class="card ${o.type}" data-open="${o.id}">
+            <div class="card-top">
+              <span class="type-badge ${o.type}">${o.type === "retail" ? t().retail : t().wholesale}</span>
+            </div>
+            <div class="card-id-row"><span class="card-name">${esc(o.customerName)}</span></div>
+            <div class="attention-reason">${icon("alert-triangle", 11)} ${reason === "unread" ? t().attentionUnread : t().attentionStale.replace("{h}", hours)}</div>
+          </button>`).join("")}
+      </div>
+    </div>`;
+  host.querySelectorAll("[data-open]").forEach((el) => el.addEventListener("click", () => openOrder(el.dataset.open)));
 }
 
 function renderOrderFlowView() {
@@ -2192,8 +2240,8 @@ function renderPanel() {
   host.querySelector("#quickPrint").addEventListener("click", () => { logDoc(order, "invoice", "printed"); printHtml(buildInvoiceHtml(order)); });
   host.querySelector("#removeOrderBtn").addEventListener("click", () => removeOrder(order));
   const markBtn = host.querySelector("#markCompleteBtn");
-  if (markBtn) markBtn.addEventListener("click", () => { setOrderStage(order, "completed"); renderCurrentView(); renderPanel(); });
-  host.querySelectorAll("[data-stage]").forEach((b) => b.addEventListener("click", () => { setOrderStage(order, b.dataset.stage); renderCurrentView(); renderPanel(); }));
+  if (markBtn) markBtn.addEventListener("click", () => { setOrderStage(order, "completed"); renderAttention(); renderCurrentView(); renderPanel(); });
+  host.querySelectorAll("[data-stage]").forEach((b) => b.addEventListener("click", () => { setOrderStage(order, b.dataset.stage); renderAttention(); renderCurrentView(); renderPanel(); }));
   host.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => { activeTab = b.dataset.tab; renderPanel(); }));
 
   if (activeTab === "checklist") {
@@ -2370,6 +2418,7 @@ function renderNewOrderForm() {
       newOrderBannerOpen = false;
       document.getElementById("newOrderBanner").classList.remove("show");
       formHost.innerHTML = "";
+      renderAttention();
       renderCurrentView();
       showToast(t().orderCreated);
     } catch {
