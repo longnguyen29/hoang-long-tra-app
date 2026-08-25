@@ -1,18 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { STR } from "@/lib/strings";
-import TeaConsole from "@/components/TeaConsole";
+import StaffWorkbench from "@/components/staff/StaffWorkbench";
 
 export default function AdminPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const t = STR.vi;
 
   const [status, setStatus] = useState("checking"); // checking | staff | not-staff
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -30,6 +31,7 @@ export default function AdminPage() {
         .eq("user_id", user.id)
         .maybeSingle();
       if (cancelled) return;
+      setRole(staffRow?.role || "");
       setStatus(staffRow ? "staff" : "not-staff");
     })();
     return () => { cancelled = true; };
@@ -64,5 +66,5 @@ export default function AdminPage() {
     );
   }
 
-  return <TeaConsole isAdmin={true} staffEmail={email} onLogout={logout} />;
+  return <StaffWorkbench supabase={supabase} email={email} role={role} onLogout={logout} />;
 }

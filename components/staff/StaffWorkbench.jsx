@@ -1,0 +1,42 @@
+"use client";
+
+import { useCallback,useEffect,useMemo,useState } from "react";
+import Link from "next/link";
+import { Archive,ArrowRight,Calendar,ChevronRight,ClipboardList,LogOut,MessageSquare,PackageCheck,RefreshCw,Search,Users } from "lucide-react";
+import { fromOrderRow } from "@/lib/mappers";
+import styles from "./StaffWorkbench.module.css";
+
+const STATUS={pending:"Chờ xác nhận",confirmed:"Đã xác nhận",shipped:"Đang giao",completed:"Hoàn tất"};
+const NEXT={pending:"confirmed",confirmed:"shipped",shipped:"completed"};
+const dateTime=(value)=>new Intl.DateTimeFormat("vi-VN",{dateStyle:"short",timeStyle:"short"}).format(new Date(value));
+const money=(value)=>value?new Intl.NumberFormat("vi-VN",{style:"currency",currency:"VND",maximumFractionDigits:0}).format(value):"Chưa báo giá";
+
+export default function StaffWorkbench({supabase,email,role,onLogout}){
+ const [orders,setOrders]=useState([]),[leads,setLeads]=useState([]),[samples,setSamples]=useState([]),[sessions,setSessions]=useState([]),[selected,setSelected]=useState(null),[task,setTask]=useState(null),[query,setQuery]=useState(""),[loading,setLoading]=useState(true),[error,setError]=useState("");
+ const load=useCallback(async()=>{setLoading(true);setError("");const [o,l,s,t]=await Promise.all([supabase.from("orders").select("*").order("ts",{ascending:false}),supabase.from("leads").select("*").order("ts",{ascending:false}),supabase.from("sample_requests").select("*").order("ts",{ascending:false}),supabase.from("tea_sessions").select("*").order("date",{ascending:true})]);const failed=[o,l,s,t].find(r=>r.error);if(failed)setError("Không tải được toàn bộ dữ liệu vận hành.");if(!o.error)setOrders((o.data||[]).map(fromOrderRow));if(!l.error)setLeads(l.data||[]);if(!s.error)setSamples(s.data||[]);if(!t.error)setSessions(t.data||[]);setLoading(false)},[supabase]);
+ useEffect(()=>{load()},[load]);
+ const openOrders=orders.filter(o=>o.status!=="completed"),unreadOrders=openOrders.filter(o=>o.unread),newLeads=leads.filter(l=>l.unread),newSamples=samples.filter(s=>s.unread||s.status==="new"),pendingSessions=sessions.filter(s=>s.status==="pending");
+ const queue=useMemo(()=>[
+  ...unreadOrders.map(o=>({kind:"order",id:o.id,ts:o.ts,title:o.customerName,detail:`${o.type==="retail"?"Đơn lẻ":"Đơn sỉ"} · ${o.totalItems||o.totalKg||0} ${o.type==="retail"?"món":"kg"}`,record:o,priority:1})),
+  ...newSamples.map(s=>({kind:"sample",id:s.id,ts:s.ts,title:s.store_name,detail:`Mẫu ${s.pack} · ${s.phone}`,record:s,priority:2})),
+  ...newLeads.map(l=>({kind:"lead",id:l.id,ts:l.ts,title:l.business_name||l.name,detail:l.interest,record:l,priority:3})),
+  ...pendingSessions.map(s=>({kind:"session",id:s.id,ts:`${s.date}T${s.session_time||"00:00"}`,title:s.customer_name,detail:`${s.date} · ${(s.session_time||"").slice(0,5)}`,record:s,priority:4})),
+ ].sort((a,b)=>a.priority-b.priority||new Date(a.ts)-new Date(b.ts)),[unreadOrders,newSamples,newLeads,pendingSessions]);
+ const filtered=orders.filter(o=>`${o.id} ${o.customerName} ${o.contact}`.toLowerCase().includes(query.toLowerCase()));
+ const selectOrder=async(order)=>{setTask(null);setSelected(order);if(order.unread){await supabase.from("orders").update({unread:false}).eq("id",order.id);setOrders(current=>current.map(o=>o.id===order.id?{...o,unread:false}:o))}};
+ const openTask=(item)=>{if(item.kind==="order"){selectOrder(item.record);return}setSelected(null);setTask(item)};
+ const advance=async(order)=>{const status=NEXT[order.status];if(!status)return;const {error:updateError}=await supabase.from("orders").update({status,unread:false}).eq("id",order.id);if(updateError){setError("Chưa cập nhật được trạng thái đơn.");return}const next={...order,status,unread:false};setOrders(current=>current.map(o=>o.id===order.id?next:o));setSelected(next)};
+ const cards=[{label:"Cần xử lý",value:queue.length,icon:ClipboardList},{label:"Đơn đang mở",value:openOrders.length,icon:PackageCheck},{label:"Khách tiềm năng",value:newLeads.length,icon:Users},{label:"Lịch trà chờ",value:pendingSessions.length,icon:Calendar}];
+ return <main className={styles.shell}>
+  <aside className={styles.rail}><div className={styles.brand}><span>皇龍</span><b>HL</b></div><nav aria-label="Staff workspace"><a href="#queue" className={styles.active}><ClipboardList/><span>Điều phối</span>{queue.length>0&&<b>{queue.length}</b>}</a><a href="#orders"><PackageCheck/><span>Đơn hàng</span></a><a href="#contacts"><Users/><span>Quan hệ</span></a><Link href="/admin/legacy"><Archive/><span>Hệ thống cũ</span></Link></nav><button onClick={onLogout} aria-label="Đăng xuất"><LogOut/><span>Đăng xuất</span></button></aside>
+  <section className={styles.workspace}>
+   <header className={styles.top}><div><p>Staff workbench</p><h1>Điều phối hôm nay</h1></div><div className={styles.identity}><span><b>{email}</b><small>{role}</small></span><button onClick={load} disabled={loading} aria-label="Làm mới"><RefreshCw className={loading?styles.spin:""}/></button></div></header>
+   {error&&<p className={styles.error} role="alert">{error}</p>}
+   <section className={styles.metrics}>{cards.map(({label,value,icon:Icon})=><article key={label}><Icon/><span>{label}</span><b>{loading?"—":value}</b></article>)}</section>
+   <section className={styles.board} id="queue"><header><div><p>Hàng đợi chung</p><h2>Việc cần chạm vào</h2></div><span>{queue.length} mục</span></header>{loading?<div className={styles.skeleton}><i/><i/><i/></div>:queue.length?<div className={styles.queue}>{queue.slice(0,12).map(item=><button key={`${item.kind}-${item.id}`} onClick={()=>openTask(item)}><span className={styles.kind}>{item.kind}</span><span><b>{item.title}</b><small>{item.detail}</small></span><time>{dateTime(item.ts)}</time><ChevronRight/></button>)}</div>:<div className={styles.clear}><PackageCheck/><h3>Hàng đợi đã sạch.</h3><p>Không có đơn, mẫu, lead hoặc lịch trà mới đang chờ.</p></div>}</section>
+   <section className={styles.orders} id="orders"><header><div><p>Order book</p><h2>Tất cả đơn hàng</h2></div><label><Search/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Tìm tên, liên hệ, mã đơn"/></label></header><div className={styles.orderList}>{filtered.map(order=><button key={order.id} onClick={()=>selectOrder(order)} className={selected?.id===order.id?styles.selected:""}><span><b>{order.customerName}</b><small>{order.id} · {order.type}</small></span><span>{money(order.estimatedTotal)}</span><span data-status={order.status}>{STATUS[order.status]||order.status}</span><ChevronRight/></button>)}</div></section>
+  </section>
+  {selected&&<aside className={styles.detail} aria-label="Chi tiết đơn hàng"><header><div><p>Order detail</p><h2>{selected.customerName}</h2></div><button onClick={()=>setSelected(null)} aria-label="Đóng">×</button></header><dl><div><dt>Mã đơn</dt><dd>{selected.id}</dd></div><div><dt>Liên hệ</dt><dd>{selected.contact}</dd></div><div><dt>Địa chỉ</dt><dd>{selected.address||"—"}</dd></div><div><dt>Thanh toán</dt><dd>{selected.paymentMethod==="cash"?"Tiền mặt":"Chuyển khoản QR"}</dd></div></dl><div className={styles.lines}>{selected.lines.map((line,i)=><div key={i}><span><b>{line.name?.vi||line.name?.en}</b><small>{line.qty} {line.unit}</small></span><span>{line.price?money(line.price*line.qty):"—"}</span></div>)}</div><div className={styles.detailTotal}><span>Tổng dự kiến</span><b>{money(selected.estimatedTotal)}</b></div>{NEXT[selected.status]?<button className={styles.advance} onClick={()=>advance(selected)}>{STATUS[NEXT[selected.status]]}<ArrowRight/></button>:<p className={styles.done}>Đơn đã hoàn tất.</p>}<Link href="/admin/legacy">Mở trong hệ thống đầy đủ <ArrowRight/></Link></aside>}
+  {task&&<aside className={styles.detail} aria-label="Chi tiết việc cần xử lý"><header><div><p>{task.kind}</p><h2>{task.title}</h2></div><button onClick={()=>setTask(null)} aria-label="Đóng">×</button></header><dl><div><dt>Mã</dt><dd>{task.id}</dd></div><div><dt>Nhận lúc</dt><dd>{dateTime(task.ts)}</dd></div><div><dt>Chi tiết</dt><dd>{task.detail}</dd></div>{task.record.contact&&<div><dt>Liên hệ</dt><dd>{task.record.contact}</dd></div>}{task.record.phone&&<div><dt>Điện thoại</dt><dd>{task.record.phone}</dd></div>}{task.record.address&&<div><dt>Địa chỉ</dt><dd>{task.record.address}</dd></div>}{task.record.note&&<div><dt>Ghi chú</dt><dd>{task.record.note}</dd></div>}</dl><Link href="/admin/legacy">Xử lý trong hệ thống đầy đủ <ArrowRight/></Link></aside>}
+ </main>
+}
