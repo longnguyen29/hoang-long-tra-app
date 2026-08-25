@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock } from "lucide-react";
+import { ArrowRight, Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { TOKENS } from "@/lib/constants";
 import { STR } from "@/lib/strings";
 
 export default function AdminLoginPage() {
@@ -36,72 +35,59 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-        background: TOKENS.jade, padding: 20, fontFamily: "Inter, sans-serif",
-      }}
-    >
-      <form
-        onSubmit={submit}
-        style={{
-          background: TOKENS.paper, borderRadius: TOKENS.radius, padding: "32px 28px", width: "min(360px, 100%)",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
-        }}
-      >
-        <div
-          style={{
-            width: 44, height: 44, borderRadius: "50%", border: `1.5px solid ${TOKENS.brass}`,
-            display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16,
-            fontFamily: "'Noto Serif SC', serif", fontSize: 18, color: TOKENS.brass,
-            boxShadow: "0 0 22px rgba(176,141,87,0.35)",
-          }}
-        >
-          皇龍
+    <main className="hl-auth">
+      <section className="hl-auth__context" aria-label="House of Hoàng Long">
+        <div className="hl-auth__seal" aria-hidden="true">皇龍</div>
+        <div>
+          <p className="hl-auth__house">House of Hoàng Long</p>
+          <p className="hl-auth__principle">The work behind every parcel, kept inside the house.</p>
         </div>
-        <h1
-          style={{
-            fontFamily: "Fraunces, Georgia, serif", fontWeight: 500, fontSize: 22, margin: "0 0 4px",
-            color: TOKENS.jade,
-          }}
-        >
-          {t.loginTitle}
-        </h1>
-        <p style={{ fontSize: 13, color: TOKENS.jadeSoft, margin: "0 0 22px" }}>House of Hoàng Long</p>
+      </section>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <input
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder={t.loginEmailPh}
-            style={{ padding: "11px 13px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 14 }}
-          />
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder={t.loginPasswordPh}
-            style={{ padding: "11px 13px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 14 }}
-          />
-        </div>
+      <section className="hl-auth__panel">
+        <form className="hl-auth__form" onSubmit={submit} noValidate>
+          <div className="hl-auth__intro">
+            <Lock size={18} aria-hidden="true" />
+            <h1>{t.loginTitle}</h1>
+            <p>Staff workspace</p>
+          </div>
 
-        {error && <p style={{ fontSize: 12.5, color: TOKENS.lacquer, marginTop: 10 }}>{error}</p>}
+          <div className="hl-field">
+            <label htmlFor="staff-email">{t.loginEmailPh}</label>
+            <input
+              id="staff-email"
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              aria-invalid={error ? "true" : "false"}
+              aria-describedby="login-feedback"
+            />
+          </div>
 
-        <button
-          type="submit"
-          disabled={loading || !email.trim() || !password}
-          style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 7, width: "100%", marginTop: 18,
-            background: TOKENS.jade, color: TOKENS.paper, border: "none", borderRadius: 8, padding: "12px",
-            fontSize: 14, fontWeight: 600, cursor: "pointer", opacity: loading ? 0.7 : 1,
-          }}
-        >
-          <Lock size={15} /> {t.loginBtn}
-        </button>
-      </form>
-    </div>
+          <div className="hl-field">
+            <label htmlFor="staff-password">{t.loginPasswordPh}</label>
+            <input
+              id="staff-password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              aria-invalid={error ? "true" : "false"}
+              aria-describedby="login-feedback"
+            />
+          </div>
+
+          <p id="login-feedback" className={`hl-auth__feedback ${error ? "is-error" : ""}`} role={error ? "alert" : undefined}>
+            {error || "Use the staff account created by your administrator."}
+          </p>
+
+          <button className="hl-button hl-button--primary" type="submit" disabled={loading || !email.trim() || !password} data-state={loading ? "loading" : "idle"}>
+            <span>{loading ? t.loading : t.loginBtn}</span>
+            {!loading && <ArrowRight size={16} aria-hidden="true" />}
+          </button>
+        </form>
+      </section>
+    </main>
   );
 }

@@ -214,6 +214,231 @@ label:focus-visible,
   }
 }
 
+/* Staff access is a workbench threshold, not a marketing card. */
+.hl-auth {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: minmax(15rem, 42dvh) 1fr;
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.hl-auth__context,
+.hl-auth__panel {
+  padding: var(--space-xl) var(--page-gutter);
+}
+
+.hl-auth__context {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.hl-auth__seal {
+  width: var(--control-height);
+  height: var(--control-height);
+  display: grid;
+  place-items: center;
+  border: var(--rule-thin) solid var(--color-accent);
+  border-radius: var(--radius-round);
+  color: var(--color-accent);
+  font-family: var(--font-seal);
+}
+
+.hl-auth__house {
+  max-width: 12ch;
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  line-height: 1;
+}
+
+.hl-auth__principle {
+  max-width: 35ch;
+  margin-block-start: var(--space-sm);
+  color: var(--color-rule);
+  line-height: 1.55;
+}
+
+.hl-auth__panel {
+  display: grid;
+  align-items: center;
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+.hl-auth__form {
+  width: min(100%, 27rem);
+  margin-inline: auto;
+}
+
+.hl-auth__intro {
+  margin-block-end: var(--space-lg);
+}
+
+.hl-auth__intro > svg {
+  color: var(--color-accent);
+  margin-block-end: var(--space-sm);
+}
+
+.hl-auth__intro h1,
+.hl-admin-state h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-style: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.hl-auth__intro p {
+  margin: var(--space-3xs) 0 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.hl-field {
+  display: grid;
+  gap: var(--space-2xs);
+  margin-block-end: var(--space-sm);
+}
+
+.hl-field label {
+  color: var(--color-ink-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.hl-field input {
+  width: 100%;
+  min-height: var(--control-height);
+  padding-inline: var(--space-xs);
+  border: var(--rule-thin) solid var(--color-rule);
+  border-radius: var(--radius-control);
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-size: var(--text-base);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hl-field input:hover {
+    background: var(--color-paper-2);
+  }
+}
+
+.hl-field input:focus-visible {
+  outline-color: var(--color-focus);
+  border-color: var(--color-ink-2);
+}
+
+.hl-field input[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+
+.hl-auth__feedback {
+  min-height: 1lh;
+  margin: 0 0 var(--space-md);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+.hl-auth__feedback.is-error {
+  color: var(--color-danger);
+}
+
+.hl-button {
+  min-height: var(--control-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2xs);
+  padding-inline: var(--space-md);
+  border: var(--rule-thin) solid transparent;
+  border-radius: var(--radius-control);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.hl-button--primary {
+  width: 100%;
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.hl-button--secondary {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  border-color: var(--color-rule);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hl-button:not(:disabled):hover {
+    opacity: 0.88;
+  }
+}
+
+.hl-button:focus-visible {
+  outline-color: var(--color-focus);
+}
+
+.hl-button[data-state="loading"] {
+  cursor: wait;
+}
+
+.hl-admin-state {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-md);
+  background: var(--color-paper);
+  color: var(--color-ink-2);
+  text-align: center;
+}
+
+.hl-admin-state__pulse {
+  width: var(--space-sm);
+  height: var(--space-sm);
+  border-radius: var(--radius-round);
+  background: var(--color-accent);
+  animation: hl-admin-pulse var(--dur-long) var(--ease-in-out) infinite alternate;
+}
+
+@keyframes hl-admin-pulse {
+  to { opacity: 0.35; transform: scale(0.75); }
+}
+
+.hl-admin-state--denied {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.hl-admin-state--denied section {
+  width: min(100%, 28rem);
+  display: grid;
+  justify-items: center;
+  gap: var(--space-sm);
+}
+
+.hl-admin-state--denied p {
+  margin: 0;
+  color: var(--color-rule);
+}
+
+@media (min-width: 48rem) {
+  .hl-auth {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    grid-template-rows: 1fr;
+  }
+
+  .hl-auth__context,
+  .hl-auth__panel {
+    padding: var(--space-2xl) var(--page-gutter);
+  }
+}
+
 /* A .pcard that is itself the button already scales via the rule above; when the card is
    a plain element wrapping a button, press feedback would otherwise be lost. */
 .pcard:active {

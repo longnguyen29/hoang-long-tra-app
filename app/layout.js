@@ -6,6 +6,12 @@ export const metadata = {
     "Nhà làm Trà Hoàng Long — trà Shan Tuyết cổ thụ Hà Giang, chế biến bằng công nghệ Nhật Bản. Gia đình làm trà từ 1995.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="vi">
