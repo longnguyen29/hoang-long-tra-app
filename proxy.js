@@ -14,8 +14,13 @@ export default async function proxy(request) {
   const pathname = request.nextUrl.pathname;
   const isOpsHost = host.startsWith("ops.") && pathname === "/";
   const isOpsPath = pathname === "/ops" || pathname === "/ops/";
+  const isOpsDocument = pathname === "/ops/index.html";
+  const isOpsLogin = pathname === "/ops/login.html";
 
-  if (isOpsHost || isOpsPath) {
+  // The static document is an implementation detail, not a second public address. Gate it
+  // exactly like /ops so typing /ops/index.html cannot bypass the PIN cookie. The login
+  // document is the only intentionally public file beneath /ops/.
+  if (isOpsHost || isOpsPath || isOpsDocument) {
     const cookie = request.cookies.get(OPS_AUTH_COOKIE)?.value;
     if (!(await isOpsAuthedToken(cookie))) {
       if (isOpsHost) {
@@ -34,6 +39,8 @@ export default async function proxy(request) {
     }
   }
 
+  if (isOpsLogin) return NextResponse.next();
+
   return await updateSession(request);
 }
 
@@ -41,7 +48,6 @@ export const config = {
   matcher: [
     "/admin/:path*",
     "/",
-    "/ops",
-    "/ops/",
+    "/ops/:path*",
   ],
 };
