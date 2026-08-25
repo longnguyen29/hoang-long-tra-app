@@ -124,7 +124,7 @@ function flattenOrderable(products) {
   });
 }
 
-export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
+export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSection = "home" }) {
   const supabase = useMemo(() => createClient(), []);
 
   // role is derived from real auth, not a manual toggle: not signed in (or signed in without
@@ -145,7 +145,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   }, [isAdmin, session, supabase]);
   const role = isAdmin ? "admin" : (wholesaleAccount?.wholesaleVerified ? "wholesale" : "retail");
   const [lang, setLang] = useState("en");
-  const [section, setSection] = useState("home");
+  const [section, setSection] = useState(initialSection);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [articles, setArticles] = useState([]);
