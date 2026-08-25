@@ -2,7 +2,7 @@
 
 import { useCallback,useEffect,useMemo,useState } from "react";
 import Link from "next/link";
-import { Archive,ArrowRight,Calendar,ChevronRight,ClipboardList,LogOut,MessageSquare,PackageCheck,RefreshCw,Search,Send,Sprout,Users } from "lucide-react";
+import { Archive,ArrowRight,Calendar,ChevronRight,ClipboardList,LogOut,MessageSquare,PackageCheck,RefreshCw,Search,Send,SlidersHorizontal,Sprout,Users } from "lucide-react";
 import { fromOrderRow,fromThreadRow } from "@/lib/mappers";
 import styles from "./StaffWorkbench.module.css";
 
@@ -36,7 +36,7 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
  const saveCustomerNote=async()=>{if(!customer)return;const {error:noteError}=await supabase.rpc("save_customer_note",{p_contact:customer.contact,p_note:customerNote,p_by:email});if(noteError){setError("Chưa lưu được ghi chú khách hàng.");return}setCustomer(current=>({...current,detail:{...current.detail,note:customerNote}}))};
  const cards=[{label:"Cần xử lý",value:queue.length,icon:ClipboardList},{label:"Đơn đang mở",value:openOrders.length,icon:PackageCheck},{label:"Tin chưa đọc",value:unreadThreads.length,icon:MessageSquare},{label:"Lịch trà chờ",value:pendingSessions.length,icon:Calendar}];
  return <main className={styles.shell}>
-  <aside className={styles.rail}><div className={styles.brand}><span>皇龍</span><b>HL</b></div><nav aria-label="Staff workspace"><a href="#queue" className={styles.active}><ClipboardList/><span>Điều phối</span>{queue.length>0&&<b>{queue.length}</b>}</a><a href="#orders"><PackageCheck/><span>Đơn hàng</span></a><a href="#messages"><MessageSquare/><span>Tin nhắn</span>{unreadThreads.length>0&&<b>{unreadThreads.length}</b>}</a><a href="#contacts"><Users/><span>Quan hệ</span></a><Link href="/admin/house"><Sprout/><span>Nhà & danh mục</span></Link><Link href="/admin/legacy"><Archive/><span>Hệ thống cũ</span></Link></nav><button onClick={onLogout} aria-label="Đăng xuất"><LogOut/><span>Đăng xuất</span></button></aside>
+  <aside className={styles.rail}><div className={styles.brand}><span>皇龍</span><b>HL</b></div><nav aria-label="Staff workspace"><a href="#queue" className={styles.active}><ClipboardList/><span>Điều phối</span>{queue.length>0&&<b>{queue.length}</b>}</a><a href="#orders"><PackageCheck/><span>Đơn hàng</span></a><a href="#messages"><MessageSquare/><span>Tin nhắn</span>{unreadThreads.length>0&&<b>{unreadThreads.length}</b>}</a><a href="#contacts"><Users/><span>Quan hệ</span></a><Link href="/admin/house"><Sprout/><span>Nhà & danh mục</span></Link><Link href="/admin/control"><SlidersHorizontal/><span>Thương mại</span></Link><Link href="/admin/legacy"><Archive/><span>Hệ thống cũ</span></Link></nav><button onClick={onLogout} aria-label="Đăng xuất"><LogOut/><span>Đăng xuất</span></button></aside>
   <section className={styles.workspace}>
    <header className={styles.top}><div><p>Staff workbench</p><h1>Điều phối hôm nay</h1></div><div className={styles.identity}><span><b>{email}</b><small>{role}</small></span><button onClick={load} disabled={loading} aria-label="Làm mới"><RefreshCw className={loading?styles.spin:""}/></button></div></header>
    {error&&<p className={styles.error} role="alert">{error}</p>}
