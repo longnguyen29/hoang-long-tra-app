@@ -9,9 +9,10 @@ import styles from "./TeaShop.module.css";
 
 const money = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
 
-export default function TeaShop() {
+export default function TeaShop({ mode = "tea" }) {
   const supabase = useMemo(() => createClient(), []);
   const [products, setProducts] = useState([]);
+  const [vendors, setVendors] = useState([]);
   const [cart, setCart] = useState({});
   const [cartOpen, setCartOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -24,8 +25,9 @@ export default function TeaShop() {
     let live = true;
     Promise.all([
       supabase.from("catalog_products").select("*").eq("available", true),
-      supabase.from("catalog_variants").select("*")
-    ]).then(([catalogResult, variantResult]) => {
+      supabase.from("catalog_variants").select("*"),
+      supabase.rpc("list_public_vendors"),
+    ]).then(([catalogResult, variantResult, vendorResult]) => {
       if (!live) return;
       if (catalogResult.error || variantResult.error) {
         setError("The seasonal catalogue could not be loaded. Please try again.");
@@ -34,12 +36,15 @@ export default function TeaShop() {
         setProducts((catalogResult.data || []).map((row) => ({
           ...fromCatalogRow(row),
           variants: variants.filter((v) => v.product_id === row.id).map(fromVariantRow),
-        })).filter((item) => item.kind !== "goods"));
+        })).filter((item) => mode === "goods" ? item.kind === "goods" : item.kind !== "goods"));
+        if (!vendorResult.error) setVendors(vendorResult.data || []);
       }
       setLoading(false);
     });
     return () => { live = false; };
-  }, [supabase]);
+  }, [supabase, mode]);
+
+  const isGoods = mode === "goods";
 
   const options = products.flatMap((product) => product.variants.length
     ? product.variants.map((variant) => ({ product, weight: variant.weight, price: variant.price, key: `${product.id}__${variant.weight}` }))
@@ -61,7 +66,7 @@ export default function TeaShop() {
     setSending(true); setError("");
     const orderLines = lines.map(({ product, weight, price, qty }) => ({
       name: weight ? { en: `${product.name.en} (${weight})`, vi: `${product.name.vi} (${weight})` } : product.name,
-      qty, unit: product.line === "everyday" ? "kg" : "pcs", price: price || null, productId: product.id, weight,
+      qty, unit: product.kind === "goods" ? "pcs" : product.line === "everyday" ? "kg" : "pcs", price: price || null, productId: product.id, weight,
     }));
     const { data, error: submitError } = await supabase.rpc("submit_retail_order", {
       p_customer_name: customer.name.trim(), p_contact: customer.contact.trim(), p_address: customer.address.trim(),
@@ -80,7 +85,7 @@ export default function TeaShop() {
 
   if (complete) return (
     <main className={styles.complete}>
-      <span><Check size={18}/></span><p>Order received</p><h1>Thank you. The house will confirm your tea shortly.</h1>
+      <span><Check size={18}/></span><p>Order received</p><h1>Thank you. The house will confirm your {isGoods ? "goods" : "tea"} shortly.</h1>
       <dl><div><dt>Order</dt><dd>{complete.id}</dd></div><div><dt>Estimated total</dt><dd>{money.format(complete.total)}</dd></div></dl>
       <p>Save the order number. We will contact you using the phone or email supplied at checkout.</p>
       <Link href="/">Return to the house <ArrowRight size={16}/></Link>
@@ -97,18 +102,19 @@ export default function TeaShop() {
       </header>
 
       <section className={styles.intro}>
-        <p>Seasonal tea · direct from the house</p>
-        <h1>Choose the leaf before the packaging.</h1>
-        <div><p>Each tea begins with origin, harvest, and processing. Packs are simply the format that brings it to your table.</p><Link href="/wholesale">Buying for a business? <ArrowRight size={16}/></Link></div>
+        <p>{isGoods ? "Tây Bắc goods · carried by the house" : "Seasonal tea · direct from the house"}</p>
+        <h1>{isGoods ? "Produce with a person and place behind it." : "Choose the leaf before the packaging."}</h1>
+        <div><p>{isGoods ? "A small market for food from the North-West, carried by the House without removing the growers from the story." : "Each tea begins with origin, harvest, and processing. Packs are simply the format that brings it to your table."}</p><Link href={isGoods ? "/story" : "/wholesale"}>{isGoods ? "Meet the people behind the House" : "Buying for a business?"} <ArrowRight size={16}/></Link></div>
       </section>
 
       {loading ? <section className={styles.loading} aria-live="polite"><i/><i/><i/></section> : error && !products.length ? <p className={styles.error} role="alert">{error}</p> : (
         <section className={styles.catalog} aria-label="Available teas">
+          {!products.length && <p className={styles.emptyCatalog}>{isGoods ? "The market table is being prepared." : "The seasonal catalogue is being prepared."}</p>}
           {products.map((product, index) => {
             const choices = product.variants.length ? product.variants : [{ weight: product.packSize || "House pack", price: product.price }];
             return <article className={styles.product} key={product.id}>
               <figure>{product.photoUrl ? <img src={product.photoUrl} alt={product.name.en} loading={index > 1 ? "lazy" : undefined} style={{objectPosition:product.photoPosition || "50% 50%"}}/> : <span aria-hidden="true">皇龍</span>}</figure>
-              <div className={styles.productCopy}><p>{product.batch || (product.limited ? "Limited release" : "House selection")}</p><h2>{product.name.en}</h2><span>{product.name.vi}</span><p>{product.notes?.en}</p></div>
+              <div className={styles.productCopy}><p>{isGoods ? (vendors.find((vendor) => vendor.id === product.vendorId)?.name || "House market") : product.batch || (product.limited ? "Limited release" : "House selection")}</p><h2>{product.name.en}</h2><span>{product.name.vi}</span><p>{product.notes?.en}</p></div>
               <div className={styles.variants}>{choices.map((choice) => {
                 const key = product.variants.length ? `${product.id}__${choice.weight}` : product.id;
                 const n = cart[key] || 0;
