@@ -1,3 +1,5 @@
+@import "../tokens.css";
+
 * {
   box-sizing: border-box;
 }
@@ -6,11 +8,27 @@ html,
 body {
   margin: 0;
   padding: 0;
+  overflow-x: clip;
 }
 
 body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
 }
 
 @media (min-width: 640px) {
@@ -32,10 +50,15 @@ body {
 
 /* Buttons must feel responsive to press — subtle scale on :active, everywhere. */
 button:not(:disabled) {
-  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform var(--dur-short) var(--ease-out), opacity var(--dur-short) var(--ease-out);
 }
 button:not(:disabled):active {
-  transform: scale(0.97);
+  transform: translateY(1px);
+}
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed !important;
+  opacity: 0.55 !important;
 }
 
 /* Keyboard focus. Everything here is custom-styled with inline styles, so the browser
@@ -48,9 +71,9 @@ select:focus-visible,
 textarea:focus-visible,
 label:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid #b08d57;
+  outline: 2px solid var(--color-focus);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: inherit;
 }
 
 /* Cards (Tea Shop grid, wholesale rows, sample packs, home bento tiles): lift and deepen
@@ -70,7 +93,125 @@ label:focus-visible,
   }
 }
 .pzoom {
-  transition: transform 500ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform var(--dur-long) var(--ease-out);
+}
+
+/* Controlled redesign: the existing inline-heavy application migrates surface by surface.
+   These class hooks establish the new public shell without changing component behavior. */
+.hl-app-shell {
+  background: var(--color-paper) !important;
+  color: var(--color-ink) !important;
+  font-family: var(--font-body) !important;
+}
+
+.hl-topbar {
+  min-height: var(--topbar-height);
+  padding-inline: var(--page-gutter) !important;
+  background: color-mix(in oklch, var(--color-paper) 92%, transparent) !important;
+  border-color: var(--color-rule-2) !important;
+  backdrop-filter: blur(16px);
+}
+
+.hl-topbar button {
+  min-width: var(--control-height);
+  min-height: var(--control-height);
+  justify-content: center;
+}
+
+.hl-page {
+  max-width: var(--content-max) !important;
+  padding-inline: var(--page-gutter) !important;
+  box-shadow: none !important;
+}
+
+.hl-home {
+  min-width: 0;
+}
+
+.hl-home-opening {
+  border-radius: 0 0 var(--radius-panel) var(--radius-panel) !important;
+}
+
+.hl-home .pcard {
+  border-radius: var(--radius-card) !important;
+}
+
+.hl-home a {
+  white-space: nowrap;
+}
+
+.hl-house-note {
+  white-space: normal;
+}
+
+.hl-house-note > button {
+  min-height: var(--control-height);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: var(--space-3xs);
+  white-space: nowrap;
+}
+
+.hl-home p,
+.hl-home h1,
+.hl-home h2,
+.hl-home h3 {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+@media (min-width: 60rem) {
+  .hl-page {
+    padding-block-start: var(--space-lg) !important;
+  }
+
+  .hl-home {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hl-home-opening {
+    min-height: min(78dvh, 52rem);
+    display: grid;
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+    align-items: stretch;
+  }
+
+  .hl-house-mark {
+    display: grid !important;
+    place-items: center;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: var(--space-2xl) var(--space-xl) !important;
+  }
+
+  .hl-ridgeline {
+    display: none !important;
+  }
+
+  .hl-house-note {
+    display: flex !important;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: var(--space-2xl) var(--space-xl) !important;
+    border-inline-start: var(--rule-thin) solid color-mix(in oklch, var(--color-accent) 32%, transparent) !important;
+  }
+
+  .hl-house-note p {
+    font-family: var(--font-display) !important;
+    font-style: normal !important;
+    font-size: clamp(1.75rem, 2.6vw, 3.5rem) !important;
+    line-height: 1.08 !important;
+    max-width: 18ch !important;
+  }
+
+  .hl-house-gallery {
+    grid-column: 1 / -1;
+  }
 }
 
 /* A .pcard that is itself the button already scales via the rule above; when the card is
@@ -80,6 +221,14 @@ label:focus-visible,
 }
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 120ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 120ms !important;
+  }
   button:not(:disabled):active {
     transform: none;
   }

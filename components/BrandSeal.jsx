@@ -55,7 +55,7 @@ export default function BrandSeal({ TOKENS }) {
       <h1
         className="hl-seal-rise"
         style={{
-          fontFamily: "TMCOngDo, Lora, Georgia, serif", fontWeight: 400, fontSize: "clamp(32px, 9vw, 50px)", lineHeight: 1.15,
+          fontFamily: "var(--font-script)", fontWeight: 400, fontStyle: "normal", fontSize: "clamp(32px, 9vw, 50px)", lineHeight: 1.15,
           margin: "0 0 14px", overflowWrap: "anywhere", color: TOKENS.paper,
           opacity: 0, transform: "translateY(8px)", animation: "hlRiseIn 960ms cubic-bezier(0.22,1,0.36,1) forwards", animationDelay: "2100ms",
         }}

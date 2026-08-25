@@ -1736,7 +1736,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
   };
 
   return (
-    <div style={{ fontFamily: "Inter, sans-serif", background: TOKENS.paper, minHeight: "100vh", color: TOKENS.jade, display: "flex", overflowX: "clip" }}>
+    <div className={`hl-app-shell ${isAdmin ? "hl-app-shell--staff" : "hl-app-shell--public"}`} style={{ fontFamily: "var(--font-body)", background: TOKENS.paper, minHeight: "100vh", color: TOKENS.jade, display: "flex", overflowX: "clip" }}>
       {/* Sidebar */}
       {sidebarOpen && (
         <div
@@ -1744,6 +1744,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
           onClick={() => setSidebarOpen(false)}
         >
           <aside
+            className="hl-sidebar"
             onClick={(e) => e.stopPropagation()}
             style={{
               width: 240, minWidth: 240, background: TOKENS.jade, color: TOKENS.paper,
@@ -1860,6 +1861,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
       }}>
         {/* Top bar */}
         <header
+          className="hl-topbar"
           style={{
             display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px",
             borderBottom: `1px solid ${TOKENS.hairline}`, background: TOKENS.paper,
@@ -1957,7 +1959,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
         </header>
 
         {/* Content */}
-        <main style={{
+        <main className="hl-page" style={{
           // Tried 1280 to fill a desktop window and it read worse, not better: the line length
           // went past what the eye tracks comfortably and the page stopped feeling like a page.
           // The narrow column is the design, not a mobile leftover.
@@ -1965,7 +1967,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
           background: TOKENS.paper, boxShadow: `0 0 60px ${TOKENS.paper}`,
         }}>
           {section === "home" && (
-            <div style={{ margin: "-24px -20px 0", padding: "0 0 40px" }}>
+            <div className="hl-home" style={{ margin: "-24px -20px 0", padding: "0 0 40px" }}>
               {/* ── Opening chapter ──────────────────────────────────────────────────
                   Seal, founding line and the house photograph run as one uninterrupted
                   dark band rather than three stacked cards, so the page opens on a single
@@ -1974,6 +1976,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   which is the register that carries a large photograph without competing
                   with it. Everything after this is paper. */}
               <div
+                className="hl-home-opening"
                 style={{
                   position: "relative", overflow: "hidden", color: TOKENS.paper,
                   background: `linear-gradient(180deg, ${TOKENS.jade} 0%, ${TOKENS.jade} 34%, ${TOKENS.inkSoft} 72%, ${TOKENS.ink} 100%)`,
@@ -1982,7 +1985,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   paddingBottom: homePhotos.length > 0 ? 0 : 40,
                 }}
               >
-                <div style={{ padding: "0 28px", maxWidth: 460, margin: "0 auto" }}>
+                <div className="hl-house-mark" style={{ padding: "0 28px", maxWidth: 460, margin: "0 auto" }}>
                   <BrandSeal TOKENS={TOKENS} />
                 </div>
 
@@ -1992,6 +1995,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                   viewBox="0 0 400 90"
                   preserveAspectRatio="none"
                   aria-hidden="true"
+                  className="hl-ridgeline"
                   style={{ display: "block", width: "100%", height: 56, opacity: 0.3, marginTop: 24 }}
                 >
                   <path
@@ -2001,11 +2005,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                 </svg>
 
                 {/* Founding line */}
-                <button
-                  onClick={() => { setSection("wiki"); setWikiCategory("legacy"); setActiveId("not-farm-not-corp"); }}
+                <div
+                  className="hl-house-note"
                   style={{
                     display: "block", width: "100%", textAlign: "left", background: "none", border: "none",
-                    cursor: "pointer", padding: "4px 20px 26px", color: TOKENS.paper,
+                    padding: "4px 20px 26px", color: TOKENS.paper,
                   }}
                 >
                   <p style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: "clamp(20px, 4.8vw, 26px)", lineHeight: 1.45, color: TOKENS.paper, margin: "0 0 12px", maxWidth: "34ch" }}>
@@ -2013,17 +2017,21 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout }) {
                       ? "“It's easy to make great things from great ingredients — but to make great things from the ordinary, that's something else.”"
                       : "“Làm ra thứ tuyệt vời từ nguyên liệu tuyệt vời thì dễ, nhưng từ những gì bình thường — đó mới là chuyện khác.”"}
                   </p>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: TOKENS.brassOnDark, textDecoration: "underline" }}>
+                  <button
+                    type="button"
+                    onClick={() => { setSection("wiki"); setWikiCategory("legacy"); setActiveId("not-farm-not-corp"); }}
+                    style={{ fontSize: 12, color: TOKENS.brassOnDark }}
+                  >
                     {t.viewDetails}
-                  </span>
-                </button>
+                  </button>
+                </div>
 
                 {/* The photographs close the chapter, full-bleed, clipped by the band's own
                     rounded bottom. Swiping is native scroll-snap rather than a JS carousel —
                     it keeps the momentum and rubber-banding the platform already does, and it
                     still works with a trackpad, a scrollbar drag, or arrow keys. */}
                 {homePhotos.length > 0 && (
-                  <div style={{ position: "relative" }}>
+                  <div className="hl-house-gallery" style={{ position: "relative" }}>
                     <div
                       className="peekrail"
                       onScroll={(e) => {

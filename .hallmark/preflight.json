@@ -1,0 +1,9 @@
+{
+  "date": "2026-08-25",
+  "framework": "Next.js 16 App Router",
+  "font_stack": "Lora + Inter + Noto Serif SC + TMCOngDo",
+  "palette": "warm paper + jade + brass + lacquer",
+  "motion": "CSS-only restrained transitions",
+  "spacing": "inline values; no shared scale before redesign",
+  "sources": ["package.json", "app/layout.js", "app/globals.css", "lib/constants.js", "public/ops/index.html"]
+}
