@@ -16,7 +16,7 @@ const COPY={
 export default function HouseStory(){
   const [lang,setLang]=useState("vi"); const [home,setHome]=useState(null); const [vendors,setVendors]=useState([]); const [articles,setArticles]=useState([]); const [active,setActive]=useState(null);
   const supabase=useMemo(()=>createClient(),[]); const t=COPY[lang]; const local=(v)=>v?.[lang]||v?.en||v?.vi||"";
-  useEffect(()=>{let live=true;Promise.all([supabase.from("settings_home").select("*").eq("id",1).maybeSingle(),supabase.rpc("list_public_vendors"),supabase.from("wiki_articles").select("*")]).then(([h,v,a])=>{if(!live)return;if(!h.error)setHome(h.data);if(!v.error)setVendors((v.data||[]).map(fromVendorRow));if(!a.error)setArticles(a.data||[])});return()=>{live=false}},[supabase]);
+  useEffect(()=>{let live=true;Promise.all([supabase.from("settings_home").select("*").eq("id",1).maybeSingle(),supabase.rpc("list_public_vendors"),supabase.from("wiki_articles").select("*").neq("category","brandkit")]).then(([h,v,a])=>{if(!live)return;if(!h.error)setHome(h.data);if(!v.error)setVendors((v.data||[]).map(fromVendorRow));if(!a.error)setArticles(a.data||[])});return()=>{live=false}},[supabase]);
   const activeArticle=articles.find(a=>a.id===active); const category=(id)=>CATEGORIES.find(c=>c.id===id)?.label?.[lang]||id;
   if(activeArticle)return <main className={styles.reader}><header><button onClick={()=>setActive(null)}><ArrowLeft size={17}/>{t.close}</button><button onClick={()=>setLang(lang==="vi"?"en":"vi")}><Globe2 size={15}/>{t.switcher}</button></header><article><p>{category(activeArticle.category)}</p><h1>{local(activeArticle.title)}</h1><div>{local(activeArticle.body)}</div></article></main>;
   return <main className={styles.page}>
