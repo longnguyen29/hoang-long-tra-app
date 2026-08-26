@@ -13,21 +13,21 @@ const COPY = {
     switcher: "EN",
     back: "Nhà Hoàng Long",
     eyebrow: "Bàn trà dành cho đối tác",
-    title: "Chọn trà nền bằng vị, không chỉ bằng giá mỗi ký.",
+    title: "Chọn trà nền theo hương vị và công thức, không chỉ theo giá mỗi ký.",
     intro: "Dành cho quán cà phê, trà thất, nhà hàng, đội ngũ R&D và nhà nhập khẩu muốn làm việc trực tiếp với một nhà chế biến trà Việt Nam.",
     sample: "Nhận bộ mẫu thử",
     discuss: "Trao đổi nhu cầu",
-    statement: "Chúng tôi không hứa trà sẽ cứu một công thức. Chúng tôi đưa trà lên chính quầy của bạn, đo lại cách pha, rồi để kết quả quyết định.",
+    statement: "Chúng tôi thử trà trực tiếp trong công thức của bạn, cùng điều chỉnh tỷ lệ pha và để kết quả thực tế quyết định.",
     principles: [
-      ["01", "Nguồn trà", "Shan Tuyết cổ thụ Hà Giang, mẻ trà có danh tính và mùa vụ rõ ràng."],
-      ["02", "Chế biến", "Kỷ luật hấp và làm trà theo công nghệ Nhật Bản, hướng đến hậu vị sạch và ít gắt."],
+      ["01", "Nguồn trà", "Mỗi mẻ trà có hồ sơ nguồn gốc và mùa vụ rõ ràng."],
+      ["02", "Chế biến", "Kỹ thuật hấp và kiểm soát nhiệt theo công nghệ Nhật Bản, hướng đến hương vị tự nhiên và ít gắt."],
       ["03", "Ứng dụng", "Thử bằng công thức thật của quán: tỷ lệ lá, nhiệt độ, thời gian, sữa và đường đều được tính lại."],
       ["04", "Cung ứng", "Quy cách từ mẫu thử đến số lượng lớn; trao đổi thẳng về năng lực, thời gian và biến động mùa vụ."],
     ],
     available: "Trà đang có cho đối tác",
     availableBody: "Danh sách này lấy trực tiếp từ danh mục đang vận hành. Mỗi cuộc trao đổi vẫn bắt đầu bằng ứng dụng và sản lượng bạn cần.",
     catalogueEmpty: "Danh mục đối tác đang được cập nhật.",
-    requestTitle: "Nói cho chúng tôi biết bạn đang làm gì.",
+    requestTitle: "Cho chúng tôi biết nhu cầu của quán.",
     requestBody: "Một cuộc gọi ngắn thường tiết kiệm nhiều vòng gửi mẫu. Hãy để lại bối cảnh đủ để chúng tôi chuẩn bị đúng loại trà và đúng câu hỏi.",
     name: "Tên của bạn",
     business: "Quán / doanh nghiệp",
@@ -41,7 +41,7 @@ const COPY = {
     sent: "Đã chuyển đến bàn đối tác.",
     sentBody: "Nhà sẽ liên hệ lại bằng thông tin bạn vừa cung cấp.",
     call: "Gọi Nhà · 0903 333 841",
-    footer: "Trà Việt cho những công thức nghiêm túc.",
+    footer: "Trà Việt cho những công thức cần vị trà rõ ràng.",
   },
   en: {
     switcher: "VI",
@@ -143,7 +143,7 @@ export default function TradeDesk() {
             <a href="#trade-brief">{t.discuss}<ArrowRight size={16}/></a>
           </div>
         </div>
-        <figure><img src="/landing/3.jpg" alt="Hoàng Long tea processing line"/><figcaption>Hà Giang · processing discipline</figcaption></figure>
+        <figure><img src="/landing/3.jpg" alt="Hoàng Long tea processing line"/><figcaption>Hà Giang · công nghệ chế biến</figcaption></figure>
       </section>
 
       <section className={styles.statement}><p>{t.statement}</p></section>

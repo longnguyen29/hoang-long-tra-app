@@ -10,9 +10,9 @@ import styles from "./TeaSessions.module.css";
 const COPY = {
   vi: {
     switcher: "EN", back: "Nhà Hoàng Long", eyebrow: "Bàn trà tại Nhà", title: "Chậm lại đủ lâu để thật sự nếm được trà.",
-    intro: "Một buổi trà riêng tại Hà Nội để đi qua nguồn gốc, cách chế biến và cách pha của những lá trà đang có trong Nhà.",
+    intro: "Một buổi trà riêng tại Hà Nội để tìm hiểu nguồn gốc, cách chế biến và cách pha của những lá trà đang có trong Nhà.",
     book: "Chọn ngày", place: "Hà Nội · xác nhận địa chỉ sau khi đặt", duration: "Khoảng 60–90 phút", price: "Hiện tại không thu phí",
-    flowTitle: "Buổi trà diễn ra thế nào", flow: [["01","Gặp lá","Nhìn, ngửi và hiểu mẻ trà trước khi nước chạm vào lá."],["02","Pha có chủ đích","Thay đổi nhiệt độ, tỷ lệ và thời gian để thấy cấu trúc của cùng một loại trà."],["03","Mang điều hữu ích về","Ghi lại cách pha phù hợp với bàn trà, quầy bar hoặc công việc của bạn."]],
+    flowTitle: "Buổi trà diễn ra thế nào", flow: [["01","Nhận biết lá trà","Nhìn, ngửi và hiểu mẻ trà trước khi nước chạm vào lá."],["02","Pha có chủ đích","Thay đổi nhiệt độ, tỷ lệ và thời gian để thấy cấu trúc của cùng một loại trà."],["03","Mang về cách pha phù hợp","Ghi lại cách pha phù hợp với bàn trà, quầy bar hoặc công việc của bạn."]],
     formEyebrow: "Đặt một buổi trà", formTitle: "Chọn một khoảng thời gian để bắt đầu.", date: "Ngày", time: "Giờ", name: "Tên của bạn", contact: "Số điện thoại hoặc email", note: "Bạn muốn tìm hiểu điều gì? (không bắt buộc)",
     consent: "Tôi đồng ý để Nhà Hoàng Long dùng thông tin này để sắp xếp buổi trà.", submit: "Gửi yêu cầu đặt lịch", sending: "Đang đặt…", taken: "Ngày này đã có lịch. Vui lòng chọn ngày khác.", failed: "Chưa đặt được lịch. Vui lòng thử lại.", required: "Vui lòng điền ngày, giờ, tên, liên hệ và xác nhận đồng ý.",
     success: "Lịch của bạn đã vào sổ.", successBody: "Nhà sẽ liên hệ để xác nhận địa chỉ và chi tiết buổi trà.", another: "Đặt một buổi khác", footer: "Một bàn trà. Một mẻ lá. Đủ thời gian.",
