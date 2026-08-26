@@ -330,6 +330,14 @@ export default function PartnerPortal() {
         </section>
       </main>
     );
+  if (!snapshot)
+    return (
+      <main className={styles.state}>
+        {error ? <Clock3 /> : <Loader2 />}
+        <p>{error || "Đang đồng bộ bàn đối tác…"}</p>
+        {error && <button onClick={load}>Thử lại</button>}
+      </main>
+    );
   if (snapshot?.state === "application_required")
     return (
       <main className={styles.application}>
