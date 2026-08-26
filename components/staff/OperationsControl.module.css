@@ -1,0 +1,521 @@
+.state {
+  min-height: 100dvh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+}
+.page {
+  min-height: 100dvh;
+  padding-block-end: var(--space-3xl);
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+}
+.top {
+  min-height: var(--topbar-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding-inline: var(--page-gutter);
+  border-block-end: var(--rule-thin) solid var(--color-rule);
+  background: var(--color-paper);
+}
+.top > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.top a,
+.top button {
+  min-height: var(--control-height);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+.top svg {
+  width: 1rem;
+}
+.top > div > span {
+  color: var(--color-accent);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.top div:last-child > span {
+  display: none;
+  text-align: end;
+  text-transform: none;
+  color: inherit;
+}
+.top b,
+.top small {
+  display: block;
+}
+.top small {
+  color: var(--color-muted);
+}
+.heading {
+  padding: var(--space-2xl) var(--page-gutter) var(--space-xl);
+}
+.heading p,
+.panel > header p,
+.actions header p,
+.reorder header p,
+.drawer header p {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.heading h1 {
+  max-width: 14ch;
+  margin: var(--space-xs) 0;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 7vw, 6rem);
+  font-weight: 500;
+  line-height: 0.92;
+}
+.heading > span {
+  color: var(--color-muted);
+}
+.tabs {
+  display: flex;
+  gap: var(--space-2xs);
+  padding: 0 var(--page-gutter) var(--space-lg);
+  overflow-x: auto;
+}
+.tabs button {
+  min-height: var(--control-height);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding-inline: var(--space-sm);
+  border: var(--rule-thin) solid var(--color-rule);
+  border-radius: var(--radius-control);
+  background: var(--color-paper);
+  color: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.tabs button[data-active="true"] {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.tabs svg {
+  width: 1rem;
+}
+.toast {
+  position: fixed;
+  z-index: 80;
+  inset: auto var(--space-md) var(--space-md) auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.toast[data-error] {
+  background: var(--color-danger);
+  color: var(--color-danger-ink);
+}
+.toast button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+.owner,
+.planning {
+  display: grid;
+  gap: var(--space-lg);
+  margin-inline: var(--page-gutter);
+}
+.metrics {
+  display: grid;
+}
+.metrics article {
+  min-height: 10rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: var(--space-md);
+  border: var(--rule-thin) solid var(--color-rule-2);
+  background: var(--color-paper);
+}
+.metrics svg {
+  color: var(--color-accent);
+}
+.metrics span {
+  margin-block: auto var(--space-3xs);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+.metrics b {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+}
+.metrics small {
+  color: var(--color-muted);
+}
+.ownerGrid {
+  display: grid;
+  gap: var(--space-lg);
+}
+.actions,
+.reorder {
+  background: var(--color-paper);
+  border: var(--rule-thin) solid var(--color-rule-2);
+}
+.actions > header,
+.reorder > header {
+  padding: var(--space-md);
+  border-block-end: var(--rule-thin) solid var(--color-rule);
+}
+.actions h2,
+.reorder h2,
+.panel h2 {
+  margin: var(--space-3xs) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+}
+.actions > button {
+  width: 100%;
+  min-height: 4.5rem;
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
+  border: 0;
+  border-block-end: var(--rule-thin) solid var(--color-rule-2);
+  background: transparent;
+  color: inherit;
+  text-align: start;
+}
+.actions svg {
+  color: var(--color-accent);
+}
+.actions b {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+}
+.reorder article {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-block-end: var(--rule-thin) solid var(--color-rule-2);
+}
+.reorder article > span {
+  display: grid;
+  margin-inline-end: auto;
+}
+.reorder small {
+  color: var(--color-muted);
+}
+.reorder strong {
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+}
+.reorder article[data-due="true"] strong {
+  color: var(--color-danger);
+}
+.panel {
+  margin-inline: var(--page-gutter);
+  border: var(--rule-thin) solid var(--color-rule-2);
+  background: var(--color-paper);
+}
+.planning .panel {
+  margin: 0;
+}
+.panel > header {
+  min-height: 6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-block-end: var(--rule-thin) solid var(--color-rule);
+}
+.panel > header > button,
+.panel > header > div:last-child button {
+  min-height: var(--control-height);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding-inline: var(--space-sm);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-weight: 700;
+}
+.panel > header > div:last-child {
+  display: flex;
+  gap: var(--space-xs);
+}
+.financeSummary {
+  display: grid;
+}
+.financeSummary article {
+  min-height: 8rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: var(--space-md);
+  border-block-end: var(--rule-thin) solid var(--color-rule-2);
+}
+.financeSummary span {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+.financeSummary b {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+}
+.rows article {
+  min-height: 5rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
+  border-block-end: var(--rule-thin) solid var(--color-rule-2);
+}
+.rows article[data-alert="true"] {
+  border-inline-start: 0.25rem solid var(--color-danger);
+}
+.rows article > span {
+  min-width: 0;
+  display: grid;
+  margin-inline-end: auto;
+}
+.rows small {
+  display: block;
+  color: var(--color-muted);
+}
+.rows i {
+  color: var(--color-accent);
+  font-size: var(--text-xs);
+  font-style: normal;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.rows button {
+  min-height: 2.25rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3xs);
+  padding-inline: var(--space-xs);
+  border: var(--rule-thin) solid var(--color-rule);
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+}
+.batchGrid {
+  display: grid;
+}
+.batchGrid article {
+  padding: var(--space-md);
+  border-block-end: var(--rule-thin) solid var(--color-rule-2);
+}
+.batchGrid article > img,
+.batchGrid article > svg {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  background: var(--color-paper-2);
+  color: var(--color-accent);
+}
+.batchGrid article > span {
+  display: block;
+  margin-block-start: var(--space-sm);
+  color: var(--color-accent);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.batchGrid h3 {
+  margin: var(--space-xs) 0;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+}
+.batchGrid p,
+.batchGrid small {
+  color: var(--color-muted);
+}
+.batchGrid article > div > * {
+  display: block;
+}
+.batchGrid footer {
+  display: flex;
+  justify-content: space-between;
+  margin-block-start: var(--space-md);
+}
+.batchGrid footer a,
+.batchGrid footer button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+}
+.planRows article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, auto);
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border-block-end: var(--rule-thin) solid var(--color-rule-2);
+}
+.planRows article[data-risk="true"] {
+  border-inline-start: 0.25rem solid var(--color-danger);
+}
+.planRows article > span > * {
+  display: block;
+}
+.planRows article > div {
+  min-width: 5rem;
+  text-align: end;
+}
+.planRows small {
+  display: block;
+  color: var(--color-muted);
+}
+.overlay {
+  position: fixed;
+  z-index: 70;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  background: color-mix(in oklch, var(--color-ink) 70%, transparent);
+}
+.drawer {
+  width: min(100%, 38rem);
+  height: 100dvh;
+  display: grid;
+  align-content: start;
+  gap: var(--space-sm);
+  overflow-y: auto;
+  padding: var(--space-lg);
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+.drawer.wide {
+  width: min(100%, 58rem);
+}
+.drawer > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-block-end: var(--space-sm);
+}
+.drawer h2 {
+  margin: var(--space-3xs) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+}
+.drawer header button {
+  width: var(--control-height);
+  height: var(--control-height);
+  border: var(--rule-thin) solid var(--color-rule);
+  background: transparent;
+  color: inherit;
+}
+.drawer label {
+  display: grid;
+  gap: var(--space-2xs);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+.drawer input,
+.drawer select,
+.drawer textarea {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: var(--space-xs);
+  border: var(--rule-thin) solid var(--color-rule);
+  border-radius: var(--radius-control);
+  background: var(--color-paper-2);
+  color: inherit;
+  font: inherit;
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-sm);
+}
+.primary {
+  min-height: var(--control-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2xs);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-weight: 700;
+}
+@media (min-width: 48rem) {
+  .top div:last-child > span {
+    display: block;
+  }
+  .metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .ownerGrid {
+    grid-template-columns: minmax(18rem, 0.7fr) minmax(0, 1.3fr);
+  }
+  .financeSummary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .batchGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .batchGrid article {
+    border-inline-end: var(--rule-thin) solid var(--color-rule-2);
+  }
+}
+@media (max-width: 48rem) {
+  .heading {
+    padding-block-start: var(--space-xl);
+  }
+  .panel > header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .panel > header > div:last-child {
+    flex-wrap: wrap;
+  }
+  .rows article {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .rows article > span {
+    flex-basis: 100%;
+  }
+  .planRows article {
+    grid-template-columns: 1fr 1fr;
+  }
+  .planRows article > span {
+    grid-column: 1/-1;
+  }
+  .planRows article > div {
+    text-align: start;
+  }
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+  .drawer {
+    padding: var(--space-md);
+  }
+}

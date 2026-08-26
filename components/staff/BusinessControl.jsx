@@ -1,44 +1,780 @@
 "use client";
 
-import {useCallback,useEffect,useMemo,useState} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {ArrowLeft,BarChart3,Check,CircleDollarSign,Download,Handshake,MessageSquareQuote,Percent,Plus,RefreshCw,RotateCcw,Save} from "lucide-react";
-import {fromOrderRow,fromPaymentRow,fromProductReviewRow,fromPromoRow,fromWholesaleAccountRow,toPaymentRow,toPromoRow} from "@/lib/mappers";
+import {
+  ArrowLeft,
+  BarChart3,
+  Check,
+  CircleDollarSign,
+  Download,
+  Handshake,
+  MessageSquareQuote,
+  Percent,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Save,
+} from "lucide-react";
+import {
+  fromOrderRow,
+  fromPaymentRow,
+  fromProductReviewRow,
+  fromPromoRow,
+  fromWholesaleAccountRow,
+  toPaymentRow,
+  toPromoRow,
+} from "@/lib/mappers";
 import styles from "./BusinessControl.module.css";
 
-const blankPromo=()=>({id:"",code:"",percent:"",ownerName:"",active:true});
-const blankPartner=()=>({id:"",code:"",businessName:"",contact:"",wholesaleVerified:true});
-const money=value=>new Intl.NumberFormat("vi-VN",{style:"currency",currency:"VND",maximumFractionDigits:0}).format(Number(value)||0);
-const when=value=>new Intl.DateTimeFormat("vi-VN",{dateStyle:"short",timeStyle:"short"}).format(new Date(value));
+const blankPromo = () => ({
+  id: "",
+  code: "",
+  percent: "",
+  ownerName: "",
+  active: true,
+});
+const blankPartner = () => ({
+  id: "",
+  code: "",
+  businessName: "",
+  contact: "",
+  wholesaleVerified: true,
+  deliveryAddress: "",
+  taxNumber: "",
+  reorderCadenceDays: 30,
+  leadTimeDays: 3,
+});
+const money = (value) =>
+  new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(Number(value) || 0);
+const when = (value) =>
+  new Intl.DateTimeFormat("vi-VN", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
 
-export default function BusinessControl({supabase,email,onLogout}){
- const [tab,setTab]=useState("reports"),[orders,setOrders]=useState([]),[promos,setPromos]=useState([]),[testimonials,setTestimonials]=useState([]),[productReviews,setProductReviews]=useState([]),[partners,setPartners]=useState([]),[payment,setPayment]=useState(fromPaymentRow()),[bin,setBin]=useState([]),[month,setMonth]=useState(()=>new Date().toISOString().slice(0,7)),[promo,setPromo]=useState(null),[partner,setPartner]=useState(null),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[saved,setSaved]=useState(""),[error,setError]=useState("");
- const load=useCallback(async()=>{setLoading(true);setError("");const [o,p,t,r,w,pay,b]=await Promise.all([supabase.from("orders").select("*").order("ts",{ascending:false}),supabase.from("promos").select("*").order("code"),supabase.from("testimonials").select("*"),supabase.from("product_reviews").select("*").order("created_at",{ascending:false}),supabase.from("wholesale_accounts").select("*").order("created_at",{ascending:false}),supabase.from("settings_payment").select("*").eq("id",1).maybeSingle(),supabase.from("deleted_records").select("*").order("deleted_at",{ascending:false})]);if([o,p,t,r,w,pay,b].some(result=>result.error))setError("Không tải được toàn bộ dữ liệu thương mại.");if(!o.error)setOrders((o.data||[]).map(fromOrderRow));if(!p.error)setPromos((p.data||[]).map(fromPromoRow));if(!t.error)setTestimonials(t.data||[]);if(!r.error)setProductReviews((r.data||[]).map(fromProductReviewRow));if(!w.error)setPartners((w.data||[]).map(fromWholesaleAccountRow));if(!pay.error)setPayment(fromPaymentRow(pay.data));if(!b.error)setBin(b.data||[]);setLoading(false)},[supabase]);
- useEffect(()=>{load()},[load]);
- const flash=message=>{setSaved(message);setTimeout(()=>setSaved(""),1800)};
- const monthOrders=useMemo(()=>orders.filter(item=>(item.ts||"").slice(0,7)===month),[orders,month]);
- const report=useMemo(()=>{const retail=monthOrders.filter(item=>item.type==="retail"),wholesale=monthOrders.filter(item=>item.type==="wholesale"),cash=monthOrders.filter(item=>item.paymentMethod==="cash"),taxable=monthOrders.filter(item=>item.taxNumber?.trim());return {revenue:monthOrders.reduce((sum,item)=>sum+(item.estimatedTotal||0),0),retail:retail.length,wholesale:wholesale.length,wholesaleKg:wholesale.reduce((sum,item)=>sum+(item.totalKg||0),0),cash:cash.reduce((sum,item)=>sum+(item.estimatedTotal||0),0),transfer:monthOrders.filter(item=>item.paymentMethod!=="cash").reduce((sum,item)=>sum+(item.estimatedTotal||0),0),taxable,vat:taxable.reduce((sum,item)=>sum+(item.estimatedTotal||0)*((item.vat||0)/100),0)}},[monthOrders]);
- const savePromo=async event=>{event.preventDefault();const percent=Number(promo.percent);if(!promo.code.trim()||percent<=0||percent>100)return;setSaving(true);const next={...promo,id:promo.id||`promo-${Date.now().toString(36)}`,code:promo.code.trim().toUpperCase(),percent,ownerName:promo.ownerName.trim()};const {error:saveError}=await supabase.from("promos").upsert(toPromoRow(next));setSaving(false);if(saveError){setError("Chưa lưu được ưu đãi.");return}setPromo(null);flash("Đã lưu ưu đãi");load()};
- const togglePromo=async item=>{const active=!item.active,{error:updateError}=await supabase.from("promos").update({active}).eq("id",item.id);if(updateError){setError("Chưa cập nhật được ưu đãi.");return}setPromos(current=>current.map(row=>row.id===item.id?{...row,active}:row))};
- const approve=async(table,id)=>{const {error:updateError}=await supabase.from(table).update({approved:true}).eq("id",id);if(updateError){setError("Chưa duyệt được đánh giá.");return}if(table==="testimonials")setTestimonials(current=>current.map(row=>row.id===id?{...row,approved:true}:row));else setProductReviews(current=>current.map(row=>row.id===id?{...row,approved:true}:row));flash("Đã duyệt đánh giá")};
- const savePayment=async event=>{event.preventDefault();setSaving(true);const {error:saveError}=await supabase.from("settings_payment").upsert(toPaymentRow(payment));setSaving(false);if(saveError){setError("Chưa lưu được thông tin thanh toán.");return}flash("Đã lưu thanh toán")};
- const savePartner=async event=>{event.preventDefault();if(!partner.businessName.trim())return;setSaving(true);const next={...partner,id:partner.id||`partner-${Date.now().toString(36)}`,code:partner.code.trim().toUpperCase()||null,businessName:partner.businessName.trim(),contact:partner.contact.trim(),wholesaleVerified:partner.wholesaleVerified!==false},row={id:next.id,code:next.code,business_name:next.businessName,contact:next.contact,wholesale_verified:next.wholesaleVerified};const {error:saveError}=await supabase.from("wholesale_accounts").upsert(row);setSaving(false);if(saveError){setError("Chưa lưu được đối tác.");return}setPartner(null);flash("Đã lưu đối tác");load()};
- const approvePartner=async item=>{const {error:updateError}=await supabase.from("wholesale_accounts").update({wholesale_verified:true}).eq("id",item.id);if(updateError){setError("Chưa duyệt được đối tác.");return}setPartners(current=>current.map(row=>row.id===item.id?{...row,wholesaleVerified:true}:row));flash("Đã duyệt đối tác")};
- const restore=async item=>{setSaving(true);const {error:restoreError}=await supabase.rpc("restore_record",{p_archive_id:item.id});setSaving(false);if(restoreError){setError("Chưa khôi phục được bản ghi.");return}flash("Đã khôi phục bản ghi");load()};
- const exportCsv=()=>{const headers=["Mã đơn","Ngày","Loại","Khách hàng","Mã số thuế","Tổng","Thanh toán"],rows=monthOrders.map(item=>[item.id,when(item.ts),item.type,item.customerName,item.taxNumber||"",item.estimatedTotal||0,item.paymentMethod]);const csv=[headers,...rows].map(row=>row.map(cell=>`"${String(cell).replaceAll('"','""')}"`).join(",")).join("\n"),url=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"})),a=document.createElement("a");a.href=url;a.download=`bao-cao-${month}.csv`;a.click();URL.revokeObjectURL(url)};
- const tabs=[["reports","Báo cáo",BarChart3],["partners","Đối tác",Handshake],["offers","Ưu đãi",Percent],["reviews","Đánh giá",MessageSquareQuote],["payment","Thanh toán",CircleDollarSign],["bin","Khôi phục",RotateCcw]];
- return <main className={styles.page}>
-  <header className={styles.top}><div><Link href="/admin"><ArrowLeft/>Điều phối</Link><span>Commercial control</span></div><div><span><b>{email}</b><small>Phòng thương mại</small></span><button onClick={load} disabled={loading}><RefreshCw/></button><button onClick={onLogout}>Đăng xuất</button></div></header>
-  <section className={styles.heading}><p>Nhịp kinh doanh của Nhà</p><h1>Thương mại, bằng một mặt bàn.</h1><span>Doanh thu, đối tác và các điểm chạm trước khi khách thanh toán.</span></section>
-  <nav className={styles.tabs}>{tabs.map(([id,label,Icon])=><button key={id} className={tab===id?styles.active:""} onClick={()=>setTab(id)}><Icon/>{label}</button>)}</nav>
-  {error&&<p className={styles.error}>{error}</p>}{saved&&<p className={styles.saved}><Check/>{saved}</p>}
-  {tab==="reports"&&<section className={styles.panel}><header><div><p>Monthly ledger</p><h2>Bức tranh tháng</h2></div><input type="month" value={month} onChange={event=>setMonth(event.target.value)}/></header><div className={styles.metrics}>{[["Doanh thu",money(report.revenue),`${monthOrders.length} đơn`],["Đơn sỉ",`${report.wholesaleKg} kg`,`${report.wholesale} đơn`],["Tiền mặt",money(report.cash),"Đã ghi nhận"],["Chuyển khoản",money(report.transfer),"QR / ngân hàng"]].map(([label,value,note])=><article key={label}><span>{label}</span><b>{value}</b><small>{note}</small></article>)}</div><div className={styles.tax}><div><p>Tax desk</p><h3>Đơn cần chứng từ</h3><span>{report.taxable.length} đơn · VAT ước tính {money(report.vat)}</span></div>{report.taxable.map(item=><article key={item.id}><span><b>{item.customerName}</b><small>{item.taxNumber}</small></span><b>{money(item.estimatedTotal)}</b></article>)}<button onClick={exportCsv} disabled={!monthOrders.length}><Download/>Xuất CSV tháng</button></div></section>}
-  {tab==="partners"&&<section className={styles.panel}><header><div><p>Trade accounts</p><h2>Đối tác bán sỉ</h2></div><button onClick={()=>setPartner(blankPartner())}><Plus/>Thêm đối tác</button></header><div className={styles.rows}>{partners.map(item=><article key={item.id}><span><b>{item.businessName}</b><small>{item.contact||"Chưa có liên hệ"} · {item.code||"Chưa cấp mã"}</small></span><i data-on={item.wholesaleVerified}>{item.wholesaleVerified?"Đã duyệt":"Chờ duyệt"}</i>{item.wholesaleVerified?<button onClick={()=>setPartner({...item})}>Sửa</button>:<button onClick={()=>approvePartner(item)}>Duyệt</button>}</article>)}</div></section>}
-  {tab==="offers"&&<section className={styles.panel}><header><div><p>Offer book</p><h2>Mã ưu đãi đang lưu hành</h2></div><button onClick={()=>setPromo(blankPromo())}><Plus/>Tạo mã</button></header><div className={styles.rows}>{promos.map(item=><article key={item.id}><span><b>{item.code}</b><small>{item.ownerName||"Mã chung"} · giảm {item.percent}%</small></span><i data-on={item.active}>{item.active?"Đang chạy":"Tạm dừng"}</i><button onClick={()=>togglePromo(item)}>{item.active?"Dừng":"Bật"}</button><button onClick={()=>setPromo({...item})}>Sửa</button></article>)}</div></section>}
-  {tab==="reviews"&&<section className={styles.panel}><header><div><p>Moderation</p><h2>Lời khách nói về Nhà</h2></div><span>{testimonials.filter(item=>!item.approved).length+productReviews.filter(item=>!item.approved).length} chờ duyệt</span></header><div className={styles.reviewColumns}><section><h3>Cảm nhận về Nhà</h3>{testimonials.map(item=><article key={item.id}><span><b>{item.name}</b><small>{item.quote}</small></span>{item.approved?<i data-on="true">Đã đăng</i>:<button onClick={()=>approve("testimonials",item.id)}>Duyệt</button>}</article>)}</section><section><h3>Đánh giá sản phẩm</h3>{productReviews.map(item=><article key={item.id}><span><b>{item.reviewerName} · {item.rating}/5</b><small>{item.body}</small></span>{item.approved?<i data-on="true">Đã đăng</i>:<button onClick={()=>approve("product_reviews",item.id)}>Duyệt</button>}</article>)}</section></div></section>}
-  {tab==="payment"&&<section className={`${styles.panel} ${styles.payment}`}><header><div><p>Payment rail</p><h2>Tài khoản nhận thanh toán</h2></div></header><form onSubmit={savePayment}><label>Mã BIN<input value={payment.bin} onChange={event=>setPayment({...payment,bin:event.target.value})}/></label><label>Ngân hàng<input value={payment.bankShortName} onChange={event=>setPayment({...payment,bankShortName:event.target.value})}/></label><label>Số tài khoản<input value={payment.accountNumber} onChange={event=>setPayment({...payment,accountNumber:event.target.value})}/></label><label>Tên tài khoản<input value={payment.accountName} onChange={event=>setPayment({...payment,accountName:event.target.value})}/></label><button disabled={saving}><Save/>Lưu thông tin thanh toán</button></form></section>}
-  {tab==="bin"&&<section className={styles.panel}><header><div><p>Seven-day recovery</p><h2>Bản ghi có thể khôi phục</h2></div><span>{bin.length} mục</span></header><div className={styles.rows}>{bin.length?bin.map(item=><article key={item.id}><span><b>{item.label||item.record_id}</b><small>{item.table_name} · {when(item.deleted_at)} · bởi {item.deleted_by||"nhân viên"}</small></span><button onClick={()=>restore(item)} disabled={saving}><RotateCcw/>Khôi phục</button></article>):<div className={styles.empty}><RotateCcw/><h3>Không có gì trong thùng khôi phục.</h3></div>}</div></section>}
-  {promo&&<div className={styles.overlay}><form className={styles.drawer} onSubmit={savePromo}><header><div><p>Offer record</p><h2>{promo.id?"Sửa mã ưu đãi":"Mã ưu đãi mới"}</h2></div><button type="button" onClick={()=>setPromo(null)}>×</button></header><label>Mã<input value={promo.code} onChange={event=>setPromo({...promo,code:event.target.value})}/></label><label>Phần trăm<input type="number" min="1" max="100" value={promo.percent} onChange={event=>setPromo({...promo,percent:event.target.value})}/></label><label>Người / chương trình phụ trách<input value={promo.ownerName} onChange={event=>setPromo({...promo,ownerName:event.target.value})}/></label><button className={styles.save} disabled={saving}><Save/>Lưu ưu đãi</button></form></div>}
-  {partner&&<div className={styles.overlay}><form className={styles.drawer} onSubmit={savePartner}><header><div><p>Trade account</p><h2>{partner.id?"Sửa đối tác":"Đối tác mới"}</h2></div><button type="button" onClick={()=>setPartner(null)}>×</button></header><label>Tên doanh nghiệp<input value={partner.businessName} onChange={event=>setPartner({...partner,businessName:event.target.value})}/></label><label>Liên hệ<input value={partner.contact} onChange={event=>setPartner({...partner,contact:event.target.value})}/></label><label>Mã đối tác<input value={partner.code||""} onChange={event=>setPartner({...partner,code:event.target.value})}/></label><button className={styles.save} disabled={saving}><Save/>Lưu đối tác</button></form></div>}
- </main>;
+export default function BusinessControl({ supabase, email, onLogout }) {
+  const [tab, setTab] = useState("reports"),
+    [orders, setOrders] = useState([]),
+    [promos, setPromos] = useState([]),
+    [testimonials, setTestimonials] = useState([]),
+    [productReviews, setProductReviews] = useState([]),
+    [partners, setPartners] = useState([]),
+    [payment, setPayment] = useState(fromPaymentRow()),
+    [bin, setBin] = useState([]),
+    [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7)),
+    [promo, setPromo] = useState(null),
+    [partner, setPartner] = useState(null),
+    [loading, setLoading] = useState(true),
+    [saving, setSaving] = useState(false),
+    [saved, setSaved] = useState(""),
+    [error, setError] = useState("");
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    const [o, p, t, r, w, pay, b] = await Promise.all([
+      supabase.from("orders").select("*").order("ts", { ascending: false }),
+      supabase.from("promos").select("*").order("code"),
+      supabase.from("testimonials").select("*"),
+      supabase
+        .from("product_reviews")
+        .select("*")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("wholesale_accounts")
+        .select("*")
+        .order("created_at", { ascending: false }),
+      supabase.from("settings_payment").select("*").eq("id", 1).maybeSingle(),
+      supabase
+        .from("deleted_records")
+        .select("*")
+        .order("deleted_at", { ascending: false }),
+    ]);
+    if ([o, p, t, r, w, pay, b].some((result) => result.error))
+      setError("Không tải được toàn bộ dữ liệu thương mại.");
+    if (!o.error) setOrders((o.data || []).map(fromOrderRow));
+    if (!p.error) setPromos((p.data || []).map(fromPromoRow));
+    if (!t.error) setTestimonials(t.data || []);
+    if (!r.error) setProductReviews((r.data || []).map(fromProductReviewRow));
+    if (!w.error) setPartners((w.data || []).map(fromWholesaleAccountRow));
+    if (!pay.error) setPayment(fromPaymentRow(pay.data));
+    if (!b.error) setBin(b.data || []);
+    setLoading(false);
+  }, [supabase]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  const flash = (message) => {
+    setSaved(message);
+    setTimeout(() => setSaved(""), 1800);
+  };
+  const monthOrders = useMemo(
+    () => orders.filter((item) => (item.ts || "").slice(0, 7) === month),
+    [orders, month],
+  );
+  const report = useMemo(() => {
+    const retail = monthOrders.filter((item) => item.type === "retail"),
+      wholesale = monthOrders.filter((item) => item.type === "wholesale"),
+      cash = monthOrders.filter((item) => item.paymentMethod === "cash"),
+      taxable = monthOrders.filter((item) => item.taxNumber?.trim());
+    return {
+      revenue: monthOrders.reduce(
+        (sum, item) => sum + (item.estimatedTotal || 0),
+        0,
+      ),
+      retail: retail.length,
+      wholesale: wholesale.length,
+      wholesaleKg: wholesale.reduce(
+        (sum, item) => sum + (item.totalKg || 0),
+        0,
+      ),
+      cash: cash.reduce((sum, item) => sum + (item.estimatedTotal || 0), 0),
+      transfer: monthOrders
+        .filter((item) => item.paymentMethod !== "cash")
+        .reduce((sum, item) => sum + (item.estimatedTotal || 0), 0),
+      taxable,
+      vat: taxable.reduce(
+        (sum, item) =>
+          sum + (item.estimatedTotal || 0) * ((item.vat || 0) / 100),
+        0,
+      ),
+    };
+  }, [monthOrders]);
+  const savePromo = async (event) => {
+    event.preventDefault();
+    const percent = Number(promo.percent);
+    if (!promo.code.trim() || percent <= 0 || percent > 100) return;
+    setSaving(true);
+    const next = {
+      ...promo,
+      id: promo.id || `promo-${Date.now().toString(36)}`,
+      code: promo.code.trim().toUpperCase(),
+      percent,
+      ownerName: promo.ownerName.trim(),
+    };
+    const { error: saveError } = await supabase
+      .from("promos")
+      .upsert(toPromoRow(next));
+    setSaving(false);
+    if (saveError) {
+      setError("Chưa lưu được ưu đãi.");
+      return;
+    }
+    setPromo(null);
+    flash("Đã lưu ưu đãi");
+    load();
+  };
+  const togglePromo = async (item) => {
+    const active = !item.active,
+      { error: updateError } = await supabase
+        .from("promos")
+        .update({ active })
+        .eq("id", item.id);
+    if (updateError) {
+      setError("Chưa cập nhật được ưu đãi.");
+      return;
+    }
+    setPromos((current) =>
+      current.map((row) => (row.id === item.id ? { ...row, active } : row)),
+    );
+  };
+  const approve = async (table, id) => {
+    const { error: updateError } = await supabase
+      .from(table)
+      .update({ approved: true })
+      .eq("id", id);
+    if (updateError) {
+      setError("Chưa duyệt được đánh giá.");
+      return;
+    }
+    if (table === "testimonials")
+      setTestimonials((current) =>
+        current.map((row) =>
+          row.id === id ? { ...row, approved: true } : row,
+        ),
+      );
+    else
+      setProductReviews((current) =>
+        current.map((row) =>
+          row.id === id ? { ...row, approved: true } : row,
+        ),
+      );
+    flash("Đã duyệt đánh giá");
+  };
+  const savePayment = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    const { error: saveError } = await supabase
+      .from("settings_payment")
+      .upsert(toPaymentRow(payment));
+    setSaving(false);
+    if (saveError) {
+      setError("Chưa lưu được thông tin thanh toán.");
+      return;
+    }
+    flash("Đã lưu thanh toán");
+  };
+  const savePartner = async (event) => {
+    event.preventDefault();
+    if (!partner.businessName.trim()) return;
+    setSaving(true);
+    const next = {
+        ...partner,
+        id: partner.id || `partner-${Date.now().toString(36)}`,
+        code: partner.code.trim().toUpperCase() || null,
+        businessName: partner.businessName.trim(),
+        contact: partner.contact.trim(),
+        wholesaleVerified: partner.wholesaleVerified !== false,
+      },
+      row = {
+        id: next.id,
+        code: next.code,
+        business_name: next.businessName,
+        contact: next.contact,
+        wholesale_verified: next.wholesaleVerified,
+        delivery_address: next.deliveryAddress || "",
+        tax_number: next.taxNumber || "",
+        reorder_cadence_days: Number(next.reorderCadenceDays) || 30,
+        lead_time_days: Number(next.leadTimeDays) || 3,
+      };
+    const { error: saveError } = await supabase
+      .from("wholesale_accounts")
+      .upsert(row);
+    setSaving(false);
+    if (saveError) {
+      setError("Chưa lưu được đối tác.");
+      return;
+    }
+    setPartner(null);
+    flash("Đã lưu đối tác");
+    load();
+  };
+  const approvePartner = async (item) => {
+    const { error: updateError } = await supabase
+      .from("wholesale_accounts")
+      .update({ wholesale_verified: true })
+      .eq("id", item.id);
+    if (updateError) {
+      setError("Chưa duyệt được đối tác.");
+      return;
+    }
+    setPartners((current) =>
+      current.map((row) =>
+        row.id === item.id ? { ...row, wholesaleVerified: true } : row,
+      ),
+    );
+    flash("Đã duyệt đối tác");
+  };
+  const restore = async (item) => {
+    setSaving(true);
+    const { error: restoreError } = await supabase.rpc("restore_record", {
+      p_archive_id: item.id,
+    });
+    setSaving(false);
+    if (restoreError) {
+      setError("Chưa khôi phục được bản ghi.");
+      return;
+    }
+    flash("Đã khôi phục bản ghi");
+    load();
+  };
+  const exportCsv = () => {
+    const headers = [
+        "Mã đơn",
+        "Ngày",
+        "Loại",
+        "Khách hàng",
+        "Mã số thuế",
+        "Tổng",
+        "Thanh toán",
+      ],
+      rows = monthOrders.map((item) => [
+        item.id,
+        when(item.ts),
+        item.type,
+        item.customerName,
+        item.taxNumber || "",
+        item.estimatedTotal || 0,
+        item.paymentMethod,
+      ]);
+    const csv = [headers, ...rows]
+        .map((row) =>
+          row
+            .map((cell) => `"${String(cell).replaceAll('"', '""')}"`)
+            .join(","),
+        )
+        .join("\n"),
+      url = URL.createObjectURL(
+        new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }),
+      ),
+      a = document.createElement("a");
+    a.href = url;
+    a.download = `bao-cao-${month}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const tabs = [
+    ["reports", "Báo cáo", BarChart3],
+    ["partners", "Đối tác", Handshake],
+    ["offers", "Ưu đãi", Percent],
+    ["reviews", "Đánh giá", MessageSquareQuote],
+    ["payment", "Thanh toán", CircleDollarSign],
+    ["bin", "Khôi phục", RotateCcw],
+  ];
+  return (
+    <main className={styles.page}>
+      <header className={styles.top}>
+        <div>
+          <Link href="/admin">
+            <ArrowLeft />
+            Điều phối
+          </Link>
+          <span>Commercial control</span>
+        </div>
+        <div>
+          <span>
+            <b>{email}</b>
+            <small>Phòng thương mại</small>
+          </span>
+          <button onClick={load} disabled={loading}>
+            <RefreshCw />
+          </button>
+          <button onClick={onLogout}>Đăng xuất</button>
+        </div>
+      </header>
+      <section className={styles.heading}>
+        <p>Nhịp kinh doanh của Nhà</p>
+        <h1>Thương mại, bằng một mặt bàn.</h1>
+        <span>
+          Doanh thu, đối tác và các điểm chạm trước khi khách thanh toán.
+        </span>
+      </section>
+      <nav className={styles.tabs}>
+        {tabs.map(([id, label, Icon]) => (
+          <button
+            key={id}
+            className={tab === id ? styles.active : ""}
+            onClick={() => setTab(id)}
+          >
+            <Icon />
+            {label}
+          </button>
+        ))}
+      </nav>
+      {error && <p className={styles.error}>{error}</p>}
+      {saved && (
+        <p className={styles.saved}>
+          <Check />
+          {saved}
+        </p>
+      )}
+      {tab === "reports" && (
+        <section className={styles.panel}>
+          <header>
+            <div>
+              <p>Monthly ledger</p>
+              <h2>Bức tranh tháng</h2>
+            </div>
+            <input
+              type="month"
+              value={month}
+              onChange={(event) => setMonth(event.target.value)}
+            />
+          </header>
+          <div className={styles.metrics}>
+            {[
+              ["Doanh thu", money(report.revenue), `${monthOrders.length} đơn`],
+              ["Đơn sỉ", `${report.wholesaleKg} kg`, `${report.wholesale} đơn`],
+              ["Tiền mặt", money(report.cash), "Đã ghi nhận"],
+              ["Chuyển khoản", money(report.transfer), "QR / ngân hàng"],
+            ].map(([label, value, note]) => (
+              <article key={label}>
+                <span>{label}</span>
+                <b>{value}</b>
+                <small>{note}</small>
+              </article>
+            ))}
+          </div>
+          <div className={styles.tax}>
+            <div>
+              <p>Tax desk</p>
+              <h3>Đơn cần chứng từ</h3>
+              <span>
+                {report.taxable.length} đơn · VAT ước tính {money(report.vat)}
+              </span>
+            </div>
+            {report.taxable.map((item) => (
+              <article key={item.id}>
+                <span>
+                  <b>{item.customerName}</b>
+                  <small>{item.taxNumber}</small>
+                </span>
+                <b>{money(item.estimatedTotal)}</b>
+              </article>
+            ))}
+            <button onClick={exportCsv} disabled={!monthOrders.length}>
+              <Download />
+              Xuất CSV tháng
+            </button>
+          </div>
+        </section>
+      )}
+      {tab === "partners" && (
+        <section className={styles.panel}>
+          <header>
+            <div>
+              <p>Trade accounts</p>
+              <h2>Đối tác bán sỉ</h2>
+            </div>
+            <button onClick={() => setPartner(blankPartner())}>
+              <Plus />
+              Thêm đối tác
+            </button>
+          </header>
+          <div className={styles.rows}>
+            {partners.map((item) => (
+              <article key={item.id}>
+                <span>
+                  <b>{item.businessName}</b>
+                  <small>
+                    {item.contact || "Chưa có liên hệ"} ·{" "}
+                    {item.code || "Chưa cấp mã"} · nhịp đặt lại{" "}
+                    {item.reorderCadenceDays} ngày
+                  </small>
+                </span>
+                <i data-on={item.wholesaleVerified}>
+                  {item.wholesaleVerified ? "Đã duyệt" : "Chờ duyệt"}
+                </i>
+                {item.wholesaleVerified ? (
+                  <button onClick={() => setPartner({ ...item })}>Sửa</button>
+                ) : (
+                  <button onClick={() => approvePartner(item)}>Duyệt</button>
+                )}
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+      {tab === "offers" && (
+        <section className={styles.panel}>
+          <header>
+            <div>
+              <p>Offer book</p>
+              <h2>Mã ưu đãi đang lưu hành</h2>
+            </div>
+            <button onClick={() => setPromo(blankPromo())}>
+              <Plus />
+              Tạo mã
+            </button>
+          </header>
+          <div className={styles.rows}>
+            {promos.map((item) => (
+              <article key={item.id}>
+                <span>
+                  <b>{item.code}</b>
+                  <small>
+                    {item.ownerName || "Mã chung"} · giảm {item.percent}%
+                  </small>
+                </span>
+                <i data-on={item.active}>
+                  {item.active ? "Đang chạy" : "Tạm dừng"}
+                </i>
+                <button onClick={() => togglePromo(item)}>
+                  {item.active ? "Dừng" : "Bật"}
+                </button>
+                <button onClick={() => setPromo({ ...item })}>Sửa</button>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+      {tab === "reviews" && (
+        <section className={styles.panel}>
+          <header>
+            <div>
+              <p>Moderation</p>
+              <h2>Lời khách nói về Nhà</h2>
+            </div>
+            <span>
+              {testimonials.filter((item) => !item.approved).length +
+                productReviews.filter((item) => !item.approved).length}{" "}
+              chờ duyệt
+            </span>
+          </header>
+          <div className={styles.reviewColumns}>
+            <section>
+              <h3>Cảm nhận về Nhà</h3>
+              {testimonials.map((item) => (
+                <article key={item.id}>
+                  <span>
+                    <b>{item.name}</b>
+                    <small>{item.quote}</small>
+                  </span>
+                  {item.approved ? (
+                    <i data-on="true">Đã đăng</i>
+                  ) : (
+                    <button onClick={() => approve("testimonials", item.id)}>
+                      Duyệt
+                    </button>
+                  )}
+                </article>
+              ))}
+            </section>
+            <section>
+              <h3>Đánh giá sản phẩm</h3>
+              {productReviews.map((item) => (
+                <article key={item.id}>
+                  <span>
+                    <b>
+                      {item.reviewerName} · {item.rating}/5
+                    </b>
+                    <small>{item.body}</small>
+                  </span>
+                  {item.approved ? (
+                    <i data-on="true">Đã đăng</i>
+                  ) : (
+                    <button onClick={() => approve("product_reviews", item.id)}>
+                      Duyệt
+                    </button>
+                  )}
+                </article>
+              ))}
+            </section>
+          </div>
+        </section>
+      )}
+      {tab === "payment" && (
+        <section className={`${styles.panel} ${styles.payment}`}>
+          <header>
+            <div>
+              <p>Payment rail</p>
+              <h2>Tài khoản nhận thanh toán</h2>
+            </div>
+          </header>
+          <form onSubmit={savePayment}>
+            <label>
+              Mã BIN
+              <input
+                value={payment.bin}
+                onChange={(event) =>
+                  setPayment({ ...payment, bin: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              Ngân hàng
+              <input
+                value={payment.bankShortName}
+                onChange={(event) =>
+                  setPayment({ ...payment, bankShortName: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              Số tài khoản
+              <input
+                value={payment.accountNumber}
+                onChange={(event) =>
+                  setPayment({ ...payment, accountNumber: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              Tên tài khoản
+              <input
+                value={payment.accountName}
+                onChange={(event) =>
+                  setPayment({ ...payment, accountName: event.target.value })
+                }
+              />
+            </label>
+            <button disabled={saving}>
+              <Save />
+              Lưu thông tin thanh toán
+            </button>
+          </form>
+        </section>
+      )}
+      {tab === "bin" && (
+        <section className={styles.panel}>
+          <header>
+            <div>
+              <p>Seven-day recovery</p>
+              <h2>Bản ghi có thể khôi phục</h2>
+            </div>
+            <span>{bin.length} mục</span>
+          </header>
+          <div className={styles.rows}>
+            {bin.length ? (
+              bin.map((item) => (
+                <article key={item.id}>
+                  <span>
+                    <b>{item.label || item.record_id}</b>
+                    <small>
+                      {item.table_name} · {when(item.deleted_at)} · bởi{" "}
+                      {item.deleted_by || "nhân viên"}
+                    </small>
+                  </span>
+                  <button onClick={() => restore(item)} disabled={saving}>
+                    <RotateCcw />
+                    Khôi phục
+                  </button>
+                </article>
+              ))
+            ) : (
+              <div className={styles.empty}>
+                <RotateCcw />
+                <h3>Không có gì trong thùng khôi phục.</h3>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+      {promo && (
+        <div className={styles.overlay}>
+          <form className={styles.drawer} onSubmit={savePromo}>
+            <header>
+              <div>
+                <p>Offer record</p>
+                <h2>{promo.id ? "Sửa mã ưu đãi" : "Mã ưu đãi mới"}</h2>
+              </div>
+              <button type="button" onClick={() => setPromo(null)}>
+                ×
+              </button>
+            </header>
+            <label>
+              Mã
+              <input
+                value={promo.code}
+                onChange={(event) =>
+                  setPromo({ ...promo, code: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              Phần trăm
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={promo.percent}
+                onChange={(event) =>
+                  setPromo({ ...promo, percent: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              Người / chương trình phụ trách
+              <input
+                value={promo.ownerName}
+                onChange={(event) =>
+                  setPromo({ ...promo, ownerName: event.target.value })
+                }
+              />
+            </label>
+            <button className={styles.save} disabled={saving}>
+              <Save />
+              Lưu ưu đãi
+            </button>
+          </form>
+        </div>
+      )}
+      {partner && (
+        <div className={styles.overlay}>
+          <form className={styles.drawer} onSubmit={savePartner}>
+            <header>
+              <div>
+                <p>Trade account</p>
+                <h2>{partner.id ? "Sửa đối tác" : "Đối tác mới"}</h2>
+              </div>
+              <button type="button" onClick={() => setPartner(null)}>
+                ×
+              </button>
+            </header>
+            <label>
+              Tên doanh nghiệp
+              <input
+                value={partner.businessName}
+                onChange={(event) =>
+                  setPartner({ ...partner, businessName: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              Liên hệ
+              <input
+                value={partner.contact}
+                onChange={(event) =>
+                  setPartner({ ...partner, contact: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              Mã đối tác
+              <input
+                value={partner.code || ""}
+                onChange={(event) =>
+                  setPartner({ ...partner, code: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              Địa chỉ giao thường dùng
+              <input
+                value={partner.deliveryAddress || ""}
+                onChange={(event) =>
+                  setPartner({
+                    ...partner,
+                    deliveryAddress: event.target.value,
+                  })
+                }
+              />
+            </label>
+            <label>
+              Mã số thuế
+              <input
+                value={partner.taxNumber || ""}
+                onChange={(event) =>
+                  setPartner({ ...partner, taxNumber: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              Nhịp đặt lại dự kiến (ngày)
+              <input
+                type="number"
+                min="1"
+                value={partner.reorderCadenceDays || 30}
+                onChange={(event) =>
+                  setPartner({
+                    ...partner,
+                    reorderCadenceDays: event.target.value,
+                  })
+                }
+              />
+            </label>
+            <label>
+              Thời gian chuẩn bị (ngày)
+              <input
+                type="number"
+                min="0"
+                value={partner.leadTimeDays ?? 3}
+                onChange={(event) =>
+                  setPartner({ ...partner, leadTimeDays: event.target.value })
+                }
+              />
+            </label>
+            <button className={styles.save} disabled={saving}>
+              <Save />
+              Lưu đối tác
+            </button>
+          </form>
+        </div>
+      )}
+    </main>
+  );
 }

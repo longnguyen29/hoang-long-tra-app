@@ -11,6 +11,7 @@ import styles from "./TradeDesk.module.css";
 const COPY = {
   vi: {
     switcher: "EN",
+    portal: "Cổng đối tác",
     back: "Nhà Hoàng Long",
     eyebrow: "Bàn trà dành cho đối tác",
     title: "Chọn trà nền theo hương vị và công thức, không chỉ theo giá mỗi ký.",
@@ -45,6 +46,7 @@ const COPY = {
   },
   en: {
     switcher: "VI",
+    portal: "Partner portal",
     back: "House of Hoàng Long",
     eyebrow: "The trade tea desk",
     title: "Choose a base tea by taste, not only by price per kilo.",
@@ -130,7 +132,7 @@ export default function TradeDesk() {
     <main className={styles.page}>
       <header className={styles.header}>
         <Link href="/" className={styles.back}><ArrowLeft size={17}/>{t.back}</Link>
-        <button onClick={() => setLang(lang === "vi" ? "en" : "vi")}><Globe2 size={15}/>{t.switcher}</button>
+        <div className={styles.headerActions}><Link href="/partners">{t.portal}<ArrowRight size={15}/></Link><button onClick={() => setLang(lang === "vi" ? "en" : "vi")}><Globe2 size={15}/>{t.switcher}</button></div>
       </header>
 
       <section className={styles.hero}>

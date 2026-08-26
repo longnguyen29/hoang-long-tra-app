@@ -62,6 +62,7 @@ export default function TradePipeline({ supabase, email }) {
   const [opportunities, setOpportunities] = useState([]);
   const [quotes, setQuotes] = useState([]);
   const [agreements, setAgreements] = useState([]);
+  const [partners, setPartners] = useState([]);
   const [products, setProducts] = useState([]);
   const [selected, setSelected] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -76,18 +77,20 @@ export default function TradePipeline({ supabase, email }) {
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
-    const [o, q, a, p, v] = await Promise.all([
+    const [o, q, a, p, v, w] = await Promise.all([
       supabase.from("trade_opportunities").select("*").order("updated_at", { ascending: false }),
       supabase.from("trade_quotes").select("*").order("created_at", { ascending: false }),
       supabase.from("partner_price_agreements").select("*, partner_price_rules(*)").order("version", { ascending: false }),
       supabase.from("catalog_products").select("*").eq("available", true).order("line"),
       supabase.from("catalog_variants").select("*"),
+      supabase.from("wholesale_accounts").select("id, opportunity_id, contact"),
     ]);
     if (o.error || q.error) setError("Chưa tải được dữ liệu phát triển đối tác. Kiểm tra migration 0033.");
     else if (a.error) setError("Chưa tải được sổ giá đối tác. Kiểm tra migration 0034.");
     if (!o.error) setOpportunities(o.data || []);
     if (!q.error) setQuotes(q.data || []);
     if (!a.error) setAgreements((a.data || []).map((agreement) => ({ ...agreement, partner_price_rules: [...(agreement.partner_price_rules || [])].sort((left, right) => left.sort_order - right.sort_order) })));
+    if (!w.error) setPartners(w.data || []);
     if (!p.error) {
       const byProduct = {};
       (v.data || []).forEach((row) => (byProduct[row.product_id] ||= []).push(fromVariantRow(row)));
@@ -152,7 +155,8 @@ export default function TradePipeline({ supabase, email }) {
     const total = Math.round(subtotal * (1 - (Number(quoteDraft.discount_percent) || 0) / 100));
     const quoteFields = { ...quoteDraft };
     delete quoteFields.is_indefinite; delete quoteFields.priceAgreementId;
-    const row = { ...quoteFields, valid_until: quoteDraft.is_indefinite ? null : quoteDraft.valid_until || null, id: `quote-${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 4)}`, status: "draft", lines, subtotal, total, discount_percent: Number(quoteDraft.discount_percent) || 0, created_by: email };
+    const partnerAccount = partners.find((item) => item.opportunity_id === selected.id) || partners.find((item) => normalizeContact(item.contact) === normalizeContact(selected.contact));
+    const row = { ...quoteFields, partner_account_id: partnerAccount?.id || null, valid_until: quoteDraft.is_indefinite ? null : quoteDraft.valid_until || null, id: `quote-${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 4)}`, status: "draft", lines, subtotal, total, discount_percent: Number(quoteDraft.discount_percent) || 0, created_by: email };
     const { data, error: quoteError } = await supabase.from("trade_quotes").insert(row).select().single();
     if (quoteError) { setSaving(false); setError("Chưa lưu được báo giá."); return; }
     const { data: opportunity } = await supabase.from("trade_opportunities").update({ stage: "quoted", next_action: "Gửi báo giá và xác nhận khách đã nhận", next_action_at: new Date(`${today}T09:00:00+07:00`).toISOString(), updated_at: new Date().toISOString() }).eq("id", selected.id).select().single();
