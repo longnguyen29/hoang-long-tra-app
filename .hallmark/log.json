@@ -1,5 +1,14 @@
 [
   {
+    "date": "2026-08-26",
+    "macrostructure": "Workbench",
+    "theme": "House of Hoàng Long (design.md)",
+    "enrichment": "none",
+    "nav": "N3 Side-rail",
+    "footer": "Ft2 Inline rule",
+    "brief": "Morning Desk for daily focus, app routing, exceptions and reviewed company memory"
+  },
+  {
     "date": "2026-08-25",
     "scope": "app",
     "macrostructure": "Split Studio / Workbench / Long Document",

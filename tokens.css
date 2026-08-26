@@ -18,6 +18,10 @@
   --color-focus: oklch(56% 0.19 48);
   --color-danger: oklch(48% 0.145 29);
   --color-danger-ink: oklch(97% 0.012 82);
+  --color-warning: oklch(62% 0.118 72);
+  --color-warning-ink: oklch(20% 0.026 155);
+  --color-success: oklch(46% 0.09 150);
+  --color-success-ink: oklch(97% 0.012 82);
 
   --font-display: "Newsreader", ui-serif, serif;
   --font-body: "Inter Tight", ui-sans-serif, sans-serif;
@@ -51,11 +55,20 @@
   --dur-base: 220ms;
   --dur-long: 420ms;
 
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+
   --radius-control: 0.5rem;
   --radius-card: 0.75rem;
   --radius-panel: 1rem;
   --radius-round: 999px;
   --rule-thin: 1px;
+  --rule-focus: 2px;
   --control-height: 2.75rem;
   --topbar-height: 4.25rem;
   --page-gutter: clamp(1rem, 4vw, 4rem);

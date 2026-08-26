@@ -1,9 +1,18 @@
 {
-  "date": "2026-08-25",
-  "framework": "Next.js 16 App Router",
-  "font_stack": "Lora + Inter + Noto Serif SC + TMCOngDo",
-  "palette": "warm paper + jade + brass + lacquer",
-  "motion": "CSS-only restrained transitions",
-  "spacing": "inline values; no shared scale before redesign",
-  "sources": ["package.json", "app/layout.js", "app/globals.css", "lib/constants.js", "public/ops/index.html"]
+  "date": "2026-08-26",
+  "source_mtimes": {
+    "package.json": 1787633013,
+    "app/globals.css": 1787646619,
+    "design.md": 1787646619
+  },
+  "framework": "Next.js 16 app router",
+  "font_stack": "Newsreader display + Inter Tight body + Noto Serif SC/TMCOngDo seal",
+  "palette": "House of Hoàng Long OKLCH tokens imported from root tokens.css",
+  "motion": "motion-cut; no animation dependency",
+  "spacing": "named 4-point scale in tokens.css",
+  "preserve": [
+    "design.md locked system",
+    "tokens.css palette and typography",
+    "existing staff application behavior"
+  ]
 }

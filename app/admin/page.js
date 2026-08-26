@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { STR } from "@/lib/strings";
-import StaffWorkbench from "@/components/staff/StaffWorkbench";
+import MorningDesk from "@/components/staff/MorningDesk";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -66,5 +66,5 @@ export default function AdminPage() {
     );
   }
 
-  return <StaffWorkbench supabase={supabase} email={email} role={role} onLogout={logout} />;
+  return <MorningDesk supabase={supabase} email={email} role={role} onLogout={logout} />;
 }
