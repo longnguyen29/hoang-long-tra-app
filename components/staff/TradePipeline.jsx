@@ -33,20 +33,24 @@ const newQuote = (opportunity, agreement = null) => ({
     ? agreement.partner_price_rules.map((rule) => ({ id: crypto.randomUUID(), productKey: productKeyFor(rule.product_id, rule.variant_weight), qty: Number(rule.minimum_quantity) || 1, price: Number(rule.price) }))
     : [blankQuoteLine()],
 });
-const newPriceAgreement = (opportunity, agreement = null) => ({
-  opportunity_id: opportunity.id,
-  effective_from: dateInput(),
-  valid_until: agreement?.valid_until || "",
-  is_indefinite: !agreement?.valid_until,
-  review_at: agreement?.review_at || dateInput(180),
-  includes_vat: agreement?.includes_vat || false,
-  includes_delivery: agreement?.includes_delivery || false,
-  payment_terms: agreement?.payment_terms || "Chuyển khoản khi xác nhận đơn.",
-  note: "",
-  lines: agreement?.partner_price_rules?.length
-    ? agreement.partner_price_rules.map((rule) => ({ id: crypto.randomUUID(), productKey: productKeyFor(rule.product_id, rule.variant_weight), minimum_quantity: Number(rule.minimum_quantity) || 1, price: Number(rule.price) }))
-    : [blankPriceLine()],
-});
+const newPriceAgreement = (opportunity, agreement = null) => {
+  const today = dateInput();
+  const hadFixedTerm = Boolean(agreement?.valid_until);
+  return {
+    opportunity_id: opportunity.id,
+    effective_from: today,
+    valid_until: hadFixedTerm ? (agreement.valid_until >= today ? agreement.valid_until : dateInput(90)) : "",
+    is_indefinite: !hadFixedTerm,
+    review_at: agreement?.review_at >= today ? agreement.review_at : dateInput(180),
+    includes_vat: agreement?.includes_vat || false,
+    includes_delivery: agreement?.includes_delivery || false,
+    payment_terms: agreement?.payment_terms || "Chuyển khoản khi xác nhận đơn.",
+    note: "",
+    lines: agreement?.partner_price_rules?.length
+      ? agreement.partner_price_rules.map((rule) => ({ id: crypto.randomUUID(), productKey: productKeyFor(rule.product_id, rule.variant_weight), minimum_quantity: Number(rule.minimum_quantity) || 1, price: Number(rule.price) }))
+      : [blankPriceLine()],
+  };
+};
 
 function flattenProducts(products) {
   return products.flatMap((product) => product.variants?.length
@@ -219,7 +223,8 @@ export default function TradePipeline({ supabase, email }) {
   const copyQuote = async (quote) => { await navigator.clipboard.writeText(quoteMessage(quote)); flash("Đã sao chép lời nhắn báo giá"); };
   const selectedQuotes = selected ? quotes.filter((quote) => quote.opportunity_id === selected.id) : [];
   const selectedAgreements = selected ? agreements.filter((agreement) => agreement.opportunity_id === selected.id) : [];
-  const activeAgreement = selectedAgreements.find((agreement) => agreement.status === "active") || null;
+  const latestAgreement = selectedAgreements.find((agreement) => agreement.status === "active") || null;
+  const activeAgreement = latestAgreement && latestAgreement.effective_from <= today && (!latestAgreement.valid_until || latestAgreement.valid_until >= today) ? latestAgreement : null;
 
   return <main className={styles.page}>
     <header className={styles.top}><div><Link href="/admin"><ArrowLeft/>Điều phối</Link><span>Partner growth</span></div><div><span><b>{email}</b><small>Bàn phát triển đối tác</small></span><button onClick={load} disabled={loading} aria-label="Làm mới"><RefreshCw/></button></div></header>
@@ -246,13 +251,13 @@ export default function TradePipeline({ supabase, email }) {
       <section className={styles.next}><span>Bước tiếp theo</span><h3>{selected.next_action || "Chưa đặt bước tiếp theo"}</h3><time>{shortDate(selected.next_action_at)}</time><button onClick={() => setEditing({ ...selected, next_action_at: selected.next_action_at?.slice(0, 10) || "" })}>Sửa nhịp làm việc</button></section>
       <section className={styles.progress}><header><h3>Chuyển giai đoạn</h3><span>{selected.monthly_potential_kg || 0} kg/tháng</span></header><div>{TRADE_STAGES.map((stage) => <button key={stage.id} data-active={selected.stage === stage.id} onClick={() => moveStage(stage.id)}>{stage.short}</button>)}<button data-lost onClick={() => moveStage("lost")}>Tạm dừng</button></div></section>
       <section className={styles.priceBook}>
-        <header><div><p>Partner price ledger</p><h3>Giá riêng đang áp dụng</h3></div><button onClick={() => setPriceDraft(newPriceAgreement(selected, activeAgreement))}><Plus/>{activeAgreement ? "Phiên bản mới" : "Thiết lập giá"}</button></header>
-        {activeAgreement ? <>
-          <article className={styles.activePrice}>
-            <header><span><b>Phiên bản {activeAgreement.version}</b><small>Từ {shortDate(activeAgreement.effective_from)} · {activeAgreement.valid_until ? `đến ${shortDate(activeAgreement.valid_until)}` : "vô thời hạn"}</small></span><i>Đang dùng</i></header>
-            <div className={styles.priceTimeline}><span/><p>Rà soát lại <b>{activeAgreement.review_at ? shortDate(activeAgreement.review_at) : "chưa đặt lịch"}</b></p></div>
-            <div className={styles.priceRules}>{activeAgreement.partner_price_rules.map((rule) => <div key={rule.id}><span><b>{rule.product_name?.vi || rule.product_name?.en}</b><small>Tối thiểu {Number(rule.minimum_quantity)} {rule.unit}</small></span><strong>{money(rule.price)}</strong></div>)}</div>
-            <footer><div><span>{activeAgreement.includes_vat ? "Đã gồm VAT" : "Chưa gồm VAT"}</span><span>{activeAgreement.includes_delivery ? "Đã gồm giao hàng" : "Chưa gồm giao hàng"}</span></div>{activeAgreement.payment_terms && <p>{activeAgreement.payment_terms}</p>}<button onClick={() => setQuoteDraft(newQuote(selected, activeAgreement))}><FileText/>Tạo báo giá từ bảng giá</button></footer>
+        <header><div><p>Partner price ledger</p><h3>Giá riêng đang áp dụng</h3></div><button onClick={() => setPriceDraft(newPriceAgreement(selected, latestAgreement))}><Plus/>{latestAgreement ? "Phiên bản mới" : "Thiết lập giá"}</button></header>
+        {latestAgreement ? <>
+          <article className={styles.activePrice} data-expired={!activeAgreement}>
+            <header><span><b>Phiên bản {latestAgreement.version}</b><small>Từ {shortDate(latestAgreement.effective_from)} · {latestAgreement.valid_until ? `đến ${shortDate(latestAgreement.valid_until)}` : "vô thời hạn"}</small></span><i>{activeAgreement ? "Đang dùng" : "Hết hiệu lực"}</i></header>
+            <div className={styles.priceTimeline}><span/><p>Rà soát lại <b>{latestAgreement.review_at ? shortDate(latestAgreement.review_at) : "chưa đặt lịch"}</b></p></div>
+            <div className={styles.priceRules}>{latestAgreement.partner_price_rules.map((rule) => <div key={rule.id}><span><b>{rule.product_name?.vi || rule.product_name?.en}</b><small>Tối thiểu {Number(rule.minimum_quantity)} {rule.unit}</small></span><strong>{money(rule.price)}</strong></div>)}</div>
+            <footer><div><span>{latestAgreement.includes_vat ? "Đã gồm VAT" : "Chưa gồm VAT"}</span><span>{latestAgreement.includes_delivery ? "Đã gồm giao hàng" : "Chưa gồm giao hàng"}</span></div>{latestAgreement.payment_terms && <p>{latestAgreement.payment_terms}</p>}{activeAgreement ? <button onClick={() => setQuoteDraft(newQuote(selected, activeAgreement))}><FileText/>Tạo báo giá từ bảng giá</button> : <button onClick={() => setPriceDraft(newPriceAgreement(selected, latestAgreement))}><RefreshCw/>Gia hạn bằng phiên bản mới</button>}</footer>
           </article>
           {selectedAgreements.length > 1 && <details className={styles.priceHistory}><summary><History/>Xem {selectedAgreements.length - 1} phiên bản trước</summary>{selectedAgreements.filter((agreement) => agreement.status !== "active").map((agreement) => <div key={agreement.id}><span><b>Phiên bản {agreement.version}</b><small>{shortDate(agreement.effective_from)} – {agreement.valid_until ? shortDate(agreement.valid_until) : "vô thời hạn"}</small></span><small>{agreement.created_by || "Nhân viên"}</small></div>)}</details>}
         </> : <div className={styles.emptyPrice}><BadgeDollarSign/><p><b>Chưa có giá thỏa thuận.</b><span>Lưu giá riêng để các báo giá sau tự điền đúng mức đã chốt với đối tác này.</span></p></div>}

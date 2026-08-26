@@ -19,6 +19,9 @@
 .priceBook>header>button{min-height:var(--control-height);display:flex;align-items:center;gap:var(--space-2xs);padding-inline:var(--space-sm);border:0;background:var(--color-accent);color:var(--color-ink);font-weight:800}
 .priceBook>header svg{width:1rem}
 .activePrice{border:var(--rule-thin) solid var(--color-ink);background:var(--color-paper-2)}
+.activePrice[data-expired=true]{border-color:var(--color-danger)}
+.activePrice[data-expired=true]>header i{background:var(--color-danger);color:white}
+.activePrice[data-expired=true] .priceTimeline>span{background:var(--color-danger)}
 .activePrice>header{display:flex;align-items:start;justify-content:space-between;gap:var(--space-sm);padding:var(--space-sm) var(--space-md);background:var(--color-ink);color:var(--color-paper)}
 .activePrice>header>span{display:grid;gap:var(--space-3xs)}
 .activePrice>header small{color:var(--color-rule)}
