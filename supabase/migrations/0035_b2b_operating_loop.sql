@@ -591,9 +591,9 @@ begin
         'product_id',s.product_id,'variant_weight',s.variant_weight,'name',s.name,
         'on_hand',s.on_hand,'reserved',s.reserved,'available',s.on_hand-s.reserved,
         'demand_90d',s.demand_90d
-      ) order by s.sort_order,s.variant_weight)
+      ) order by s.sort_key,s.variant_weight)
       from (
-        select p.id product_id,''::text variant_weight,p.name,p.sort_order,
+        select p.id product_id,''::text variant_weight,p.name,p.line||'|'||p.id sort_key,
           coalesce(p.stock_ha_giang,0)+coalesce(p.stock_soc_son,0) on_hand,
           coalesce((select sum(ir.quantity) from inventory_reservations ir where ir.product_id=p.id and ir.variant_weight='' and ir.status='active'),0) reserved,
           coalesce((select sum(coalesce((l->>'qty')::numeric,0)) from orders o,jsonb_array_elements(o.lines) l
@@ -603,7 +603,7 @@ begin
           or coalesce(p.stock_ha_giang,0)+coalesce(p.stock_soc_son,0)>0
         )
         union all
-        select p.id,v.weight,p.name,p.sort_order,
+        select p.id,v.weight,p.name,p.line||'|'||p.id sort_key,
           coalesce(v.stock_ha_giang,0)+coalesce(v.stock_soc_son,0) on_hand,
           coalesce((select sum(ir.quantity) from inventory_reservations ir where ir.product_id=p.id and ir.variant_weight=v.weight and ir.status='active'),0) reserved,
           coalesce((select sum(coalesce((l->>'qty')::numeric,0)) from orders o,jsonb_array_elements(o.lines) l
