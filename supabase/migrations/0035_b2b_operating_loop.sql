@@ -268,11 +268,16 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare v_opportunity_id text;
 begin
   if auth.uid() is null then raise exception 'authentication_required'; end if;
   if btrim(coalesce(p_business_name,''))='' or btrim(coalesce(p_contact,''))='' then raise exception 'business_and_contact_required'; end if;
-  update wholesale_accounts set business_name=btrim(p_business_name),contact=btrim(p_contact),delivery_address=coalesce(p_address,''),tax_number=coalesce(p_tax_number,'') where user_id=auth.uid();
+  update wholesale_accounts set business_name=btrim(p_business_name),contact=btrim(p_contact),delivery_address=coalesce(p_address,''),tax_number=coalesce(p_tax_number,'')
+  where user_id=auth.uid() returning opportunity_id into v_opportunity_id;
   if not found then raise exception 'partner_not_found'; end if;
+  if v_opportunity_id is not null then
+    update trade_opportunities set business_name=btrim(p_business_name),contact=btrim(p_contact),updated_at=now() where id=v_opportunity_id;
+  end if;
 end;
 $$;
 
