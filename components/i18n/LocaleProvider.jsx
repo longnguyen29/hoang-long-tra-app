@@ -147,10 +147,11 @@ const enhanceActionHint = (element, locale) => {
   const label = element.getAttribute("aria-label") || element.getAttribute("title") || element.textContent || "";
   const type = element.getAttribute("type");
   const formSubmit = element.matches("button") && element.closest("form") && (type === "submit" || !type);
+  const role = element.getAttribute("role") || (element.matches("button") && element.closest("nav") ? "view" : "");
   const tooltip = resolveActionTooltip({
     label,
     href: element.getAttribute("href") || "",
-    role: element.getAttribute("role") || "",
+    role,
     formSubmit,
   }, locale);
   if (!tooltip) {
