@@ -26,6 +26,7 @@ import {
   Settings2,
   Sprout,
 } from "lucide-react";
+import { useLocale } from "@/components/i18n/LocaleProvider";
 import styles from "./MorningDesk.module.css";
 
 const MODES = [
@@ -88,23 +89,23 @@ const money = (value) =>
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
 
-const dayLabel = () =>
-  new Intl.DateTimeFormat("vi-VN", {
+const dayLabel = (locale) =>
+  new Intl.DateTimeFormat(locale === "en" ? "en-US" : "vi-VN", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   }).format(new Date());
 
-const relativeUpdate = (value) => {
-  if (!value) return "Chưa có phiên trước";
+const relativeUpdate = (value, locale) => {
+  if (!value) return locale === "en" ? "No previous session" : "Chưa có phiên trước";
   const time = new Date(value).getTime();
-  if (Number.isNaN(time)) return "Phiên gần nhất";
+  if (Number.isNaN(time)) return locale === "en" ? "Latest session" : "Phiên gần nhất";
   const minutes = Math.max(1, Math.round((Date.now() - time) / 60000));
-  if (minutes < 60) return `${minutes} phút trước`;
+  if (minutes < 60) return locale === "en" ? `${minutes} minutes ago` : `${minutes} phút trước`;
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} giờ trước`;
-  return new Intl.DateTimeFormat("vi-VN").format(new Date(time));
+  if (hours < 24) return locale === "en" ? `${hours} hours ago` : `${hours} giờ trước`;
+  return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "vi-VN").format(new Date(time));
 };
 
 function buildExceptions(snapshot, mode) {
@@ -283,6 +284,7 @@ function buildMetrics(snapshot, mode) {
 
 export default function MorningDesk({ supabase, email, role, onLogout }) {
   const router = useRouter();
+  const { locale } = useLocale();
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -504,7 +506,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
       <section className={styles.desk}>
         <header className={styles.topbar}>
           <div>
-            <p>{dayLabel()}</p>
+            <p>{dayLabel(locale)}</p>
             <h1>Bàn ngày</h1>
           </div>
           <div className={styles.identity}>
@@ -616,7 +618,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
             <section className={styles.resume}>
               <div><RotateCcw /><span>Tiếp tục từ lần trước</span></div>
               <h2>{resume.label}</h2>
-              <p>{resumePreference.last_href ? `Đã rời bàn ${relativeUpdate(resumePreference.updated_at)}.` : "Chưa có phiên trước. Mở app phù hợp với góc nhìn hiện tại."}</p>
+              <p>{resumePreference.last_href ? (locale === "en" ? `You left the desk ${relativeUpdate(resumePreference.updated_at, locale)}.` : `Đã rời bàn ${relativeUpdate(resumePreference.updated_at, locale)}.`) : "Chưa có phiên trước. Mở app phù hợp với góc nhìn hiện tại."}</p>
               <Link href={resume.href} onClick={(event) => openApp(event, resume)}>Tiếp tục<ArrowRight /></Link>
             </section>
 
