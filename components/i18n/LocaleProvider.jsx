@@ -145,14 +145,17 @@ const enhanceActionHint = (element, locale) => {
   const isFileLabel = element.matches("label") && element.querySelector('input[type="file"]');
   if (!element.matches('button,a[href],[role="button"]') && !isFileLabel) return;
   const label = element.getAttribute("aria-label") || element.getAttribute("title") || element.textContent || "";
-  const type = element.getAttribute("type");
-  const formSubmit = element.matches("button") && element.closest("form") && (type === "submit" || !type);
   const role = element.getAttribute("role") || (element.matches("button") && element.closest("nav") ? "view" : "");
+  const region = element.closest("section,aside,article,nav,form");
+  const regionLabel = region?.querySelector("h1,h2,h3,[role='heading']")?.textContent || "";
   const tooltip = resolveActionTooltip({
     label,
     href: element.getAttribute("href") || "",
     role,
-    formSubmit,
+    pathname: window.location.pathname,
+    contextId: element.closest("[id]")?.id || "",
+    inDialog: Boolean(element.closest('[role="dialog"],form')),
+    regionLabel,
   }, locale);
   if (!tooltip) {
     element.removeAttribute("data-action-tooltip");
@@ -249,7 +252,7 @@ export default function LocaleProvider({ children }) {
   return (
     <LocaleContext.Provider value={value}>
       {children}
-      <ActionTooltipLayer locale={locale} />
+      <ActionTooltipLayer />
       <button
         type="button"
         className="hl-locale-switch"

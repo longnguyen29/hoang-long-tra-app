@@ -4,7 +4,7 @@ import { useEffect, useId, useState } from "react";
 
 const empty = { text: "", left: 0, top: 0, placement: "above" };
 
-export default function ActionTooltipLayer({ locale }) {
+export default function ActionTooltipLayer() {
   const tooltipId = useId();
   const [note, setNote] = useState(empty);
 
@@ -79,7 +79,6 @@ export default function ActionTooltipLayer({ locale }) {
       data-no-translate
       style={{ left: note.left, top: note.top }}
     >
-      <span>{locale === "en" ? "Before you continue" : "Trước khi tiếp tục"}</span>
       {note.text}
     </div>
   );
