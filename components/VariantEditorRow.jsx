@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check, Save } from "lucide-react";
+import FormattedNumberInput from "@/components/FormattedNumberInput";
 
 export default function VariantEditorRow({ variant, onSave, t, TOKENS }) {
   const [price, setPrice] = useState(variant.price ? String(variant.price) : "");
@@ -22,16 +23,16 @@ export default function VariantEditorRow({ variant, onSave, t, TOKENS }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
       <span style={{ fontSize: 12, fontWeight: 700, color: TOKENS.jade, width: 36, flexShrink: 0 }}>{variant.weight}</span>
-      <input
-        type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder={t.pricePh}
+      <FormattedNumberInput
+        value={price} onChange={(e) => setPrice(e.target.value)} placeholder={t.pricePh}
         style={{ flex: 1, minWidth: 0, padding: "6px 8px", borderRadius: 6, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 12 }}
       />
-      <input
-        type="number" value={hg} onChange={(e) => setHg(e.target.value)} placeholder={t.warehouseHaGiang}
+      <FormattedNumberInput
+        value={hg} onChange={(e) => setHg(e.target.value)} placeholder={t.warehouseHaGiang}
         style={{ width: 56, padding: "6px 8px", borderRadius: 6, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 12 }}
       />
-      <input
-        type="number" value={ss} onChange={(e) => setSs(e.target.value)} placeholder={t.warehouseSocSon}
+      <FormattedNumberInput
+        value={ss} onChange={(e) => setSs(e.target.value)} placeholder={t.warehouseSocSon}
         style={{ width: 56, padding: "6px 8px", borderRadius: 6, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 12 }}
       />
       <button

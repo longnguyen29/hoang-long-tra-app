@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, Check, FlaskConical, Globe2, Phone } from "lucid
 import { createClient } from "@/lib/supabase/client";
 import { notifyHouse } from "@/lib/notify";
 import { fromCatalogRow } from "@/lib/mappers";
+import { useLocale } from "@/components/i18n/LocaleProvider";
 import styles from "./TradeDesk.module.css";
 
 const COPY = {
@@ -82,7 +83,7 @@ const COPY = {
 };
 
 export default function TradeDesk() {
-  const [lang, setLang] = useState("vi");
+  const { locale: lang, toggleLocale } = useLocale();
   const [products, setProducts] = useState([]);
   const [form, setForm] = useState({ name: "", business: "", contact: "", need: "", consent: false });
   const [sending, setSending] = useState(false);
@@ -132,7 +133,7 @@ export default function TradeDesk() {
     <main className={styles.page}>
       <header className={styles.header}>
         <Link href="/" className={styles.back}><ArrowLeft size={17}/>{t.back}</Link>
-        <div className={styles.headerActions}><Link href="/partners">{t.portal}<ArrowRight size={15}/></Link><button onClick={() => setLang(lang === "vi" ? "en" : "vi")}><Globe2 size={15}/>{t.switcher}</button></div>
+        <div className={styles.headerActions}><Link href="/partners">{t.portal}<ArrowRight size={15}/></Link><button onClick={toggleLocale}><Globe2 size={15}/>{t.switcher}</button></div>
       </header>
 
       <section className={styles.hero}>

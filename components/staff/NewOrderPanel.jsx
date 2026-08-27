@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, Minus, Plus, ShoppingBag, Store, X } from "lucide-react";
 import { fromCatalogRow, fromOrderRow, fromVariantRow, toOrderRow } from "@/lib/mappers";
 import styles from "./NewOrderPanel.module.css";
+import FormattedNumberInput from "@/components/FormattedNumberInput";
 
 const blankLine = () => ({ id: crypto.randomUUID(), productKey: "", qty: 1 });
 
@@ -227,7 +228,7 @@ export default function NewOrderPanel({ supabase, onClose, onCreated }) {
                   {product.name.vi || product.name.en}{product.weight ? ` · ${product.weight}` : ""}{product.price ? ` · ${formatMoney(product.price)}` : " · chưa có giá"}
                 </option>)}
               </select></label>
-              <label>Số lượng<input required min="1" step="1" type="number" value={line.qty} onChange={(event) => setLine(line.id, { qty: event.target.value })} /></label>
+              <label>Số lượng<FormattedNumberInput required min="1" step="1" value={line.qty} onChange={(event) => setLine(line.id, { qty: event.target.value })} /></label>
               <button type="button" onClick={() => removeLine(line.id)} disabled={lines.length === 1} aria-label="Xóa sản phẩm"><Minus /></button>
             </div>)}
           </div>

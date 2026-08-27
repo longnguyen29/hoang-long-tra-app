@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MapPin, Sprout, ChevronRight } from "lucide-react";
 import { TOKENS, getStockTotal } from "@/lib/constants";
+import FormattedNumberInput from "@/components/FormattedNumberInput";
 
 // Farm goods from the North-West, sold by the House for the people who grow them.
 //
@@ -84,8 +85,7 @@ function GoodsCard({ p, t, lang, retailCart, setRetailQty, formatVND }) {
             </div>
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <input
-                type="number"
+              <FormattedNumberInput
                 min="0"
                 inputMode="numeric"
                 value={retailCart[p.id] || ""}

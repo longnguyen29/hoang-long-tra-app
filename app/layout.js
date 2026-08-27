@@ -1,4 +1,5 @@
 import "./globals.css";
+import LocaleProvider from "@/components/i18n/LocaleProvider";
 
 export const metadata = {
   title: "House of Hoàng Long — Trà Cổ Hà Giang",
@@ -33,7 +34,7 @@ export default function RootLayout({ children }) {
           }
         `}</style>
       </head>
-      <body>{children}</body>
+      <body><LocaleProvider>{children}</LocaleProvider></body>
     </html>
   );
 }

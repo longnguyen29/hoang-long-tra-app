@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, Loader2, Leaf, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useLocale } from "@/components/i18n/LocaleProvider";
 import { notifyHouse } from "@/lib/notify";
 import { TOKENS } from "@/lib/constants";
 
@@ -149,7 +150,7 @@ const money = (n) => n.toLocaleString("vi-VN") + "đ";
 
 export default function SampleRequest() {
   const [supabase] = useState(() => createClient());
-  const [lang, setLang] = useState("vi"); // a café owner in Hà Nội opens this, not a tourist
+  const { locale: lang, toggleLocale } = useLocale();
   const [pack, setPack] = useState("50g");
   const [checks, setChecks] = useState({ hasShop: false, canReformulate: false, canFeedback: false });
   const [form, setForm] = useState({ store: "", name: "", phone: "", address: "", note: "", heardFrom: "" });
@@ -224,7 +225,7 @@ export default function SampleRequest() {
             <span style={{ fontSize: 12.5, fontWeight: 600, color: TOKENS.jadeSoft }}>{t.backHome}</span>
           </a>
           <button
-            onClick={() => setLang(lang === "vi" ? "en" : "vi")}
+            onClick={toggleLocale}
             style={{ background: "none", border: `1px solid ${TOKENS.hairline}`, borderRadius: 20, padding: "5px 12px", fontSize: 12, fontWeight: 600, color: TOKENS.jade, cursor: "pointer" }}
           >
             {lang === "vi" ? "EN" : "VI"}

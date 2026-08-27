@@ -5,6 +5,7 @@ import { Check, Loader2, Leaf, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { notifyHouse } from "@/lib/notify";
 import { TOKENS } from "@/lib/constants";
+import { useLocale } from "@/components/i18n/LocaleProvider";
 
 // Advert landing page for café and milk-tea owners. Deliberately bare: no sidebar, no site
 // navigation, nothing to click but the one thing we want them to do. Someone arriving from an
@@ -22,7 +23,7 @@ import { TOKENS } from "@/lib/constants";
 // English source arrives. "estate-grown" is rendered "trà cổ thụ mọc hoang" throughout, to
 // match Our Story.
 // ---------------------------------------------------------------------------------------
-const COPY = {
+const COPY_VI = {
   headline:
     "Trà nền trong món signature của bạn đang làm giảm giá trị sản phẩm. Để chúng tôi chứng minh.",
   sub:
@@ -127,13 +128,75 @@ const COPY = {
   privacy: "Chính sách quyền riêng tư",
 };
 
+const COPY_EN = {
+  headline: "Your signature drink is being held back by its base tea. Let us prove it.",
+  sub: "You invested in toppings, syrup, cups, and your brand. The one thing that never changed is the leaf underneath all of it.",
+  sections: [
+    {
+      kicker: "The problem",
+      title: "The most expensive drink on the menu relies on its cheapest ingredient",
+      body: [
+        "A signature drink is how customers remember your shop. It carries your name, gets the best photograph, and commands the highest price.",
+        "Yet most of its flavour comes from tea bought by the kilo from a supplier nobody asks about. Customers may not name the problem. They simply drink it once and do not order it again.",
+      ],
+    },
+    {
+      kicker: "The cause",
+      title: "Base tea is chosen by price, not taste",
+      body: [
+        "Commodity tea for beverages is grown for yield, machine-picked, and blended for consistency and low cost. Harsh astringency and a dry finish come with that process.",
+        "The recipe then has to compensate with more sugar, milk, and flavouring. The more it compensates, the more the drink resembles every other milk tea—and the ingredient underneath erases the difference you built.",
+      ],
+    },
+    {
+      kicker: "The solution",
+      title: "Wild ancient-tree tea from Hà Giang, processed with Japanese technology",
+      body: [
+        "We make tea from old Shan trees growing wild in the Hà Giang mountains, not from industrial plantations. Japanese steaming equipment protects the sweet finish instead of burning it away.",
+        "The tea is not blended across batches. Every batch has its own code, and we tell you when it changes. The liquor is fuller, so many shops need less leaf per litre than expected.",
+      ],
+    },
+    {
+      kicker: "The result",
+      title: "Less to hide",
+      body: [
+        "When the base tea is not aggressively bitter, you need less sugar to conceal it. The drink begins to taste like tea—and customers can tell, even when they cannot explain why.",
+        "We do not promise sales. We offer something testable: brew it on your own bar, in your own recipe, and decide from the result.",
+      ],
+    },
+  ],
+  images: [
+    { id: 1, src: "/landing/1.jpg", ratio: "9 / 14", label: "Wild ancient Shan tea trees in the Hà Giang mountains", alt: "An old lichen-covered Shan tea tree growing among wild mountain plants in Hà Giang" },
+    { id: 2, src: "/landing/2.jpg", ratio: "9 / 14", label: "Withered tea leaves before steaming", alt: "A hand holding withered tea leaves beside a fresh batch on the processing line" },
+    { id: 3, src: "/landing/3.jpg", ratio: "1 / 1", label: "Japanese-technology processing line", alt: "Stainless-steel Japanese-technology tea processing equipment inside the factory" },
+    { id: 4, src: "/landing/4.jpg", ratio: "9 / 14", label: "A signature drink made with our base tea", alt: "A layered signature drink with a cream top, brewed from our base tea" },
+  ],
+  ctaTitle: "Request a free sample",
+  ctaBody: "We send tea to your shop for a real brew test. No obligation and no contract—only a request that you brew honestly and tell us what happened.",
+  cta: "Request a free sample",
+  formTitle: "Where should we send it?",
+  namePh: "Your name",
+  storePh: "Café / business name",
+  phonePh: "Phone number",
+  addressPh: "Sample delivery address",
+  send: "Send request",
+  sending: "Sending",
+  sentTitle: "We received your request",
+  sentBody: "We will call to confirm the address before sending the sample, usually within one working day.",
+  errRequired: "Please add your name, phone number, and sample delivery address.",
+  errGeneric: "The request could not be sent. Please try again or call 0903 333 841.",
+  phone: "0903 333 841",
+  footer: "House of Hoàng Long · Ancient tea from Hà Giang · Since 1995",
+  privacy: "Privacy policy",
+};
+
 // Shows the photograph when there is one, and an unmistakable placeholder when there is not.
 // A grey box could be mistaken for a design choice; this says what belongs here and that it
 // is not the real thing, so an advert cannot be launched with a gap nobody noticed.
 //
 // The fallback is also the error path: if a file is missing or misnamed, onError swaps back
 // to the placeholder rather than leaving a broken-image icon on a page being paid for.
-function Illustration({ src, label, alt, ratio }) {
+function Illustration({ src, label, alt, ratio, locale }) {
   const [failed, setFailed] = useState(false);
 
   if (src && !failed) {
@@ -155,7 +218,7 @@ function Illustration({ src, label, alt, ratio }) {
   return (
     <div
       role="img"
-      aria-label={`Ảnh minh hoạ tạm: ${label}`}
+      aria-label={locale === "en" ? `Temporary illustration: ${label}` : `Ảnh minh hoạ tạm: ${label}`}
       style={{
         aspectRatio: ratio,
         borderRadius: TOKENS.radius,
@@ -170,13 +233,15 @@ function Illustration({ src, label, alt, ratio }) {
         {label}
       </span>
       <span style={{ fontSize: 10.5, letterSpacing: 1, textTransform: "uppercase", color: TOKENS.brassOnPaper }}>
-        Chưa có ảnh — đặt file vào public/landing/
+        {locale === "en" ? "Image missing — add the file to public/landing/" : "Chưa có ảnh — đặt file vào public/landing/"}
       </span>
     </div>
   );
 }
 
 export default function LandingWholesale() {
+  const { locale } = useLocale();
+  const COPY = locale === "en" ? COPY_EN : COPY_VI;
   const [supabase] = useState(() => createClient());
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", store: "", phone: "", address: "" });
@@ -288,7 +353,7 @@ export default function LandingWholesale() {
               </p>
             ))}
             {COPY.images[i] && (
-              <div style={{ marginTop: 22 }}><Illustration {...COPY.images[i]} /></div>
+              <div style={{ marginTop: 22 }}><Illustration {...COPY.images[i]} locale={locale} /></div>
             )}
           </section>
         ))}

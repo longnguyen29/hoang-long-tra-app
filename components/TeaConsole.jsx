@@ -34,6 +34,8 @@ import VariantEditorRow from "./VariantEditorRow";
 import TrackingCodeEditor from "./TrackingCodeEditor";
 import TeaSessionBooking from "./TeaSessionBooking";
 import GoodsSection from "./GoodsSection";
+import { useLocale } from "@/components/i18n/LocaleProvider";
+import FormattedNumberInput from "@/components/FormattedNumberInput";
 
 // Home grid order, independent of the side menu's. Ids missing from this list sort last.
 const BIN_DAYS = 7; // how long a deleted record can still be brought back
@@ -126,6 +128,7 @@ function flattenOrderable(products) {
 
 export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSection = "home" }) {
   const supabase = useMemo(() => createClient(), []);
+  const { locale: lang, setLocale: setLang } = useLocale();
 
   // role is derived from real auth, not a manual toggle: not signed in (or signed in without
   // an approved wholesale account) = retail; signed in + wholesale_verified = wholesale; admin
@@ -144,7 +147,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
     });
   }, [isAdmin, session, supabase]);
   const role = isAdmin ? "admin" : (wholesaleAccount?.wholesaleVerified ? "wholesale" : "retail");
-  const [lang, setLang] = useState("en");
   const [section, setSection] = useState(initialSection);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -3266,8 +3268,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                           <span style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.lacquer, flexShrink: 0 }}>{t.outOfStock}</span>
                         ) : (
                         <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                          <input
-                            type="number"
+                          <FormattedNumberInput
                             min="0"
                             inputMode="numeric"
                             value={cart[p.id] || ""}
@@ -4448,24 +4449,21 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                       placeholder={t.packSizePh}
                       style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
                     />
-                    <input
-                      type="number"
+                    <FormattedNumberInput
                       value={productDraft.price}
                       onChange={(e) => setProductDraft({ ...productDraft, price: e.target.value })}
                       placeholder={t.pricePh}
                       style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
                     />
                     <div style={{ display: "flex", gap: 8 }}>
-                      <input
-                        type="number"
+                      <FormattedNumberInput
                         min="0"
                         value={productDraft.stockHaGiang}
                         onChange={(e) => setProductDraft({ ...productDraft, stockHaGiang: e.target.value })}
                         placeholder={t.stockHaGiangPh}
                         style={{ flex: 1, padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13, minWidth: 0 }}
                       />
-                      <input
-                        type="number"
+                      <FormattedNumberInput
                         min="0"
                         value={productDraft.stockSocSon}
                         onChange={(e) => setProductDraft({ ...productDraft, stockSocSon: e.target.value })}
@@ -4473,8 +4471,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                         style={{ flex: 1, padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13, minWidth: 0 }}
                       />
                     </div>
-                    <input
-                      type="number"
+                    <FormattedNumberInput
                       min="0"
                       value={productDraft.soldCount}
                       onChange={(e) => setProductDraft({ ...productDraft, soldCount: e.target.value })}
@@ -4755,8 +4752,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                       placeholder={t.promoCodeFieldPh}
                       style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5, textTransform: "uppercase" }}
                     />
-                    <input
-                      type="number"
+                    <FormattedNumberInput
                       value={promoDraft.percent}
                       onChange={(e) => setPromoDraft({ ...promoDraft, percent: e.target.value })}
                       placeholder={t.promoPercentPh}
@@ -5583,8 +5579,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                                       <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.lacquer, textAlign: "center", padding: "6px 0" }}>{t.outOfStock}</div>
                                     ) : (
                                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                        <input
-                                          type="number"
+                                        <FormattedNumberInput
                                           min="0"
                                           inputMode="numeric"
                                           value={retailCart[cartKey] || ""}

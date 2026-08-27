@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, Check, Plus, Sparkles, Star } from "lucide-react";
 import { getStockTotal, YIELD_GUIDE } from "@/lib/constants";
+import FormattedNumberInput from "@/components/FormattedNumberInput";
 
 // Row of 1-5 stars. Interactive when onPick is given, read-only otherwise.
 function Stars({ value, size = 14, onPick, TOKENS }) {
@@ -236,8 +237,7 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
             <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 11.5, color: TOKENS.jadeSoft, marginBottom: 4 }}>{t.quantityLabel}</div>
-                <input
-                  type="number"
+                <FormattedNumberInput
                   min="0"
                   max={typeof effectiveStock === "number" ? effectiveStock : undefined}
                   inputMode="numeric"

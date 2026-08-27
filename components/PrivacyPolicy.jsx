@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { TOKENS } from "@/lib/constants";
+import { useLocale } from "@/components/i18n/LocaleProvider";
 
 // Privacy policy. Written against what this application actually stores — every item below
 // corresponds to a real table or a real third party in this codebase, not to a template.
@@ -10,12 +11,12 @@ import { TOKENS } from "@/lib/constants";
 // Publicly indexable on purpose: advertising platforms fetch it, and a policy nobody can
 // read is not a policy.
 
-const UPDATED = "11 tháng 8, 2026";
+const UPDATED = { vi: "11 tháng 8, 2026", en: "August 11, 2026" };
 
 const S = {
   vi: {
     title: "Chính sách quyền riêng tư",
-    updated: `Cập nhật lần cuối: ${UPDATED}`,
+    updated: `Cập nhật lần cuối: ${UPDATED.vi}`,
     intro:
       "Trang này giải thích Nhà làm Trà Hoàng Long thu thập thông tin gì của bạn, vì sao, và bạn có thể yêu cầu gì. Chúng tôi chỉ thu thập những gì cần để bán trà và giao hàng — không mua bán dữ liệu, không đổi dữ liệu lấy bất cứ thứ gì.",
     sections: [
@@ -108,7 +109,7 @@ const S = {
 
   en: {
     title: "Privacy policy",
-    updated: `Last updated: ${UPDATED}`,
+    updated: `Last updated: ${UPDATED.en}`,
     intro:
       "This page explains what House of Hoàng Long collects about you, why, and what you can ask us to do about it. We collect only what it takes to sell tea and deliver it — we do not sell data and we do not trade it for anything.",
     sections: [
@@ -209,7 +210,7 @@ function withBold(text) {
 }
 
 export default function PrivacyPolicy() {
-  const [lang, setLang] = useState("vi");
+  const { locale: lang, toggleLocale } = useLocale();
   const t = S[lang];
 
   return (
@@ -223,7 +224,7 @@ export default function PrivacyPolicy() {
             </span>
           </a>
           <button
-            onClick={() => setLang(lang === "vi" ? "en" : "vi")}
+            onClick={toggleLocale}
             style={{ background: "none", border: `1px solid ${TOKENS.hairline}`, borderRadius: 20, padding: "5px 12px", fontSize: 12, fontWeight: 600, color: TOKENS.jade, cursor: "pointer" }}
           >
             {lang === "vi" ? "EN" : "VI"}

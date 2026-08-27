@@ -26,6 +26,7 @@ import {
   toPromoRow,
 } from "@/lib/mappers";
 import styles from "./BusinessControl.module.css";
+import FormattedNumberInput from "@/components/FormattedNumberInput";
 
 const blankPromo = () => ({
   id: "",
@@ -657,8 +658,7 @@ export default function BusinessControl({ supabase, email, onLogout }) {
             </label>
             <label>
               Phần trăm
-              <input
-                type="number"
+              <FormattedNumberInput
                 min="1"
                 max="100"
                 value={promo.percent}
@@ -745,8 +745,7 @@ export default function BusinessControl({ supabase, email, onLogout }) {
             </label>
             <label>
               Nhịp đặt lại dự kiến (ngày)
-              <input
-                type="number"
+              <FormattedNumberInput
                 min="1"
                 value={partner.reorderCadenceDays || 30}
                 onChange={(event) =>
@@ -759,8 +758,7 @@ export default function BusinessControl({ supabase, email, onLogout }) {
             </label>
             <label>
               Thời gian chuẩn bị (ngày)
-              <input
-                type="number"
+              <FormattedNumberInput
                 min="0"
                 value={partner.leadTimeDays ?? 3}
                 onChange={(event) =>

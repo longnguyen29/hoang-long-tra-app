@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, Calendar, Check, Clock, Globe2, MapPin } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { notifyHouse } from "@/lib/notify";
+import { useLocale } from "@/components/i18n/LocaleProvider";
 import styles from "./TeaSessions.module.css";
 
 const COPY = {
@@ -29,7 +30,7 @@ const COPY = {
 };
 
 export default function TeaSessions() {
-  const [lang, setLang] = useState("vi");
+  const { locale: lang, toggleLocale } = useLocale();
   const [taken, setTaken] = useState(new Set());
   const [form, setForm] = useState({ date: "", time: "", name: "", contact: "", note: "", consent: false });
   const [loading, setLoading] = useState(false);
@@ -65,7 +66,7 @@ export default function TeaSessions() {
   };
 
   return <main className={styles.page}>
-    <header className={styles.header}><Link href="/"><ArrowLeft size={17}/>{t.back}</Link><button onClick={() => setLang(lang === "vi" ? "en" : "vi")}><Globe2 size={15}/>{t.switcher}</button></header>
+    <header className={styles.header}><Link href="/"><ArrowLeft size={17}/>{t.back}</Link><button onClick={toggleLocale}><Globe2 size={15}/>{t.switcher}</button></header>
     <section className={styles.hero}>
       <div><p>{t.eyebrow}</p><h1>{t.title}</h1><p className={styles.intro}>{t.intro}</p><a href="#booking">{t.book}<ArrowRight size={16}/></a></div>
       <figure><img src="/landing/4.jpg" alt="A prepared tea at House of Hoàng Long"/><figcaption><span><MapPin size={15}/>{t.place}</span><span><Clock size={15}/>{t.duration}</span><span><Calendar size={15}/>{t.price}</span></figcaption></figure>

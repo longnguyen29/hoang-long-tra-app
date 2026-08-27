@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowDown, ArrowRight, Globe2, Menu, ShoppingBag, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useLocale } from "@/components/i18n/LocaleProvider";
 import styles from "./HouseHome.module.css";
 
 const COPY = {
@@ -64,7 +65,7 @@ const COPY = {
 const FALLBACK_PHOTOS = ["/landing/1.jpg", "/landing/2.jpg", "/landing/3.jpg"];
 
 export default function HouseHome() {
-  const [lang, setLang] = useState("vi");
+  const { locale: lang, toggleLocale } = useLocale();
   const [menuOpen, setMenuOpen] = useState(false);
   const [catalog, setCatalog] = useState([]);
   const [home, setHome] = useState(null);
@@ -101,7 +102,7 @@ export default function HouseHome() {
         </nav>
 
         <div className={styles.headerActions}>
-          <button className={styles.language} onClick={() => setLang(lang === "vi" ? "en" : "vi")} aria-label={`Switch to ${t.language}`}>
+          <button className={styles.language} onClick={toggleLocale} aria-label={`Switch to ${t.language}`}>
             <Globe2 size={15} aria-hidden="true" /> <span>{lang.toUpperCase()}</span>
           </button>
           <Link href="/sessions" className={styles.book}>{t.book}</Link>

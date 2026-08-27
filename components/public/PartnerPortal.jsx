@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./PartnerPortal.module.css";
+import FormattedNumberInput from "@/components/FormattedNumberInput";
 
 const money = (value) => `${Number(value || 0).toLocaleString("vi-VN")}đ`;
 const date = (value) =>
@@ -595,8 +596,7 @@ export default function PartnerPortal() {
                       </strong>
                       <label>
                         Số lượng
-                        <input
-                          type="number"
+                        <FormattedNumberInput
                           min={rule.minimum_quantity}
                           max={Math.max(
                             Number(rule.minimum_quantity),

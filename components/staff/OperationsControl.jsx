@@ -23,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import styles from "./OperationsControl.module.css";
+import FormattedNumberInput from "@/components/FormattedNumberInput";
 
 const money = (value) => `${Number(value || 0).toLocaleString("vi-VN")}đ`;
 const shortDate = (value) =>
@@ -826,9 +827,8 @@ export default function OperationsControl({ supabase, email, onLogout }) {
             </header>
             <label>
               Số tiền
-              <input
+              <FormattedNumberInput
                 required
-                type="number"
                 min="1"
                 value={payment.amount}
                 onChange={(event) =>
@@ -1001,8 +1001,7 @@ export default function OperationsControl({ supabase, email, onLogout }) {
               </label>
               <label>
                 Độ ẩm %
-                <input
-                  type="number"
+                <FormattedNumberInput
                   step="0.01"
                   min="0"
                   max="100"
@@ -1023,8 +1022,7 @@ export default function OperationsControl({ supabase, email, onLogout }) {
               </label>
               <label>
                 Khối lượng lô (kg)
-                <input
-                  type="number"
+                <FormattedNumberInput
                   step="0.01"
                   min="0"
                   value={batch.available_kg}
@@ -1035,8 +1033,7 @@ export default function OperationsControl({ supabase, email, onLogout }) {
               </label>
               <label>
                 Giá vốn / kg
-                <input
-                  type="number"
+                <FormattedNumberInput
                   min="0"
                   value={batch.cost_per_kg ?? ""}
                   onChange={(event) =>
@@ -1189,9 +1186,8 @@ export default function OperationsControl({ supabase, email, onLogout }) {
             </label>
             <label>
               Số kg
-              <input
+              <FormattedNumberInput
                 required
-                type="number"
                 min="0.01"
                 step="0.01"
                 value={allocation.quantity_kg}

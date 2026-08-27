@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, Globe2, Mountain } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { fromVendorRow } from "@/lib/mappers";
 import { CATEGORIES } from "@/lib/constants";
+import { useLocale } from "@/components/i18n/LocaleProvider";
 import styles from "./PublicLongform.module.css";
 
 const COPY={
@@ -14,13 +15,13 @@ const COPY={
 };
 
 export default function HouseStory(){
-  const [lang,setLang]=useState("vi"); const [home,setHome]=useState(null); const [vendors,setVendors]=useState([]); const [articles,setArticles]=useState([]); const [active,setActive]=useState(null);
+  const {locale:lang,toggleLocale}=useLocale(); const [home,setHome]=useState(null); const [vendors,setVendors]=useState([]); const [articles,setArticles]=useState([]); const [active,setActive]=useState(null);
   const supabase=useMemo(()=>createClient(),[]); const t=COPY[lang]; const local=(v)=>v?.[lang]||v?.en||v?.vi||"";
   useEffect(()=>{let live=true;Promise.all([supabase.from("settings_home").select("*").eq("id",1).maybeSingle(),supabase.rpc("list_public_vendors"),supabase.from("wiki_articles").select("*").neq("category","brandkit")]).then(([h,v,a])=>{if(!live)return;if(!h.error)setHome(h.data);if(!v.error)setVendors((v.data||[]).map(fromVendorRow));if(!a.error)setArticles(a.data||[])});return()=>{live=false}},[supabase]);
   const activeArticle=articles.find(a=>a.id===active); const category=(id)=>CATEGORIES.find(c=>c.id===id)?.label?.[lang]||id;
-  if(activeArticle)return <main className={styles.reader}><header><button onClick={()=>setActive(null)}><ArrowLeft size={17}/>{t.close}</button><button onClick={()=>setLang(lang==="vi"?"en":"vi")}><Globe2 size={15}/>{t.switcher}</button></header><article><p>{category(activeArticle.category)}</p><h1>{local(activeArticle.title)}</h1><div>{local(activeArticle.body)}</div></article></main>;
+  if(activeArticle)return <main className={styles.reader}><header><button onClick={()=>setActive(null)}><ArrowLeft size={17}/>{t.close}</button><button onClick={toggleLocale}><Globe2 size={15}/>{t.switcher}</button></header><article><p>{category(activeArticle.category)}</p><h1>{local(activeArticle.title)}</h1><div>{local(activeArticle.body)}</div></article></main>;
   return <main className={styles.page}>
-    <header className={styles.header}><Link href="/"><ArrowLeft size={17}/>{t.back}</Link><button onClick={()=>setLang(lang==="vi"?"en":"vi")}><Globe2 size={15}/>{t.switcher}</button></header>
+    <header className={styles.header}><Link href="/"><ArrowLeft size={17}/>{t.back}</Link><button onClick={toggleLocale}><Globe2 size={15}/>{t.switcher}</button></header>
     <section className={styles.storyHero}><div><p>{t.eyebrow}</p><h1>{t.title}</h1><p>{t.intro}</p></div><figure><img src={home?.featured_photos?.[0]||"/landing/1.jpg"} alt="Ancient tea landscape in Hà Giang"/><figcaption>Hà Giang · Việt Nam</figcaption></figure></section>
     {home?.origin_stats?.length>0&&<section className={styles.stats}>{home.origin_stats.slice(0,4).map((s,i)=><div key={i}><b>{s.value}</b><span>{local(s.label)}</span></div>)}</section>}
     <section className={styles.chapter}><div><Mountain size={21}/><h2>{t.chapter}</h2></div><div>{t.body.map((p,i)=><p key={i}>{p}</p>)}</div></section>
