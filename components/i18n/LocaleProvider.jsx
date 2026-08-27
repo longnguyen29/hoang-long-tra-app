@@ -73,6 +73,9 @@ const dynamicPatterns = {
     [/^Đã dùng (\d+)%$/, "$1% used"],
     [/^(\d+) đơn đã gắn lô và giá vốn$/, "$1 orders linked to batches and cost of goods"],
     [/^(.+) · (\d+) biến thể$/, "$1 · $2 variants"],
+    [/^(.+) quá hạn$/, "$1 overdue"],
+    [/^(.+) kg\/tháng$/, "$1 kg/month"],
+    [/^Mở (\d+) cơ hội đã đến hạn theo đuổi$/, "Open $1 opportunities due for follow-up"],
   ],
   vi: [
     [/^(\d+)\/(\d+) complete$/, "$1/$2 hoàn tất"],
@@ -116,6 +119,9 @@ const dynamicPatterns = {
     [/^(\d+)% used$/, "Đã dùng $1%"],
     [/^(\d+) orders linked to batches and cost of goods$/, "$1 đơn đã gắn lô và giá vốn"],
     [/^(.+) · (\d+) variants$/, "$1 · $2 biến thể"],
+    [/^(.+) overdue$/, "$1 quá hạn"],
+    [/^(.+) kg\/month$/, "$1 kg/tháng"],
+    [/^Open (\d+) opportunities due for follow-up$/, "Mở $1 cơ hội đã đến hạn theo đuổi"],
   ],
 };
 

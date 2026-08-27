@@ -590,7 +590,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
             <section className={styles.exceptions}>
               <header className={styles.sectionHeader}>
                 <div><h2>Ngoại lệ cần quyết định</h2><p>Chỉ những gì lệch nhịp hoặc đang chờ người chịu trách nhiệm.</p></div>
-                <span>{exceptions.length} mục</span>
+                <span>{exceptions.length} {locale === "en" ? (exceptions.length === 1 ? "item" : "items") : "mục"}</span>
               </header>
               {loading ? (
                 <div className={styles.skeleton} aria-label="Đang tải ngoại lệ"><i /><i /><i /></div>
