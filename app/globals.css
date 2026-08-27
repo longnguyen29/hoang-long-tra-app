@@ -521,3 +521,52 @@ label:focus-visible,
 .hl-locale-switch svg{width:var(--text-base);height:var(--text-base)}
 @media(hover:hover) and (pointer:fine){.hl-locale-switch:hover{border-color:var(--color-accent);color:var(--color-accent)}}
 @media(prefers-reduced-motion:reduce){.hl-locale-switch{transition:none}}
+
+/* Management action notes. A single fixed layer avoids clipping inside rails, drawers,
+   tables and overflow panels while keeping the established paper-and-ink vocabulary. */
+.hl-action-tooltip {
+  position: fixed;
+  z-index: 2147483000;
+  width: max-content;
+  max-width: min(19rem, calc(100vw - 1.5rem));
+  padding: 0.7rem 0.8rem 0.75rem;
+  border: 1px solid color-mix(in oklch, var(--color-accent) 62%, var(--color-ink));
+  border-top-width: 3px;
+  border-radius: var(--radius-card);
+  background: color-mix(in oklch, var(--color-ink) 96%, black);
+  color: var(--color-paper);
+  box-shadow: 0 0.75rem 2rem color-mix(in oklch, var(--color-ink) 26%, transparent);
+  font: 500 var(--text-xs)/1.45 var(--font-body);
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  animation: hl-tooltip-arrive 150ms var(--ease-out) both;
+}
+
+.hl-action-tooltip[data-placement="above"] {
+  transform: translate(-50%, -100%);
+  transform-origin: 50% 100%;
+}
+
+.hl-action-tooltip[data-placement="below"] {
+  transform: translateX(-50%);
+  transform-origin: 50% 0;
+}
+
+.hl-action-tooltip > span {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: color-mix(in oklch, var(--color-accent) 76%, white);
+  font: 750 0.64rem/1.2 var(--font-body);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+@keyframes hl-tooltip-arrive {
+  from { opacity: 0; translate: 0 0.25rem; }
+  to { opacity: 1; translate: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hl-action-tooltip { animation: none; }
+}

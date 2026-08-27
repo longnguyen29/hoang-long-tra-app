@@ -328,7 +328,7 @@ export default function OperationsControl({ supabase, email, onLogout }) {
             <b>{email}</b>
             <small>Góc nhìn chủ doanh nghiệp</small>
           </span>
-          <button onClick={load}>
+          <button onClick={load} aria-label="Làm mới">
             <RefreshCw />
           </button>
           <button onClick={onLogout}>Đăng xuất</button>
@@ -357,7 +357,7 @@ export default function OperationsControl({ supabase, email, onLogout }) {
       {error && (
         <p className={styles.toast} data-error>
           {error}
-          <button onClick={() => setError("")}>×</button>
+          <button onClick={() => setError("")} aria-label="Đóng thông báo">×</button>
         </p>
       )}
       {notice && (

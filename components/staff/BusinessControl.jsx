@@ -341,7 +341,7 @@ export default function BusinessControl({ supabase, email, onLogout }) {
             <b>{email}</b>
             <small>Phòng thương mại</small>
           </span>
-          <button onClick={load} disabled={loading}>
+          <button onClick={load} disabled={loading} aria-label="Làm mới">
             <RefreshCw />
           </button>
           <button onClick={onLogout}>Đăng xuất</button>

@@ -5,6 +5,8 @@ import { Languages } from "lucide-react";
 import { STR } from "@/lib/strings";
 import { CATEGORIES, LIBRARY_CATEGORIES, NAV, PRICE_TIERS, STATUS_STEPS } from "@/lib/constants";
 import { UI_PAIRS } from "@/lib/ui-translations";
+import { resolveActionTooltip } from "@/lib/action-tooltips";
+import ActionTooltipLayer from "./ActionTooltipLayer";
 
 const LocaleContext = createContext({ locale: "vi", setLocale: () => {}, toggleLocale: () => {} });
 
@@ -137,17 +139,42 @@ const translateText = (text, locale) => {
 
 const shouldSkip = (node) => node.parentElement?.closest("[data-no-translate],script,style,textarea");
 
+const enhanceActionHint = (element, locale) => {
+  if (!(element instanceof Element)) return;
+  if (!window.location.pathname.startsWith("/admin") && !window.location.pathname.startsWith("/partners")) return;
+  const isFileLabel = element.matches("label") && element.querySelector('input[type="file"]');
+  if (!element.matches('button,a[href],[role="button"]') && !isFileLabel) return;
+  const label = element.getAttribute("aria-label") || element.getAttribute("title") || element.textContent || "";
+  const type = element.getAttribute("type");
+  const formSubmit = element.matches("button") && element.closest("form") && (type === "submit" || !type);
+  const tooltip = resolveActionTooltip({
+    label,
+    href: element.getAttribute("href") || "",
+    role: element.getAttribute("role") || "",
+    formSubmit,
+  }, locale);
+  if (!tooltip) {
+    element.removeAttribute("data-action-tooltip");
+    element.removeAttribute("aria-description");
+    return;
+  }
+  element.setAttribute("data-action-tooltip", tooltip);
+  element.setAttribute("aria-description", tooltip);
+};
+
 const translateDom = (root, locale) => {
   if (!root || typeof document === "undefined") return;
   if (root.nodeType === Node.TEXT_NODE) {
     if (!shouldSkip(root)) {
       const next = translateText(root.nodeValue, locale);
       if (next !== root.nodeValue) root.nodeValue = next;
+      enhanceActionHint(root.parentElement?.closest('button,a[href],[role="button"],label'), locale);
     }
     return;
   }
   if (root.nodeType !== Node.ELEMENT_NODE && root.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) return;
   if (root.nodeType === Node.ELEMENT_NODE) {
+    enhanceActionHint(root, locale);
     if (root.closest("[data-no-translate]")) return;
     ["aria-label", "placeholder", "title", "alt"].forEach((name) => {
       const value = root.getAttribute(name);
@@ -170,6 +197,7 @@ const translateDom = (root, locale) => {
           const next = translateText(value, locale);
           if (next !== value) node.setAttribute(name, next);
         });
+        enhanceActionHint(node, locale);
       }
     }
     node = walker.nextNode();
@@ -220,11 +248,14 @@ export default function LocaleProvider({ children }) {
   return (
     <LocaleContext.Provider value={value}>
       {children}
+      <ActionTooltipLayer locale={locale} />
       <button
         type="button"
         className="hl-locale-switch"
         onClick={value.toggleLocale}
         aria-label={locale === "vi" ? "Switch to English" : "Chuyển sang tiếng Việt"}
+        aria-description={locale === "vi" ? "Đổi toàn bộ giao diện sang tiếng Anh." : "Switch the full interface to Vietnamese."}
+        data-action-tooltip={locale === "vi" ? "Đổi toàn bộ giao diện sang tiếng Anh." : "Switch the full interface to Vietnamese."}
         data-no-translate
       >
         <Languages aria-hidden="true" />
