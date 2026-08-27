@@ -56,7 +56,7 @@ const APPS = {
     label: "Vận hành & tài chính",
     short: "Vận hành",
     href: "/admin/operations",
-    description: "Công nợ, lô trà, tồn khả dụng và kế hoạch chuẩn bị.",
+    description: "Công nợ, ngân sách, lô trà, tồn khả dụng và kế hoạch chuẩn bị.",
     icon: BarChart3,
   },
   control: {
@@ -109,11 +109,40 @@ const relativeUpdate = (value) => {
 
 function buildExceptions(snapshot, mode) {
   const queue = snapshot?.queue || {};
+  const budget = snapshot?.budget || {};
   const actions = snapshot?.operations?.today_actions || {};
   const reorders = snapshot?.operations?.reorders || [];
   const stock = snapshot?.operations?.stock || [];
   const items = [];
   const add = (condition, item) => condition && items.push(item);
+
+  add(budget.has_active_period === false, {
+    id: "budget-period-missing",
+    title: "Chưa có kỳ ngân sách đang hoạt động",
+    detail: "Tạo một kỳ để phân bổ tiền trước khi ghi cam kết hoặc thanh toán.",
+    appKey: "operations",
+    href: "/admin/operations/budget",
+    level: "attention",
+    rank: mode === "owner" ? 1 : 5,
+  });
+  add(Number(budget.pending_count) > 0, {
+    id: "budget-approvals",
+    title: `${budget.pending_count} khoản ngân sách đang chờ duyệt`,
+    detail: `${money(budget.pending)} chưa trở thành phần ngân sách được phép chi.`,
+    appKey: "operations",
+    href: "/admin/operations/budget",
+    level: "attention",
+    rank: mode === "owner" ? 1.5 : 5,
+  });
+  add(Number(budget.risk_count) > 0, {
+    id: "budget-risk",
+    title: `${budget.risk_count} khoản phân bổ đã dùng từ 80%`,
+    detail: "Rà lại cam kết còn mở trước khi duyệt thêm hoặc tạo khoản chi mới.",
+    appKey: "operations",
+    href: "/admin/operations/budget",
+    level: "critical",
+    rank: mode === "owner" ? 2 : 4,
+  });
 
   add(Number(actions.overdue_invoices) > 0, {
     id: "overdue-invoices",
@@ -222,6 +251,7 @@ function buildExceptions(snapshot, mode) {
 
 function buildMetrics(snapshot, mode) {
   const queue = snapshot?.queue || {};
+  const budget = snapshot?.budget || {};
   const kpis = snapshot?.operations?.kpis || {};
   const actions = snapshot?.operations?.today_actions || {};
   const reorders = snapshot?.operations?.reorders || [];
@@ -240,13 +270,13 @@ function buildMetrics(snapshot, mode) {
       ["Đơn đang mở", queue.orders_open || 0, "đơn"],
       ["Đơn bị chặn", actions.orders_blocked || 0, "đơn"],
       ["Công nợ quá hạn", actions.overdue_invoices || 0, "khoản"],
-      ["Đang giữ cho đơn", snapshot?.operations?.stock?.filter((item) => Number(item.reserved) > 0).length || 0, "mặt hàng"],
+      ["Ngân sách khả dụng", money(Math.max(0, Number(budget.allocated || 0) - Number(budget.committed || 0))), "đã duyệt, chưa cam kết"],
     ];
   }
   return [
     ["Doanh thu 30 ngày", money(kpis.revenue_30d), `${kpis.orders_30d || 0} đơn`],
     ["Tiền phải thu", money(kpis.receivable_open), `${money(kpis.receivable_overdue)} quá hạn`],
-    ["Việc vận hành", Object.values(actions).reduce((sum, value) => sum + Number(value || 0), 0), "ngoại lệ"],
+    ["Ngân sách khả dụng", money(Math.max(0, Number(budget.allocated || 0) - Number(budget.committed || 0))), "đã duyệt, chưa cam kết"],
     ["Pipeline đến hạn", queue.pipeline_due || 0, "cơ hội"],
   ];
 }
@@ -265,11 +295,16 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
-    const { data, error: loadError } = await supabase.rpc("morning_desk_snapshot");
-    if (loadError) {
+    const [deskResult, budgetResult] = await Promise.all([
+      supabase.rpc("morning_desk_snapshot"),
+      supabase.rpc("budget_morning_snapshot"),
+    ]);
+    if (deskResult.error) {
       setError("Bàn ngày chưa tải được dữ liệu. Kiểm tra migration 0036 rồi thử lại.");
     } else {
-      setSnapshot(data);
+      setSnapshot({ ...deskResult.data, budget: budgetResult.data || {} });
+      if (budgetResult.error)
+        setError("Bàn ngày đã tải, nhưng chưa đọc được ngân sách từ migration 0037.");
     }
     setLoading(false);
   }, [supabase]);

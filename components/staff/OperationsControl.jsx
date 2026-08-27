@@ -348,6 +348,10 @@ export default function OperationsControl({ supabase, email, onLogout }) {
             {label}
           </button>
         ))}
+        <Link href="/admin/operations/budget">
+          <CircleDollarSign />
+          Ngân sách
+        </Link>
       </nav>
       {error && (
         <p className={styles.toast} data-error>

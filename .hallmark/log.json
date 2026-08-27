@@ -1,5 +1,15 @@
 [
   {
+    "date": "2026-08-27",
+    "macrostructure": "Workbench",
+    "theme": "House of Hoàng Long (design.md)",
+    "enrichment": "none",
+    "nav": "N3 inherited app rail",
+    "footer": "Ft2 Inline rule",
+    "knob_delta": "F3 budget ledger, approval queue, envelope usage; no day rail",
+    "brief": "Budget allocation, approvals, commitments and paid-spend control"
+  },
+  {
     "date": "2026-08-26",
     "macrostructure": "Workbench",
     "theme": "House of Hoàng Long (design.md)",
