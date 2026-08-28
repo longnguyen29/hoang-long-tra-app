@@ -564,3 +564,78 @@
     padding: var(--space-sm);
   }
 }
+
+/* Desktop ledger: operating rooms remain visible beside the live working surface. */
+@media (min-width: 64rem) {
+  .page {
+    display: grid;
+    grid-template-columns: minmax(13.5rem, 16rem) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    align-content: start;
+  }
+  .top {
+    position: sticky;
+    z-index: 40;
+    inset-block-start: 0;
+    grid-column: 1/-1;
+  }
+  .heading {
+    grid-column: 1/-1;
+    display: grid;
+    grid-template-columns: minmax(22rem, .85fr) minmax(22rem, 1fr);
+    align-items: end;
+    gap: var(--space-xl);
+    padding: var(--space-xl) var(--page-gutter);
+    border-block-end: var(--rule-thin) solid var(--color-rule-2);
+  }
+  .heading h1 {
+    max-width: 16ch;
+    margin-block: var(--space-2xs);
+    font-size: clamp(3rem, 4.5vw, 4.35rem);
+    line-height: .94;
+  }
+  .heading > span {
+    max-width: 48ch;
+    padding-inline-start: var(--space-lg);
+    border-inline-start: var(--rule-thin) solid var(--color-accent);
+    line-height: 1.55;
+  }
+  .tabs {
+    position: sticky;
+    inset-block-start: calc(var(--topbar-height) + var(--space-lg));
+    grid-column: 1;
+    align-self: start;
+    display: grid;
+    gap: 0;
+    margin-inline-start: var(--page-gutter);
+    padding: 0 var(--space-lg) 0 0;
+    overflow: visible;
+  }
+  .tabs button,
+  .tabs a {
+    width: 100%;
+    min-height: 3.4rem;
+    justify-content: flex-start;
+    padding-inline: var(--space-sm);
+    border: 0;
+    border-block-end: var(--rule-thin) solid var(--color-rule-2);
+    border-radius: 0;
+    background: transparent;
+    text-align: start;
+  }
+  .tabs button[data-active="true"] {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    box-shadow: inset .22rem 0 var(--color-accent);
+  }
+  .owner,
+  .planning,
+  .panel {
+    min-width: 0;
+    grid-column: 2;
+    margin: var(--space-lg) var(--page-gutter) 0 var(--space-sm);
+  }
+  .metrics article {
+    min-height: 8.25rem;
+  }
+}
