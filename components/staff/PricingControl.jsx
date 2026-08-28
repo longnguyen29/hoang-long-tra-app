@@ -16,6 +16,7 @@ import {
   Save,
   Scale,
   ShieldCheck,
+  Target,
 } from "lucide-react";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
 import { useLocale } from "@/components/i18n/LocaleProvider";
@@ -80,6 +81,21 @@ const COPY = {
     currentMargin: "Biên của giá hiện tại",
     orderProfit: "Lợi nhuận dự kiến / đơn",
     breakEven: "Số gói hòa vốn phí giao",
+    marginFeel: "Cảm nhận biên lợi nhuận",
+    marginEyebrow: "Mỗi 100đ doanh thu chưa VAT",
+    profitShare: "Lợi nhuận giữ lại",
+    feeShare: "Phí kênh",
+    costShare: "Chi phí đã nhập",
+    currentPriceMargin: "Biên của giá hiện tại",
+    workingRangeB2b: "Vùng làm việc B2B của Nhà: 28–38%",
+    workingRangeRetail: "Vùng làm việc bán lẻ của Nhà: 42–58%",
+    marginLoss: "Đang lỗ — giá bán chưa bù đủ các chi phí đã nhập.",
+    marginThin: "Quá mỏng — gần như không còn chỗ cho hao hụt hoặc thương lượng.",
+    marginTight: "Khá chặt — chỉ ổn khi sản lượng và chi phí thật sự ổn định.",
+    marginRight: "Đúng vùng — có khoảng đệm hợp lý cho kênh bán này.",
+    marginStrong: "Biên dày — kiểm tra thêm sức cạnh tranh của giá bán.",
+    marginPremium: "Biên rất cao — nên xác nhận khách vẫn chấp nhận mức giá này.",
+    marginNote: "Thước cảm nhận nhanh, không phải lợi nhuận kế toán. Chưa gồm chi phí bạn chưa nhập và thuế thu nhập doanh nghiệp.",
     missingCost: "Chưa có giá trà đầu vào. Kết quả chưa dùng để quyết định được.",
     belowFloor: "Giá hiện tại thấp hơn sàn an toàn sau khi tính đủ chi phí.",
     unworkable: "Biên mục tiêu và phí kênh quá cao để hình thành mức giá hợp lệ.",
@@ -164,6 +180,21 @@ const COPY = {
     currentMargin: "Margin at current price",
     orderProfit: "Expected profit / order",
     breakEven: "Packs to cover delivery",
+    marginFeel: "Margin feel",
+    marginEyebrow: "For every 100₫ of revenue before VAT",
+    profitShare: "Profit retained",
+    feeShare: "Channel fee",
+    costShare: "Entered costs",
+    currentPriceMargin: "Margin at current price",
+    workingRangeB2b: "House B2B working range: 28–38%",
+    workingRangeRetail: "House retail working range: 42–58%",
+    marginLoss: "Loss-making — the selling price does not cover the costs entered.",
+    marginThin: "Too thin — almost no room remains for waste or negotiation.",
+    marginTight: "Tight — workable only when volume and costs stay predictable.",
+    marginRight: "In range — a practical buffer for this selling channel.",
+    marginStrong: "Strong margin — check that the selling price still competes.",
+    marginPremium: "Very high margin — validate that customers still accept the price.",
+    marginNote: "A quick commercial guide, not accounting profit. It excludes costs you have not entered and corporate income tax.",
     missingCost: "Tea input cost is missing. Do not use this result for a decision yet.",
     belowFloor: "The current price is below the safe floor after all entered costs.",
     unworkable: "The target margin and channel fee are too high to produce a valid price.",
@@ -255,6 +286,8 @@ export default function PricingControl({ supabase, email }) {
   const selectedSku = skuOptions.find((item) => item.key === selectedKey) || null;
   const selectedProductBatches = batches.filter((item) => !selectedSku || item.product_id === selectedSku.product.id);
   const results = useMemo(() => calculatePricing(inputs), [inputs]);
+  const activeMargin = channel === "retail" ? results.retailMarginPercent : results.b2bMarginPercent;
+  const activeProfitPerOrder = channel === "retail" ? results.retailProfitPerOrder : results.b2bProfitPerOrder;
 
   const flash = (message) => {
     setNotice(message);
@@ -309,7 +342,11 @@ export default function PricingControl({ supabase, email }) {
     const requestedProduct = query.get("product") || "";
     const requestedVariant = query.get("variant") || "";
     const requestedOpportunity = query.get("opportunity") || "";
+    const requestedChannel = query.get("channel");
     if (requestedOpportunity) setOpportunityId(requestedOpportunity);
+    if (requestedChannel === "b2b" || requestedChannel === "retail") setChannel(requestedChannel);
+    else if (requestedOpportunity) setChannel("b2b");
+    else if (requestedProduct) setChannel("retail");
     if (requestedProduct) {
       const requestedKey = productKey(requestedProduct, requestedVariant);
       const sku = buildSkuOptions(nextProducts, nextVariants).find((item) => item.key === requestedKey);
@@ -504,6 +541,26 @@ export default function PricingControl({ supabase, email }) {
     [t.b2bList, results.b2bListPricePerKg, "b2b"],
     [t.retailPrice, results.retailPricePerKg, "retail"],
   ];
+  const guide = channel === "retail"
+    ? { thin: 30, working: 42, strong: 58, premium: 68, label: t.workingRangeRetail }
+    : { thin: 20, working: 28, strong: 38, premium: 50, label: t.workingRangeB2b };
+  const marginStatus = activeMargin < 0
+    ? { tone: "loss", text: t.marginLoss }
+    : activeMargin < guide.thin
+      ? { tone: "thin", text: t.marginThin }
+      : activeMargin < guide.working
+        ? { tone: "tight", text: t.marginTight }
+        : activeMargin <= guide.strong
+          ? { tone: "right", text: t.marginRight }
+          : activeMargin <= guide.premium
+            ? { tone: "strong", text: t.marginStrong }
+            : { tone: "premium", text: t.marginPremium };
+  const profitCells = Math.max(0, Math.min(100, Math.round(activeMargin)));
+  const feeCells = Math.max(0, Math.min(100 - profitCells, Math.round(Number(inputs.channelFeePercent) || 0)));
+  const costCells = 100 - profitCells - feeCells;
+  const marginCells = Array.from({ length: 100 }, (_, index) => (
+    index < profitCells ? "profit" : index < profitCells + feeCells ? "fee" : "cost"
+  ));
 
   if (loading) return <main className={styles.state}><RefreshCw /><p>{t.refresh}</p></main>;
 
@@ -548,7 +605,7 @@ export default function PricingControl({ supabase, email }) {
           </section>
 
           <section className={styles.inputSection}>
-            <header><span>{t.commercialSection}</span><p>{money(results.profitPerOrder)} / order</p></header>
+            <header><span>{t.commercialSection}</span><p>{money(activeProfitPerOrder)} / order</p></header>
             <div className={styles.fieldGrid}>
               <NumberField label={t.delivery} suffix="₫" value={inputs.deliveryPerOrder} onChange={updateInput("deliveryPerOrder")} />
               <NumberField label={t.orderKg} suffix="kg" value={inputs.orderKg} onChange={updateInput("orderKg")} step="0.1" />
@@ -578,9 +635,35 @@ export default function PricingControl({ supabase, email }) {
             <p>{t.afterDiscount}</p>
           </section>
 
+          <section className={styles.marginFeel} data-tone={marginStatus.tone}>
+            <header><div><p>{t.marginEyebrow}</p><h3>{t.marginFeel}</h3></div><Target /></header>
+            <div className={styles.marginReadout}>
+              <div
+                className={styles.marginBoard}
+                role="img"
+                aria-label={`${profitCells}% ${t.profitShare}, ${feeCells}% ${t.feeShare}, ${costCells}% ${t.costShare}`}
+              >
+                {marginCells.map((part, index) => <i key={index} data-part={part} />)}
+              </div>
+              <div className={styles.marginVerdict}>
+                <span>{channel === "retail" ? t.retail : t.b2b}</span>
+                <strong>{activeMargin}%</strong>
+                <p>{marginStatus.text}</p>
+                <b>{guide.label}</b>
+              </div>
+            </div>
+            <dl className={styles.marginLegend}>
+              <div data-part="profit"><dt>{t.profitShare}</dt><dd>{profitCells}₫</dd></div>
+              <div data-part="fee"><dt>{t.feeShare}</dt><dd>{feeCells}₫</dd></div>
+              <div data-part="cost"><dt>{t.costShare}</dt><dd>{costCells}₫</dd></div>
+            </dl>
+            {results.currentMarginPercent != null && <p className={styles.currentMarginNote}>{t.currentPriceMargin}: <b>{results.currentMarginPercent}%</b></p>}
+            <small>{t.marginNote}</small>
+          </section>
+
           <section className={styles.health} data-clear={!results.warnings.length}>
             <header>{results.warnings.length ? <AlertTriangle /> : <ShieldCheck />}<b>{results.warnings.length ? warningCopy[results.warnings[0]] : t.noWarnings}</b></header>
-            <dl><div><dt>{t.currentMargin}</dt><dd>{results.currentMarginPercent == null ? "—" : `${results.currentMarginPercent}%`}</dd></div><div><dt>{t.orderProfit}</dt><dd>{money(results.profitPerOrder)}</dd></div><div><dt>{t.breakEven}</dt><dd>{results.breakEvenPacks ?? "—"}</dd></div></dl>
+            <dl><div><dt>{t.currentMargin}</dt><dd>{results.currentMarginPercent == null ? "—" : `${results.currentMarginPercent}%`}</dd></div><div><dt>{t.orderProfit}</dt><dd>{money(activeProfitPerOrder)}</dd></div><div><dt>{t.breakEven}</dt><dd>{results.breakEvenPacks ?? "—"}</dd></div></dl>
           </section>
 
           <div className={styles.actions}>
