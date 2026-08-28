@@ -98,6 +98,11 @@ const COPY = {
     marginView: "Kiểu hiển thị biên lợi nhuận",
     barView: "Thanh",
     gridView: "100 ô",
+    marginSlider: "Điều chỉnh biên mục tiêu",
+    resultingPrice: "Giá đề xuất tương ứng",
+    marginSliderNote: "Kéo để thử mức biên. Giá đề xuất thay đổi ngay; giá đang áp dụng chỉ đổi khi bạn bấm áp giá.",
+    pricePerKg: "/ kg",
+    pricePerPack: "/ gói",
     missingCost: "Chưa có giá trà đầu vào. Kết quả chưa dùng để quyết định được.",
     belowFloor: "Giá hiện tại thấp hơn sàn an toàn sau khi tính đủ chi phí.",
     unworkable: "Biên mục tiêu và phí kênh quá cao để hình thành mức giá hợp lệ.",
@@ -200,6 +205,11 @@ const COPY = {
     marginView: "Margin display",
     barView: "Bar",
     gridView: "100 squares",
+    marginSlider: "Adjust target margin",
+    resultingPrice: "Resulting recommended price",
+    marginSliderNote: "Drag to test a margin. The recommended price changes immediately; the live price changes only when you apply it.",
+    pricePerKg: "/ kg",
+    pricePerPack: "/ pack",
     missingCost: "Tea input cost is missing. Do not use this result for a decision yet.",
     belowFloor: "The current price is below the safe floor after all entered costs.",
     unworkable: "The target margin and channel fee are too high to produce a valid price.",
@@ -293,10 +303,17 @@ export default function PricingControl({ supabase, email }) {
   const selectedProductBatches = batches.filter((item) => !selectedSku || item.product_id === selectedSku.product.id);
   const results = useMemo(() => calculatePricing(inputs), [inputs]);
   const activeTargetMargin = Number(channel === "retail" ? inputs.retailMarginPercent : inputs.b2bMarginPercent) || 0;
-  const activeProposedPrice = channel === "retail" ? results.retailPricePerKg : results.b2bPartnerPricePerKg;
+  const activeMarginInput = channel === "retail" ? "retailMarginPercent" : "b2bMarginPercent";
+  const activePriceUnit = channel === "retail"
+    ? (selectedSku ? (selectedSku.product.line === "everyday" ? "kg" : "pack") : inputs.currentPriceUnit)
+    : inputs.partnerUnit;
+  const activeProposedPrice = channel === "retail"
+    ? (activePriceUnit === "pack" ? results.retailPricePerPack : results.retailPricePerKg)
+    : (activePriceUnit === "pack" ? results.b2bPartnerPricePerPack : results.b2bPartnerPricePerKg);
   const calculatedMargin = channel === "retail" ? results.retailMarginPercent : results.b2bMarginPercent;
   const activeMargin = activeProposedPrice > 0 ? calculatedMargin : activeTargetMargin;
   const activeProfitPerOrder = channel === "retail" ? results.retailProfitPerOrder : results.b2bProfitPerOrder;
+  const sliderMargin = Math.max(0, Math.min(90, activeTargetMargin));
 
   const flash = (message) => {
     setNotice(message);
@@ -391,6 +408,9 @@ export default function PricingControl({ supabase, email }) {
   };
 
   const updateInput = (key) => (event) => setInputs((current) => ({ ...current, [key]: event.target.value }));
+  const updateActiveMargin = (event) => {
+    setInputs((current) => ({ ...current, [activeMarginInput]: event.target.value }));
+  };
   const chooseBatch = (event) => {
     const nextId = event.target.value;
     setBatchId(nextId);
@@ -662,6 +682,28 @@ export default function PricingControl({ supabase, email }) {
                 <button type="button" aria-pressed={marginView === "grid"} onClick={() => chooseMarginView("grid")}>{t.gridView}</button>
               </div>
             </header>
+            <div className={styles.marginControl}>
+              <header>
+                <span>{t.resultingPrice}</span>
+                <b>{money(activeProposedPrice)} <small>{activePriceUnit === "pack" ? t.pricePerPack : t.pricePerKg}</small></b>
+              </header>
+              <label>
+                <span className={styles.srOnly}>{t.marginSlider}</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="90"
+                  step="1"
+                  value={sliderMargin}
+                  onChange={updateActiveMargin}
+                  aria-label={`${t.marginSlider}: ${channel === "retail" ? t.retail : t.b2b}`}
+                  aria-valuetext={`${sliderMargin}%`}
+                  style={{ "--margin-position": `${(sliderMargin / 90) * 100}%` }}
+                />
+                <span className={styles.marginTicks}><i>0%</i><b>{sliderMargin}%</b><i>90%</i></span>
+              </label>
+              <small>{t.marginSliderNote}</small>
+            </div>
             <div className={styles.marginReadout} data-view={marginView}>
               {marginView === "bar" ? (
                 <div
