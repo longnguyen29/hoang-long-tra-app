@@ -521,3 +521,46 @@
     padding: var(--space-md);
   }
 }
+
+/* All operating rooms remain visible on phones; the two-column index removes the
+   hidden horizontal queue and distinguishes navigational tools with a dashed rule. */
+@media (max-width: 48rem) {
+  .heading {
+    padding: var(--space-lg) var(--space-sm) var(--space-md);
+  }
+  .heading h1 {
+    max-width: 12ch;
+    font-size: clamp(2.35rem, 11vw, 2.8rem);
+    line-height: 0.97;
+  }
+  .tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2xs);
+    padding: 0 var(--space-sm) var(--space-md);
+    overflow: visible;
+  }
+  .tabs button,
+  .tabs a {
+    width: 100%;
+    justify-content: flex-start;
+    padding-inline: var(--space-xs);
+    white-space: normal;
+    text-align: start;
+    line-height: 1.2;
+  }
+  .tabs a {
+    border-style: dashed;
+  }
+  .owner,
+  .planning {
+    margin-inline: var(--space-sm);
+  }
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .metrics article {
+    min-height: 7.5rem;
+    padding: var(--space-sm);
+  }
+}

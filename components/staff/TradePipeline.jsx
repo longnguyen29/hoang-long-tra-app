@@ -79,6 +79,7 @@ export default function TradePipeline({ supabase, email }) {
   const [priceDraft, setPriceDraft] = useState(null);
   const [query, setQuery] = useState("");
   const [showLost, setShowLost] = useState(false);
+  const [mobileStage, setMobileStage] = useState(TRADE_STAGES[0].id);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -250,9 +251,10 @@ export default function TradePipeline({ supabase, email }) {
       <article><Handshake/><span>Đối tác định kỳ</span><b>{opportunities.filter((item) => item.stage === "active").length}</b><small>{opportunities.filter((item) => item.stage === "won").length} đang ở đơn đầu</small></article>
     </section>
     <section className={styles.tools}><label><Search/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm doanh nghiệp, liên hệ, người phụ trách"/></label><button data-active={showLost} onClick={() => setShowLost(!showLost)}>Tạm dừng · {opportunities.filter((item) => item.stage === "lost").length}</button></section>
+    <label className={styles.mobileStagePicker}><span>Giai đoạn đang xem</span><select value={mobileStage} onChange={(event) => setMobileStage(event.target.value)}>{TRADE_STAGES.map((stage) => <option key={stage.id} value={stage.id}>{stage.label} · {searchable.filter((item) => item.stage === stage.id).length}</option>)}</select></label>
     <section className={styles.stageRail} aria-label="Hành trình đối tác">{TRADE_STAGES.map((stage, index) => <div key={stage.id}><span>{String(index + 1).padStart(2, "0")}</span><b>{stage.label}</b><small>{searchable.filter((item) => item.stage === stage.id).length}</small></div>)}</section>
     <section className={styles.board}>
-      {TRADE_STAGES.map((stage) => <section className={styles.column} key={stage.id}><header><b>{stage.short}</b><span>{searchable.filter((item) => item.stage === stage.id).length}</span></header><div>{searchable.filter((item) => item.stage === stage.id).map((item) => {
+      {TRADE_STAGES.map((stage) => <section className={styles.column} data-mobile-active={mobileStage === stage.id} key={stage.id}><header><b>{stage.short}</b><span>{searchable.filter((item) => item.stage === stage.id).length}</span></header><div>{searchable.filter((item) => item.stage === stage.id).map((item) => {
         const isOverdue = item.next_action_at && item.next_action_at.slice(0, 10) < today;
         return <button key={item.id} onClick={() => openOpportunity(item)} data-overdue={isOverdue}><span className={styles.source}>{item.source_type}</span><h3>{item.business_name}</h3><p>{item.next_action || "Chưa có bước tiếp theo"}</p><footer><span>{item.monthly_potential_kg ? `${item.monthly_potential_kg} kg/tháng` : item.contact}</span><time>{shortDate(item.next_action_at)}</time></footer></button>;
       })}<button className={styles.addCard} onClick={() => setEditing({ ...newOpportunity(), stage: stage.id })}><Plus/>Thêm tại đây</button></div></section>)}
