@@ -78,6 +78,7 @@ const dynamicPatterns = {
     [/^(.+) quá hạn$/, "$1 overdue"],
     [/^(.+) kg\/tháng$/, "$1 kg/month"],
     [/^Mở (\d+) cơ hội đã đến hạn theo đuổi$/, "Open $1 opportunities due for follow-up"],
+    [/^Cập nhật (.+)$/, "Updated $1"],
   ],
   vi: [
     [/^(\d+)\/(\d+) complete$/, "$1/$2 hoàn tất"],
@@ -124,6 +125,7 @@ const dynamicPatterns = {
     [/^(.+) overdue$/, "$1 quá hạn"],
     [/^(.+) kg\/month$/, "$1 kg/tháng"],
     [/^Open (\d+) opportunities due for follow-up$/, "Mở $1 cơ hội đã đến hạn theo đuổi"],
+    [/^Updated (.+)$/, "Cập nhật $1"],
   ],
 };
 
