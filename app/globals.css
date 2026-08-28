@@ -519,6 +519,7 @@ label:focus-visible,
 /* Persistent language control shared by the public house and every management workbench. */
 .hl-locale-switch{position:fixed;inset-inline-start:var(--space-sm);inset-block-end:var(--space-sm);z-index:90;min-width:var(--control-height);min-height:var(--control-height);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2xs);padding-inline:var(--space-xs);border:var(--rule-thin) solid var(--color-rule);border-radius:var(--radius-round);background:var(--color-paper);color:var(--color-ink);font:700 var(--text-xs)/1 var(--font-body);box-shadow:0 var(--space-3xs) var(--space-sm) color-mix(in oklch,var(--color-ink) 14%,transparent)}
 .hl-locale-switch svg{width:var(--text-base);height:var(--text-base)}
+body:has([aria-modal="true"]) .hl-locale-switch{display:none}
 @media(hover:hover) and (pointer:fine){.hl-locale-switch:hover{border-color:var(--color-accent);color:var(--color-accent)}}
 @media(prefers-reduced-motion:reduce){.hl-locale-switch{transition:none}}
 

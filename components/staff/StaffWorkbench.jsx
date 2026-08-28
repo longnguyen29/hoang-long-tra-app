@@ -66,7 +66,7 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
 function OrderDetail({order,events,loadingEvents,saving,healthDraft,setHealthDraft,waitingDraft,setWaitingDraft,healthNoteDraft,setHealthNoteDraft,trackingDraft,setTrackingDraft,onUpdate,onClose}){
  const stageIndex=orderStageIndex(order.stage),stage=ORDER_STAGES[stageIndex],nextStage=ORDER_STAGES[stageIndex+1],previousStage=ORDER_STAGES[stageIndex-1];
  const saveHealth=()=>onUpdate({health:healthDraft,waitingOn:healthDraft==="on_track"?null:waitingDraft,healthNote:healthDraft==="on_track"?"":healthNoteDraft});
- return <aside className={`${styles.detail} ${styles.orderDetail}`} aria-label="Kiểm tra và điều phối đơn hàng">
+ return <aside className={`${styles.detail} ${styles.orderDetail}`} aria-label="Kiểm tra và điều phối đơn hàng" aria-modal="true" role="dialog">
   <header><div><p>Order inspection</p><h2>{order.customerName}</h2><span className={styles.detailStage}>{stage.number} · {stage.label}</span></div><button onClick={onClose} aria-label="Đóng">×</button></header>
   <section className={styles.flowSection} aria-labelledby="order-flow-title"><div className={styles.detailSectionTitle}><Activity/><span><b id="order-flow-title">Luồng xử lý</b><small>Mỗi lần chỉ tiến hoặc lùi một bước.</small></span></div><ol className={styles.orderSpine}>{ORDER_STAGES.map((item,index)=><li key={item.id} data-state={index<stageIndex?"done":index===stageIndex?"current":"future"}><span>{index<stageIndex?<CheckCircle2/>:item.number}</span><div><b>{item.label}</b>{index===stageIndex&&<small>Đang ở đây</small>}</div></li>)}</ol>
    <div className={styles.nextAction}><span>Việc cần làm ở bước này</span><p>{stage.nextAction}</p></div>
