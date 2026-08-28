@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Calculator,
   Check,
+  ChevronDown,
   ChevronRight,
   CircleDollarSign,
   Handshake,
@@ -103,6 +104,8 @@ const COPY = {
     marginSliderNote: "Kéo để thử mức biên. Giá đề xuất thay đổi ngay; giá đang áp dụng chỉ đổi khi bạn bấm áp giá.",
     pricePerKg: "/ kg",
     pricePerPack: "/ gói",
+    openSection: "Mở phần",
+    closeSection: "Thu gọn phần",
     missingCost: "Chưa có giá trà đầu vào. Kết quả chưa dùng để quyết định được.",
     belowFloor: "Giá hiện tại thấp hơn sàn an toàn sau khi tính đủ chi phí.",
     unworkable: "Biên mục tiêu và phí kênh quá cao để hình thành mức giá hợp lệ.",
@@ -210,6 +213,8 @@ const COPY = {
     marginSliderNote: "Drag to test a margin. The recommended price changes immediately; the live price changes only when you apply it.",
     pricePerKg: "/ kg",
     pricePerPack: "/ pack",
+    openSection: "Open section",
+    closeSection: "Collapse section",
     missingCost: "Tea input cost is missing. Do not use this result for a decision yet.",
     belowFloor: "The current price is below the safe floor after all entered costs.",
     unworkable: "The target margin and channel fee are too high to produce a valid price.",
@@ -288,6 +293,7 @@ export default function PricingControl({ supabase, email }) {
   const [scenarioName, setScenarioName] = useState("");
   const [channel, setChannel] = useState("b2b");
   const [marginView, setMarginView] = useState("bar");
+  const [mobileSections, setMobileSections] = useState({ cost: true, commercial: false });
   const [selectedKey, setSelectedKey] = useState("");
   const [batchId, setBatchId] = useState("");
   const [opportunityId, setOpportunityId] = useState("");
@@ -410,6 +416,9 @@ export default function PricingControl({ supabase, email }) {
   const updateInput = (key) => (event) => setInputs((current) => ({ ...current, [key]: event.target.value }));
   const updateActiveMargin = (event) => {
     setInputs((current) => ({ ...current, [activeMarginInput]: event.target.value }));
+  };
+  const toggleMobileSection = (section) => {
+    setMobileSections((current) => ({ ...current, [section]: !current[section] }));
   };
   const chooseBatch = (event) => {
     const nextId = event.target.value;
@@ -624,14 +633,14 @@ export default function PricingControl({ supabase, email }) {
           <div className={styles.identityGrid}>
             <label className={styles.wide}><span>{t.scenarioName}</span><input value={scenarioName} onChange={(event) => setScenarioName(event.target.value)} placeholder={t.scenarioPlaceholder} /></label>
             <label><span>{t.product}</span><select value={selectedKey} onChange={(event) => selectSku(event.target.value)}><option value="">{t.noProduct}</option>{skuOptions.map((item) => <option value={item.key} key={item.key}>{item.product.name?.[locale] || item.product.name?.vi || item.product.name?.en}{item.weight ? ` · ${item.weight}` : ""}</option>)}</select></label>
-            <label><span>{t.batch}</span><select value={batchId} onChange={chooseBatch}><option value="">{t.manualCost}</option>{selectedProductBatches.map((item) => <option value={item.id} key={item.id}>{item.code} · {money(item.cost_per_kg)}/kg</option>)}</select></label>
-            <label><span>{t.partner}</span><select value={opportunityId} onChange={(event) => setOpportunityId(event.target.value)}><option value="">{t.noPartner}</option>{opportunities.map((item) => <option value={item.id} key={item.id}>{item.business_name} · {item.contact}</option>)}</select></label>
             <label><span>{t.channel}</span><select value={channel} onChange={(event) => setChannel(event.target.value)}><option value="b2b">{t.b2b}</option><option value="retail">{t.retail}</option></select></label>
+            <label><span>{t.batch}</span><select value={batchId} onChange={chooseBatch}><option value="">{t.manualCost}</option>{selectedProductBatches.map((item) => <option value={item.id} key={item.id}>{item.code} · {money(item.cost_per_kg)}/kg</option>)}</select></label>
+            {channel === "b2b" && <label><span>{t.partner}</span><select value={opportunityId} onChange={(event) => setOpportunityId(event.target.value)}><option value="">{t.noPartner}</option>{opportunities.map((item) => <option value={item.id} key={item.id}>{item.business_name} · {item.contact}</option>)}</select></label>}
           </div>
 
           <section className={styles.inputSection}>
-            <header><span>{t.costSection}</span><p>{money(results.trueCostPerKg)} / kg</p></header>
-            <div className={styles.fieldGrid}>
+            <header><span>{t.costSection}</span><div><p>{money(results.trueCostPerKg)} / kg</p><button className={styles.sectionToggle} type="button" data-open={mobileSections.cost} aria-expanded={mobileSections.cost} aria-label={`${mobileSections.cost ? t.closeSection : t.openSection}: ${t.costSection}`} onClick={() => toggleMobileSection("cost")}><ChevronDown /></button></div></header>
+            <div className={styles.fieldGrid} data-mobile-open={mobileSections.cost}>
               <NumberField label={t.teaCost} suffix="₫" value={inputs.teaCostPerKg} onChange={updateInput("teaCostPerKg")} />
               <NumberField label={t.yield} suffix="%" value={inputs.usableYieldPercent} onChange={updateInput("usableYieldPercent")} />
               <NumberField label={t.processing} suffix="₫" value={inputs.processingPerKg} onChange={updateInput("processingPerKg")} />
@@ -644,16 +653,16 @@ export default function PricingControl({ supabase, email }) {
           </section>
 
           <section className={styles.inputSection}>
-            <header><span>{t.commercialSection}</span><p>{money(activeProfitPerOrder)} / order</p></header>
-            <div className={styles.fieldGrid}>
+            <header><span>{t.commercialSection}</span><div><p>{money(activeProfitPerOrder)} / order</p><button className={styles.sectionToggle} type="button" data-open={mobileSections.commercial} aria-expanded={mobileSections.commercial} aria-label={`${mobileSections.commercial ? t.closeSection : t.openSection}: ${t.commercialSection}`} onClick={() => toggleMobileSection("commercial")}><ChevronDown /></button></div></header>
+            <div className={styles.fieldGrid} data-mobile-open={mobileSections.commercial}>
               <NumberField label={t.delivery} suffix="₫" value={inputs.deliveryPerOrder} onChange={updateInput("deliveryPerOrder")} />
               <NumberField label={t.orderKg} suffix="kg" value={inputs.orderKg} onChange={updateInput("orderKg")} step="0.1" />
               <NumberField label={t.overhead} suffix="%" value={inputs.overheadPercent} onChange={updateInput("overheadPercent")} step="0.1" />
               <NumberField label={t.channelFee} suffix="%" value={inputs.channelFeePercent} onChange={updateInput("channelFeePercent")} step="0.1" />
               <NumberField label={t.vat} suffix="%" value={inputs.vatPercent} onChange={updateInput("vatPercent")} step="0.1" />
               <NumberField label={t.discount} suffix="%" value={inputs.partnerDiscountPercent} onChange={updateInput("partnerDiscountPercent")} step="0.1" />
-              <NumberField label={t.b2bMargin} suffix="%" value={inputs.b2bMarginPercent} onChange={updateInput("b2bMarginPercent")} step="0.1" />
-              <NumberField label={t.retailMargin} suffix="%" value={inputs.retailMarginPercent} onChange={updateInput("retailMarginPercent")} step="0.1" />
+              {channel === "b2b" && <NumberField label={t.b2bMargin} suffix="%" value={inputs.b2bMarginPercent} onChange={updateInput("b2bMarginPercent")} step="0.1" />}
+              {channel === "retail" && <NumberField label={t.retailMargin} suffix="%" value={inputs.retailMarginPercent} onChange={updateInput("retailMarginPercent")} step="0.1" />}
               <NumberField label={inputs.currentPriceUnit === "kg" ? t.currentPriceKg : t.currentPricePack} suffix="₫" value={inputs.currentPrice} onChange={updateInput("currentPrice")} />
               <label className={styles.numberField}><span>{t.partnerUnit}</span><select value={inputs.partnerUnit} onChange={(event) => setInputs((current) => ({ ...current, partnerUnit: event.target.value }))}><option value="kg">{t.kg}</option><option value="pack">{t.pack}</option></select></label>
               <NumberField label={t.minimumQuantity} suffix={inputs.partnerUnit === "kg" ? "kg" : "pack"} value={inputs.minimumQuantity} onChange={updateInput("minimumQuantity")} step="0.1" />
