@@ -4,6 +4,7 @@ import { OPS_STAGES } from "@/lib/ops-stages";
 import { OPS_HEALTH_STATES, OPS_WAITING_ON } from "@/lib/ops-health";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logOrderEvent } from "@/lib/ops-events";
+import { statusForOrderStage } from "@/lib/order-flow";
 
 // Persists the stage-stepper / "Mark complete" actions and the health/waiting-on control in
 // public/ops/index.html's order panel — two independent things an order can carry (stage is
@@ -33,6 +34,9 @@ export async function PATCH(request, { params }) {
       return Response.json({ ok: false, error: "invalid_stage" }, { status: 400 });
     }
     update.stage = stage;
+    // Keep the customer-facing four-state status in sync with the operational flow.
+    // The main staff workbench and the legacy ops console can now safely coexist.
+    update.status = statusForOrderStage(stage);
   }
 
   if (health !== undefined) {
