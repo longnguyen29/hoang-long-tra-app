@@ -584,17 +584,26 @@
     display: grid;
     grid-template-columns: minmax(22rem, .85fr) minmax(22rem, 1fr);
     align-items: end;
-    gap: var(--space-xl);
+    gap: var(--space-2xs) var(--space-xl);
     padding: var(--space-xl) var(--page-gutter);
     border-block-end: var(--rule-thin) solid var(--color-rule-2);
   }
   .heading h1 {
+    grid-column: 1;
+    grid-row: 2;
     max-width: 16ch;
     margin-block: var(--space-2xs);
     font-size: clamp(3rem, 4.5vw, 4.35rem);
     line-height: .94;
   }
+  .heading p {
+    grid-column: 1;
+    grid-row: 1;
+  }
   .heading > span {
+    grid-column: 2;
+    grid-row: 1/3;
+    align-self: end;
     max-width: 48ch;
     padding-inline-start: var(--space-lg);
     border-inline-start: var(--rule-thin) solid var(--color-accent);
