@@ -3,6 +3,7 @@ import { OPS_AUTH_COOKIE, isOpsAuthedToken } from "@/lib/ops-auth";
 import { OPS_STAGES } from "@/lib/ops-stages";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logOrderEvent } from "@/lib/ops-events";
+import { reconcileOrderStage, statusForOrderStage } from "@/lib/order-flow";
 
 async function requireOpsAuth() {
   const cookie = (await cookies()).get(OPS_AUTH_COOKIE)?.value;
@@ -25,7 +26,13 @@ export async function GET() {
     .order("ts", { ascending: false });
   if (error) return Response.json({ ok: false }, { status: 500 });
 
-  return Response.json({ ok: true, orders: data });
+  return Response.json({
+    ok: true,
+    orders: (data || []).map((order) => ({
+      ...order,
+      stage: reconcileOrderStage(order.stage, order.status),
+    })),
+  });
 }
 
 export async function POST(request) {
@@ -58,7 +65,7 @@ export async function POST(request) {
     contact: contact.trim(),
     note: typeof note === "string" ? note.trim() : "",
     lines: [],
-    status: "confirmed",
+    status: statusForOrderStage(stage),
     unread: false,
     payment_method: paymentMethod,
     stage,
