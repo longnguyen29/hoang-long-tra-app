@@ -16,7 +16,6 @@ import {
   Save,
   Scale,
   ShieldCheck,
-  Target,
 } from "lucide-react";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
 import { useLocale } from "@/components/i18n/LocaleProvider";
@@ -96,6 +95,9 @@ const COPY = {
     marginStrong: "Biên dày — kiểm tra thêm sức cạnh tranh của giá bán.",
     marginPremium: "Biên rất cao — nên xác nhận khách vẫn chấp nhận mức giá này.",
     marginNote: "Thước cảm nhận nhanh, không phải lợi nhuận kế toán. Chưa gồm chi phí bạn chưa nhập và thuế thu nhập doanh nghiệp.",
+    marginView: "Kiểu hiển thị biên lợi nhuận",
+    barView: "Thanh",
+    gridView: "100 ô",
     missingCost: "Chưa có giá trà đầu vào. Kết quả chưa dùng để quyết định được.",
     belowFloor: "Giá hiện tại thấp hơn sàn an toàn sau khi tính đủ chi phí.",
     unworkable: "Biên mục tiêu và phí kênh quá cao để hình thành mức giá hợp lệ.",
@@ -195,6 +197,9 @@ const COPY = {
     marginStrong: "Strong margin — check that the selling price still competes.",
     marginPremium: "Very high margin — validate that customers still accept the price.",
     marginNote: "A quick commercial guide, not accounting profit. It excludes costs you have not entered and corporate income tax.",
+    marginView: "Margin display",
+    barView: "Bar",
+    gridView: "100 squares",
     missingCost: "Tea input cost is missing. Do not use this result for a decision yet.",
     belowFloor: "The current price is below the safe floor after all entered costs.",
     unworkable: "The target margin and channel fee are too high to produce a valid price.",
@@ -272,6 +277,7 @@ export default function PricingControl({ supabase, email }) {
   const [scenarioId, setScenarioId] = useState("");
   const [scenarioName, setScenarioName] = useState("");
   const [channel, setChannel] = useState("b2b");
+  const [marginView, setMarginView] = useState("bar");
   const [selectedKey, setSelectedKey] = useState("");
   const [batchId, setBatchId] = useState("");
   const [opportunityId, setOpportunityId] = useState("");
@@ -373,6 +379,16 @@ export default function PricingControl({ supabase, email }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const savedView = window.localStorage.getItem("hl-pricing-margin-view");
+    if (savedView === "bar" || savedView === "grid") setMarginView(savedView);
+  }, []);
+
+  const chooseMarginView = (view) => {
+    setMarginView(view);
+    window.localStorage.setItem("hl-pricing-margin-view", view);
+  };
 
   const updateInput = (key) => (event) => setInputs((current) => ({ ...current, [key]: event.target.value }));
   const chooseBatch = (event) => {
@@ -562,7 +578,7 @@ export default function PricingControl({ supabase, email }) {
   const feeCells = Math.max(0, Math.min(100 - profitCells, Math.round(Number(inputs.channelFeePercent) || 0)));
   const costCells = 100 - profitCells - feeCells;
   const marginCells = Array.from({ length: 100 }, (_, index) => (
-    index < profitCells ? "profit" : index < profitCells + feeCells ? "fee" : "cost"
+    index < costCells ? "cost" : index < costCells + feeCells ? "fee" : "profit"
   ));
 
   if (loading) return <main className={styles.state}><RefreshCw /><p>{t.refresh}</p></main>;
@@ -639,15 +655,36 @@ export default function PricingControl({ supabase, email }) {
           </section>
 
           <section className={styles.marginFeel} data-tone={marginStatus.tone}>
-            <header><div><p>{t.marginEyebrow}</p><h3>{t.marginFeel}</h3></div><Target /></header>
-            <div className={styles.marginReadout}>
-              <div
-                className={styles.marginBoard}
-                role="img"
-                aria-label={`${profitCells}% ${t.profitShare}, ${feeCells}% ${t.feeShare}, ${costCells}% ${t.costShare}`}
-              >
-                {marginCells.map((part, index) => <i key={index} data-part={part} />)}
+            <header>
+              <div><p>{t.marginEyebrow}</p><h3>{t.marginFeel}</h3></div>
+              <div className={styles.marginSwitch} role="group" aria-label={t.marginView}>
+                <button type="button" aria-pressed={marginView === "bar"} onClick={() => chooseMarginView("bar")}>{t.barView}</button>
+                <button type="button" aria-pressed={marginView === "grid"} onClick={() => chooseMarginView("grid")}>{t.gridView}</button>
               </div>
+            </header>
+            <div className={styles.marginReadout} data-view={marginView}>
+              {marginView === "bar" ? (
+                <div
+                  className={styles.marginBarPlot}
+                  role="img"
+                  aria-label={`${costCells}% ${t.costShare}, ${feeCells}% ${t.feeShare}, ${profitCells}% ${t.profitShare}`}
+                >
+                  <div className={styles.marginBar}>
+                    <span data-part="cost" style={{ width: `${costCells}%` }} title={`${t.costShare}: ${costCells}₫`}>{costCells >= 16 ? `${costCells}₫` : ""}</span>
+                    <span data-part="fee" style={{ width: `${feeCells}%` }} title={`${t.feeShare}: ${feeCells}₫`}>{feeCells >= 12 ? `${feeCells}₫` : ""}</span>
+                    <span data-part="profit" style={{ width: `${profitCells}%` }} title={`${t.profitShare}: ${profitCells}₫`}>{profitCells >= 16 ? `${profitCells}₫` : ""}</span>
+                  </div>
+                  <div className={styles.marginBarScale}><span>0₫</span><span>100₫</span></div>
+                </div>
+              ) : (
+                <div
+                  className={styles.marginBoard}
+                  role="img"
+                  aria-label={`${costCells}% ${t.costShare}, ${feeCells}% ${t.feeShare}, ${profitCells}% ${t.profitShare}`}
+                >
+                  {marginCells.map((part, index) => <i key={index} data-part={part} />)}
+                </div>
+              )}
               <div className={styles.marginVerdict}>
                 <span>{channel === "retail" ? t.retail : t.b2b}</span>
                 <strong>{activeMargin}%</strong>
@@ -656,9 +693,9 @@ export default function PricingControl({ supabase, email }) {
               </div>
             </div>
             <dl className={styles.marginLegend}>
-              <div data-part="profit"><dt>{t.profitShare}</dt><dd>{profitCells}₫</dd></div>
-              <div data-part="fee"><dt>{t.feeShare}</dt><dd>{feeCells}₫</dd></div>
               <div data-part="cost"><dt>{t.costShare}</dt><dd>{costCells}₫</dd></div>
+              <div data-part="fee"><dt>{t.feeShare}</dt><dd>{feeCells}₫</dd></div>
+              <div data-part="profit"><dt>{t.profitShare}</dt><dd>{profitCells}₫</dd></div>
             </dl>
             {results.currentMarginPercent != null && <p className={styles.currentMarginNote}>{t.currentPriceMargin}: <b>{results.currentMarginPercent}%</b></p>}
             <small>{t.marginNote}</small>
