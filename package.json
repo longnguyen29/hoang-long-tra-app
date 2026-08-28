@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test:pricing": "node --test lib/pricing.test.mjs",
     "seed": "node --env-file=.env.local scripts/seed.mjs",
     "seed:v2": "node --env-file=.env.local scripts/seed-v2.mjs"
   },

@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   BarChart3,
+  Calculator,
   CalendarClock,
   Check,
   CircleDollarSign,
@@ -349,6 +350,10 @@ export default function OperationsControl({ supabase, email, onLogout }) {
             {label}
           </button>
         ))}
+        <Link href="/admin/operations/pricing">
+          <Calculator />
+          Giá & biên lợi nhuận
+        </Link>
         <Link href="/admin/operations/budget">
           <CircleDollarSign />
           Ngân sách
