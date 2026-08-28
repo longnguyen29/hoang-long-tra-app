@@ -55,7 +55,7 @@ export async function PATCH(request, { params }) {
     return Response.json({ ok: false, error: "invalid_body" }, { status: 400 });
   }
 
-  const { stage, health, waitingOn, healthNote, trackingCode } = body || {};
+  const { stage, health, waitingOn, healthNote, trackingCode, linePrices } = body || {};
   const update = {};
   const events = [];
 
@@ -98,6 +98,42 @@ export async function PATCH(request, { params }) {
       message: update.tracking_code
         ? `Đã lưu mã vận đơn: ${update.tracking_code}.`
         : "Đã xóa mã vận đơn.",
+    });
+  }
+
+  if (linePrices !== undefined) {
+    if (!Array.isArray(linePrices) || linePrices.some((item) => (
+      !Number.isInteger(item?.index)
+      || item.index < 0
+      || (item.price !== null && (!Number.isFinite(item.price) || item.price < 0))
+    ))) {
+      return Response.json({ ok: false, error: "invalid_line_prices" }, { status: 400 });
+    }
+
+    const { data: currentOrder, error: readError } = await staff.admin
+      .from("orders")
+      .select("lines")
+      .eq("id", id)
+      .maybeSingle();
+    if (readError) return Response.json({ ok: false }, { status: 500 });
+    if (!currentOrder) return Response.json({ ok: false }, { status: 404 });
+
+    const lines = Array.isArray(currentOrder.lines) ? currentOrder.lines.map((line) => ({ ...line })) : [];
+    const distinctIndexes = new Set(linePrices.map((item) => item.index));
+    if (!lines.length || linePrices.length !== lines.length || distinctIndexes.size !== lines.length || linePrices.some((item) => item.index >= lines.length)) {
+      return Response.json({ ok: false, error: "invalid_line_index" }, { status: 400 });
+    }
+
+    for (const item of linePrices) lines[item.index].price = item.price;
+    update.lines = lines;
+    update.estimated_total = lines.every((line) => Number.isFinite(line.price))
+      ? lines.reduce((total, line) => total + (Number(line.qty) || 0) * line.price, 0)
+      : null;
+    events.push({
+      kind: "price_change",
+      message: update.estimated_total === null
+        ? "Đã điều chỉnh giá bán; đơn vẫn còn dòng chưa báo giá."
+        : `Đã điều chỉnh giá bán theo đơn. Tổng dự kiến mới: ${new Intl.NumberFormat("vi-VN").format(update.estimated_total)} ₫.`,
     });
   }
 
