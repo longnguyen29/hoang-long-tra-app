@@ -61,7 +61,8 @@ const COPY = {
     b2bMargin: "Biên mục tiêu B2B",
     retailMargin: "Biên mục tiêu bán lẻ",
     discount: "Chiết khấu đối tác",
-    currentPrice: "Giá đang bán / gói",
+    currentPricePack: "Giá đang bán / gói",
+    currentPriceKg: "Giá đang bán / kg",
     partnerUnit: "Đơn vị giá riêng",
     minimumQuantity: "Số lượng tối thiểu",
     kg: "Theo kg",
@@ -144,7 +145,8 @@ const COPY = {
     b2bMargin: "Target B2B margin",
     retailMargin: "Target retail margin",
     discount: "Partner discount",
-    currentPrice: "Current price / pack",
+    currentPricePack: "Current price / pack",
+    currentPriceKg: "Current price / kg",
     partnerUnit: "Private-price unit",
     minimumQuantity: "Minimum quantity",
     kg: "Per kg",
@@ -269,7 +271,8 @@ export default function PricingControl({ supabase, email }) {
       ...current,
       teaCostPerKg: latestBatch?.cost_per_kg ?? current.teaCostPerKg,
       packGrams: packGramsFromLabel(sku.weight || sku.product.pack_size),
-      currentPricePerPack: sku.price ?? 0,
+      currentPrice: sku.price ?? 0,
+      currentPriceUnit: sku.product.line === "everyday" ? "kg" : "pack",
     }));
     if (!scenarioName) setScenarioName(`${sku.product.name?.vi || sku.product.name?.en}${sku.weight ? ` · ${sku.weight}` : ""}`);
   };
@@ -278,7 +281,7 @@ export default function PricingControl({ supabase, email }) {
     setLoading(true);
     setError("");
     const [productResult, variantResult, batchResult, opportunityResult, scenarioResult] = await Promise.all([
-      supabase.from("catalog_products").select("id,name,pack_size,price,kind,available").order("line"),
+      supabase.from("catalog_products").select("id,name,pack_size,price,kind,line,available").order("line"),
       supabase.from("catalog_variants").select("product_id,weight,price").order("weight"),
       supabase.from("tea_batches").select("id,code,product_id,cost_per_kg,status,created_at").order("created_at", { ascending: false }),
       supabase.from("trade_opportunities").select("id,business_name,contact,stage").order("updated_at", { ascending: false }),
@@ -318,7 +321,8 @@ export default function PricingControl({ supabase, email }) {
           ...current,
           teaCostPerKg: latestBatch?.cost_per_kg ?? current.teaCostPerKg,
           packGrams: packGramsFromLabel(sku.weight || sku.product.pack_size),
-          currentPricePerPack: sku.price ?? 0,
+          currentPrice: sku.price ?? 0,
+          currentPriceUnit: sku.product.line === "everyday" ? "kg" : "pack",
         }));
         setScenarioName((current) => current || `${sku.product.name?.vi || sku.product.name?.en}${sku.weight ? ` · ${sku.weight}` : ""}`);
       }
@@ -392,8 +396,9 @@ export default function PricingControl({ supabase, email }) {
       setError(t.nothingSelected);
       return;
     }
-    const price = results.retailPricePerPack;
-    if (!window.confirm(`${t.catalogueGuard} ${money(price)}. ${t.saveFirst}`)) return;
+    const price = selectedSku.product.line === "everyday" ? results.retailPricePerKg : results.retailPricePerPack;
+    const priceUnit = selectedSku.product.line === "everyday" ? "/ kg" : "/ pack";
+    if (!window.confirm(`${t.catalogueGuard} ${money(price)} ${priceUnit}. ${t.saveFirst}`)) return;
     const id = await saveScenario({ quiet: true });
     if (!id) return;
     setSaving(true);
@@ -553,7 +558,7 @@ export default function PricingControl({ supabase, email }) {
               <NumberField label={t.discount} suffix="%" value={inputs.partnerDiscountPercent} onChange={updateInput("partnerDiscountPercent")} step="0.1" />
               <NumberField label={t.b2bMargin} suffix="%" value={inputs.b2bMarginPercent} onChange={updateInput("b2bMarginPercent")} step="0.1" />
               <NumberField label={t.retailMargin} suffix="%" value={inputs.retailMarginPercent} onChange={updateInput("retailMarginPercent")} step="0.1" />
-              <NumberField label={t.currentPrice} suffix="₫" value={inputs.currentPricePerPack} onChange={updateInput("currentPricePerPack")} />
+              <NumberField label={inputs.currentPriceUnit === "kg" ? t.currentPriceKg : t.currentPricePack} suffix="₫" value={inputs.currentPrice} onChange={updateInput("currentPrice")} />
               <label className={styles.numberField}><span>{t.partnerUnit}</span><select value={inputs.partnerUnit} onChange={(event) => setInputs((current) => ({ ...current, partnerUnit: event.target.value }))}><option value="kg">{t.kg}</option><option value="pack">{t.pack}</option></select></label>
               <NumberField label={t.minimumQuantity} suffix={inputs.partnerUnit === "kg" ? "kg" : "pack"} value={inputs.minimumQuantity} onChange={updateInput("minimumQuantity")} step="0.1" />
             </div>
@@ -580,7 +585,7 @@ export default function PricingControl({ supabase, email }) {
 
           <div className={styles.actions}>
             <button className={styles.saveAction} onClick={() => saveScenario()} disabled={saving}><Save />{saving ? t.saving : t.save}</button>
-            <button onClick={applyCatalogue} disabled={saving || !selectedSku}><Package /><span>{t.applyCatalogue}<small>{money(results.retailPricePerPack)}</small></span><ChevronRight /></button>
+            <button onClick={applyCatalogue} disabled={saving || !selectedSku}><Package /><span>{t.applyCatalogue}<small>{selectedSku?.product.line === "everyday" ? `${money(results.retailPricePerKg)} / kg` : money(results.retailPricePerPack)}</small></span><ChevronRight /></button>
             <button onClick={applyPartner} disabled={saving || !selectedSku || !opportunityId}><Handshake /><span>{t.applyPartner}<small>{inputs.partnerUnit === "pack" ? money(results.b2bPartnerPricePerPack) : `${money(results.b2bPartnerPricePerKg)} / kg`}</small></span><ChevronRight /></button>
           </div>
         </aside>
