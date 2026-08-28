@@ -85,7 +85,7 @@ const COPY = {
     marginEyebrow: "Mỗi 100đ doanh thu chưa VAT",
     profitShare: "Lợi nhuận giữ lại",
     feeShare: "Phí kênh",
-    costShare: "Chi phí đã nhập",
+    costShare: "Phần dành cho chi phí",
     currentPriceMargin: "Biên của giá hiện tại",
     workingRangeB2b: "Vùng làm việc B2B của Nhà: 28–38%",
     workingRangeRetail: "Vùng làm việc bán lẻ của Nhà: 42–58%",
@@ -184,7 +184,7 @@ const COPY = {
     marginEyebrow: "For every 100₫ of revenue before VAT",
     profitShare: "Profit retained",
     feeShare: "Channel fee",
-    costShare: "Entered costs",
+    costShare: "Cost allowance",
     currentPriceMargin: "Margin at current price",
     workingRangeB2b: "House B2B working range: 28–38%",
     workingRangeRetail: "House retail working range: 42–58%",
@@ -286,7 +286,10 @@ export default function PricingControl({ supabase, email }) {
   const selectedSku = skuOptions.find((item) => item.key === selectedKey) || null;
   const selectedProductBatches = batches.filter((item) => !selectedSku || item.product_id === selectedSku.product.id);
   const results = useMemo(() => calculatePricing(inputs), [inputs]);
-  const activeMargin = channel === "retail" ? results.retailMarginPercent : results.b2bMarginPercent;
+  const activeTargetMargin = Number(channel === "retail" ? inputs.retailMarginPercent : inputs.b2bMarginPercent) || 0;
+  const activeProposedPrice = channel === "retail" ? results.retailPricePerKg : results.b2bPartnerPricePerKg;
+  const calculatedMargin = channel === "retail" ? results.retailMarginPercent : results.b2bMarginPercent;
+  const activeMargin = activeProposedPrice > 0 ? calculatedMargin : activeTargetMargin;
   const activeProfitPerOrder = channel === "retail" ? results.retailProfitPerOrder : results.b2bProfitPerOrder;
 
   const flash = (message) => {
