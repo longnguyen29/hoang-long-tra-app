@@ -5,6 +5,7 @@ import {
   orderStageMeta,
   statusForOrderStage,
 } from "@/lib/order-flow";
+import { SHIPPING_CARRIER_IDS, carrierLabel, normalizeTrackingCode } from "@/lib/carrier-tracking";
 import { logOrderEvent } from "@/lib/ops-events";
 import { authenticateStaffRequest } from "@/lib/staff-api-auth";
 
@@ -55,7 +56,7 @@ export async function PATCH(request, { params }) {
     return Response.json({ ok: false, error: "invalid_body" }, { status: 400 });
   }
 
-  const { stage, health, waitingOn, healthNote, trackingCode, linePrices } = body || {};
+  const { stage, health, waitingOn, healthNote, trackingCode, shippingCarrier, linePrices } = body || {};
   const update = {};
   const events = [];
 
@@ -91,13 +92,27 @@ export async function PATCH(request, { params }) {
     });
   }
 
-  if (trackingCode !== undefined) {
-    update.tracking_code = String(trackingCode || "").trim();
+  if (trackingCode !== undefined || shippingCarrier !== undefined) {
+    const normalizedTrackingCode = normalizeTrackingCode(trackingCode);
+    const normalizedCarrier = shippingCarrier || null;
+    if (normalizedCarrier !== null && !SHIPPING_CARRIER_IDS.includes(normalizedCarrier)) {
+      return Response.json({ ok: false, error: "invalid_shipping_carrier" }, { status: 400 });
+    }
+    if ((normalizedTrackingCode && !normalizedCarrier) || (!normalizedTrackingCode && normalizedCarrier)) {
+      return Response.json({ ok: false, error: "incomplete_carrier_tracking" }, { status: 400 });
+    }
+    update.tracking_code = normalizedTrackingCode;
+    update.shipping_carrier = normalizedCarrier;
+    update.carrier_status_code = "";
+    update.carrier_status_name = "";
+    update.carrier_status_at = null;
+    update.carrier_event_key = "";
+    update.delivered_at = null;
     events.push({
       kind: "tracking_change",
       message: update.tracking_code
-        ? `Đã lưu mã vận đơn: ${update.tracking_code}.`
-        : "Đã xóa mã vận đơn.",
+        ? `Đã kết nối ${carrierLabel(normalizedCarrier)} với mã vận đơn ${update.tracking_code}; chờ hãng cập nhật trạng thái.`
+        : "Đã xóa hãng vận chuyển và mã vận đơn.",
     });
   }
 

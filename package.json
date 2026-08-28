@@ -9,6 +9,7 @@
     "lint": "next lint",
     "test:pricing": "node --test lib/pricing.test.mjs",
     "test:order-flow": "node --test lib/order-flow.test.mjs",
+    "test:carriers": "node --test lib/carrier-tracking.test.mjs",
     "seed": "node --env-file=.env.local scripts/seed.mjs",
     "seed:v2": "node --env-file=.env.local scripts/seed-v2.mjs"
   },

@@ -76,13 +76,29 @@ git commit -m "Initial commit"
 Then either push to a new GitHub repo and import it in the Vercel dashboard,
 or run `vercel` from this folder if you have the Vercel CLI installed. Set the
 same two `NEXT_PUBLIC_SUPABASE_*` environment variables in the Vercel
-project's **Settings > Environment Variables** (Production + Preview) — do
-**not** set `SUPABASE_SERVICE_ROLE_KEY` there, it's only needed for the local
-seed script.
+project's **Settings > Environment Variables** (Production + Preview). Set
+`SUPABASE_SERVICE_ROLE_KEY` as a server-only variable as well; the staff and
+carrier webhook API routes need it, but it is never exposed to browser code.
 
 Once the Vercel project is live and building successfully, go to **Settings >
 Domains** and move `hoanglongtra.com` from the old project to this new one.
 **This replaces the live site — confirm you're ready before doing it.**
+
+### Carrier delivery updates
+
+Run `supabase/migrations/0040_carrier_delivery_updates.sql`, then configure the
+carrier partner accounts with these production webhook addresses:
+
+- Viettel Post: `https://www.hoanglongtra.com/api/carriers/viettel-post`
+- Vietnam Post: `https://www.hoanglongtra.com/api/carriers/vietnam-post`
+
+For Viettel Post, generate a long random `VIETTEL_POST_WEBHOOK_SECRET`, set it
+in Vercel and enter the same value in the Partner webhook configuration. Vietnam
+Post requests are checked with the RSA public key published in MyVNP's webhook
+documentation; `VIETNAM_POST_WEBHOOK_PUBLIC_KEY` is only needed if Vietnam Post
+rotates that key. In the staff order drawer, choose the carrier and save its
+tracking code. Authenticated carrier updates are written to the order timeline;
+only an explicit delivered code moves the order to **Hoàn tất**.
 
 ## 6. Test checklist before announcing the new site
 
