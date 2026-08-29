@@ -1,156 +1,138 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Loader2, Leaf, Phone } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Leaf, Loader2, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { notifyHouse } from "@/lib/notify";
-import { TOKENS } from "@/lib/constants";
-
-// The trade sample page. Reached only by a link the house hands out, so it explains itself
-// from scratch — whoever opens it may never have seen the site.
-//
-// The 50g pack is free, but only for a working shop that will actually put it through their
-// bar and say what happened. The larger packs are paid, and what they pay comes off their
-// first wholesale order, so the money is a deposit rather than a cost.
+import styles from "./SampleRequest.module.css";
 
 const PACKS = [
   {
-    id: "50g",
-    free: true,
-    label: { en: "50g of each — free", vi: "50g mỗi loại — miễn phí" },
+    id: "50g", free: true,
+    weight: { en: "4 × 50g · 200g total", vi: "4 × 50g · tổng 200g" },
+    purpose: { en: "First compatibility test", vi: "Kiểm tra độ hợp vị" },
     detail: {
-      en: "Four teas, 50g each. Enough to pull a dozen test drinks and find out whether our leaf suits your bar.",
-      vi: "Bốn loại trà, mỗi loại 50g. Đủ để pha hơn chục ly thử và biết trà của chúng tôi có hợp quán bạn không.",
+      en: "For the first brews: compare the four teas and decide which ones deserve a full recipe test.",
+      vi: "Dành cho lần pha đầu: so sánh bốn mẫu và chọn loại đáng để phát triển thành công thức hoàn chỉnh.",
     },
   },
   {
-    id: "100g",
-    price: 199000,
-    label: { en: "100g of each", vi: "100g mỗi loại" },
+    id: "100g", price: 199000,
+    weight: { en: "4 × 100g · 400g total", vi: "4 × 100g · tổng 400g" },
+    purpose: { en: "Recipe calibration", vi: "Điều chỉnh công thức" },
     detail: {
-      en: "For working a recipe properly — enough to brew a batch the way you actually serve it, for a short run.",
-      vi: "Đủ để làm việc với công thức tử tế — pha nguyên mẻ đúng như cách bạn bán trong một khoảng thời gian ngắn.",
+      en: "Enough room to adjust tea, milk, sugar, temperature and steep time across several brews.",
+      vi: "Có đủ lượng trà để điều chỉnh tỷ lệ trà, sữa, đường, nhiệt độ và thời gian ủ qua nhiều lần pha.",
     },
   },
   {
-    id: "250g",
-    price: 299000,
-    label: { en: "250g of each — 1kg total", vi: "250g mỗi loại — tổng 1kg" },
+    id: "250g", price: 299000,
+    weight: { en: "4 × 250g · 1kg total", vi: "4 × 250g · tổng 1kg" },
+    purpose: { en: "Small service trial", vi: "Chạy thử tại quán" },
     detail: {
-      en: "Enough to run a limited-time item and see how people respond before committing long term.",
-      vi: "Đủ để chạy thử một món giới hạn và xem phản hồi thế nào trước khi quyết định sử dụng dài hạn.",
+      en: "For testing a finished drink with your team or customers before committing to a wholesale order.",
+      vi: "Dành cho công thức đã tương đối hoàn chỉnh, cần thử với đội ngũ hoặc khách trước khi nhập sỉ.",
     },
   },
 ];
 
-// Ids, not labels, are what get stored — the database keeps 'tiktok' whichever language the
-// page was in, and submit_sample_request only accepts these four. Worth asking on this page
-// in particular: it is reached only from a link the House posts or hands out, so the answer
-// says which channel actually brings in shops rather than which one collects the most likes.
 const HEARD_OPTIONS = [
   { id: "threads", label: { en: "Threads", vi: "Threads" } },
   { id: "tiktok", label: { en: "TikTok", vi: "TikTok" } },
   { id: "facebook_instagram", label: { en: "Facebook / Instagram", vi: "Facebook / Instagram" } },
-  { id: "word_of_mouth", label: { en: "Someone told me", vi: "Người quen giới thiệu" } },
+  { id: "word_of_mouth", label: { en: "Recommendation", vi: "Người quen giới thiệu" } },
 ];
 
 const QUALIFY = [
-  {
-    key: "hasShop",
-    en: "I run a café, tea shop or bar, or I'm on an R&D team — or I will be in the near future.",
-    vi: "Tôi đang vận hành quán cà phê, quán trà, bar hoặc trong đội ngũ RnD — hoặc có dự định trong tương lai gần.",
-  },
-  {
-    key: "canReformulate",
-    // Deliberately explicit. A shop that only swaps our tea into an existing recipe will
-    // judge it against a leaf it was never built for, and conclude wrongly.
-    en: "I can experiment with a recipe around this tea — adjust the ratio, the milk, the sugar, the steep — rather than only dropping it into a recipe built for a different leaf.",
-    vi: "Tôi có thể thử nghiệm công thức quanh loại trà này — chỉnh tỉ lệ, sữa, đường, thời gian ủ — chứ không chỉ thay mỗi nguyên liệu trà trong công thức vốn làm cho loại khác.",
-  },
-  {
-    key: "canFeedback",
-    en: "I can brew it and tell you what I found within 3–7 days.",
-    vi: "Tôi có thể pha thử và phản hồi kết quả trong 3–7 ngày.",
-  },
+  { key: "hasShop", en: "I run a shop or I am currently developing a drinks menu.", vi: "Tôi đang vận hành quán hoặc phát triển menu đồ uống." },
+  { key: "canReformulate", en: "I can test the tea in a real recipe and adjust the formula around it.", vi: "Tôi có thể thử trà trong công thức thực tế và điều chỉnh công thức quanh loại trà." },
+  { key: "canFeedback", en: "I can share the brewing result within seven days of receiving it.", vi: "Tôi có thể phản hồi kết quả trong vòng 7 ngày sau khi nhận mẫu." },
 ];
 
 const STR = {
   en: {
-    eyebrow: "For cafés and tea rooms",
-    title: "Try our leaf on your own bar",
-    intro:
-      "We use and process ancient Shan tea from Hà Giang, with Japanese processing. One of the most practical ways to know whether a tea suits your flavour is to brew it right where you trade — so tell us where to send the sample.",
-    pickPack: "Which size?",
-    free: "Free",
-    creditNote:
-      "What you pay for this comes off your first wholesale order. It is a deposit, not a cost.",
-    qualifyTitle: "Before we send the free pack",
-    qualifyIntro:
-      "The free pack is for shops that will genuinely brew it for service and test it to improve what they serve. Three honest answers:",
-    qualifyFail:
-      "For the free pack we need all three. If that isn't you yet, the 100g or 250g pack is open to anyone — and what you pay comes off your first wholesale order.",
-    detailsTitle: "Where should it go?",
-    storePh: "Shop name",
-    namePh: "Your name",
-    phonePh: "Phone number",
-    addressPh: "Delivery address",
-    notePh: "Anything we should know? (optional)",
-    heardTitle: "Where did you hear about us? (optional)",
-    send: "Send me the sample",
-    sending: "Sending",
-    sentTitle: "On its way",
-    sentBody:
-      "We'll call to confirm the address before it ships. If you brew it and tell us what you found, that's all we ask.",
-    errRequired: "Shop name, phone and address are needed so we can actually send it.",
-    errDuplicate: "There's already a sample request open for this number. Call us if it hasn't arrived.",
-    errGeneric: "That didn't go through. Please try again, or call us on 0903 333 841.",
-    callUs: "0903 333 841",
-    backHome: "House of Hoàng Long",
-    seeTheTeas: "See all our teas",
-    privacy: "Privacy policy",
+    eyebrow: "Trade sample · cafés and drinks teams",
+    title: "Test four tea bases in the drinks you already serve.",
+    intro: "Brew at your own bar, adjust the recipe and judge the result before committing to a wholesale order. The set is prepared from ancient-tree Shan Tuyết tea from Hà Giang, processed with Japanese technology.",
+    imageAlt: "A finished tea drink being tested at a café bar",
+    imageCaption: "The point of a sample is not another tasting cup. It is a recipe your shop can actually serve.",
+    setTitle: "Inside the test",
+    facts: [["4", "tea samples selected from the batches currently available"], ["At your bar", "tested with your water, equipment and actual recipe"], ["A decision", "identify what fits before discussing a wholesale order"]],
+    stepPack: "Choose the test", stepDetails: "Delivery details",
+    pickPack: "Choose the amount that matches the decision you need to make",
+    packHelp: "All three options contain four tea samples. Only the working quantity changes.",
+    free: "Free", paidCredit: "Credited to the first wholesale order",
+    creditNote: "The amount paid for this set is deducted from your first wholesale order.",
+    qualifyTitle: "Free-set eligibility",
+    qualifyIntro: "The free 50g set is reserved for shops able to complete a useful working test.",
+    qualifyFail: "Complete all three points to request the free set, or choose a paid set without these conditions.",
+    continue: "Continue to delivery", selected: "Your selected test", change: "Change",
+    detailsTitle: "Where should we send it?",
+    detailsIntro: "We use these details only to confirm the request and arrange delivery.",
+    storeLabel: "Shop or business name", storePh: "For example: Mây Tea Lab",
+    nameLabel: "Contact name", namePh: "Your name",
+    phoneLabel: "Phone number", phonePh: "The number we should call to confirm",
+    addressLabel: "Delivery address", addressPh: "Street, ward, district and province",
+    optional: "Optional context", noteLabel: "What are you trying to make?", notePh: "A milk tea, fruit tea, cold brew, signature drink…",
+    heardTitle: "Where did you hear about Hoàng Long?",
+    nextTitle: "What happens after you submit",
+    next: ["Hoàng Long calls to confirm the shop, address and suitable set.", "The four samples are prepared and sent to your shop.", "You test them in your recipe and share the result.", "We use the result to recommend the next tea or discuss wholesale pricing."],
+    back: "Back to pack", send: "Request the test set", sending: "Submitting…",
+    privacyLead: "By submitting, you agree that we may contact you about this sample request.",
+    sentTitle: "Request received",
+    sentBody: "We will call to confirm the request and delivery details before preparing the set.",
+    sentNext: "Next: keep an eye on the phone number you provided. No payment is taken on this page.",
+    errRequired: "Add the shop name, phone number and delivery address before submitting.",
+    errDuplicate: "There is already an open sample request for this number. Call us if you need an update.",
+    errGeneric: "The request was not submitted. Try again, or call 0903 333 841.",
+    callUs: "0903 333 841", backHome: "House of Hoàng Long", seeTheTeas: "See the current teas",
+    privacy: "Privacy policy", required: "Required", optionalShort: "Optional",
   },
   vi: {
-    eyebrow: "Dành cho quán pha chế",
-    title: "Thử trà của chúng tôi ngay trên quầy của bạn",
-    intro:
-      "Chúng tôi sử dụng và chế biến dòng trà Shan cổ thụ ở Hà Giang trên công nghệ của Nhật. Một trong những cách thực tế nhất để biết trà có hợp hương vị hay không là pha ngay tại nơi bạn kinh doanh — hãy cho chúng tôi biết nơi để gửi mẫu về nhé.",
-    pickPack: "Chọn cỡ gói",
-    free: "Miễn phí",
-    creditNote:
-      "Số tiền bạn trả cho gói này sẽ được trừ vào đơn sỉ đầu tiên. Đây là tiền cọc, không phải chi phí.",
-    qualifyTitle: "Trước khi gửi gói miễn phí",
-    qualifyIntro:
-      "Gói miễn phí dành cho quán thật sự sẽ thử trà để phục vụ, thử nghiệm nâng cao chất lượng sản phẩm. Ba câu trả lời thành thật:",
-    qualifyFail:
-      "Gói miễn phí cần đủ cả ba. Nếu chưa phải, gói 100g hoặc 250g mở cho tất cả — và tiền trả sẽ trừ vào đơn sỉ đầu tiên.",
-    detailsTitle: "Gửi về đâu?",
-    storePh: "Tên quán",
-    namePh: "Tên bạn",
-    phonePh: "Số điện thoại",
-    addressPh: "Địa chỉ nhận hàng",
-    notePh: "Điều gì chúng tôi nên biết? (không bắt buộc)",
-    heardTitle: "Bạn nghe đến chúng tôi từ đâu? (không bắt buộc)",
-    send: "Gửi mẫu cho tôi",
-    sending: "Đang gửi",
-    sentTitle: "Đã nhận yêu cầu",
-    sentBody:
-      "Chúng tôi sẽ gọi xác nhận địa chỉ trước khi gửi. Pha thử rồi cho chúng tôi biết kết quả — chỉ vậy thôi.",
-    errRequired: "Cần tên quán, số điện thoại và địa chỉ để gửi được hàng.",
-    errDuplicate: "Số này đang có một yêu cầu mẫu chưa xử lý. Gọi cho chúng tôi nếu chưa nhận được.",
-    errGeneric: "Chưa gửi được. Vui lòng thử lại, hoặc gọi 0903 333 841.",
-    callUs: "0903 333 841",
-    backHome: "Về trang chủ",
-    seeTheTeas: "Xem toàn bộ trà của chúng tôi",
-    privacy: "Chính sách quyền riêng tư",
+    eyebrow: "Bộ mẫu cho quán · pha chế và R&D",
+    title: "Thử 4 nền trà trong công thức đang bán tại quán.",
+    intro: "Pha ngay tại quầy, điều chỉnh công thức và đánh giá kết quả trước khi quyết định nhập sỉ. Bộ mẫu được chuẩn bị từ trà Shan Tuyết cổ thụ Hà Giang, chế biến theo quy trình ứng dụng công nghệ Nhật Bản.",
+    imageAlt: "Một ly trà hoàn thiện đang được thử tại quầy pha chế",
+    imageCaption: "Đích đến của bộ mẫu không phải thêm một ly trà thử. Mà là một công thức quán có thể phục vụ thật.",
+    setTitle: "Bộ thử giúp quán làm gì?",
+    facts: [["4", "mẫu trà được chọn theo những mẻ đang có"], ["Tại quầy", "thử bằng nguồn nước, thiết bị và công thức thực tế của quán"], ["Ra quyết định", "chọn loại phù hợp trước khi trao đổi đơn sỉ"]],
+    stepPack: "Chọn bộ thử", stepDetails: "Thông tin nhận mẫu",
+    pickPack: "Chọn lượng trà phù hợp với điều quán cần kiểm chứng",
+    packHelp: "Cả ba lựa chọn đều có bốn mẫu trà. Khác nhau ở lượng trà để quán thử sâu đến đâu.",
+    free: "Miễn phí", paidCredit: "Trừ vào đơn sỉ đầu tiên",
+    creditNote: "Số tiền thanh toán cho bộ mẫu sẽ được trừ vào đơn sỉ đầu tiên.",
+    qualifyTitle: "Điều kiện nhận bộ miễn phí",
+    qualifyIntro: "Bộ 50g miễn phí dành cho quán có thể thực hiện một lần thử thực tế và phản hồi kết quả.",
+    qualifyFail: "Xác nhận đủ ba điều kiện để nhận bộ miễn phí, hoặc chọn bộ trả phí không cần điều kiện này.",
+    continue: "Tiếp tục nhận mẫu", selected: "Bộ thử đã chọn", change: "Đổi",
+    detailsTitle: "Gửi mẫu về đâu?", detailsIntro: "Thông tin chỉ được dùng để xác nhận yêu cầu và sắp xếp giao mẫu.",
+    storeLabel: "Tên quán hoặc doanh nghiệp", storePh: "Ví dụ: Mây Tea Lab",
+    nameLabel: "Người liên hệ", namePh: "Tên của bạn",
+    phoneLabel: "Số điện thoại", phonePh: "Số dùng để xác nhận yêu cầu",
+    addressLabel: "Địa chỉ nhận mẫu", addressPh: "Số nhà, phường/xã, quận/huyện, tỉnh/thành",
+    optional: "Thông tin thêm — không bắt buộc", noteLabel: "Quán đang muốn làm món gì?", notePh: "Trà sữa, trà trái cây, cold brew, món đặc trưng…",
+    heardTitle: "Bạn biết đến Hoàng Long từ đâu?",
+    nextTitle: "Sau khi gửi yêu cầu",
+    next: ["Hoàng Long gọi xác nhận quán, địa chỉ và bộ thử phù hợp.", "Bốn mẫu trà được chuẩn bị và gửi về quán.", "Quán thử trong công thức thực tế và phản hồi kết quả.", "Từ kết quả đó, chúng tôi đề xuất bước thử tiếp theo hoặc trao đổi giá sỉ."],
+    back: "Quay lại chọn bộ", send: "Gửi yêu cầu nhận mẫu", sending: "Đang gửi…",
+    privacyLead: "Khi gửi yêu cầu, bạn đồng ý để chúng tôi liên hệ về bộ mẫu này.",
+    sentTitle: "Đã nhận yêu cầu", sentBody: "Chúng tôi sẽ gọi xác nhận yêu cầu và địa chỉ trước khi chuẩn bị bộ mẫu.",
+    sentNext: "Bước tiếp theo: để ý số điện thoại đã cung cấp. Trang này không tự thu tiền.",
+    errRequired: "Vui lòng thêm tên quán, số điện thoại và địa chỉ nhận mẫu.",
+    errDuplicate: "Số này đang có một yêu cầu mẫu chưa xử lý. Gọi cho chúng tôi nếu cần kiểm tra tiến độ.",
+    errGeneric: "Chưa gửi được yêu cầu. Vui lòng thử lại, hoặc gọi 0903 333 841.",
+    callUs: "0903 333 841", backHome: "Nhà Hoàng Long", seeTheTeas: "Xem trà đang có",
+    privacy: "Chính sách quyền riêng tư", required: "Bắt buộc", optionalShort: "Không bắt buộc",
   },
 };
 
-const money = (n) => n.toLocaleString("vi-VN") + "đ";
+const money = (amount) => `${amount.toLocaleString("vi-VN")}đ`;
 
 export default function SampleRequest() {
   const [supabase] = useState(() => createClient());
   const { locale: lang, toggleLocale } = useLocale();
+  const [step, setStep] = useState(1);
   const [pack, setPack] = useState("50g");
   const [checks, setChecks] = useState({ hasShop: false, canReformulate: false, canFeedback: false });
   const [form, setForm] = useState({ store: "", name: "", phone: "", address: "", note: "", heardFrom: "" });
@@ -159,251 +141,163 @@ export default function SampleRequest() {
   const [error, setError] = useState("");
 
   const t = STR[lang];
+  const selectedPack = PACKS.find((item) => item.id === pack) || PACKS[0];
   const needsQualifying = pack === "50g";
-  const qualified = QUALIFY.every((q) => checks[q.key]);
-  const canSend = form.store.trim() && form.phone.trim() && form.address.trim()
-    && (!needsQualifying || qualified);
+  const qualified = QUALIFY.every((item) => checks[item.key]);
+  const canContinue = !needsQualifying || qualified;
+  const canSend = Boolean(form.store.trim() && form.phone.trim() && form.address.trim() && canContinue);
+  const updateForm = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const scrollToTop = () => window.scrollTo({
+    top: 0,
+    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+  });
 
-  const submit = async () => {
+  const submit = async (event) => {
+    event.preventDefault();
     setError("");
     if (!form.store.trim() || !form.phone.trim() || !form.address.trim()) {
-      setError(t.errRequired); return;
+      setError(t.errRequired);
+      return;
     }
     setSending(true);
     try {
-      const { data, error: e } = await supabase.rpc("submit_sample_request", {
-        p_store_name: form.store.trim(),
-        p_contact_name: form.name.trim(),
-        p_phone: form.phone.trim(),
-        p_address: form.address.trim(),
-        p_pack: pack,
-        p_has_shop: checks.hasShop,
-        p_can_reformulate: checks.canReformulate,
-        p_can_feedback: checks.canFeedback,
-        p_note: form.note.trim(),
-        p_heard_from: form.heardFrom,
+      const { data, error: requestError } = await supabase.rpc("submit_sample_request", {
+        p_store_name: form.store.trim(), p_contact_name: form.name.trim(), p_phone: form.phone.trim(),
+        p_address: form.address.trim(), p_pack: pack, p_has_shop: checks.hasShop,
+        p_can_reformulate: checks.canReformulate, p_can_feedback: checks.canFeedback,
+        p_note: form.note.trim(), p_heard_from: form.heardFrom,
       });
-      if (e) throw e;
+      if (requestError) throw requestError;
       notifyHouse("sample_requests", data);
       setSent(true);
-    } catch (e) {
-      console.error("Sample request failed:", e);
-      const m = e?.message || "";
-      setError(m.includes("already_requested") ? t.errDuplicate
-        : m.includes("not_qualified") ? t.qualifyFail
-        : m.includes("_required") ? t.errRequired
-        : t.errGeneric);
+      scrollToTop();
+    } catch (requestError) {
+      console.error("Sample request failed:", requestError);
+      const message = requestError?.message || "";
+      setError(message.includes("already_requested") ? t.errDuplicate
+        : message.includes("not_qualified") ? t.qualifyFail
+        : message.includes("_required") ? t.errRequired : t.errGeneric);
     } finally {
       setSending(false);
     }
   };
 
-  const field = (key, placeholder, extra = {}) => (
-    <input
-      value={form[key]}
-      onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-      placeholder={placeholder}
-      style={{
-        width: "100%", padding: "12px 14px", borderRadius: 12, fontSize: 15,
-        border: `1px solid ${TOKENS.hairline}`, background: TOKENS.paper, color: TOKENS.jade,
-      }}
-      {...extra}
-    />
+  const renderField = ({ key, label, placeholder, required = false, type = "text", autoComplete }) => (
+    <label className={styles.field} htmlFor={`sample-${key}`}>
+      <span>{label}<small>{required ? t.required : t.optionalShort}</small></span>
+      <input id={`sample-${key}`} type={type} inputMode={type === "tel" ? "tel" : undefined}
+        autoComplete={autoComplete} value={form[key]} onChange={(event) => updateForm(key, event.target.value)}
+        placeholder={placeholder} required={required} />
+    </label>
   );
 
   return (
-    <div style={{ background: TOKENS.paper, minHeight: "100vh", color: TOKENS.jade, fontFamily: "Inter, sans-serif" }}>
-      <div style={{ maxWidth: 620, margin: "0 auto", padding: "0 20px 64px" }}>
-        {/* Header. This page is reached by a bare link, so the seal is the way back into the
-            rest of the site — without it a café owner who wants to look around is stuck. */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0" }}>
-          <a
-            href="/"
-            style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", color: TOKENS.brassOnPaper }}
-          >
-            <span style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 15, letterSpacing: 3 }}>皇龍</span>
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: TOKENS.jadeSoft }}>{t.backHome}</span>
-          </a>
-          <button
-            onClick={toggleLocale}
-            style={{ background: "none", border: `1px solid ${TOKENS.hairline}`, borderRadius: 20, padding: "5px 12px", fontSize: 12, fontWeight: 600, color: TOKENS.jade, cursor: "pointer" }}
-          >
-            {lang === "vi" ? "EN" : "VI"}
-          </button>
-        </div>
+    <main className={styles.page} data-sample-page>
+      <header className={styles.header}>
+        <a className={styles.wordmark} href="/" aria-label={t.backHome}>
+          <span className={styles.seal}>皇龍</span><span className={styles.brandName}>{t.backHome}</span>
+        </a>
+        <button className={styles.language} type="button" onClick={toggleLocale}
+          aria-label={lang === "vi" ? "Switch to English" : "Chuyển sang tiếng Việt"}>{lang === "vi" ? "EN" : "VI"}</button>
+      </header>
 
-        {sent ? (
-          <div style={{ textAlign: "center", padding: "56px 0" }}>
-            <div style={{ display: "inline-flex", padding: 18, borderRadius: "50%", background: TOKENS.paperDeep, marginBottom: 18 }}>
-              <Check size={28} color={TOKENS.brassDeep} />
-            </div>
-            <h1 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: 26, margin: "0 0 10px" }}>{t.sentTitle}</h1>
-            <p style={{ fontSize: 14.5, color: TOKENS.jadeSoft, lineHeight: 1.6, maxWidth: "38ch", margin: "0 auto" }}>{t.sentBody}</p>
-            <a href="tel:+84903333841" style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 22, color: TOKENS.jade, textDecoration: "none", fontFamily: "Lora, Georgia, serif", fontSize: 19 }}>
-              <Phone size={17} color={TOKENS.brassOnPaper} /> {t.callUs}
-            </a>
-            {/* Somewhere to go next — otherwise the page is a dead end once it's submitted. */}
-            <div>
-              <a href="/" style={{ display: "inline-block", marginTop: 26, color: TOKENS.brassOnPaper, fontSize: 13.5, fontWeight: 600 }}>
-                {t.seeTheTeas} →
-              </a>
-            </div>
+      {sent ? (
+        <section className={styles.success} aria-live="polite">
+          <div className={styles.successMark}><Check aria-hidden="true" /></div>
+          <p className={styles.eyebrow}>{t.eyebrow}</p><h1>{t.sentTitle}</h1><p>{t.sentBody}</p>
+          <div className={styles.successNext}>{t.sentNext}</div>
+          <div className={styles.successActions}>
+            <a className={styles.primaryLink} href="tel:+84903333841"><Phone aria-hidden="true" />{t.callUs}</a>
+            <a className={styles.textLink} href="/">{t.seeTheTeas}<ArrowRight aria-hidden="true" /></a>
           </div>
-        ) : (
-          <>
-            <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 1.4 }}>
-              {t.eyebrow}
-            </div>
-            <h1 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: "clamp(26px, 6vw, 36px)", lineHeight: 1.2, margin: "10px 0 12px" }}>
-              {t.title}
-            </h1>
-            <p style={{ fontSize: 15, color: TOKENS.jadeSoft, lineHeight: 1.65, margin: "0 0 30px" }}>{t.intro}</p>
+        </section>
+      ) : (
+        <div className={styles.studio}>
+          <section className={styles.story}>
+            <div className={styles.storyCopy}><p className={styles.eyebrow}>{t.eyebrow}</p><h1>{t.title}</h1><p className={styles.intro}>{t.intro}</p></div>
+            <figure className={styles.evidence}><img src="/landing/4.jpg" alt={t.imageAlt} /><figcaption>{t.imageCaption}</figcaption></figure>
+            <section className={styles.facts} aria-labelledby="sample-set-title">
+              <h2 id="sample-set-title">{t.setTitle}</h2><div>{t.facts.map(([lead, body]) => <article key={lead}><strong>{lead}</strong><p>{body}</p></article>)}</div>
+            </section>
+          </section>
 
-            {/* Pack choice */}
-            <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
-              {t.pickPack}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
-              {PACKS.map((p) => {
-                const on = pack === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => { setPack(p.id); setError(""); }}
-                    style={{
-                      textAlign: "left", padding: "14px 16px", borderRadius: 16, cursor: "pointer",
-                      border: "none", background: on ? TOKENS.paperDeep : "transparent",
-                      boxShadow: on ? `inset 0 0 0 2px ${TOKENS.brass}` : `inset 0 0 0 1px ${TOKENS.hairline}`,
-                    }}
-                  >
-                    <span style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-                      <span style={{ fontFamily: "Lora, Georgia, serif", fontSize: 17, color: TOKENS.jade }}>{p.label[lang]}</span>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: TOKENS.brassOnPaper, flexShrink: 0 }}>
-                        {p.free ? t.free : money(p.price)}
+          <section className={styles.request} aria-label={step === 1 ? t.stepPack : t.stepDetails}>
+            <ol className={styles.steps} aria-label={lang === "vi" ? "Tiến trình đăng ký" : "Request progress"}>
+              <li data-active={step === 1} data-complete={step > 1}><span>1</span>{t.stepPack}</li>
+              <li data-active={step === 2}><span>2</span>{t.stepDetails}</li>
+            </ol>
+
+            {step === 1 ? (
+              <div className={styles.stepPanel}>
+                <div className={styles.panelHeading}><h2>{t.pickPack}</h2><p>{t.packHelp}</p></div>
+                <div className={styles.packList} role="radiogroup" aria-label={t.pickPack}>
+                  {PACKS.map((item) => {
+                    const selected = pack === item.id;
+                    return <button className={styles.pack} data-selected={selected} key={item.id} type="button" role="radio" aria-checked={selected}
+                      onClick={() => { setPack(item.id); setError(""); }}>
+                      <span className={styles.radioMark} aria-hidden="true">{selected && <Check />}</span>
+                      <span className={styles.packCopy}>
+                        <span className={styles.packTop}><strong>{item.purpose[lang]}</strong><b>{item.free ? t.free : money(item.price)}</b></span>
+                        <span className={styles.packWeight}>{item.weight[lang]}</span><span className={styles.packDetail}>{item.detail[lang]}</span>
+                        {!item.free && <span className={styles.creditTag}>{t.paidCredit}</span>}
                       </span>
-                    </span>
-                    <span style={{ display: "block", fontSize: 13, color: TOKENS.jadeSoft, lineHeight: 1.5, marginTop: 5 }}>
-                      {p.detail[lang]}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* The paid packs are a deposit, not a cost — say so where the price is. */}
-            {!needsQualifying && (
-              <p style={{ fontSize: 13, color: TOKENS.jade, background: `${TOKENS.brass}1A`, borderRadius: 12, padding: "11px 14px", lineHeight: 1.55, margin: "0 0 26px" }}>
-                {t.creditNote}
-              </p>
-            )}
-
-            {/* Qualifying, only for the free pack */}
-            {needsQualifying && (
-              <div style={{ marginBottom: 26 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>
-                  {t.qualifyTitle}
-                </div>
-                <p style={{ fontSize: 13.5, color: TOKENS.jadeSoft, lineHeight: 1.55, margin: "0 0 12px" }}>{t.qualifyIntro}</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {QUALIFY.map((q) => (
-                    <label
-                      key={q.key}
-                      style={{
-                        display: "flex", gap: 11, alignItems: "flex-start", cursor: "pointer",
-                        padding: "12px 14px", borderRadius: 14, background: checks[q.key] ? `${TOKENS.brass}14` : "transparent",
-                        boxShadow: `inset 0 0 0 1px ${checks[q.key] ? `${TOKENS.brass}66` : TOKENS.hairline}`,
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checks[q.key]}
-                        onChange={(e) => { setChecks({ ...checks, [q.key]: e.target.checked }); setError(""); }}
-                        style={{ marginTop: 2, width: 18, height: 18, accentColor: TOKENS.jade, flexShrink: 0 }}
-                      />
-                      <span style={{ fontSize: 13.5, lineHeight: 1.55, color: TOKENS.jade }}>{q[lang]}</span>
-                    </label>
-                  ))}
-                </div>
-                {!qualified && Object.values(checks).some(Boolean) && (
-                  <p style={{ fontSize: 12.5, color: TOKENS.jadeSoft, lineHeight: 1.55, margin: "10px 0 0" }}>{t.qualifyFail}</p>
-                )}
-              </div>
-            )}
-
-            {/* Where to send it */}
-            <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.brassOnPaper, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
-              {t.detailsTitle}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {field("store", t.storePh)}
-              {field("name", t.namePh)}
-              {field("phone", t.phonePh, { type: "tel", inputMode: "tel" })}
-              {field("address", t.addressPh)}
-              <textarea
-                value={form.note}
-                onChange={(e) => setForm({ ...form, note: e.target.value })}
-                placeholder={t.notePh}
-                rows={2}
-                style={{ width: "100%", padding: "12px 14px", borderRadius: 12, fontSize: 15, border: `1px solid ${TOKENS.hairline}`, background: TOKENS.paper, color: TOKENS.jade, resize: "vertical", fontFamily: "inherit" }}
-              />
-
-              {/* Chips rather than a dropdown: every answer is visible without a tap, which is
-                  what makes an optional question get answered. Tapping the chosen one again
-                  clears it — an optional question you cannot un-answer is not optional. */}
-              <div>
-                <div style={{ fontSize: 13, color: TOKENS.jadeSoft, marginBottom: 7 }}>{t.heardTitle}</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-                  {HEARD_OPTIONS.map((o) => {
-                    const on = form.heardFrom === o.id;
-                    return (
-                      <button
-                        key={o.id}
-                        type="button"
-                        onClick={() => setForm({ ...form, heardFrom: on ? "" : o.id })}
-                        style={{
-                          padding: "8px 14px", borderRadius: 20, cursor: "pointer", fontFamily: "inherit",
-                          fontSize: 13.5, fontWeight: 600,
-                          border: `1px solid ${on ? TOKENS.jade : TOKENS.hairline}`,
-                          background: on ? TOKENS.jade : TOKENS.paper,
-                          color: on ? TOKENS.paper : TOKENS.jade,
-                        }}
-                      >
-                        {o.label[lang] || o.label.vi}
-                      </button>
-                    );
+                    </button>;
                   })}
                 </div>
+                {!needsQualifying && <p className={styles.creditNote}>{t.creditNote}</p>}
+                {needsQualifying && <fieldset className={styles.qualification}>
+                  <legend>{t.qualifyTitle}</legend><p>{t.qualifyIntro}</p><div>
+                    {QUALIFY.map((item) => <label key={item.key} data-checked={checks[item.key]}>
+                      <input type="checkbox" checked={checks[item.key]} onChange={(event) => {
+                        setChecks((current) => ({ ...current, [item.key]: event.target.checked })); setError("");
+                      }} /><span>{item[lang]}</span>
+                    </label>)}
+                  </div>
+                  {!qualified && Object.values(checks).some(Boolean) && <p className={styles.qualificationHint}>{t.qualifyFail}</p>}
+                </fieldset>}
+                <button className={styles.primaryButton} type="button" disabled={!canContinue}
+                  onClick={() => { setStep(2); setError(""); scrollToTop(); }}>
+                  {t.continue}<ArrowRight aria-hidden="true" />
+                </button>
               </div>
-            </div>
-
-            {error && (
-              <p style={{ fontSize: 13, color: TOKENS.lacquer, lineHeight: 1.55, margin: "12px 0 0" }}>{error}</p>
+            ) : (
+              <form className={styles.stepPanel} onSubmit={submit}>
+                <div className={styles.selectionSummary}><div><span>{t.selected}</span><strong>{selectedPack.purpose[lang]}</strong>
+                  <small>{selectedPack.weight[lang]} · {selectedPack.free ? t.free : money(selectedPack.price)}</small></div>
+                  <button type="button" onClick={() => { setStep(1); setError(""); }}>{t.change}</button></div>
+                <div className={styles.panelHeading}><h2>{t.detailsTitle}</h2><p>{t.detailsIntro}</p></div>
+                <div className={styles.fields}>
+                  {renderField({ key: "store", label: t.storeLabel, placeholder: t.storePh, required: true, autoComplete: "organization" })}
+                  {renderField({ key: "name", label: t.nameLabel, placeholder: t.namePh, autoComplete: "name" })}
+                  {renderField({ key: "phone", label: t.phoneLabel, placeholder: t.phonePh, required: true, type: "tel", autoComplete: "tel" })}
+                  {renderField({ key: "address", label: t.addressLabel, placeholder: t.addressPh, required: true, autoComplete: "street-address" })}
+                </div>
+                <details className={styles.optional}><summary>{t.optional}<span>+</span></summary><div>
+                  <label className={styles.field} htmlFor="sample-note"><span>{t.noteLabel}<small>{t.optionalShort}</small></span>
+                    <textarea id="sample-note" rows={3} value={form.note} onChange={(event) => updateForm("note", event.target.value)} placeholder={t.notePh} /></label>
+                  <fieldset className={styles.heardFrom}><legend>{t.heardTitle}</legend><div>{HEARD_OPTIONS.map((item) => {
+                    const selected = form.heardFrom === item.id;
+                    return <button type="button" data-selected={selected} aria-pressed={selected} key={item.id}
+                      onClick={() => updateForm("heardFrom", selected ? "" : item.id)}>{item.label[lang] || item.label.vi}</button>;
+                  })}</div></fieldset>
+                </div></details>
+                <section className={styles.nextSteps} aria-labelledby="sample-next-title"><h3 id="sample-next-title">{t.nextTitle}</h3><ol>
+                  {t.next.map((item, index) => <li key={item}><span>{index + 1}</span><p>{item}</p></li>)}
+                </ol></section>
+                {error && <p className={styles.error} role="alert">{error}</p>}
+                <p className={styles.privacyLead}>{t.privacyLead} <a href="/privacy">{t.privacy}</a></p>
+                <div className={styles.formActions}>
+                  <button className={styles.secondaryButton} type="button" onClick={() => { setStep(1); setError(""); }}><ArrowLeft aria-hidden="true" />{t.back}</button>
+                  <button className={styles.primaryButton} type="submit" disabled={sending || !canSend}>
+                    {sending ? <Loader2 className={styles.spinner} aria-hidden="true" /> : <Leaf aria-hidden="true" />}{sending ? t.sending : t.send}
+                  </button>
+                </div>
+              </form>
             )}
-
-            <button
-              onClick={submit}
-              disabled={sending || !canSend}
-              style={{
-                width: "100%", marginTop: 18, padding: "15px 20px", borderRadius: 14, border: "none",
-                background: TOKENS.jade, color: TOKENS.paper, fontSize: 15.5, fontWeight: 700,
-                cursor: sending || !canSend ? "default" : "pointer", opacity: sending || !canSend ? 0.45 : 1,
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
-              }}
-            >
-              {sending ? <Loader2 size={17} className="spin" /> : <Leaf size={17} color={TOKENS.brass} />}
-              {sending ? t.sending : t.send}
-            </button>
-          </>
-        )}
-
-        {/* Anyone being asked for a phone number and an address should be able to see what
-            happens to them. */}
-        <div style={{ textAlign: "center", marginTop: 34 }}>
-          <a href="/privacy" style={{ fontSize: 12, color: TOKENS.brassOnPaper, fontWeight: 600 }}>
-            {t.privacy}
-          </a>
+          </section>
         </div>
-      </div>
-    </div>
+      )}
+      <footer className={styles.footer}><span>House of Hoàng Long · Hà Giang</span><a href="/privacy">{t.privacy}</a></footer>
+    </main>
   );
 }
