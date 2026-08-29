@@ -215,25 +215,29 @@ export const useLocale = () => useContext(LocaleContext);
 
 export default function LocaleProvider({ children }) {
   const pathname = usePathname();
-  const [locale, setLocale] = useState("vi");
+  const isAdmin = pathname?.startsWith("/admin");
+  const defaultLocale = isAdmin ? "en" : "vi";
+  const storageKey = isAdmin ? "hl-admin-locale" : "hl-locale";
+  const [locale, setLocale] = useState(defaultLocale);
 
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get("lang");
     let saved = null;
     try {
-      saved = window.localStorage?.getItem("hl-locale");
+      saved = window.localStorage?.getItem(storageKey);
     } catch {
       saved = null;
     }
     if (requested === "en" || requested === "vi") setLocale(requested);
     else if (saved === "en" || saved === "vi") setLocale(saved);
-  }, []);
+    else setLocale(defaultLocale);
+  }, [defaultLocale, storageKey]);
 
   useEffect(() => {
     document.documentElement.lang = locale;
     document.title = translateText(document.title, locale);
     try {
-      window.localStorage?.setItem("hl-locale", locale);
+      window.localStorage?.setItem(storageKey, locale);
     } catch {
       // Privacy-restricted browsers can still use the switch for the current page.
     }
@@ -246,7 +250,7 @@ export default function LocaleProvider({ children }) {
     });
     observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true });
     return () => observer.disconnect();
-  }, [locale]);
+  }, [locale, storageKey]);
 
   const value = useMemo(
     () => ({ locale, setLocale, toggleLocale: () => setLocale((current) => (current === "vi" ? "en" : "vi")) }),
@@ -259,7 +263,7 @@ export default function LocaleProvider({ children }) {
       <ActionTooltipLayer />
       <button
         type="button"
-        className={`hl-locale-switch${pathname?.startsWith("/admin") ? " hl-locale-switch--admin" : ""}`}
+        className={`hl-locale-switch${isAdmin ? " hl-locale-switch--admin" : ""}`}
         onClick={value.toggleLocale}
         aria-label={locale === "vi" ? "Switch to English" : "Chuyển sang tiếng Việt"}
         aria-description={locale === "vi" ? "Đổi toàn bộ giao diện sang tiếng Anh." : "Switch the full interface to Vietnamese."}
