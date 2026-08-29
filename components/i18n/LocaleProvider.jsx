@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Languages } from "lucide-react";
 import { STR } from "@/lib/strings";
 import { CATEGORIES, LIBRARY_CATEGORIES, NAV, PRICE_TIERS, STATUS_STEPS } from "@/lib/constants";
@@ -213,6 +214,7 @@ const translateDom = (root, locale) => {
 export const useLocale = () => useContext(LocaleContext);
 
 export default function LocaleProvider({ children }) {
+  const pathname = usePathname();
   const [locale, setLocale] = useState("vi");
 
   useEffect(() => {
@@ -257,7 +259,7 @@ export default function LocaleProvider({ children }) {
       <ActionTooltipLayer />
       <button
         type="button"
-        className="hl-locale-switch"
+        className={`hl-locale-switch${pathname?.startsWith("/admin") ? " hl-locale-switch--admin" : ""}`}
         onClick={value.toggleLocale}
         aria-label={locale === "vi" ? "Switch to English" : "Chuyển sang tiếng Việt"}
         aria-description={locale === "vi" ? "Đổi toàn bộ giao diện sang tiếng Anh." : "Switch the full interface to Vietnamese."}
@@ -265,7 +267,7 @@ export default function LocaleProvider({ children }) {
         data-no-translate
       >
         <Languages aria-hidden="true" />
-        <span>{locale === "vi" ? "EN" : "VI"}</span>
+        <span>{locale === "vi" ? "English" : "Tiếng Việt"}</span>
       </button>
     </LocaleContext.Provider>
   );
