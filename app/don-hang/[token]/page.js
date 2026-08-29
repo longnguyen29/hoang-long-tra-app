@@ -75,10 +75,10 @@ export default async function PublicOrderJourneyPage({ params }) {
 
       <section className={styles.intro}>
         <div className={styles.introCopy}>
-          <p className={styles.eyebrow}>Hành trình đơn {order.id}</p>
+          <p className={styles.eyebrow}><span>Hành trình đơn</span> {order.id}</p>
           <h1>{headline}</h1>
           <p className={styles.summary}>{summary}</p>
-          <div className={styles.updated}><Clock3 aria-hidden="true"/>Cập nhật {dateTime(lastUpdated)}</div>
+          <div className={styles.updated}><Clock3 aria-hidden="true"/><span>Cập nhật</span> {dateTime(lastUpdated)}</div>
         </div>
         <div className={styles.stageMark} data-complete={stage === "completed"}>
           {stage === "completed" ? <PackageCheck aria-hidden="true"/> : <Truck aria-hidden="true"/>}
@@ -116,8 +116,8 @@ export default async function PublicOrderJourneyPage({ params }) {
               <p className={styles.label}>Vận chuyển</p>
               <h2>{carrierLabel(order.shipping_carrier)}</h2>
               <code>{order.tracking_code}</code>
-              <p>{order.carrier_status_name || "Đã kết nối · đang chờ hãng cập nhật"}</p>
-              {order.carrier_status_at && <small>Cập nhật từ hãng {dateTime(order.carrier_status_at)}</small>}
+              <p>{order.carrier_status_name || "Đã kết nối · đang chờ trạng thái đầu tiên từ hãng"}</p>
+              {order.carrier_status_at && <small><span>Cập nhật từ hãng</span> {dateTime(order.carrier_status_at)}</small>}
             </section>
           ) : (
             <section className={styles.waiting}>
