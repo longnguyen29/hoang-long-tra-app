@@ -77,6 +77,7 @@ export default function GrowthLab({ supabase, email, role }) {
   const [notice, setNotice] = useState("");
   const [editingVariant, setEditingVariant] = useState("");
   const [draftText, setDraftText] = useState("");
+  const [generationStage, setGenerationStage] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -104,31 +105,74 @@ export default function GrowthLab({ supabase, email, role }) {
   const requests = experiments.flatMap((item) => item.variants || []).reduce((sum, item) => sum + Number(item.outcomes?.qualified_requests || 0), 0);
   const orders = experiments.flatMap((item) => item.variants || []).reduce((sum, item) => sum + Number(item.outcomes?.first_orders || 0), 0);
 
-  const createExperiment = async (event) => {
-    event.preventDefault();
-    if (!brief.title.trim()) { setError("Đặt tên thử nghiệm theo điều bạn muốn học, không theo tên bài đăng."); return; }
-    setSaving(true); setError("");
-    const generatedPrompt = buildGrowthPrompt(brief);
+  const requestAiVariants = async (generatedPrompt) => {
+    setGenerationStage("OpenAI đang viết ba cách mở bài…");
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error("not_authenticated");
+    const response = await fetch("/api/staff/growth/generate", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ brief, prompt: generatedPrompt }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "openai_failed");
+    return payload;
+  };
+
+  const persistExperiment = async ({ generatedPrompt, generatedVariants, generationModel }) => {
+    setGenerationStage("Đang lưu phép thử và chấm độc lập…");
     const { data: experiment, error: experimentError } = await supabase.from("growth_experiments").insert({
       title: brief.title.trim(), audience: brief.audience.trim(), customer_problem: brief.customerProblem.trim(),
       angle: brief.angle.trim(), proof: brief.proof.trim(), offer: brief.offer.trim(), cta: brief.cta.trim(),
       hypothesis: brief.hypothesis.trim(), prompt_version_id: activePrompt.id || null,
-      generated_prompt: generatedPrompt, review_on: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+      generated_prompt: generatedPrompt, generation_model: generationModel,
+      review_on: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
     }).select().single();
-    if (experimentError) { setError("Chưa tạo được thử nghiệm. Kiểm tra dữ liệu và thử lại."); setSaving(false); return; }
+    if (experimentError) throw new Error("experiment_failed");
     const stamp = Date.now().toString(36).slice(-7);
-    const rows = starterVariants(brief).map((variant, index) => {
+    const rows = generatedVariants.map((variant, index) => {
       const result = judgeThreadsDraft(variant.text, brief);
       return {
         experiment_id: experiment.id, label: variant.label, tracking_code: `hl-${stamp}-${String.fromCharCode(97 + index)}`,
         post_text: variant.text, judge_scores: { overall: result.overall, ...result.scores }, judge_notes: result.notes,
+        ai_rationale: variant.rationale || "", generation_model: generationModel,
       };
     });
     const { error: variantsError } = await supabase.from("growth_variants").insert(rows);
-    setSaving(false);
-    if (variantsError) { setError("Đã tạo brief nhưng chưa tạo được ba bản nháp."); return; }
-    setBrief(EMPTY_BRIEF); setSelectedId(experiment.id); setTab("experiments");
-    setNotice("Đã tạo thử nghiệm và ba cách mở bài."); await load();
+    if (variantsError) throw new Error("variants_failed");
+    return experiment;
+  };
+
+  const createExperiment = async (event, useAi = true) => {
+    event?.preventDefault();
+    if (!brief.title.trim()) { setError("Đặt tên thử nghiệm theo điều bạn muốn học, không theo tên bài đăng."); return; }
+    setSaving(true); setError("");
+    const generatedPrompt = buildGrowthPrompt(brief);
+    try {
+      const generated = useAi
+        ? await requestAiVariants(generatedPrompt)
+        : { model: "Mẫu có sẵn v1", variants: starterVariants(brief).map((variant) => ({ ...variant, rationale: "Mẫu dự phòng theo brief; chưa qua OpenAI." })) };
+      const experiment = await persistExperiment({
+        generatedPrompt, generatedVariants: generated.variants, generationModel: generated.model,
+      });
+      setBrief(EMPTY_BRIEF); setSelectedId(experiment.id); setTab("experiments");
+      setNotice(useAi ? `Đã tạo 3 bản bằng ${generated.model}; bộ chấm quy tắc đã kiểm tra lại.` : "Đã tạo 3 bản từ mẫu có sẵn.");
+      await load();
+    } catch (createError) {
+      const messages = {
+        openai_not_configured: "Chưa cấu hình OpenAI API cho production. Bạn vẫn có thể dùng mẫu có sẵn bên dưới.",
+        rate_limited: "Đã dùng 20 lượt tạo trong một giờ. Chờ một lúc rồi thử lại.",
+        openai_unreachable: "Chưa kết nối được OpenAI. Thử lại hoặc dùng mẫu có sẵn.",
+        openai_failed: "OpenAI chưa tạo được nội dung. Kiểm tra API key hoặc hạn mức thanh toán rồi thử lại.",
+        invalid_ai_response: "Kết quả AI không đạt cấu trúc an toàn để lưu. Hãy thử tạo lại.",
+        experiment_failed: "Chưa lưu được phép thử. Cần áp dụng migration Growth AI rồi làm mới.",
+        variants_failed: "Đã tạo brief nhưng chưa lưu được ba bản nháp.",
+        not_authenticated: "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.",
+      };
+      setError(messages[createError.message] || "Chưa tạo được phép thử. Hãy thử lại.");
+    } finally {
+      setGenerationStage(""); setSaving(false);
+    }
   };
 
   const patchVariant = async (variant, changes, message) => {
@@ -206,7 +250,7 @@ export default function GrowthLab({ supabase, email, role }) {
 
     {tab === "new" && <section className={styles.newExperiment}>
       <header><div><p>Brief có kiểm soát</p><h2>Chỉ thay một điều mỗi lần.</h2></div><span>Đầu ra: 3 cách mở bài · cùng offer · cùng CTA</span></header>
-      <form onSubmit={createExperiment}>
+      <form onSubmit={(event) => createExperiment(event, true)}>
         <label className={styles.wide}><span>Tên điều muốn học</span><input required maxLength={180} value={brief.title} onChange={(event) => setBrief({ ...brief, title: event.target.value })} placeholder="Ví dụ: Mở bằng nỗi khó công thức hay lời mời thử?"/></label>
         <label><span>Người đọc</span><textarea rows="3" value={brief.audience} onChange={(event) => setBrief({ ...brief, audience: event.target.value })}/></label>
         <label><span>Vấn đề đang gặp</span><textarea rows="3" value={brief.customerProblem} onChange={(event) => setBrief({ ...brief, customerProblem: event.target.value })}/></label>
@@ -215,8 +259,12 @@ export default function GrowthLab({ supabase, email, role }) {
         <label><span>Đề nghị</span><textarea rows="3" value={brief.offer} onChange={(event) => setBrief({ ...brief, offer: event.target.value })}/></label>
         <label><span>Hành động mong muốn</span><textarea rows="3" value={brief.cta} onChange={(event) => setBrief({ ...brief, cta: event.target.value })}/></label>
         <label className={styles.wide}><span>Giả thuyết</span><textarea rows="3" value={brief.hypothesis} onChange={(event) => setBrief({ ...brief, hypothesis: event.target.value })}/></label>
-        <aside><Target/><div><b>Máy sẽ chấm điều gì?</b><p>{DEFAULT_GROWTH_RUBRIC.map((item) => item.label).join(" · ")}</p></div></aside>
-        <button className={styles.primary} disabled={saving || !brief.title.trim()}>{saving ? <LoaderCircle className={styles.spin}/> : <Sparkles/>}Tạo ba bản nháp</button>
+        <aside><Target/><div><b>OpenAI viết, Hoàng Long kiểm soát</b><p>AI tạo 3 cách mở bài. Sau đó bộ chấm độc lập kiểm tra: {DEFAULT_GROWTH_RUBRIC.map((item) => item.label).join(" · ")}.</p></div></aside>
+        <div className={styles.generationActions}>
+          <span>{generationStage || "API key chỉ nằm trên máy chủ; nội dung chưa tự đăng."}</span>
+          <button type="button" onClick={(event) => createExperiment(event, false)} disabled={saving || !brief.title.trim()}>Dùng mẫu có sẵn</button>
+          <button className={styles.primary} disabled={saving || !brief.title.trim()}>{saving ? <LoaderCircle className={styles.spin}/> : <Sparkles/>}Tạo bằng OpenAI</button>
+        </div>
       </form>
     </section>}
 
@@ -230,7 +278,7 @@ export default function GrowthLab({ supabase, email, role }) {
 
       {selected && <section className={styles.experimentDetail}>
         <header className={styles.experimentHead}>
-          <div><p>{STATUS_LABEL[selected.status]} · đọc kết quả {selected.review_on ? new Date(selected.review_on).toLocaleDateString("vi-VN") : "sau 7 ngày"}</p><h2>{selected.title}</h2><span>{selected.hypothesis}</span></div>
+          <div><p>{STATUS_LABEL[selected.status]} · đọc kết quả {selected.review_on ? new Date(selected.review_on).toLocaleDateString("vi-VN") : "sau 7 ngày"}</p><h2>{selected.title}</h2><span>{selected.hypothesis}</span>{selected.generation_model && <em className={styles.modelBadge}><Sparkles/>{selected.generation_model} tạo nháp · người duyệt quyết định</em>}</div>
           <div>{selected.status === "draft" && <button onClick={() => setExperimentStatus("running")} disabled={saving}><Send/>Bắt đầu thử</button>}{selected.status === "running" && <button onClick={() => setExperimentStatus("review")} disabled={saving}><BarChart3/>Đọc kết quả</button>}</div>
         </header>
 
@@ -246,6 +294,7 @@ export default function GrowthLab({ supabase, email, role }) {
             <header><div><small>{VARIANT_STATUS[variant.status]}</small><h3>{variant.label}</h3></div><code>{variant.tracking_code}</code></header>
             <ScoreStrip result={result}/>
             {editingVariant === variant.id ? <div className={styles.draftEditor}><textarea rows="9" value={draftText} onChange={(event) => setDraftText(event.target.value)}/><div><span>{result.characterCount} ký tự</span><button onClick={() => setEditingVariant("")}>Hủy</button><button onClick={() => saveDraft(variant)} disabled={saving}><Save/>Lưu & chấm lại</button></div></div> : <div className={styles.postText}>{variant.post_text.split("\n").map((line, index) => <p key={index}>{line || " "}</p>)}</div>}
+            {variant.ai_rationale && <p className={styles.aiRationale}><Sparkles/><span><b>Điều đang được thử</b>{variant.ai_rationale}</span></p>}
             {result.notes.length > 0 && <div className={styles.judgeNotes}><b>Máy đề nghị sửa trước khi đăng</b>{result.notes.slice(0, 3).map((note) => <p key={note}>{note}</p>)}</div>}
             <div className={styles.trackingLink}><Link2/><span><small>Link riêng của bản này</small><code>{link}</code></span><button onClick={() => navigator.clipboard.writeText(link).then(() => setNotice("Đã sao chép link theo dõi."))}><Clipboard/></button></div>
             <div className={styles.variantActions}>
