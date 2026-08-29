@@ -100,6 +100,26 @@ rotates that key. In the staff order drawer, choose the carrier and save its
 tracking code. Authenticated carrier updates are written to the order timeline;
 only an explicit delivered code moves the order to **Hoàn tất**.
 
+### Zalo delivery notices
+
+When an authenticated carrier update first moves an order to **Hoàn tất**, the server
+queues one Zalo ZBS Template Message to the Vietnamese phone number in the order. If the
+order has an open/partial receivable, the `delivered_due` template receives the exact
+remaining balance; otherwise the `delivered_paid` template only confirms delivery. This
+keeps payment reminders tied to the receivables ledger instead of guessing from the order's
+payment method. Invalid or missing phone numbers are skipped, and `(channel, event_key)` is
+unique so carrier retries cannot message a customer twice.
+
+Create and approve two ZBS templates with these exact variables:
+
+- `customer_name`, `order_code`, `tracking_code`, `delivered_at`
+- the due template additionally displays `amount_due`
+
+Set the six `ZALO_*` values documented in `.env.example`, then apply migration `0041`.
+The initial refresh token is used once; every replacement refresh/access token is stored in
+the service-role-only `zalo_oauth_tokens` table. Delivery attempts and provider message IDs
+are recorded in `customer_notifications`.
+
 ## 6. Test checklist before announcing the new site
 
 - [ ] Place a test wholesale order and a test retail order
