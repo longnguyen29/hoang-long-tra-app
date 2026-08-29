@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Circle,
+  ClipboardCheck,
   ClipboardList,
   Handshake,
   Leaf,
@@ -36,6 +37,14 @@ const MODES = [
 ];
 
 const APPS = {
+  work: {
+    key: "work",
+    label: "Công việc",
+    short: "Công việc",
+    href: "/admin/work",
+    description: "Giao việc một lần, tạo lịch lặp và xem ai đang bị vướng.",
+    icon: ClipboardCheck,
+  },
   orders: {
     key: "orders",
     label: "Điều phối đơn",

@@ -32,6 +32,10 @@ export default function AdminPage() {
         .maybeSingle();
       if (cancelled) return;
       setRole(staffRow?.role || "");
+      if (staffRow?.role === "employee") {
+        router.replace("/admin/work");
+        return;
+      }
       setStatus(staffRow ? "staff" : "not-staff");
     })();
     return () => { cancelled = true; };

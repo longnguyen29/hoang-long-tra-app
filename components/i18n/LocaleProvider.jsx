@@ -216,8 +216,9 @@ export const useLocale = () => useContext(LocaleContext);
 export default function LocaleProvider({ children }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
-  const defaultLocale = isAdmin ? "en" : "vi";
-  const storageKey = isAdmin ? "hl-admin-locale" : "hl-locale";
+  const isWorkBoard = pathname?.startsWith("/admin/work");
+  const defaultLocale = isWorkBoard ? "vi" : isAdmin ? "en" : "vi";
+  const storageKey = isWorkBoard ? "hl-work-locale" : isAdmin ? "hl-admin-locale" : "hl-locale";
   const [locale, setLocale] = useState(defaultLocale);
 
   useEffect(() => {
@@ -261,7 +262,7 @@ export default function LocaleProvider({ children }) {
     <LocaleContext.Provider value={value}>
       {children}
       <ActionTooltipLayer />
-      <button
+      {!isWorkBoard && <button
         type="button"
         className={`hl-locale-switch${isAdmin ? " hl-locale-switch--admin" : ""}`}
         onClick={value.toggleLocale}
@@ -272,7 +273,7 @@ export default function LocaleProvider({ children }) {
       >
         <Languages aria-hidden="true" />
         <span>{locale === "vi" ? "English" : "Tiếng Việt"}</span>
-      </button>
+      </button>}
     </LocaleContext.Provider>
   );
 }
