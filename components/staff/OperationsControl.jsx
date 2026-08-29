@@ -17,6 +17,7 @@ import {
   PackageCheck,
   Plus,
   RefreshCw,
+  ReceiptText,
   Save,
   ShieldCheck,
   TrendingUp,
@@ -357,6 +358,10 @@ export default function OperationsControl({ supabase, email, onLogout }) {
         <Link href="/admin/operations/budget">
           <CircleDollarSign />
           Ngân sách
+        </Link>
+        <Link href="/admin/operations/expenses">
+          <ReceiptText />
+          Ghi chi nhanh
         </Link>
       </nav>
       {error && (

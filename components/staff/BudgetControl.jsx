@@ -333,6 +333,7 @@ export default function BudgetControl({ supabase, email, role, onLogout }) {
           <span>Mỗi khoản tiền có chủ sở hữu, mục tiêu và kết quả để nhìn lại.</span>
         </div>
         <div className={styles.periodControl}>
+          <Link href="/admin/operations/expenses"><Receipt />Ghi chi nhanh</Link>
           <label>
             <span>Kỳ đang xem</span>
             <select
