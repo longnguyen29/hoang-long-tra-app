@@ -15,6 +15,7 @@ import {
   Circle,
   ClipboardCheck,
   ClipboardList,
+  FlaskConical,
   Handshake,
   Leaf,
   LogOut,
@@ -60,6 +61,14 @@ const APPS = {
     href: "/admin/pipeline",
     description: "Cơ hội, báo giá và nhịp theo đuổi khách B2B.",
     icon: Handshake,
+  },
+  growth: {
+    key: "growth",
+    label: "Phòng tăng trưởng",
+    short: "Tăng trưởng",
+    href: "/admin/growth",
+    description: "Thử nội dung Threads và theo dấu từ lượt vào trang mẫu tới đơn sỉ.",
+    icon: FlaskConical,
   },
   operations: {
     key: "operations",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Leaf, Loader2, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "@/components/i18n/LocaleProvider";
@@ -139,6 +139,35 @@ export default function SampleRequest() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+  const [growthCode, setGrowthCode] = useState("");
+
+  useEffect(() => {
+    const code = (new URLSearchParams(window.location.search).get("exp") || "").trim().toLowerCase();
+    setGrowthCode(code);
+    if (code) setForm((current) => ({ ...current, heardFrom: current.heardFrom || "threads" }));
+
+    let session = "";
+    try {
+      session = window.localStorage.getItem("hl-visitor-session") || crypto.randomUUID();
+      window.localStorage.setItem("hl-visitor-session", session);
+      const viewKey = `hl-growth-view:${code || "direct"}`;
+      if (window.sessionStorage.getItem(viewKey)) return;
+      window.sessionStorage.setItem(viewKey, "1");
+    } catch {
+      session = crypto.randomUUID();
+    }
+    supabase.rpc("record_growth_page_view", {
+      p_path: code ? `/sample?exp=${code}` : "/sample",
+      p_session: session,
+      p_referrer: document.referrer || "",
+      p_lang: document.documentElement.lang || "vi",
+      p_growth_code: code,
+    }).then(({ error: viewError }) => {
+      // Attribution must never interrupt a shop's sample request. Older deployments may
+      // briefly serve the page before migration 0045 is applied.
+      if (viewError) console.debug("Growth attribution unavailable", viewError.message);
+    });
+  }, [supabase]);
 
   const t = STR[lang];
   const selectedPack = PACKS.find((item) => item.id === pack) || PACKS[0];
@@ -165,7 +194,7 @@ export default function SampleRequest() {
         p_store_name: form.store.trim(), p_contact_name: form.name.trim(), p_phone: form.phone.trim(),
         p_address: form.address.trim(), p_pack: pack, p_has_shop: checks.hasShop,
         p_can_reformulate: checks.canReformulate, p_can_feedback: checks.canFeedback,
-        p_note: form.note.trim(), p_heard_from: form.heardFrom,
+        p_note: form.note.trim(), p_heard_from: form.heardFrom, p_growth_code: growthCode,
       });
       if (requestError) throw requestError;
       notifyHouse("sample_requests", data);
