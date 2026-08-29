@@ -112,7 +112,7 @@ unique so carrier retries cannot message a customer twice.
 
 Create and approve two ZBS templates with these exact variables:
 
-- `customer_name`, `order_code`, `tracking_code`, `delivered_at`
+- `customer_name`, `order_code`, `tracking_code`, `delivered_at`, `tracking_url`
 - the due template additionally displays `amount_due`
 
 Set the six `ZALO_*` values documented in `.env.example`, then apply migration `0041`.
