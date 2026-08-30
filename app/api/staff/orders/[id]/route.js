@@ -26,17 +26,27 @@ async function readCosts(admin, orderId) {
     .order("created_at", { ascending: false });
 }
 
+async function readReceivable(admin, orderId) {
+  return admin
+    .from("receivables")
+    .select("id,total,paid,status,due_at")
+    .eq("order_id", orderId)
+    .neq("status", "void")
+    .maybeSingle();
+}
+
 export async function GET(request, { params }) {
   const staff = await authenticateStaffRequest(request);
   if (!staff) return Response.json({ ok: false }, { status: 401 });
 
   const { id } = await params;
-  const [eventResult, costResult] = await Promise.all([
+  const [eventResult, costResult, receivableResult] = await Promise.all([
     readEvents(staff.admin, id),
     readCosts(staff.admin, id),
+    readReceivable(staff.admin, id),
   ]);
-  if (eventResult.error || costResult.error) return Response.json({ ok: false }, { status: 500 });
-  return Response.json({ ok: true, events: eventResult.data || [], costs: costResult.data || [] });
+  if (eventResult.error || costResult.error || receivableResult.error) return Response.json({ ok: false }, { status: 500 });
+  return Response.json({ ok: true, events: eventResult.data || [], costs: costResult.data || [], receivable: receivableResult.data || null });
 }
 
 export async function POST(request, { params }) {

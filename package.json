@@ -10,6 +10,7 @@
     "test:pricing": "node --test lib/pricing.test.mjs",
     "test:order-flow": "node --test lib/order-flow.test.mjs",
     "test:order-costs": "node --test lib/order-costs.test.mjs",
+    "test:manual-message": "node --test lib/manual-order-message.test.mjs",
     "test:carriers": "node --test lib/carrier-tracking.test.mjs",
     "test:zalo": "node --test lib/zalo-notifications-core.test.mjs",
     "test:growth": "node --test lib/growth-judge.test.mjs lib/growth-ai.test.mjs",
