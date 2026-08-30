@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   ArrowRight,
   BarChart3,
+  Beaker,
   BookOpenCheck,
   Brain,
   Check,
@@ -61,6 +62,14 @@ const APPS = {
     href: "/admin/pipeline",
     description: "Hồ sơ khách B2B, cơ hội, báo giá và nhịp theo đuổi.",
     icon: Handshake,
+  },
+  recipes: {
+    key: "recipes",
+    label: "Phòng công thức",
+    short: "Công thức",
+    href: "/admin/recipes",
+    description: "Phiên bản pha, giá vốn mỗi ly, phiếu nếm và công thức đã chốt cho từng khách.",
+    icon: Beaker,
   },
   operations: {
     key: "operations",

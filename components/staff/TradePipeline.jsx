@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, BadgeDollarSign, Calculator, CalendarClock, Check, ChevronRight, Clipboard, FileText, Handshake, History, Plus, RefreshCw, Save, Search, Send, Target, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgeDollarSign, Calculator, CalendarClock, Check, ChevronRight, Clipboard, FileText, FlaskConical, Handshake, History, Plus, RefreshCw, Save, Search, Send, Target, X } from "lucide-react";
 import { fromCatalogRow, fromVariantRow } from "@/lib/mappers";
 import { dateInput, money, normalizeContact, QUOTE_STATUS, quoteMessage, shortDate, stageLabel, TRADE_STAGES } from "@/lib/trade-pipeline";
 import styles from "./TradePipeline.module.css";
@@ -263,7 +263,7 @@ export default function TradePipeline({ supabase, email }) {
 
     {selected && <div className={styles.overlay} onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><aside className={styles.drawer} aria-label="Chi tiết cơ hội" role="dialog" aria-modal="true">
       <header><div><p>{stageLabel(selected.stage)}</p><h2>{selected.business_name}</h2><span>{selected.contact}</span></div><button onClick={() => setSelected(null)} aria-label="Đóng"><X/></button></header>
-      <section className={styles.next}><span>Bước tiếp theo</span><h3>{selected.next_action || "Chưa đặt bước tiếp theo"}</h3><time>{shortDate(selected.next_action_at)}</time><button onClick={() => setEditing({ ...selected, next_action_at: selected.next_action_at?.slice(0, 10) || "" })}>Sửa nhịp làm việc</button></section>
+      <section className={styles.next}><span>Bước tiếp theo</span><h3>{selected.next_action || "Chưa đặt bước tiếp theo"}</h3><time>{shortDate(selected.next_action_at)}</time><div><button onClick={() => setEditing({ ...selected, next_action_at: selected.next_action_at?.slice(0, 10) || "" })}>Sửa nhịp làm việc</button><Link className={styles.recipeBridge} href={`/admin/recipes?opportunity=${encodeURIComponent(selected.id)}`}><FlaskConical/>Mở phòng công thức</Link></div></section>
       <section className={styles.progress}><header><h3>Chuyển giai đoạn</h3><span>{selected.monthly_potential_kg || 0} kg/tháng</span></header><div>{TRADE_STAGES.map((stage) => <button key={stage.id} data-active={selected.stage === stage.id} onClick={() => moveStage(stage.id)}>{stage.short}</button>)}<button data-lost onClick={() => moveStage("lost")}>Tạm dừng</button></div></section>
       <section className={styles.priceBook}>
         <header><div><p>Partner price ledger</p><h3>Giá riêng đang áp dụng</h3></div><div className={styles.priceActions}><Link className={styles.priceCalculator} href={pricingHref(selected.id)}><Calculator/>Tính giá riêng</Link><button onClick={() => setPriceDraft(newPriceAgreement(selected, latestAgreement))}><Plus/>{latestAgreement ? "Phiên bản mới" : "Thiết lập giá"}</button></div></header>
