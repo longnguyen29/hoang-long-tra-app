@@ -78,7 +78,7 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
 function OrderDetail({order,events,costs,receivable,loadingEvents,saving,healthDraft,setHealthDraft,waitingDraft,setWaitingDraft,healthNoteDraft,setHealthNoteDraft,trackingDraft,setTrackingDraft,carrierDraft,setCarrierDraft,onUpdate,onAddCost,onDeleteCost,onClose}){
  const stageIndex=orderStageIndex(order.stage),stage=ORDER_STAGES[stageIndex],nextStage=ORDER_STAGES[stageIndex+1],previousStage=ORDER_STAGES[stageIndex-1];
  const amountDue=receivable&&["open","partial"].includes(receivable.status)?Math.max(0,Number(receivable.total||0)-Number(receivable.paid||0)):0;
- const defaultMessageKind=()=>stage.id==="completed"?(amountDue>0?"delivered_due":"delivered"):"shipping";
+ const defaultMessageKind=()=>(stage.id==="completed"||order.status==="completed")?(amountDue>0?"delivered_due":"delivered"):"shipping";
  const freshCost=()=>({category:"tea",description:"",quantity:"1",unitCost:"",paymentStatus:"planned",incurredOn:new Date().toISOString().slice(0,10),note:"",recordExpense:false});
  const [editingPrices,setEditingPrices]=useState(false),[priceDrafts,setPriceDrafts]=useState(()=>(order.lines||[]).map(line=>line.price??""));
  const [addingCost,setAddingCost]=useState(false),[costSaving,setCostSaving]=useState(false),[costDraft,setCostDraft]=useState(freshCost);
