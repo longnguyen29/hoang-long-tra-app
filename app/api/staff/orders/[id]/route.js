@@ -17,14 +17,26 @@ async function readEvents(admin, orderId) {
     .order("created_at", { ascending: false });
 }
 
+async function readCosts(admin, orderId) {
+  return admin
+    .from("order_costs")
+    .select("*")
+    .eq("order_id", orderId)
+    .order("incurred_on", { ascending: false })
+    .order("created_at", { ascending: false });
+}
+
 export async function GET(request, { params }) {
   const staff = await authenticateStaffRequest(request);
   if (!staff) return Response.json({ ok: false }, { status: 401 });
 
   const { id } = await params;
-  const { data, error } = await readEvents(staff.admin, id);
-  if (error) return Response.json({ ok: false }, { status: 500 });
-  return Response.json({ ok: true, events: data || [] });
+  const [eventResult, costResult] = await Promise.all([
+    readEvents(staff.admin, id),
+    readCosts(staff.admin, id),
+  ]);
+  if (eventResult.error || costResult.error) return Response.json({ ok: false }, { status: 500 });
+  return Response.json({ ok: true, events: eventResult.data || [], costs: costResult.data || [] });
 }
 
 export async function POST(request, { params }) {
