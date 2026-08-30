@@ -49,7 +49,7 @@ const APPS = {
   orders: {
     key: "orders",
     label: "Điều phối đơn",
-    short: "Đơn",
+    short: "Đơn hàng",
     href: "/admin/orders",
     description: "Đơn hàng, tin nhắn, lead, mẫu thử và lịch trà.",
     icon: ClipboardList,
@@ -57,7 +57,7 @@ const APPS = {
   pipeline: {
     key: "pipeline",
     label: "Khách hàng B2B",
-    short: "Khách hàng",
+    short: "Khách hàng CRM",
     href: "/admin/pipeline",
     description: "Hồ sơ khách B2B, cơ hội, báo giá và nhịp theo đuổi.",
     icon: Handshake,
