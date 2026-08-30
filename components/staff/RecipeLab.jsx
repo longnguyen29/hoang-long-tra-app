@@ -12,6 +12,7 @@ import {
   Handshake,
   PencilLine,
   Plus,
+  Radar,
   RefreshCw,
   Save,
   Search,
@@ -107,8 +108,11 @@ export default function RecipeLab({ supabase, email }) {
     if (!sampleResult.error) setSamples(sampleResult.data || []);
 
     const opportunityId = new URLSearchParams(window.location.search).get("opportunity") || "";
+    const recipeId = new URLSearchParams(window.location.search).get("recipe") || "";
     const connected = opportunityId ? nextRecipes.find((item) => item.opportunity_id === opportunityId) : null;
-    const currentId = preferredId && nextRecipes.some((item) => item.id === preferredId)
+    const currentId = recipeId && nextRecipes.some((item) => item.id === recipeId)
+      ? recipeId
+      : preferredId && nextRecipes.some((item) => item.id === preferredId)
       ? preferredId
       : preserveSelection && selectedId && nextRecipes.some((item) => item.id === selectedId)
         ? selectedId
@@ -261,6 +265,7 @@ export default function RecipeLab({ supabase, email }) {
     <main className={styles.page}>
       <header className={styles.top}>
         <div><Link href="/admin"><ArrowLeft/>Bảng điều khiển</Link><span>Phòng công thức</span></div>
+        <nav aria-label="Khu vực Phòng công thức"><Link href="/admin/recipes?view=radar"><Radar/>Radar</Link><Link data-active href="/admin/recipes?view=lab"><Beaker/>Công thức</Link></nav>
         <button onClick={() => load()} aria-label="Làm mới dữ liệu"><RefreshCw/></button>
       </header>
 

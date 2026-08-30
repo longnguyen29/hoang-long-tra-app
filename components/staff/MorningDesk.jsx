@@ -67,8 +67,8 @@ const APPS = {
     key: "recipes",
     label: "Phòng công thức",
     short: "Công thức",
-    href: "/admin/recipes",
-    description: "Phiên bản pha, giá vốn mỗi ly, phiếu nếm và công thức đã chốt cho từng khách.",
+    href: "/admin/recipes?view=radar",
+    description: "Radar món đang nổi, phiên bản pha, giá vốn mỗi ly và công thức đã chốt.",
     icon: Beaker,
   },
   operations: {
@@ -141,6 +141,7 @@ function buildExceptions(snapshot, mode) {
   const actions = snapshot?.operations?.today_actions || {};
   const reorders = snapshot?.operations?.reorders || [];
   const stock = snapshot?.operations?.stock || [];
+  const radar = snapshot?.radar || [];
   const items = [];
   const add = (condition, item) => condition && items.push(item);
 
@@ -245,6 +246,16 @@ function buildExceptions(snapshot, mode) {
     rank: mode === "sales" ? 4 : 8,
   });
 
+  add(radar.length > 0, {
+    id: "recipe-radar-candidates",
+    title: `${radar.length} ý tưởng menu mới đáng thử`,
+    detail: radar.slice(0, 3).map((item) => `${item.name} · ${item.score_total}/100`).join(" · "),
+    appKey: "recipes",
+    href: "/admin/recipes?view=radar",
+    level: "normal",
+    rank: mode === "owner" ? 4.5 : mode === "sales" ? 5 : 8,
+  });
+
   const dueReorders = reorders.filter((item) => Number(item.days_due) >= 0);
   add(dueReorders.length > 0, {
     id: "reorders-due",
@@ -324,14 +335,15 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
-    const [deskResult, budgetResult] = await Promise.all([
+    const [deskResult, budgetResult, radarResult] = await Promise.all([
       supabase.rpc("morning_desk_snapshot"),
       supabase.rpc("budget_morning_snapshot"),
+      supabase.from("recipe_radar_concepts").select("id,name,score_total").eq("stage", "candidate").order("score_total", { ascending: false }).limit(3),
     ]);
     if (deskResult.error) {
       setError("Bảng điều khiển chưa tải được dữ liệu. Kiểm tra migration 0036 rồi thử lại.");
     } else {
-      setSnapshot({ ...deskResult.data, budget: budgetResult.data || {} });
+      setSnapshot({ ...deskResult.data, budget: budgetResult.data || {}, radar: radarResult.data || [] });
       if (budgetResult.error)
         setError("Bảng điều khiển đã tải, nhưng chưa đọc được ngân sách từ migration 0037.");
     }
