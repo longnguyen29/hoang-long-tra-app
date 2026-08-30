@@ -1,0 +1,84 @@
+.root {
+  --atmosphere-image: var(--atmosphere-mountain-mist);
+  --atmosphere-opacity: 0.16;
+  --atmosphere-grain-opacity: 0.025;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: transparent;
+}
+
+.colorLayer,
+.grainLayer {
+  position: absolute;
+  z-index: 0;
+  inset: -3%;
+  pointer-events: none;
+}
+
+.root > :not(.colorLayer):not(.grainLayer) {
+  position: relative;
+  z-index: 1;
+}
+
+.colorLayer {
+  background-color: var(--atmosphere-surface, var(--color-paper));
+  background-image: var(--atmosphere-image);
+  background-position: 50% 50%;
+  background-size: 112% 112%;
+  opacity: var(--atmosphere-opacity);
+}
+
+.grainLayer {
+  opacity: var(--atmosphere-grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.72'/%3E%3C/svg%3E");
+  background-size: 11rem 11rem;
+  mix-blend-mode: multiply;
+}
+
+.root[data-atmosphere="mountain-mist"] { --atmosphere-image: var(--atmosphere-mountain-mist); }
+.root[data-atmosphere="tea-forest"] { --atmosphere-image: var(--atmosphere-tea-forest); }
+.root[data-atmosphere="honey-shan"] { --atmosphere-image: var(--atmosphere-honey-shan); }
+.root[data-atmosphere="smoke-shan"] { --atmosphere-image: var(--atmosphere-smoke-shan); }
+.root[data-atmosphere="lotus-dawn"] { --atmosphere-image: var(--atmosphere-lotus-dawn); }
+.root[data-atmosphere="old-brass"] { --atmosphere-image: var(--atmosphere-old-brass); }
+
+.root[data-atmosphere-strength="quiet"] {
+  --atmosphere-opacity: 0.16;
+  --atmosphere-grain-opacity: 0.025;
+}
+
+.root[data-atmosphere-strength="soft"] {
+  --atmosphere-opacity: 0.24;
+  --atmosphere-grain-opacity: 0.032;
+}
+
+.root[data-atmosphere-strength="present"] {
+  --atmosphere-opacity: 0.36;
+  --atmosphere-grain-opacity: 0.04;
+}
+
+.root[data-atmosphere-strength="staff"] {
+  --atmosphere-opacity: 0.1;
+  --atmosphere-grain-opacity: 0;
+}
+
+.root[data-atmosphere-grain="false"] .grainLayer,
+.root[data-atmosphere-strength="staff"] .grainLayer {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .root[data-atmosphere-motion="drift"] .colorLayer {
+    animation: atmosphereDrift 24s var(--ease-in-out) infinite alternate;
+  }
+}
+
+@keyframes atmosphereDrift {
+  from { transform: translate3d(-0.8%, 0, 0) scale(1.01); }
+  to { transform: translate3d(0.8%, -0.8%, 0) scale(1.025); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .colorLayer { animation: none; transform: none; }
+}

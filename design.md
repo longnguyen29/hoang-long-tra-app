@@ -38,6 +38,12 @@ quiet, botanical identity rather than behaving like separate brands.
 Paper carries warmth. Jade carries hierarchy. Brass identifies one meaningful
 action or selected state per view. Lacquer is reserved for risk and exceptions.
 
+The reusable gradient layer is defined in
+[`docs/atmosphere-system.md`](./docs/atmosphere-system.md). Atmosphere is allowed
+on public openings, product identity, process-state visualization, and one
+selected path. Inside staff apps it is semantic, capped at `staff` strength, and
+never page-wide decorative enrichment.
+
 ## Typography
 
 - Display: Newsreader, weight 500–700, roman
@@ -75,7 +81,9 @@ inline values migrate to it slice by slice; no large mechanical rewrite.
 ## Per-page allowances
 
 - Marketing pages may use supplied photography; never invented customer proof.
-- App pages must not use decorative enrichment. Function carries the page.
+- App pages must not use decorative enrichment. Function carries the page;
+  Atmosphere is permitted only as a restrained selected-path or decision-state
+  signal under the rules above.
 - Content pages use typography and supplied archival imagery only.
 
 ## What pages MUST share

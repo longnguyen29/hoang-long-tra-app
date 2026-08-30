@@ -5,6 +5,12 @@
  * display: Newsreader · body: Inter Tight · axes: light / roman-serif / warm
  */
 :root {
+  /* House anchors. These exact hex values keep atmosphere exports portable
+   * across the website, staff tools, packaging previews, and Tailwind consumers. */
+  --house-rice-paper: #F7F3EA;
+  --house-jade-black: #1C2B24;
+  --house-old-brass: #B08D57;
+
   --color-paper: oklch(96% 0.012 82);
   --color-paper-2: oklch(92% 0.018 82);
   --color-paper-3: oklch(88% 0.021 82);
@@ -22,6 +28,72 @@
   --color-warning-ink: oklch(20% 0.026 155);
   --color-success: oklch(46% 0.09 150);
   --color-success-ink: oklch(97% 0.012 82);
+
+  /* House of Hoàng Long Atmosphere System
+   * Four explicit stops per family form the portable identity ramp. The
+   * layered image adds depth; component-level opacity keeps it restrained. */
+  --atmosphere-mountain-mist-1: #F7F3EA;
+  --atmosphere-mountain-mist-2: #DFE3DA;
+  --atmosphere-mountain-mist-3: #AEBBB1;
+  --atmosphere-mountain-mist-4: #5E7168;
+  --atmosphere-mountain-mist:
+    radial-gradient(110% 86% at 82% 12%, var(--atmosphere-mountain-mist-1) 0%, transparent 56%),
+    radial-gradient(74% 92% at 12% 94%, var(--atmosphere-mountain-mist-3) 0%, transparent 64%),
+    linear-gradient(132deg, var(--atmosphere-mountain-mist-1) 0%, var(--atmosphere-mountain-mist-2) 38%, var(--atmosphere-mountain-mist-3) 68%, var(--atmosphere-mountain-mist-4) 100%);
+
+  --atmosphere-tea-forest-1: #EEF0E5;
+  --atmosphere-tea-forest-2: #A8B39B;
+  --atmosphere-tea-forest-3: #536B5B;
+  --atmosphere-tea-forest-4: #1C2B24;
+  --atmosphere-tea-forest:
+    radial-gradient(92% 78% at 22% 8%, var(--atmosphere-tea-forest-1) 0%, transparent 58%),
+    radial-gradient(76% 92% at 92% 86%, var(--atmosphere-tea-forest-3) 0%, transparent 66%),
+    linear-gradient(138deg, var(--atmosphere-tea-forest-1) 0%, var(--atmosphere-tea-forest-2) 36%, var(--atmosphere-tea-forest-3) 69%, var(--atmosphere-tea-forest-4) 100%);
+
+  --atmosphere-honey-shan-1: #F7F0DF;
+  --atmosphere-honey-shan-2: #E1C18A;
+  --atmosphere-honey-shan-3: #B8793E;
+  --atmosphere-honey-shan-4: #563522;
+  --atmosphere-honey-shan:
+    radial-gradient(98% 82% at 78% 16%, var(--atmosphere-honey-shan-1) 0%, transparent 58%),
+    radial-gradient(70% 96% at 8% 94%, var(--atmosphere-honey-shan-3) 0%, transparent 65%),
+    linear-gradient(126deg, var(--atmosphere-honey-shan-1) 0%, var(--atmosphere-honey-shan-2) 38%, var(--atmosphere-honey-shan-3) 70%, var(--atmosphere-honey-shan-4) 100%);
+
+  --atmosphere-smoke-shan-1: #EEE9E1;
+  --atmosphere-smoke-shan-2: #B9B3AA;
+  --atmosphere-smoke-shan-3: #686660;
+  --atmosphere-smoke-shan-4: #282A27;
+  --atmosphere-smoke-shan:
+    radial-gradient(104% 74% at 18% 18%, var(--atmosphere-smoke-shan-1) 0%, transparent 60%),
+    radial-gradient(72% 94% at 88% 82%, var(--atmosphere-smoke-shan-3) 0%, transparent 66%),
+    linear-gradient(136deg, var(--atmosphere-smoke-shan-1) 0%, var(--atmosphere-smoke-shan-2) 34%, var(--atmosphere-smoke-shan-3) 66%, var(--atmosphere-smoke-shan-4) 100%);
+
+  --atmosphere-lotus-dawn-1: #F7F3EA;
+  --atmosphere-lotus-dawn-2: #EADBD2;
+  --atmosphere-lotus-dawn-3: #D7B4A8;
+  --atmosphere-lotus-dawn-4: #8C6D69;
+  --atmosphere-lotus-dawn:
+    radial-gradient(96% 76% at 74% 10%, var(--atmosphere-lotus-dawn-1) 0%, transparent 58%),
+    radial-gradient(72% 92% at 10% 92%, var(--atmosphere-lotus-dawn-3) 0%, transparent 66%),
+    linear-gradient(130deg, var(--atmosphere-lotus-dawn-1) 0%, var(--atmosphere-lotus-dawn-2) 38%, var(--atmosphere-lotus-dawn-3) 66%, var(--atmosphere-lotus-dawn-4) 100%);
+
+  --atmosphere-old-brass-1: #F3EAD8;
+  --atmosphere-old-brass-2: #D4BA86;
+  --atmosphere-old-brass-3: #B08D57;
+  --atmosphere-old-brass-4: #675039;
+  --atmosphere-old-brass:
+    radial-gradient(98% 78% at 78% 12%, var(--atmosphere-old-brass-1) 0%, transparent 58%),
+    radial-gradient(72% 94% at 8% 90%, var(--atmosphere-old-brass-3) 0%, transparent 66%),
+    linear-gradient(128deg, var(--atmosphere-old-brass-1) 0%, var(--atmosphere-old-brass-2) 36%, var(--atmosphere-old-brass-3) 66%, var(--atmosphere-old-brass-4) 100%);
+
+  /* Tailwind-compatible aliases. Tailwind v3 can map these under
+   * theme.extend.backgroundImage; v4 can expose them through @theme inline. */
+  --background-image-hl-mountain-mist: var(--atmosphere-mountain-mist);
+  --background-image-hl-tea-forest: var(--atmosphere-tea-forest);
+  --background-image-hl-honey-shan: var(--atmosphere-honey-shan);
+  --background-image-hl-smoke-shan: var(--atmosphere-smoke-shan);
+  --background-image-hl-lotus-dawn: var(--atmosphere-lotus-dawn);
+  --background-image-hl-old-brass: var(--atmosphere-old-brass);
 
   --font-display: "Newsreader", ui-serif, serif;
   --font-body: "Inter Tight", ui-sans-serif, sans-serif;

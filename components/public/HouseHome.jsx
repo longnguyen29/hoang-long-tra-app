@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowDown, ArrowRight, Globe2, Menu, ShoppingBag, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "@/components/i18n/LocaleProvider";
+import Atmosphere from "@/components/Atmosphere";
 import styles from "./HouseHome.module.css";
 
 const COPY = {
@@ -120,7 +121,7 @@ export default function HouseHome() {
       )}
 
       <section className={styles.hero}>
-        <div className={styles.heroCopy}>
+        <Atmosphere className={styles.heroCopy} family="mountain-mist" strength="quiet" motion>
           <p className={styles.place}>{t.place}</p>
           <h1>{t.hero}</h1>
           <p className={styles.heroBody}>{t.heroBody}</p>
@@ -129,7 +130,7 @@ export default function HouseHome() {
             <Link href="/wholesale">{t.trade}</Link>
           </div>
           <a href="#season" className={styles.scrollCue} aria-label="Scroll to current teas"><ArrowDown size={17}/></a>
-        </div>
+        </Atmosphere>
         <figure className={styles.heroImage}>
           <img src={photos[0]} alt="Hoàng Long tea landscape and craft" fetchPriority="high" />
           <figcaption>House of Hoàng Long · Est. 1995</figcaption>

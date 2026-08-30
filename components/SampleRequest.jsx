@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Check, Leaf, Loader2, Phone } from "lucide-react
 import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { notifyHouse } from "@/lib/notify";
+import Atmosphere from "@/components/Atmosphere";
 import styles from "./SampleRequest.module.css";
 
 const PACKS = [
@@ -243,7 +244,9 @@ export default function SampleRequest() {
       ) : (
         <div className={styles.studio}>
           <section className={styles.story}>
-            <div className={styles.storyCopy}><p className={styles.eyebrow}>{t.eyebrow}</p><h1>{t.title}</h1><p className={styles.intro}>{t.intro}</p></div>
+            <Atmosphere className={styles.storyCopy} family="honey-shan" strength="quiet">
+              <p className={styles.eyebrow}>{t.eyebrow}</p><h1>{t.title}</h1><p className={styles.intro}>{t.intro}</p>
+            </Atmosphere>
             <figure className={styles.evidence}><img src="/landing/4.jpg" alt={t.imageAlt} /><figcaption>{t.imageCaption}</figcaption></figure>
             <section className={styles.facts} aria-labelledby="sample-set-title">
               <h2 id="sample-set-title">{t.setTitle}</h2><div>{t.facts.map(([lead, body]) => <article key={lead}><strong>{lead}</strong><p>{body}</p></article>)}</div>

@@ -19,6 +19,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
+import Atmosphere from "@/components/Atmosphere";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { calculatePricing, DEFAULT_PRICING_INPUTS, packGramsFromLabel } from "@/lib/pricing";
 import styles from "./PricingControl.module.css";
@@ -683,7 +684,7 @@ export default function PricingControl({ supabase, email }) {
             <p>{t.afterDiscount}</p>
           </section>
 
-          <section className={styles.marginFeel} data-tone={marginStatus.tone}>
+          <Atmosphere as="section" className={styles.marginFeel} family="old-brass" strength="staff" grain={false} data-tone={marginStatus.tone}>
             <header>
               <div><p>{t.marginEyebrow}</p><h3>{t.marginFeel}</h3></div>
               <div className={styles.marginSwitch} role="group" aria-label={t.marginView}>
@@ -750,7 +751,7 @@ export default function PricingControl({ supabase, email }) {
             </dl>
             {results.currentMarginPercent != null && <p className={styles.currentMarginNote}>{t.currentPriceMargin}: <b>{results.currentMarginPercent}%</b></p>}
             <small>{t.marginNote}</small>
-          </section>
+          </Atmosphere>
 
           <section className={styles.health} data-clear={!results.warnings.length}>
             <header>{results.warnings.length ? <AlertTriangle /> : <ShieldCheck />}<b>{results.warnings.length ? warningCopy[results.warnings[0]] : t.noWarnings}</b></header>

@@ -33,7 +33,7 @@
 .panelHeading p{max-width:52ch;margin:var(--space-sm) 0 0;color:var(--color-ink-2);line-height:1.55}
 .packList{border-block-start:var(--rule-thin) solid var(--color-rule)}
 .pack{width:100%;min-width:0;display:grid;grid-template-columns:1.5rem minmax(0,1fr);gap:var(--space-sm);padding:var(--space-md) 0;border:0;border-block-end:var(--rule-thin) solid var(--color-rule);background:transparent;color:inherit;text-align:start;cursor:pointer}
-.pack[data-selected=true]{background:color-mix(in oklch,var(--color-accent) 7%,transparent)}
+.pack[data-selected=true]{background:linear-gradient(90deg,color-mix(in srgb,var(--atmosphere-honey-shan-2) 22%,transparent),transparent 74%)}
 .radioMark{width:1.35rem;height:1.35rem;margin-block-start:.1rem;display:grid;place-items:center;border:var(--rule-thin) solid var(--color-rule);border-radius:var(--radius-round)}
 .pack[data-selected=true] .radioMark{border-color:var(--color-accent);background:var(--color-accent);color:var(--color-accent-ink)}
 .radioMark svg{width:.82rem;height:.82rem;stroke-width:3}.packCopy,.packDetail,.packWeight{min-width:0;display:block}
