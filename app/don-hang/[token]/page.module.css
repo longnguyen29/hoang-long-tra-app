@@ -172,6 +172,29 @@
 .waiting > p:not(.label) { color: var(--color-ink-2); line-height: 1.5; }
 .carrier small { color: var(--color-muted); }
 
+.payment h2 { max-width: 18ch; }
+.paymentReminder { margin: 1rem 0; color: var(--color-ink-2); line-height: 1.55; }
+.payment > img {
+  width: min(100%, 17rem);
+  display: block;
+  margin: 1.25rem auto;
+  border: 1px solid var(--color-rule-2);
+  background: white;
+}
+.payment > small {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  margin-top: 1rem;
+  color: var(--color-muted);
+  line-height: 1.45;
+}
+.payment > small svg { width: 1rem; flex: none; }
+.paid { display: flex; align-items: center; gap: .8rem; margin-top: 1rem; color: var(--color-success); }
+.paid > svg { width: 1.8rem; height: 1.8rem; flex: none; }
+.paid span, .paid b, .paid small { display: block; }
+.paid small { margin-top: .2rem; color: var(--color-muted); }
+
 .actions { display: grid; gap: .65rem; }
 .actions a {
   min-height: 2.8rem;

@@ -56,19 +56,11 @@ const APPS = {
   },
   pipeline: {
     key: "pipeline",
-    label: "Phát triển đối tác",
-    short: "Đối tác",
+    label: "Khách hàng B2B",
+    short: "Khách hàng",
     href: "/admin/pipeline",
-    description: "Cơ hội, báo giá và nhịp theo đuổi khách B2B.",
+    description: "Hồ sơ khách B2B, cơ hội, báo giá và nhịp theo đuổi.",
     icon: Handshake,
-  },
-  growth: {
-    key: "growth",
-    label: "Phòng tăng trưởng",
-    short: "Tăng trưởng",
-    href: "/admin/growth",
-    description: "Thử nội dung Threads và theo dấu từ lượt vào trang mẫu tới đơn sỉ.",
-    icon: FlaskConical,
   },
   operations: {
     key: "operations",
@@ -93,6 +85,14 @@ const APPS = {
     href: "/admin/house",
     description: "Nội dung, sản phẩm và câu chuyện đang hiển thị.",
     icon: Sprout,
+  },
+  growth: {
+    key: "growth",
+    label: "Công cụ tăng trưởng",
+    short: "Công cụ",
+    href: "/admin/growth",
+    description: "Tạo, chấm và theo dõi thử nghiệm nội dung dẫn tới trang sample.",
+    icon: FlaskConical,
   },
 };
 
@@ -320,11 +320,11 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
       supabase.rpc("budget_morning_snapshot"),
     ]);
     if (deskResult.error) {
-      setError("Bàn ngày chưa tải được dữ liệu. Kiểm tra migration 0036 rồi thử lại.");
+      setError("Bảng điều khiển chưa tải được dữ liệu. Kiểm tra migration 0036 rồi thử lại.");
     } else {
       setSnapshot({ ...deskResult.data, budget: budgetResult.data || {} });
       if (budgetResult.error)
-        setError("Bàn ngày đã tải, nhưng chưa đọc được ngân sách từ migration 0037.");
+        setError("Bảng điều khiển đã tải, nhưng chưa đọc được ngân sách từ migration 0037.");
     }
     setLoading(false);
   }, [supabase]);
@@ -504,7 +504,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
         <details className={styles.mobileMenu}>
           <summary><Menu />Ứng dụng</summary>
           <nav aria-label="Ứng dụng Hoàng Long">
-            <Link href="/admin" className={styles.active}><Brain />Bàn ngày</Link>
+            <Link href="/admin" className={styles.active}><Brain />Bảng điều khiển</Link>
             {APP_LIST.map((app) => {
               const Icon = app.icon;
               return <Link key={app.key} href={app.href} onClick={(event) => openApp(event, app)}><Icon />{app.short}</Link>;
@@ -512,7 +512,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
           </nav>
         </details>
         <nav className={styles.desktopNav} aria-label="Ứng dụng Hoàng Long">
-          <Link href="/admin" className={styles.active}><Brain /><span>Bàn ngày</span></Link>
+          <Link href="/admin" className={styles.active}><Brain /><span>Bảng điều khiển</span></Link>
           {APP_LIST.map((app) => {
             const Icon = app.icon;
             return <Link key={app.key} href={app.href} onClick={(event) => openApp(event, app)} data-loading={moving === app.key}><Icon /><span>{app.short}</span></Link>;
@@ -525,7 +525,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
         <header className={styles.topbar}>
           <div>
             <p>{dayLabel(locale)}</p>
-            <h1>Bàn ngày</h1>
+            <h1>Bảng điều khiển</h1>
           </div>
           <div className={styles.identity}>
             <span><b>{email}</b><small>{role}</small></span>
@@ -707,7 +707,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
         </div>
 
         <footer className={styles.footer}>
-          <span>Hoàng Long · Bàn ngày</span>
+          <span>Hoàng Long · Bảng điều khiển</span>
           <p>Dữ liệu thật ở app nguồn. Quyết định chỉ thành trí nhớ sau khi được duyệt.</p>
         </footer>
       </section>

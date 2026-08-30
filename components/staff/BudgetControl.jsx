@@ -456,7 +456,7 @@ export default function BudgetControl({ supabase, email, role, onLogout }) {
       {periodDraft && (
         <Dialog title="Tạo kỳ ngân sách" onClose={() => setPeriodDraft(null)}>
           <form className={styles.form} onSubmit={savePeriod}>
-            <label><span>Tên kỳ</span><input required value={periodDraft.name} onChange={(event) => setPeriodDraft({ ...periodDraft, name: event.target.value })} /><small>Tên xuất hiện trên báo cáo và Bàn ngày.</small></label>
+            <label><span>Tên kỳ</span><input required value={periodDraft.name} onChange={(event) => setPeriodDraft({ ...periodDraft, name: event.target.value })} /><small>Tên xuất hiện trên báo cáo và Bảng điều khiển.</small></label>
             <div className={styles.formGrid}><label><span>Từ ngày</span><input required type="date" value={periodDraft.startsOn} onChange={(event) => setPeriodDraft({ ...periodDraft, startsOn: event.target.value })} /><small>&nbsp;</small></label><label><span>Đến ngày</span><input required type="date" value={periodDraft.endsOn} onChange={(event) => setPeriodDraft({ ...periodDraft, endsOn: event.target.value })} /><small>&nbsp;</small></label></div>
             <label><span>Trần ngân sách</span><FormattedNumberInput required min="0" step="1000" value={periodDraft.totalLimit} onChange={(event) => setPeriodDraft({ ...periodDraft, totalLimit: event.target.value })} /><small>Tổng tiền tối đa có thể phân bổ trong kỳ.</small></label>
             <label><span>Ghi chú</span><textarea value={periodDraft.note} onChange={(event) => setPeriodDraft({ ...periodDraft, note: event.target.value })} /><small>Nguyên tắc hoặc giới hạn quan trọng của kỳ.</small></label>

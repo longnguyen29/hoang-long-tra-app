@@ -80,6 +80,7 @@ const dynamicPatterns = {
     [/^(.+) kg\/tháng$/, "$1 kg/month"],
     [/^Mở (\d+) cơ hội đã đến hạn theo đuổi$/, "Open $1 opportunities due for follow-up"],
     [/^Cập nhật (.+)$/, "Updated $1"],
+    [/^Còn cần thanh toán (.+)$/, "Amount still due: $1"],
   ],
   vi: [
     [/^(\d+)\/(\d+) complete$/, "$1/$2 hoàn tất"],
@@ -127,6 +128,7 @@ const dynamicPatterns = {
     [/^(.+) kg\/month$/, "$1 kg/tháng"],
     [/^Open (\d+) opportunities due for follow-up$/, "Mở $1 cơ hội đã đến hạn theo đuổi"],
     [/^Updated (.+)$/, "Cập nhật $1"],
+    [/^Amount still due: (.+)$/, "Còn cần thanh toán $1"],
   ],
 };
 

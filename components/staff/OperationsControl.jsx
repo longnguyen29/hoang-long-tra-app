@@ -35,6 +35,10 @@ const inputDate = (days = 0) => {
   value.setDate(value.getDate() + days);
   return value.toISOString().slice(0, 10);
 };
+const paymentRequestNumber = (order) => {
+  const day = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+  return `PAY-${day}-${String(order?.id || "ORDER").slice(-6).toUpperCase()}`;
+};
 const slug = (value) =>
   `${value
     .toLowerCase()
@@ -154,7 +158,6 @@ export default function OperationsControl({ supabase, email, onLogout }) {
     );
   const uninvoiced = orders.filter(
     (order) =>
-      order.type === "wholesale" &&
       !receivables.some((item) => item.order_id === order.id) &&
       order.estimated_total > 0,
   );
@@ -166,27 +169,28 @@ export default function OperationsControl({ supabase, email, onLogout }) {
     const order = orderMap[invoice.order_id];
     if (!order) return;
     setSaving(true);
-    const row = {
-      id: `recv-${order.id}`,
-      order_id: order.id,
-      partner_account_id: order.partner_account_id || null,
-      invoice_number: invoice.invoice_number.trim(),
-      issued_at: invoice.issued_at,
-      due_at: invoice.due_at || null,
-      total: Number(order.estimated_total) || 0,
-      paid: 0,
-      status: "open",
-      payment_terms: invoice.payment_terms.trim(),
-      note: invoice.note.trim(),
-    };
-    const { error: saveError } = await supabase.from("receivables").insert(row);
+    const { error: saveError } = await supabase.rpc("issue_receivable", {
+      p_order_id: order.id,
+      p_invoice_number: invoice.invoice_number.trim(),
+      p_issued_at: invoice.issued_at,
+      p_due_at: invoice.due_at || null,
+      p_payment_terms: invoice.payment_terms.trim(),
+      p_note: invoice.note.trim(),
+    });
     setSaving(false);
     if (saveError) {
-      setError("Chưa phát hành được công nợ cho đơn này.");
+      const reason = saveError.message || "";
+      setError(reason.includes("receivable_exists")
+        ? "Đơn này đã có yêu cầu thanh toán. Hãy làm mới để xem bản ghi."
+        : reason.includes("due_date_before_issue_date")
+          ? "Hạn thanh toán không thể sớm hơn ngày tạo yêu cầu."
+          : reason.includes("order_has_no_total")
+            ? "Đơn chưa có tổng tiền. Hãy chốt giá bán trước."
+            : "Chưa tạo được yêu cầu thanh toán cho đơn này.");
       return;
     }
     setInvoice(null);
-    flash("Đã phát hành công nợ");
+    flash("Đã tạo yêu cầu thanh toán");
     load();
   };
   const recordPayment = async (event) => {
@@ -493,7 +497,7 @@ export default function OperationsControl({ supabase, email, onLogout }) {
               onClick={() =>
                 setInvoice({
                   order_id: uninvoiced[0]?.id || "",
-                  invoice_number: "",
+                  invoice_number: paymentRequestNumber(uninvoiced[0]),
                   issued_at: inputDate(),
                   due_at: inputDate(30),
                   payment_terms: "Thanh toán trong 30 ngày.",
@@ -502,7 +506,7 @@ export default function OperationsControl({ supabase, email, onLogout }) {
               }
             >
               <FilePlus2 />
-              Phát hành công nợ
+              Tạo yêu cầu thanh toán
             </button>
           </header>
           <div className={styles.financeSummary}>
@@ -531,10 +535,11 @@ export default function OperationsControl({ supabase, email, onLogout }) {
               </b>
             </article>
             <article>
-              <span>Chưa phát hành</span>
+              <span>Chưa có yêu cầu</span>
               <b>{uninvoiced.length} đơn</b>
             </article>
           </div>
+          {!uninvoiced.length && <p className={styles.emptyHint}>Không có đơn đủ điều kiện: đơn cần có tổng tiền lớn hơn 0 và chưa có yêu cầu thanh toán.</p>}
           <div className={styles.rows}>
             {receivables.map((item) => {
               const remaining = Number(item.total) - Number(item.paid),
@@ -744,7 +749,7 @@ export default function OperationsControl({ supabase, email, onLogout }) {
             <header>
               <div>
                 <p>Receivable record</p>
-                <h2>Phát hành công nợ</h2>
+                <h2>Tạo yêu cầu thanh toán</h2>
               </div>
               <button type="button" onClick={() => setInvoice(null)}>
                 <X />
@@ -754,9 +759,10 @@ export default function OperationsControl({ supabase, email, onLogout }) {
               Đơn hàng
               <select
                 value={invoice.order_id}
-                onChange={(event) =>
-                  setInvoice({ ...invoice, order_id: event.target.value })
-                }
+                onChange={(event) => {
+                  const nextOrder = orderMap[event.target.value];
+                  setInvoice({ ...invoice, order_id: event.target.value, invoice_number: paymentRequestNumber(nextOrder) });
+                }}
               >
                 {uninvoiced.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -767,7 +773,7 @@ export default function OperationsControl({ supabase, email, onLogout }) {
               </select>
             </label>
             <label>
-              Số hóa đơn / chứng từ
+              Mã yêu cầu / số chứng từ
               <input
                 value={invoice.invoice_number}
                 onChange={(event) =>
@@ -777,7 +783,7 @@ export default function OperationsControl({ supabase, email, onLogout }) {
             </label>
             <div className={styles.formGrid}>
               <label>
-                Ngày phát hành
+                Ngày tạo yêu cầu
                 <input
                   type="date"
                   value={invoice.issued_at}
@@ -818,7 +824,7 @@ export default function OperationsControl({ supabase, email, onLogout }) {
             </label>
             <button className={styles.primary} disabled={saving}>
               <Save />
-              Phát hành
+              Tạo yêu cầu
             </button>
           </form>
         </div>

@@ -221,7 +221,7 @@ export default function GrowthLab({ supabase, email, role }) {
 
   return <main className={styles.shell}>
     <header className={styles.topbar}>
-      <div><Link href="/admin"><ArrowLeft/>Bàn ngày</Link><span>Growth lab · prompt v{activePrompt.version || "—"}</span></div>
+      <div><Link href="/admin"><ArrowLeft/>Bảng điều khiển</Link><span>Growth lab · prompt v{activePrompt.version || "—"}</span></div>
       <div><span><b>{email}</b><small>{role}</small></span><button onClick={load} disabled={loading} title="Đọc lại kết quả mới nhất từ sample và đơn hàng"><RefreshCw className={loading ? styles.spin : ""}/></button></div>
     </header>
 

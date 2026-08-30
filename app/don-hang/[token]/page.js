@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Clock3, MessageCircle, PackageCheck, RefreshCw, Truck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock3, MessageCircle, PackageCheck, RefreshCw, Truck, WalletCards } from "lucide-react";
 import { carrierLabel } from "@/lib/carrier-tracking";
 import { ORDER_STAGES, orderStageIndex, reconcileOrderStage } from "@/lib/order-flow";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -39,29 +39,54 @@ function dateTime(value) {
   }).format(date);
 }
 
+function shortDate(value) {
+  const [year, month, day] = String(value || "").split("-");
+  return year && month && day ? `${day}/${month}/${year}` : "—";
+}
+
+const money = (value) => new Intl.NumberFormat("vi-VN", {
+  style: "currency", currency: "VND", maximumFractionDigits: 0,
+}).format(Number(value || 0));
+
+function vietQrUrl(payment, orderId, amount) {
+  if (!payment?.bin || !payment?.account_number || amount <= 0) return "";
+  const name = encodeURIComponent(payment.account_name || "");
+  const info = encodeURIComponent(orderId);
+  return `https://img.vietqr.io/image/${encodeURIComponent(payment.bin)}-${encodeURIComponent(payment.account_number)}-compact2.png?accountName=${name}&addInfo=${info}&amount=${Math.round(amount)}`;
+}
+
 async function readOrder(token) {
   if (!/^[0-9a-f-]{36}$/i.test(token || "")) return null;
-  const { data, error } = await createAdminClient()
+  const admin = createAdminClient();
+  const { data: order, error } = await admin
     .from("orders")
-    .select("id,ts,status,stage,tracking_code,shipping_carrier,carrier_status_code,carrier_status_name,carrier_status_at,delivered_at")
+    .select("id,ts,status,stage,tracking_code,shipping_carrier,carrier_status_code,carrier_status_name,carrier_status_at,delivered_at,payment_method,estimated_total")
     .eq("public_tracking_token", token)
     .maybeSingle();
   if (error) {
     console.error("Could not load public order journey", error);
     return null;
   }
-  return data;
+  if (!order) return null;
+  const [{ data: receivable }, { data: payment }] = await Promise.all([
+    admin.from("receivables").select("invoice_number,issued_at,due_at,total,paid,status,payment_terms").eq("order_id", order.id).neq("status", "void").maybeSingle(),
+    admin.from("settings_payment").select("bin,bank_short_name,account_number,account_name").eq("id", 1).maybeSingle(),
+  ]);
+  return { order, receivable, payment };
 }
 
 export default async function PublicOrderJourneyPage({ params }) {
   const { token } = await params;
-  const order = await readOrder(token);
-  if (!order) notFound();
+  const result = await readOrder(token);
+  if (!result) notFound();
+  const { order, receivable, payment } = result;
 
   const stage = reconcileOrderStage(order.stage, order.status);
   const currentIndex = orderStageIndex(stage);
   const [headline, summary] = STATUS_COPY[stage] || STATUS_COPY.new_order;
   const lastUpdated = order.carrier_status_at || order.delivered_at || order.ts;
+  const remaining = receivable ? Math.max(0, Number(receivable.total) - Number(receivable.paid)) : 0;
+  const qrUrl = vietQrUrl(payment, order.id, remaining);
 
   return (
     <main className={styles.shell}>
@@ -110,6 +135,23 @@ export default async function PublicOrderJourneyPage({ params }) {
               <div><dt>Ngày nhận đơn</dt><dd>{dateTime(order.ts)}</dd></div>
             </dl>
           </section>
+
+          {receivable && <section className={styles.payment} data-paid={remaining === 0}>
+            <p className={styles.label}>Thanh toán</p>
+            {remaining > 0 ? <>
+              <h2>Còn cần thanh toán {money(remaining)}</h2>
+              <p className={styles.paymentReminder}>Khi thuận tiện, quý khách vui lòng hoàn tất khoản còn lại để Nhà đối chiếu và khép lại đơn hàng.</p>
+              {qrUrl && <img src={qrUrl} alt={`Mã QR thanh toán ${money(remaining)}`}/>}
+              <dl>
+                <div><dt>Ngân hàng</dt><dd>{payment?.bank_short_name || "—"}</dd></div>
+                <div><dt>Số tài khoản</dt><dd>{payment?.account_number || "—"}</dd></div>
+                <div><dt>Chủ tài khoản</dt><dd>{payment?.account_name || "—"}</dd></div>
+                <div><dt>Nội dung</dt><dd>{order.id}</dd></div>
+                {receivable.due_at && <div><dt>Hạn thanh toán</dt><dd>{shortDate(receivable.due_at)}</dd></div>}
+              </dl>
+              <small><WalletCards aria-hidden="true"/>{receivable.payment_terms || "Vui lòng chuyển khoản theo thông tin trên."}</small>
+            </> : <div className={styles.paid}><CheckCircle2 aria-hidden="true"/><span><b>Đã thanh toán đủ</b><small>Nhà đã ghi nhận toàn bộ khoản thanh toán của đơn.</small></span></div>}
+          </section>}
 
           {order.shipping_carrier && order.tracking_code ? (
             <section className={styles.carrier}>
