@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Clock3, MessageCircle, PackageCheck, RefreshCw, Truck, WalletCards } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock3, Info, MessageCircle, PackageCheck, RefreshCw, ScanLine, Truck, WalletCards } from "lucide-react";
 import { carrierLabel } from "@/lib/carrier-tracking";
 import { ORDER_STAGES, orderStageIndex, reconcileOrderStage } from "@/lib/order-flow";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -48,10 +48,10 @@ const money = (value) => new Intl.NumberFormat("vi-VN", {
   style: "currency", currency: "VND", maximumFractionDigits: 0,
 }).format(Number(value || 0));
 
-function vietQrUrl(payment, orderId, amount) {
+function vietQrUrl(payment, paymentReference, amount) {
   if (!payment?.bin || !payment?.account_number || amount <= 0) return "";
   const name = encodeURIComponent(payment.account_name || "");
-  const info = encodeURIComponent(orderId);
+  const info = encodeURIComponent(paymentReference);
   return `https://img.vietqr.io/image/${encodeURIComponent(payment.bin)}-${encodeURIComponent(payment.account_number)}-compact2.png?accountName=${name}&addInfo=${info}&amount=${Math.round(amount)}`;
 }
 
@@ -85,8 +85,11 @@ export default async function PublicOrderJourneyPage({ params }) {
   const currentIndex = orderStageIndex(stage);
   const [headline, summary] = STATUS_COPY[stage] || STATUS_COPY.new_order;
   const lastUpdated = order.carrier_status_at || order.delivered_at || order.ts;
-  const remaining = receivable ? Math.max(0, Number(receivable.total) - Number(receivable.paid)) : 0;
-  const qrUrl = vietQrUrl(payment, order.id, remaining);
+  const paymentTotal = Math.max(0, Number(receivable?.total || 0));
+  const recordedPaid = Math.min(paymentTotal, Math.max(0, Number(receivable?.paid || 0)));
+  const remaining = Math.max(0, paymentTotal - recordedPaid);
+  const paymentReference = receivable?.invoice_number || order.id;
+  const qrUrl = vietQrUrl(payment, paymentReference, remaining);
 
   return (
     <main className={styles.shell}>
@@ -137,18 +140,35 @@ export default async function PublicOrderJourneyPage({ params }) {
           </section>
 
           {receivable && <section className={styles.payment} data-paid={remaining === 0}>
-            <p className={styles.label}>Thanh toán</p>
+            <div className={styles.paymentHeading}>
+              <p className={styles.label}>Thanh toán</p>
+              <span>{remaining > 0 ? "Chờ đối soát" : "Đã hoàn tất"}</span>
+            </div>
             {remaining > 0 ? <>
-              <h2>Còn cần thanh toán {money(remaining)}</h2>
-              <p className={styles.paymentReminder}>Khi thuận tiện, quý khách vui lòng hoàn tất khoản còn lại để Nhà đối chiếu và khép lại đơn hàng.</p>
-              {qrUrl && <img src={qrUrl} alt={`Mã QR thanh toán ${money(remaining)}`}/>}
-              <dl>
-                <div><dt>Ngân hàng</dt><dd>{payment?.bank_short_name || "—"}</dd></div>
-                <div><dt>Số tài khoản</dt><dd>{payment?.account_number || "—"}</dd></div>
-                <div><dt>Chủ tài khoản</dt><dd>{payment?.account_name || "—"}</dd></div>
-                <div><dt>Nội dung</dt><dd>{order.id}</dd></div>
-                {receivable.due_at && <div><dt>Hạn thanh toán</dt><dd>{shortDate(receivable.due_at)}</dd></div>}
-              </dl>
+              <h2 className={styles.balance}>{money(remaining)}</h2>
+              <p className={styles.balanceLabel}>Số tiền còn lại của đơn hàng</p>
+
+              <div className={styles.paymentSummary} aria-label="Tóm tắt thanh toán">
+                <div><span>Tổng đơn</span><b>{money(paymentTotal)}</b></div>
+                <div><span>Đã ghi nhận</span><b>{money(recordedPaid)}</b></div>
+                <div><span>Còn lại</span><b>{money(remaining)}</b></div>
+              </div>
+
+              <p className={styles.paymentReminder}><Info aria-hidden="true"/><span>Khi thuận tiện, quý khách vui lòng hoàn tất khoản còn lại. <b>Nếu quý khách đã chuyển khoản, vui lòng bỏ qua lời nhắc này</b>; Nhà sẽ cập nhật sau khi đối chiếu.</span></p>
+
+              <div className={styles.transferSlip}>
+                {qrUrl ? <figure>
+                  <img src={qrUrl} alt={`Mã QR thanh toán ${money(remaining)}`}/>
+                  <figcaption><ScanLine aria-hidden="true"/>Quét QR để điền sẵn số tiền và nội dung</figcaption>
+                </figure> : <p className={styles.qrUnavailable}>Mã QR sẽ xuất hiện sau khi Nhà hoàn tất thông tin tài khoản.</p>}
+                <dl>
+                  <div><dt>Ngân hàng</dt><dd>{payment?.bank_short_name || "—"}</dd></div>
+                  <div><dt>Số tài khoản</dt><dd>{payment?.account_number || "—"}</dd></div>
+                  <div><dt>Chủ tài khoản</dt><dd>{payment?.account_name || "—"}</dd></div>
+                  <div><dt>Nội dung</dt><dd>{paymentReference}</dd></div>
+                  {receivable.due_at && <div><dt>Hạn thanh toán</dt><dd>{shortDate(receivable.due_at)}</dd></div>}
+                </dl>
+              </div>
               <small><WalletCards aria-hidden="true"/>{receivable.payment_terms || "Vui lòng chuyển khoản theo thông tin trên."}</small>
             </> : <div className={styles.paid}><CheckCircle2 aria-hidden="true"/><span><b>Đã thanh toán đủ</b><small>Nhà đã ghi nhận toàn bộ khoản thanh toán của đơn.</small></span></div>}
           </section>}

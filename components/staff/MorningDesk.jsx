@@ -23,6 +23,7 @@ import {
   Menu,
   PencilLine,
   Plus,
+  Pin,
   RefreshCw,
   RotateCcw,
   Scale,
@@ -654,6 +655,13 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
           </div>
 
           <aside className={styles.contextColumn}>
+            {canReview && <section className={styles.pausedWork}>
+              <div className={styles.pausedWorkMeta}><span><Pin />Việc để làm tiếp</span><small>Đã tạm dừng</small></div>
+              <h2>Thử và chốt 6 công thức V1</h2>
+              <p>Pha thử bằng trà Hoàng Long, ghi kết quả thực tế và điều chỉnh định lượng trước khi đưa vào menu mẫu.</p>
+              <Link href="/admin/recipes?view=lab" onClick={(event) => openApp(event, { ...APPS.recipes, href: "/admin/recipes?view=lab" }, { reminder: "house-recipes-v1" })}>Mở Recipe Lab<ArrowRight /></Link>
+            </section>}
+
             <section className={styles.resume}>
               <div><RotateCcw /><span>Tiếp tục từ lần trước</span></div>
               <h2>{resume.label}</h2>
