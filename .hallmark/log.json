@@ -1,6 +1,16 @@
 [
   {
     "date": "2026-09-01",
+    "macrostructure": "Workbench material ledger",
+    "theme": "House of Hoàng Long (design.md)",
+    "enrichment": "none",
+    "nav": "inherited operations ledger",
+    "footer": "inherited Ft2 inline rule",
+    "knob_delta": "purchase queue + material master + BOM coverage matrix",
+    "brief": "Automatic order COGS, packaging inventory and replenishment planning"
+  },
+  {
+    "date": "2026-09-01",
     "macrostructure": "Workbench journey ledger",
     "theme": "House of Hoàng Long (design.md)",
     "enrichment": "none",

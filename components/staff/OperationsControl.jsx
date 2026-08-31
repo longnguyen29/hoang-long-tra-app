@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   BarChart3,
+  Boxes,
   Calculator,
   CalendarClock,
   Check,
@@ -26,6 +27,7 @@ import {
 } from "lucide-react";
 import styles from "./OperationsControl.module.css";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
+import MaterialPlanningPanel from "./MaterialPlanningPanel";
 
 const money = (value) => `${Number(value || 0).toLocaleString("vi-VN")}đ`;
 const shortDate = (value) =>
@@ -74,7 +76,7 @@ const emptyBatch = () => ({
   notes: "",
 });
 
-export default function OperationsControl({ supabase, email, onLogout }) {
+export default function OperationsControl({ supabase, email, role, onLogout }) {
   const [tab, setTab] = useState("owner"),
     [snapshot, setSnapshot] = useState(null),
     [orders, setOrders] = useState([]),
@@ -84,6 +86,7 @@ export default function OperationsControl({ supabase, email, onLogout }) {
     [allocations, setAllocations] = useState([]),
     [reservations, setReservations] = useState([]),
     [products, setProducts] = useState([]),
+    [variants, setVariants] = useState([]),
     [loading, setLoading] = useState(true),
     [saving, setSaving] = useState(false),
     [error, setError] = useState(""),
@@ -95,7 +98,7 @@ export default function OperationsControl({ supabase, email, onLogout }) {
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
-    const [s, o, r, p, b, a, i, c] = await Promise.all([
+    const [s, o, r, p, b, a, i, c, v] = await Promise.all([
       supabase.rpc("operations_control_snapshot"),
       supabase.from("orders").select("*").order("ts", { ascending: false }),
       supabase
@@ -122,8 +125,9 @@ export default function OperationsControl({ supabase, email, onLogout }) {
         .from("catalog_products")
         .select("id,name,stock_ha_giang,stock_soc_son,available,kind")
         .order("name"),
+      supabase.from("catalog_variants").select("product_id,weight").order("weight"),
     ]);
-    if ([s, o, r, p, b, a, i, c].some((result) => result.error))
+    if ([s, o, r, p, b, a, i, c, v].some((result) => result.error))
       setError(
         "Chưa tải được toàn bộ dữ liệu vận hành. Kiểm tra migration 0035.",
       );
@@ -135,6 +139,7 @@ export default function OperationsControl({ supabase, email, onLogout }) {
     if (!a.error) setAllocations(a.data || []);
     if (!i.error) setReservations(i.data || []);
     if (!c.error) setProducts(c.data || []);
+    if (!v.error) setVariants(v.data || []);
     setLoading(false);
   }, [supabase]);
   useEffect(() => {
@@ -311,6 +316,7 @@ export default function OperationsControl({ supabase, email, onLogout }) {
     ["finance", "Công nợ", WalletCards],
     ["batches", "Lô & chất lượng", ShieldCheck],
     ["planning", "Kế hoạch", TrendingUp],
+    ["materials", "Vật tư & định mức", Boxes],
   ];
   if (loading)
     return (
@@ -743,6 +749,7 @@ export default function OperationsControl({ supabase, email, onLogout }) {
           </section>
         </section>
       )}
+      {tab === "materials" && <MaterialPlanningPanel supabase={supabase} orders={orders} products={products} variants={variants} role={role}/>}
       {invoice && (
         <div className={styles.overlay}>
           <form className={styles.drawer} onSubmit={saveInvoice}>

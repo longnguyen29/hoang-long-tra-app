@@ -96,6 +96,25 @@ export async function POST(request, { params }) {
   return Response.json({ ok: true, cost });
 }
 
+export async function PUT(request, { params }) {
+  const staff = await authenticateStaffRequest(request);
+  if (!staff) return Response.json({ ok: false }, { status: 401 });
+  const { id: orderId } = await params;
+  const { data: count, error } = await staff.admin.rpc("sync_order_bom_costs_internal", { p_order_id: orderId });
+  if (error) {
+    const missing = error.message?.includes("sync_order_bom_costs_internal");
+    return Response.json({ ok: false, error: missing ? "material_migration_required" : "bom_sync_failed" }, { status: 500 });
+  }
+  const { data: costs } = await staff.admin.from("order_costs").select("*").eq("order_id", orderId).order("created_at", { ascending: false });
+  await logOrderEvent(staff.admin, {
+    orderId,
+    kind: "costs_synced",
+    message: `Đã đồng bộ ${count || 0} dòng chi phí từ định mức vật tư.`,
+    actor: staff.user.email,
+  });
+  return Response.json({ ok: true, count: count || 0, costs: costs || [] });
+}
+
 export async function DELETE(request, { params }) {
   const staff = await authenticateStaffRequest(request);
   if (!staff) return Response.json({ ok: false }, { status: 401 });
@@ -111,11 +130,12 @@ export async function DELETE(request, { params }) {
   const costId = String(body?.costId || "");
   const { data: cost } = await staff.admin
     .from("order_costs")
-    .select("id, description, expense_id")
+    .select("id, description, expense_id, source_type")
     .eq("id", costId)
     .eq("order_id", orderId)
     .maybeSingle();
   if (!cost) return Response.json({ ok: false }, { status: 404 });
+  if (cost.source_type === "bom") return Response.json({ ok: false, error: "automatic_cost" }, { status: 409 });
 
   if (cost.expense_id) {
     const { data: expense } = await staff.admin
