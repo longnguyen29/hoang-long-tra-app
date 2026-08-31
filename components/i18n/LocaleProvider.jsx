@@ -219,8 +219,8 @@ export default function LocaleProvider({ children }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
   const isWorkBoard = pathname?.startsWith("/admin/work");
-  const defaultLocale = isWorkBoard ? "vi" : isAdmin ? "en" : "vi";
-  const storageKey = isWorkBoard ? "hl-work-locale" : isAdmin ? "hl-admin-locale" : "hl-locale";
+  const defaultLocale = "vi";
+  const storageKey = isWorkBoard ? "hl-work-locale" : isAdmin ? "hl-admin-locale-v2" : "hl-locale";
   const [locale, setLocale] = useState(defaultLocale);
 
   useEffect(() => {

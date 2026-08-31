@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Clock3, Info, MessageCircle, PackageCheck, RefreshCw, ScanLine, Truck, WalletCards } from "lucide-react";
 import { carrierLabel } from "@/lib/carrier-tracking";
 import { ORDER_STAGES, orderStageIndex, reconcileOrderStage } from "@/lib/order-flow";
+import { withPaymentBankOverride } from "@/lib/payment-settings";
 import { createAdminClient } from "@/lib/supabase/admin";
 import styles from "./page.module.css";
 
@@ -72,7 +73,11 @@ async function readOrder(token) {
     admin.from("receivables").select("invoice_number,issued_at,due_at,total,paid,status,payment_terms").eq("order_id", order.id).neq("status", "void").maybeSingle(),
     admin.from("settings_payment").select("bin,bank_short_name,account_number,account_name").eq("id", 1).maybeSingle(),
   ]);
-  return { order, receivable, payment };
+  return {
+    order,
+    receivable,
+    payment: withPaymentBankOverride(payment || { bank_short_name: "", account_number: "", account_name: "" }),
+  };
 }
 
 export default async function PublicOrderJourneyPage({ params }) {
