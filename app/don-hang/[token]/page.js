@@ -123,7 +123,7 @@ export default async function PublicOrderJourneyPage({ params }) {
               return (
                 <li key={item.id} data-state={state} aria-current={state === "current" ? "step" : undefined}>
                   <span className={styles.node}>{state === "done" ? "✓" : item.number}</span>
-                  <div><b>{item.label}</b><small>{state === "done" ? "Đã đi qua" : state === "current" ? "Đang thực hiện" : "Bước tiếp theo"}</small></div>
+                  <div><b>{item.label}</b><small>{state === "done" ? "Đã hoàn thành" : state === "current" ? "Đang thực hiện" : "Bước tiếp theo"}</small></div>
                 </li>
               );
             })}
