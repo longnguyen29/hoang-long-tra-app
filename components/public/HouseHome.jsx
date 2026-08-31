@@ -13,7 +13,7 @@ const COPY = {
     book: "Book tea",
     place: "Hà Giang · Việt Nam",
     hero: "Tea from old trees, made for the world beyond them.",
-    heroBody: "House of Hoàng Long works with ancient Shan Tuyết tea from Hà Giang and a precise Japanese processing discipline. Family-made since 1995.",
+    heroBody: "House of Hoang Long works with ancient Shan Tuyết tea from Hà Giang and a precise Japanese processing discipline. Family-made since 1995.",
     explore: "Explore this season",
     trade: "For tea houses & kitchens",
     season: "Current leaves",
@@ -92,9 +92,9 @@ export default function HouseHome() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <Link href="/" className={styles.wordmark} aria-label="House of Hoàng Long home">
+        <Link href="/" className={styles.wordmark} aria-label="House of Hoang Long home">
           <span className={styles.seal} aria-hidden="true">皇龍</span>
-          <span>House of Hoàng Long</span>
+          <span>House of Hoang Long</span>
         </Link>
 
         <nav className={styles.desktopNav} aria-label="Primary navigation">
@@ -132,7 +132,7 @@ export default function HouseHome() {
         </div>
         <figure className={styles.heroImage}>
           <img src={photos[0]} alt="Hoàng Long tea landscape and craft" fetchPriority="high" />
-          <figcaption>House of Hoàng Long · Est. 1995</figcaption>
+          <figcaption>House of Hoang Long · Est. 1995</figcaption>
         </figure>
       </section>
 
@@ -188,7 +188,7 @@ export default function HouseHome() {
       <footer className={styles.footer}>
         <p>{t.closing}</p>
         <div>
-          <span>House of Hoàng Long · Hà Giang / Hà Nội</span>
+          <span>House of Hoang Long · Hà Giang / Hà Nội</span>
           <a href="https://zalo.me/0903333841" target="_blank" rel="noreferrer">{t.contact} · 0903 333 841</a>
           <Link href="/privacy">Privacy</Link>
         </div>

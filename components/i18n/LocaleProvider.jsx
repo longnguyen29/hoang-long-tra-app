@@ -219,8 +219,12 @@ export default function LocaleProvider({ children }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
   const isWorkBoard = pathname?.startsWith("/admin/work");
-  const defaultLocale = "vi";
-  const storageKey = isWorkBoard ? "hl-work-locale" : isAdmin ? "hl-admin-locale-v2" : "hl-locale";
+  // Public pages open in Vietnamese. Admin keeps its established English default,
+  // while the low-tech staff work board remains Vietnamese-first.
+  const defaultLocale = isAdmin && !isWorkBoard ? "en" : "vi";
+  // Keep public preference separate from the old shared key. The previous key could
+  // contain an admin-era English choice and made the public tea site reopen in English.
+  const storageKey = isWorkBoard ? "hl-work-locale" : isAdmin ? "hl-admin-locale-v2" : "hl-public-locale-v2";
   const [locale, setLocale] = useState(defaultLocale);
 
   useEffect(() => {
@@ -264,7 +268,7 @@ export default function LocaleProvider({ children }) {
     <LocaleContext.Provider value={value}>
       {children}
       <ActionTooltipLayer />
-      {!isWorkBoard && <button
+      {isAdmin && !isWorkBoard && <button
         type="button"
         className={`hl-locale-switch${isAdmin ? " hl-locale-switch--admin" : ""}`}
         onClick={value.toggleLocale}
