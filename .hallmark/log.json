@@ -1,6 +1,16 @@
 [
   {
     "date": "2026-09-01",
+    "macrostructure": "Grouped Workbench navigation",
+    "theme": "House of Hoàng Long (design.md)",
+    "enrichment": "none",
+    "nav": "N3 grouped side rail + compact mobile app switcher",
+    "footer": "inherited Ft2 inline rule",
+    "knob_delta": "task-first labels + duplicate app map removed + tools kept last",
+    "brief": "Make the operating system understandable by destination, not internal department names"
+  },
+  {
+    "date": "2026-09-01",
     "macrostructure": "Split Studio B2B funnel + Workbench funnel ledger",
     "theme": "House of Hoàng Long (design.md)",
     "enrichment": "existing factory and café photography",

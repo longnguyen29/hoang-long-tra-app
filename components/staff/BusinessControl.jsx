@@ -320,7 +320,7 @@ export default function BusinessControl({ supabase, email, onLogout }) {
   };
   const tabs = [
     ["reports", "Báo cáo", BarChart3],
-    ["partners", "Đối tác", Handshake],
+    ["partners", "Khách hàng", Handshake],
     ["offers", "Ưu đãi", Percent],
     ["reviews", "Đánh giá", MessageSquareQuote],
     ["payment", "Thanh toán", CircleDollarSign],
@@ -334,12 +334,12 @@ export default function BusinessControl({ supabase, email, onLogout }) {
             <ArrowLeft />
             Điều phối
           </Link>
-          <span>Commercial control</span>
+          <span>Báo cáo & thiết lập</span>
         </div>
         <div>
           <span>
             <b>{email}</b>
-            <small>Phòng thương mại</small>
+            <small>Quản trị bán hàng</small>
           </span>
           <button onClick={load} disabled={loading} aria-label="Làm mới">
             <RefreshCw />
@@ -348,10 +348,10 @@ export default function BusinessControl({ supabase, email, onLogout }) {
         </div>
       </header>
       <section className={styles.heading}>
-        <p>Nhịp kinh doanh của Nhà</p>
-        <h1>Thương mại, bằng một mặt bàn.</h1>
+        <p>Sổ bán hàng & thiết lập</p>
+        <h1>Báo cáo rõ. Thiết lập gọn.</h1>
         <span>
-          Doanh thu, đối tác và các điểm chạm trước khi khách thanh toán.
+          Doanh thu, khách hàng, ưu đãi, đánh giá và tài khoản nhận tiền ở cùng một nơi.
         </span>
       </section>
       <nav className={styles.tabs}>
@@ -429,11 +429,11 @@ export default function BusinessControl({ supabase, email, onLogout }) {
           <header>
             <div>
               <p>Trade accounts</p>
-              <h2>Đối tác bán sỉ</h2>
+              <h2>Khách hàng bán sỉ</h2>
             </div>
             <button onClick={() => setPartner(blankPartner())}>
               <Plus />
-              Thêm đối tác
+              Thêm khách hàng
             </button>
           </header>
           <div className={styles.rows}>
@@ -688,8 +688,8 @@ export default function BusinessControl({ supabase, email, onLogout }) {
           <form className={styles.drawer} onSubmit={savePartner}>
             <header>
               <div>
-                <p>Trade account</p>
-                <h2>{partner.id ? "Sửa đối tác" : "Đối tác mới"}</h2>
+                <p>Hồ sơ khách hàng</p>
+                <h2>{partner.id ? "Sửa khách hàng" : "Khách hàng mới"}</h2>
               </div>
               <button type="button" onClick={() => setPartner(null)}>
                 ×
@@ -714,7 +714,7 @@ export default function BusinessControl({ supabase, email, onLogout }) {
               />
             </label>
             <label>
-              Mã đối tác
+              Mã khách hàng
               <input
                 value={partner.code || ""}
                 onChange={(event) =>

@@ -6,18 +6,12 @@ import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   ArrowRight,
-  BarChart3,
-  Beaker,
   BookOpenCheck,
   Brain,
   Check,
   CheckCircle2,
   ChevronRight,
   Circle,
-  ClipboardCheck,
-  ClipboardList,
-  FlaskConical,
-  Handshake,
   Leaf,
   LogOut,
   Menu,
@@ -27,11 +21,10 @@ import {
   RefreshCw,
   RotateCcw,
   Scale,
-  Settings2,
-  Sprout,
 } from "lucide-react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { buildJourneyQueue, relativeDueLabel } from "@/lib/customer-journey";
+import { STAFF_APPS as APPS, STAFF_APP_GROUPS, STAFF_APP_LIST as APP_LIST } from "./staff-navigation";
 import styles from "./MorningDesk.module.css";
 
 const MODES = [
@@ -40,74 +33,6 @@ const MODES = [
   ["operations", "Vận hành"],
 ];
 
-const APPS = {
-  work: {
-    key: "work",
-    label: "Công việc",
-    short: "Công việc",
-    href: "/admin/work",
-    description: "Giao việc một lần, tạo lịch lặp và xem ai đang bị vướng.",
-    icon: ClipboardCheck,
-  },
-  orders: {
-    key: "orders",
-    label: "Điều phối đơn",
-    short: "Đơn hàng",
-    href: "/admin/orders",
-    description: "Đơn hàng, tin nhắn, lead, mẫu thử và lịch trà.",
-    icon: ClipboardList,
-  },
-  pipeline: {
-    key: "pipeline",
-    label: "Khách hàng B2B",
-    short: "Khách hàng CRM",
-    href: "/admin/pipeline",
-    description: "Hồ sơ khách B2B, cơ hội, báo giá và nhịp theo đuổi.",
-    icon: Handshake,
-  },
-  recipes: {
-    key: "recipes",
-    label: "Phòng công thức",
-    short: "Công thức",
-    href: "/admin/recipes?view=radar",
-    description: "Radar món đang nổi, phiên bản pha, giá vốn mỗi ly và công thức đã chốt.",
-    icon: Beaker,
-  },
-  operations: {
-    key: "operations",
-    label: "Vận hành & tài chính",
-    short: "Vận hành",
-    href: "/admin/operations",
-    description: "Công nợ, ngân sách, lô trà, tồn khả dụng và kế hoạch chuẩn bị.",
-    icon: BarChart3,
-  },
-  control: {
-    key: "control",
-    label: "Thương mại",
-    short: "Thương mại",
-    href: "/admin/control",
-    description: "Giá, tồn kho, khuyến mãi và thiết lập bán hàng.",
-    icon: Settings2,
-  },
-  house: {
-    key: "house",
-    label: "Nhà & danh mục",
-    short: "Nhà",
-    href: "/admin/house",
-    description: "Nội dung, sản phẩm và câu chuyện đang hiển thị.",
-    icon: Sprout,
-  },
-  growth: {
-    key: "growth",
-    label: "Công cụ tăng trưởng",
-    short: "Công cụ",
-    href: "/admin/growth",
-    description: "Tạo, chấm và theo dõi thử nghiệm nội dung dẫn tới trang sample.",
-    icon: FlaskConical,
-  },
-};
-
-const APP_LIST = Object.values(APPS);
 const KIND_LABEL = { decision: "Quyết định", policy: "Quy tắc", learning: "Bài học" };
 const MODE_DEFAULT_APP = { owner: "operations", sales: "pipeline", operations: "orders" };
 
@@ -556,18 +481,18 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
           <summary><Menu />Ứng dụng</summary>
           <nav aria-label="Ứng dụng Hoàng Long">
             <Link href="/admin" className={styles.active}><Brain />Bảng điều khiển</Link>
-            {APP_LIST.map((app) => {
-              const Icon = app.icon;
-              return <Link key={app.key} href={app.href} onClick={(event) => openApp(event, app)}><Icon />{app.short}</Link>;
-            })}
+            {STAFF_APP_GROUPS.map((group) => <div className={styles.navGroup} key={group.label}>
+              <span>{group.label}</span>
+              {group.keys.map((key) => { const app = APPS[key]; const Icon = app.icon; return <Link key={app.key} href={app.href} onClick={(event) => openApp(event, app)}><Icon />{app.short}</Link>; })}
+            </div>)}
           </nav>
         </details>
         <nav className={styles.desktopNav} aria-label="Ứng dụng Hoàng Long">
           <Link href="/admin" className={styles.active}><Brain /><span>Bảng điều khiển</span></Link>
-          {APP_LIST.map((app) => {
-            const Icon = app.icon;
-            return <Link key={app.key} href={app.href} onClick={(event) => openApp(event, app)} data-loading={moving === app.key}><Icon /><span>{app.short}</span></Link>;
-          })}
+          {STAFF_APP_GROUPS.map((group) => <div className={styles.navGroup} key={group.label}>
+            <small>{group.label}</small>
+            {group.keys.map((key) => { const app = APPS[key]; const Icon = app.icon; return <Link key={app.key} href={app.href} onClick={(event) => openApp(event, app)} data-loading={moving === app.key}><Icon /><span>{app.short}</span></Link>; })}
+          </div>)}
         </nav>
         <button className={styles.logout} onClick={onLogout}><LogOut /><span>Đăng xuất</span></button>
       </aside>
@@ -696,22 +621,6 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
               <h2>{resume.label}</h2>
               <p>{resumePreference.last_href ? (locale === "en" ? `You left the desk ${relativeUpdate(resumePreference.updated_at, locale)}.` : `Đã rời bàn ${relativeUpdate(resumePreference.updated_at, locale)}.`) : "Chưa có phiên trước. Mở app phù hợp với góc nhìn hiện tại."}</p>
               <Link href={resume.href} onClick={(event) => openApp(event, resume)}>Tiếp tục<ArrowRight /></Link>
-            </section>
-
-            <section className={styles.appMap}>
-              <header className={styles.sectionHeader}><div><h2>Đi đúng app</h2><p>Mỗi app giữ một loại sự thật.</p></div></header>
-              <div>
-                {APP_LIST.map((app) => {
-                  const Icon = app.icon;
-                  return (
-                    <Link key={app.key} href={app.href} onClick={(event) => openApp(event, app)}>
-                      <Icon />
-                      <span><b>{app.label}</b><small>{app.description}</small></span>
-                      <ChevronRight />
-                    </Link>
-                  );
-                })}
-              </div>
             </section>
 
             <section className={styles.memory}>

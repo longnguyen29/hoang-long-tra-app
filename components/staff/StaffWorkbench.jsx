@@ -2,7 +2,7 @@
 
 import { useCallback,useEffect,useMemo,useState } from "react";
 import Link from "next/link";
-import { Activity,Archive,ArrowLeft,ArrowRight,BarChart3,Calendar,CheckCircle2,ChevronRight,CircleDollarSign,ClipboardCheck,ClipboardList,Clock3,Copy,ExternalLink,FlaskConical,Handshake,LogOut,MessageCircle,MessageSquare,PackageCheck,Plus,RefreshCw,RotateCcw,Save,Search,Send,SlidersHorizontal,Smartphone,Sprout,Trash2,Truck,Users,WalletCards } from "lucide-react";
+import { Activity,ArrowLeft,ArrowRight,Calendar,CheckCircle2,ChevronRight,CircleDollarSign,ClipboardList,Clock3,Copy,ExternalLink,LogOut,MessageCircle,MessageSquare,PackageCheck,Plus,RefreshCw,RotateCcw,Save,Search,Send,Smartphone,Trash2,Truck,Users,WalletCards } from "lucide-react";
 import { fromOrderRow,fromThreadRow } from "@/lib/mappers";
 import { ORDER_HEALTH,ORDER_STAGES,ORDER_WAITING_ON,orderStageIndex,orderStageMeta } from "@/lib/order-flow";
 import { SHIPPING_CARRIERS,carrierLabel } from "@/lib/carrier-tracking";
@@ -10,6 +10,7 @@ import { ORDER_COST_CATEGORIES,ORDER_COST_STATUSES,orderCostAmount,orderEconomic
 import { MANUAL_MESSAGE_KINDS,buildManualOrderMessage,makeSmsHref,normalizeSmsPhone } from "@/lib/manual-order-message";
 import NewOrderPanel from "./NewOrderPanel";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
+import { STAFF_APPS, STAFF_APP_GROUPS } from "./staff-navigation";
 import styles from "./StaffWorkbench.module.css";
 
 const dateTime=(value)=>{const date=new Date(value);return !value||Number.isNaN(date.getTime())?"—":new Intl.DateTimeFormat("vi-VN",{dateStyle:"short",timeStyle:"short"}).format(date)};
@@ -51,7 +52,7 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
  const orderCreated=async(order)=>{setOrders(current=>[order,...current.filter(item=>item.id!==order.id)]);setCreatingOrder(false);try{await staffRequest(order.id,{method:"POST"})}catch{}await selectOrder(order);requestAnimationFrame(()=>document.querySelector("#orders")?.scrollIntoView({behavior:"smooth",block:"start"}))};
  const cards=[{label:"Cần xử lý",value:queue.length,icon:ClipboardList},{label:"Đơn đang mở",value:openOrders.length,icon:PackageCheck},{label:"Tin chưa đọc",value:unreadThreads.length,icon:MessageSquare},{label:"Lịch trà chờ",value:pendingSessions.length,icon:Calendar}];
  return <main className={styles.shell}>
-  <aside className={styles.rail}><div className={styles.brand}><span>皇龍</span><b>HL</b></div><nav aria-label="Staff workspace"><Link href="/admin"><Calendar/><span>Bảng điều khiển</span></Link><Link href="/admin/work"><ClipboardCheck/><span>Công việc</span></Link><Link href="/admin/orders" className={styles.active}><ClipboardList/><span>Điều phối đơn</span>{queue.length>0&&<b>{queue.length}</b>}</Link><Link href="/admin/pipeline"><Handshake/><span>Khách hàng CRM</span></Link><Link href="/admin/operations"><BarChart3/><span>Vận hành & tài chính</span></Link><Link href="/admin/house"><Sprout/><span>Nhà & danh mục</span></Link><Link href="/admin/control"><SlidersHorizontal/><span>Thương mại</span></Link><Link href="/admin/legacy"><Archive/><span>Hệ thống cũ</span></Link><Link href="/admin/growth"><FlaskConical/><span>Công cụ</span></Link></nav><button onClick={onLogout} aria-label="Đăng xuất"><LogOut/><span>Đăng xuất</span></button></aside>
+  <aside className={styles.rail}><div className={styles.brand}><span>皇龍</span><b>HL</b></div><nav aria-label="Ứng dụng Hoàng Long"><Link href="/admin"><Calendar/><span>Bảng điều khiển</span></Link>{STAFF_APP_GROUPS.map(group=><div className={styles.navGroup} key={group.label}><small>{group.label}</small>{group.keys.map(key=>{const app=STAFF_APPS[key],Icon=app.icon;return <Link key={key} href={app.href} className={key==="orders"?styles.active:""}><Icon/><span>{app.short}</span>{key==="orders"&&queue.length>0&&<b>{queue.length}</b>}</Link>})}</div>)}</nav><button onClick={onLogout} aria-label="Đăng xuất"><LogOut/><span>Đăng xuất</span></button></aside>
   <section className={styles.workspace}>
    <header className={styles.top}><div><p>Staff workbench</p><h1>Điều phối hôm nay</h1></div><div className={styles.identity}><span><b>{email}</b><small>{role}</small></span><button onClick={load} disabled={loading} aria-label="Làm mới"><RefreshCw className={loading?styles.spin:""}/></button></div></header>
    {error&&<p className={styles.error} role="alert">{error}</p>}
