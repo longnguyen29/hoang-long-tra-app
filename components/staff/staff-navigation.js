@@ -41,7 +41,7 @@ export const STAFF_APPS = {
 export const STAFF_APP_GROUPS = [
   { label: "Hằng ngày", keys: ["work", "orders", "pipeline"] },
   { label: "Doanh nghiệp", keys: ["operations", "house"] },
-  { label: "Công cụ", keys: ["recipes", "control", "growth"] },
+  { label: "Phòng chuyên môn", keys: ["recipes", "control", "growth"] },
 ];
 
 export const STAFF_APP_LIST = STAFF_APP_GROUPS.flatMap((group) => group.keys.map((key) => STAFF_APPS[key]));

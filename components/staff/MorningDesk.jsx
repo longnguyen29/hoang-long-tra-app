@@ -467,7 +467,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
   const resumePreference = snapshot?.preference || {};
   const resumeApp = APPS[resumePreference.last_app_key] || APPS[MODE_DEFAULT_APP[mode]];
   const resumeHref = resumePreference.last_href || resumeApp.href;
-  const resume = { ...resumeApp, href: resumeHref, label: resumePreference.last_label || resumeApp.label };
+  const resume = { ...resumeApp, href: resumeHref, label: resumeApp.label };
   const completedFocus = focus.filter((item) => item.status === "done").length;
 
   return (
