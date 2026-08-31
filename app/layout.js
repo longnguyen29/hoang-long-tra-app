@@ -5,6 +5,12 @@ export const metadata = {
   title: "House of Hoàng Long — Trà Cổ Hà Giang",
   description:
     "Nhà làm Trà Hoàng Long — trà Shan Tuyết cổ thụ Hà Giang, chế biến bằng công nghệ Nhật Bản. Gia đình làm trà từ 1995.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Việc Hoàng Long",
+  },
 };
 
 export const viewport = {

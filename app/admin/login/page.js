@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
         <div className="hl-auth__seal" aria-hidden="true">皇龍</div>
         <div>
           <p className="hl-auth__house">House of Hoàng Long</p>
-          <p className="hl-auth__principle">The work behind every parcel, kept inside the house.</p>
+          <p className="hl-auth__principle">Mọi việc phía sau mỗi đơn trà, được giữ rõ trong Nhà.</p>
         </div>
       </section>
 
@@ -49,7 +49,7 @@ export default function AdminLoginPage() {
           <div className="hl-auth__intro">
             <Lock size={18} aria-hidden="true" />
             <h1>{t.loginTitle}</h1>
-            <p>Staff workspace</p>
+            <p>Khu vực dành cho nhân viên</p>
           </div>
 
           <div className="hl-field">
@@ -79,7 +79,7 @@ export default function AdminLoginPage() {
           </div>
 
           <p id="login-feedback" className={`hl-auth__feedback ${error ? "is-error" : ""}`} role={error ? "alert" : undefined}>
-            {error || "Use the staff account created by your administrator."}
+            {error || "Dùng tài khoản do quản lý Hoàng Long cấp."}
           </p>
 
           <button className="hl-button hl-button--primary" type="submit" disabled={loading || !email.trim() || !password} data-state={loading ? "loading" : "idle"}>

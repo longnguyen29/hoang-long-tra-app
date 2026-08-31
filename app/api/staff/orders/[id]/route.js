@@ -7,7 +7,7 @@ import {
 } from "@/lib/order-flow";
 import { SHIPPING_CARRIER_IDS, carrierLabel, normalizeTrackingCode } from "@/lib/carrier-tracking";
 import { logOrderEvent } from "@/lib/ops-events";
-import { authenticateStaffRequest } from "@/lib/staff-api-auth";
+import { authenticateManagerRequest } from "@/lib/staff-api-auth";
 
 async function readEvents(admin, orderId) {
   return admin
@@ -36,7 +36,7 @@ async function readReceivable(admin, orderId) {
 }
 
 export async function GET(request, { params }) {
-  const staff = await authenticateStaffRequest(request);
+  const staff = await authenticateManagerRequest(request);
   if (!staff) return Response.json({ ok: false }, { status: 401 });
 
   const { id } = await params;
@@ -50,7 +50,7 @@ export async function GET(request, { params }) {
 }
 
 export async function POST(request, { params }) {
-  const staff = await authenticateStaffRequest(request);
+  const staff = await authenticateManagerRequest(request);
   if (!staff) return Response.json({ ok: false }, { status: 401 });
 
   const { id } = await params;
@@ -67,7 +67,7 @@ export async function POST(request, { params }) {
 }
 
 export async function PATCH(request, { params }) {
-  const staff = await authenticateStaffRequest(request);
+  const staff = await authenticateManagerRequest(request);
   if (!staff) return Response.json({ ok: false }, { status: 401 });
 
   const { id } = await params;

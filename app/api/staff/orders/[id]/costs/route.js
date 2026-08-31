@@ -1,13 +1,13 @@
 import { ORDER_COST_CATEGORY_IDS, ORDER_COST_STATUS_IDS } from "@/lib/order-costs";
 import { logOrderEvent } from "@/lib/ops-events";
-import { authenticateStaffRequest } from "@/lib/staff-api-auth";
+import { authenticateManagerRequest } from "@/lib/staff-api-auth";
 
 function validNumber(value, { positive = false } = {}) {
   return Number.isFinite(value) && (positive ? value > 0 : value >= 0);
 }
 
 export async function POST(request, { params }) {
-  const staff = await authenticateStaffRequest(request);
+  const staff = await authenticateManagerRequest(request);
   if (!staff) return Response.json({ ok: false }, { status: 401 });
 
   const { id: orderId } = await params;
@@ -97,7 +97,7 @@ export async function POST(request, { params }) {
 }
 
 export async function PUT(request, { params }) {
-  const staff = await authenticateStaffRequest(request);
+  const staff = await authenticateManagerRequest(request);
   if (!staff) return Response.json({ ok: false }, { status: 401 });
   const { id: orderId } = await params;
   const { data: count, error } = await staff.admin.rpc("sync_order_bom_costs_internal", { p_order_id: orderId });
@@ -116,7 +116,7 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const staff = await authenticateStaffRequest(request);
+  const staff = await authenticateManagerRequest(request);
   if (!staff) return Response.json({ ok: false }, { status: 401 });
 
   const { id: orderId } = await params;

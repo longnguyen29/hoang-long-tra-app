@@ -1,11 +1,11 @@
-import { authenticateStaffRequest } from "@/lib/staff-api-auth";
+import { authenticateManagerRequest } from "@/lib/staff-api-auth";
 import { createHouseStarterRecipes, promoteRadarConceptWithFormula } from "@/lib/house-recipes-server";
 import { runRecipeRadar, saveManualRadarSignal } from "@/lib/recipe-radar-server";
 
 export const maxDuration = 60;
 
 export async function POST(request) {
-  const staff = await authenticateStaffRequest(request);
+  const staff = await authenticateManagerRequest(request);
   if (!staff) return Response.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   const body = await request.json().catch(() => ({}));
   try {

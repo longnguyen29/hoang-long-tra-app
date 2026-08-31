@@ -1,6 +1,16 @@
 [
   {
     "date": "2026-09-01",
+    "macrostructure": "Workbench task slips",
+    "theme": "House of Hoàng Long (design.md)",
+    "enrichment": "none",
+    "nav": "single-purpose worker topbar",
+    "footer": "none; task actions end each slip",
+    "knob_delta": "persistent checklist + native Android share + standalone app manifest",
+    "brief": "A role-scoped Vietnamese worker app for low-tech staff"
+  },
+  {
+    "date": "2026-09-01",
     "macrostructure": "Workbench material ledger",
     "theme": "House of Hoàng Long (design.md)",
     "enrichment": "none",

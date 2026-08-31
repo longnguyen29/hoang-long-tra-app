@@ -1,13 +1,13 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { authenticateStaffRequest } from "@/lib/staff-api-auth";
+import { authenticateManagerRequest } from "@/lib/staff-api-auth";
 import { buildGrowthAiRequest, normalizeGrowthAiInput, parseGrowthAiResponse } from "@/lib/growth-ai";
 
 const RATE_WINDOW_MINUTES = 60;
 const RATE_LIMIT = 20;
 
 export async function POST(request) {
-  const auth = await authenticateStaffRequest(request);
+  const auth = await authenticateManagerRequest(request);
   if (!auth) return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
 
   const apiKey = process.env.OPENAI_API_KEY?.trim();

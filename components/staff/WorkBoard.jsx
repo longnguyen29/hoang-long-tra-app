@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   AlertTriangle, ArrowLeft, CalendarClock, Check, CheckCircle2, ChevronRight,
   CirclePause, Clock3, LogOut, MailPlus, Play, Plus, RefreshCw, Repeat2,
-  UserRound, UsersRound, X,
+  Share2, UserRound, UsersRound, X,
 } from "lucide-react";
 import styles from "./WorkBoard.module.css";
 
@@ -62,7 +62,7 @@ export default function WorkBoard({ supabase, userId, email, role, onLogout }) {
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
-    await supabase.rpc("generate_due_work_tasks");
+    if (canAssign) await supabase.rpc("generate_due_work_tasks");
     const [taskResult, profileResult, templateResult] = await Promise.all([
       supabase.from("work_tasks").select("*").order("due_at", { ascending: true }),
       supabase.from("staff_profiles").select("*").eq("active", true).order("display_name"),
@@ -101,10 +101,49 @@ export default function WorkBoard({ supabase, userId, email, role, onLogout }) {
     setSaving(true); setError("");
     const { error: statusError } = await supabase.rpc("set_work_task_status", { p_id: task.id, p_status: status, p_note: note });
     setSaving(false);
-    if (statusError) { setError("Chưa cập nhật được phiếu việc. Hãy thử lại."); return; }
+    if (statusError) {
+      setError(statusError.message?.includes("checklist_incomplete")
+        ? "Hãy đánh dấu đủ danh sách kiểm tra trước khi báo hoàn tất."
+        : "Chưa cập nhật được phiếu việc. Hãy thử lại.");
+      return;
+    }
     setBlockingId(""); setBlockNote("");
     flash(status === "completed" ? "Đã ghi nhận hoàn tất" : status === "blocked" ? "Đã báo vướng cho quản lý" : "Đã cập nhật công việc");
     await load();
+  };
+
+  const toggleChecklist = async (task, index, checked) => {
+    setSaving(true); setError("");
+    const { data, error: checklistError } = await supabase.rpc("set_work_task_checklist", {
+      p_id: task.id,
+      p_index: index,
+      p_checked: checked,
+    });
+    setSaving(false);
+    if (checklistError) { setError("Chưa lưu được bước kiểm tra. Hãy thử lại."); return; }
+    setTasks((current) => current.map((item) => item.id === task.id ? { ...item, checklist_done: data || [] } : item));
+  };
+
+  const shareTask = async (task) => {
+    const assignee = profileById[task.assigned_to]?.display_name || "nhân viên";
+    const checklist = (task.checklist || []).map((item) => `• ${item}`).join("\n");
+    const taskUrl = `https://www.hoanglongtra.com/admin/work#task-${task.id}`;
+    const text = [
+      `Hoàng Long giao việc cho ${assignee}: ${task.title}`,
+      `Hạn: ${dueLabel(task.due_at)}`,
+      task.instructions,
+      checklist ? `Cần kiểm tra:\n${checklist}` : "",
+      task.reference_text ? `Liên quan: ${task.reference_text}` : "",
+    ].filter(Boolean).join("\n\n");
+    try {
+      if (navigator.share) await navigator.share({ title: task.title, text, url: taskUrl });
+      else {
+        await navigator.clipboard.writeText(`${text}\n\nMở đúng phiếu việc: ${taskUrl}`);
+        flash("Đã sao chép phiếu việc để gửi");
+      }
+    } catch (shareError) {
+      if (shareError?.name !== "AbortError") setError("Chưa mở được menu gửi. Hãy thử lại.");
+    }
   };
 
   const createInstruction = async (event) => {
@@ -187,7 +226,7 @@ export default function WorkBoard({ supabase, userId, email, role, onLogout }) {
     <section className={styles.workArea}>
       <section className={styles.ledger}>
         <header><div><p>Sổ việc</p><h2>{view === "today" ? "Cần làm trước khi hết ngày" : view === "upcoming" ? "Việc sắp tới" : "Đã hoàn tất hôm nay"}</h2></div><div className={styles.views} role="tablist" aria-label="Chọn nhóm công việc">{[["today","Hôm nay",todayTasks.length],["upcoming","Sắp tới",upcoming.length],["done","Đã xong",completedToday.length]].map(([id,label,count])=><button key={id} role="tab" aria-selected={view===id} onClick={()=>setView(id)}>{label}<b>{count}</b></button>)}</div></header>
-        <div className={styles.taskList}>{loading ? <div className={styles.loading}><i/><i/><i/></div> : visibleTasks.length ? visibleTasks.map((task) => <TaskSlip key={task.id} task={task} assignee={profileById[task.assigned_to]} canAssign={canAssign} saving={saving} blockingId={blockingId} blockNote={blockNote} setBlockNote={setBlockNote} setBlockingId={setBlockingId} onStatus={changeStatus}/>) : <div className={styles.clear}><CheckCircle2/><h3>{view === "done" ? "Chưa có việc nào hoàn tất hôm nay." : "Nhóm này đang trống."}</h3><p>{view === "today" ? "Không có phiếu việc nào đang chờ trong hôm nay." : "Công việc mới sẽ xuất hiện ở đây."}</p></div>}</div>
+        <div className={styles.taskList}>{loading ? <div className={styles.loading}><i/><i/><i/></div> : visibleTasks.length ? visibleTasks.map((task) => <TaskSlip key={task.id} task={task} assignee={profileById[task.assigned_to]} canAssign={canAssign} saving={saving} blockingId={blockingId} blockNote={blockNote} setBlockNote={setBlockNote} setBlockingId={setBlockingId} onStatus={changeStatus} onChecklist={toggleChecklist} onShare={shareTask}/>) : <div className={styles.clear}><CheckCircle2/><h3>{view === "done" ? "Chưa có việc nào hoàn tất hôm nay." : "Nhóm này đang trống."}</h3><p>{view === "today" ? "Không có phiếu việc nào đang chờ trong hôm nay." : "Công việc mới sẽ xuất hiện ở đây."}</p></div>}</div>
       </section>
 
       <aside className={styles.context}>
@@ -204,14 +243,16 @@ export default function WorkBoard({ supabase, userId, email, role, onLogout }) {
   </main>;
 }
 
-function TaskSlip({ task, assignee, canAssign, saving, blockingId, blockNote, setBlockNote, setBlockingId, onStatus }) {
+function TaskSlip({ task, assignee, canAssign, saving, blockingId, blockNote, setBlockNote, setBlockingId, onStatus, onChecklist, onShare }) {
   const [statusLabel, StatusIcon] = STATUS[task.status] || STATUS.assigned;
   const late = OPEN_STATUSES.has(task.status) && new Date(task.due_at) < new Date();
-  return <article className={styles.slip} data-status={task.status} data-priority={task.priority}>
+  const done = new Set((task.checklist_done || []).map(Number));
+  const checklistComplete = !task.checklist?.length || task.checklist.every((_, index) => done.has(index));
+  return <article id={`task-${task.id}`} className={styles.slip} data-status={task.status} data-priority={task.priority}>
     <div className={styles.slipEdge}><span>{late ? "QUÁ HẠN" : task.priority === "urgent" ? "LÀM TRƯỚC" : timeLabel(task.due_at)}</span></div>
-    <div className={styles.slipBody}><header><span className={styles.state}><StatusIcon/>{statusLabel}</span><time>{dueLabel(task.due_at)}</time></header><h3>{task.title}</h3>{task.instructions&&<p>{task.instructions}</p>}<div className={styles.meta}><span><UserRound/>{assignee?.display_name||"Chưa rõ người"}</span>{task.reference_text&&<span><b>Liên quan</b>{task.reference_text}</span>}</div>{task.checklist?.length>0&&<ul>{task.checklist.map((item,index)=><li key={`${task.id}-${index}`}><i/>{item}</li>)}</ul>}{task.status==="blocked"&&<div className={styles.blocked}><AlertTriangle/><span><b>Đang vướng</b><small>{task.blocked_note||"Chưa ghi lý do."}</small></span></div>}
+    <div className={styles.slipBody}><header><span className={styles.state}><StatusIcon/>{statusLabel}</span><time>{dueLabel(task.due_at)}</time></header><h3>{task.title}</h3>{task.instructions&&<p>{task.instructions}</p>}<div className={styles.meta}><span><UserRound/>{assignee?.display_name||"Chưa rõ người"}</span>{task.reference_text&&<span><b>Liên quan</b>{task.reference_text}</span>}</div>{task.checklist?.length>0&&<section className={styles.checklist}><header><b>Danh sách kiểm tra</b><span>{done.size}/{task.checklist.length}</span></header><ul>{task.checklist.map((item,index)=><li key={`${task.id}-${index}`} data-checked={done.has(index)}><button type="button" aria-pressed={done.has(index)} disabled={saving||!["assigned","in_progress","blocked"].includes(task.status)} onClick={()=>onChecklist(task,index,!done.has(index))}><i>{done.has(index)&&<Check/>}</i><span>{item}</span></button></li>)}</ul></section>}{task.status==="blocked"&&<div className={styles.blocked}><AlertTriangle/><span><b>Đang vướng</b><small>{task.blocked_note||"Chưa ghi lý do."}</small></span></div>}
       {blockingId===task.id&&<div className={styles.blockForm}><label>Đang vướng ở đâu?<textarea value={blockNote} onChange={(event)=>setBlockNote(event.target.value)} placeholder="Nói ngắn gọn điều đang chặn công việc." autoFocus/></label><div><button onClick={()=>{setBlockingId("");setBlockNote("")}}>Bỏ qua</button><button disabled={!blockNote.trim()||saving} onClick={()=>onStatus(task,"blocked",blockNote)}>Gửi cho quản lý</button></div></div>}
-      <footer>{task.status==="assigned"&&<button className={styles.start} disabled={saving} onClick={()=>onStatus(task,"in_progress")}><Play/>Bắt đầu</button>}{task.status==="in_progress"&&<button className={styles.complete} disabled={saving} onClick={()=>onStatus(task,"completed")}><Check/>Hoàn tất</button>}{task.status==="blocked"&&<button className={styles.start} disabled={saving} onClick={()=>onStatus(task,"in_progress")}><Play/>Làm tiếp</button>}{OPEN_STATUSES.has(task.status)&&blockingId!==task.id&&<button className={styles.problem} disabled={saving} onClick={()=>setBlockingId(task.id)}><AlertTriangle/>Báo vướng</button>}{canAssign&&OPEN_STATUSES.has(task.status)&&<button className={styles.cancel} disabled={saving} onClick={()=>onStatus(task,"cancelled")}>Hủy việc</button>}</footer>
+      <footer>{task.status==="assigned"&&<button className={styles.start} disabled={saving} onClick={()=>onStatus(task,"in_progress")}><Play/>Bắt đầu</button>}{task.status==="in_progress"&&<button className={styles.complete} disabled={saving||!checklistComplete} title={checklistComplete?"Ghi nhận việc đã hoàn tất.":"Đánh dấu đủ danh sách kiểm tra trước khi hoàn tất."} onClick={()=>onStatus(task,"completed")}><Check/>Hoàn tất</button>}{task.status==="blocked"&&<button className={styles.start} disabled={saving} onClick={()=>onStatus(task,"in_progress")}><Play/>Làm tiếp</button>}{OPEN_STATUSES.has(task.status)&&blockingId!==task.id&&<button className={styles.problem} disabled={saving} onClick={()=>setBlockingId(task.id)}><AlertTriangle/>Báo vướng</button>}{canAssign&&OPEN_STATUSES.has(task.status)&&<button className={styles.share} disabled={saving} onClick={()=>onShare(task)} title="Mở menu chia sẻ của điện thoại để gửi phiếu qua Zalo, SMS hoặc ứng dụng khác."><Share2/>Gửi nhắc</button>}{canAssign&&OPEN_STATUSES.has(task.status)&&<button className={styles.cancel} disabled={saving} onClick={()=>onStatus(task,"cancelled")}>Hủy việc</button>}</footer>
     </div>
   </article>;
 }
