@@ -1,9 +1,9 @@
 {
-  "date": "2026-08-26",
+  "date": "2026-09-01",
   "source_mtimes": {
-    "package.json": 1787633013,
-    "app/globals.css": 1787646619,
-    "design.md": 1787646619
+    "package.json": 1788195821,
+    "app/globals.css": 1787977518,
+    "design.md": 1788080826
   },
   "framework": "Next.js 16 app router",
   "font_stack": "Newsreader display + Inter Tight body + Noto Serif SC/TMCOngDo seal",

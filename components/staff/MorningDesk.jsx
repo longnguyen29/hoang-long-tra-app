@@ -31,6 +31,7 @@ import {
   Sprout,
 } from "lucide-react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
+import { buildJourneyQueue, relativeDueLabel } from "@/lib/customer-journey";
 import styles from "./MorningDesk.module.css";
 
 const MODES = [
@@ -143,6 +144,7 @@ function buildExceptions(snapshot, mode) {
   const reorders = snapshot?.operations?.reorders || [];
   const stock = snapshot?.operations?.stock || [];
   const radar = snapshot?.radar || [];
+  const journeyQueue = snapshot?.journey_queue || [];
   const items = [];
   const add = (condition, item) => condition && items.push(item);
 
@@ -192,7 +194,16 @@ function buildExceptions(snapshot, mode) {
     level: "critical",
     rank: mode === "operations" ? 1 : 2,
   });
-  add(Number(queue.pipeline_due) > 0, {
+  journeyQueue.slice(0, 4).forEach((action) => items.push({
+    id: `journey-${action.key}-${action.opportunity.id}`,
+    title: `${action.opportunity.business_name}: ${action.title}`,
+    detail: `${action.detail || "Cần xử lý bước tiếp theo"} · ${relativeDueLabel(action.dueAt)}`,
+    appKey: "pipeline",
+    href: `/admin/pipeline?opportunity=${encodeURIComponent(action.opportunity.id)}`,
+    level: action.priority === 1 ? "critical" : action.priority === 2 ? "attention" : "normal",
+    rank: mode === "sales" ? .5 + (action.priority / 10) : 3.5 + (action.priority / 10),
+  }));
+  add(!journeyQueue.length && Number(queue.pipeline_due) > 0, {
     id: "pipeline-due",
     title: `${queue.pipeline_due} cơ hội đã đến hạn theo đuổi`,
     detail: "Liên hệ hoặc đặt lại hành động tiếp theo để pipeline không đứng yên.",
@@ -336,15 +347,33 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
-    const [deskResult, budgetResult, radarResult] = await Promise.all([
+    const [deskResult, budgetResult, radarResult, opportunitiesResult, samplesResult, recipesResult, versionsResult, quotesResult, ordersResult, receivablesResult, partnersResult] = await Promise.all([
       supabase.rpc("morning_desk_snapshot"),
       supabase.rpc("budget_morning_snapshot"),
       supabase.from("recipe_radar_concepts").select("id,name,score_total").eq("stage", "candidate").order("score_total", { ascending: false }).limit(3),
+      supabase.from("trade_opportunities").select("*").neq("stage", "lost").order("updated_at", { ascending: false }),
+      supabase.from("sample_requests").select("*").order("ts", { ascending: false }),
+      supabase.from("recipes").select("*").order("updated_at", { ascending: false }),
+      supabase.from("recipe_versions").select("*").order("created_at", { ascending: false }),
+      supabase.from("trade_quotes").select("*").order("created_at", { ascending: false }),
+      supabase.from("orders").select("*").order("ts", { ascending: false }),
+      supabase.from("receivables").select("*").order("created_at", { ascending: false }),
+      supabase.from("wholesale_accounts").select("id,opportunity_id,contact,business_name,reorder_cadence_days,created_at"),
     ]);
     if (deskResult.error) {
       setError("Bảng điều khiển chưa tải được dữ liệu. Kiểm tra migration 0036 rồi thử lại.");
     } else {
-      setSnapshot({ ...deskResult.data, budget: budgetResult.data || {}, radar: radarResult.data || [] });
+      const journeyQueue = opportunitiesResult.error ? [] : buildJourneyQueue({
+        opportunities: opportunitiesResult.data || [],
+        samples: samplesResult.data || [],
+        recipes: recipesResult.data || [],
+        recipeVersions: versionsResult.data || [],
+        quotes: quotesResult.data || [],
+        orders: ordersResult.data || [],
+        receivables: receivablesResult.data || [],
+        partners: partnersResult.data || [],
+      });
+      setSnapshot({ ...deskResult.data, budget: budgetResult.data || {}, radar: radarResult.data || [], journey_queue: journeyQueue });
       if (budgetResult.error)
         setError("Bảng điều khiển đã tải, nhưng chưa đọc được ngân sách từ migration 0037.");
     }

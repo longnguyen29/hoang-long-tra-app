@@ -5,8 +5,10 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, BadgeDollarSign, Calculator, CalendarClock, Check, ChevronRight, Clipboard, FileText, FlaskConical, Handshake, History, Plus, RefreshCw, Save, Search, Send, Target, X } from "lucide-react";
 import { fromCatalogRow, fromVariantRow } from "@/lib/mappers";
 import { dateInput, money, normalizeContact, QUOTE_STATUS, quoteMessage, shortDate, stageLabel, TRADE_STAGES } from "@/lib/trade-pipeline";
+import { buildCustomerJourney } from "@/lib/customer-journey";
 import styles from "./TradePipeline.module.css";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
+import CustomerJourneyPanel from "./CustomerJourneyPanel";
 
 const newOpportunity = () => ({ business_name: "", contact: "", stage: "lead", owner: "", monthly_potential_kg: "", next_action: "Liên hệ và xác nhận nhu cầu", next_action_at: dateInput(1), notes: "" });
 const blankQuoteLine = () => ({ id: crypto.randomUUID(), productKey: "", qty: 1, price: "" });
@@ -72,6 +74,11 @@ export default function TradePipeline({ supabase, email }) {
   const [quotes, setQuotes] = useState([]);
   const [agreements, setAgreements] = useState([]);
   const [partners, setPartners] = useState([]);
+  const [samples, setSamples] = useState([]);
+  const [recipes, setRecipes] = useState([]);
+  const [recipeVersions, setRecipeVersions] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [receivables, setReceivables] = useState([]);
   const [products, setProducts] = useState([]);
   const [selected, setSelected] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -87,13 +94,18 @@ export default function TradePipeline({ supabase, email }) {
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
-    const [o, q, a, p, v, w] = await Promise.all([
+    const [o, q, a, p, v, w, s, r, rv, ord, rec] = await Promise.all([
       supabase.from("trade_opportunities").select("*").order("updated_at", { ascending: false }),
       supabase.from("trade_quotes").select("*").order("created_at", { ascending: false }),
       supabase.from("partner_price_agreements").select("*, partner_price_rules(*)").order("version", { ascending: false }),
       supabase.from("catalog_products").select("*").eq("available", true).order("line"),
       supabase.from("catalog_variants").select("*"),
-      supabase.from("wholesale_accounts").select("id, opportunity_id, contact"),
+      supabase.from("wholesale_accounts").select("id, opportunity_id, contact, business_name, reorder_cadence_days, created_at"),
+      supabase.from("sample_requests").select("*").order("ts", { ascending: false }),
+      supabase.from("recipes").select("*").order("updated_at", { ascending: false }),
+      supabase.from("recipe_versions").select("*").order("created_at", { ascending: false }),
+      supabase.from("orders").select("*").order("ts", { ascending: false }),
+      supabase.from("receivables").select("*").order("created_at", { ascending: false }),
     ]);
     if (o.error || q.error) setError("Chưa tải được dữ liệu phát triển đối tác. Kiểm tra migration 0033.");
     else if (a.error) setError("Chưa tải được sổ giá đối tác. Kiểm tra migration 0034.");
@@ -101,6 +113,11 @@ export default function TradePipeline({ supabase, email }) {
     if (!q.error) setQuotes(q.data || []);
     if (!a.error) setAgreements((a.data || []).map((agreement) => ({ ...agreement, partner_price_rules: [...(agreement.partner_price_rules || [])].sort((left, right) => left.sort_order - right.sort_order) })));
     if (!w.error) setPartners(w.data || []);
+    if (!s.error) setSamples(s.data || []);
+    if (!r.error) setRecipes(r.data || []);
+    if (!rv.error) setRecipeVersions(rv.data || []);
+    if (!ord.error) setOrders(ord.data || []);
+    if (!rec.error) setReceivables(rec.data || []);
     if (!p.error) {
       const byProduct = {};
       (v.data || []).forEach((row) => (byProduct[row.product_id] ||= []).push(fromVariantRow(row)));
@@ -110,6 +127,13 @@ export default function TradePipeline({ supabase, email }) {
   }, [supabase]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const opportunityId = new URLSearchParams(window.location.search).get("opportunity");
+    if (!selected && opportunityId && opportunities.length) {
+      const opportunity = opportunities.find((item) => item.id === opportunityId);
+      if (opportunity) { setSelected(opportunity); setEditing(null); setQuoteDraft(null); setPriceDraft(null); }
+    }
+  }, [opportunities, selected]);
   const flash = (message) => { setNotice(message); setTimeout(() => setNotice(""), 2200); };
   const today = dateInput();
   const searchable = useMemo(() => opportunities.filter((item) => `${item.business_name} ${item.contact} ${item.owner}`.toLowerCase().includes(query.toLowerCase())), [opportunities, query]);
@@ -239,6 +263,16 @@ export default function TradePipeline({ supabase, email }) {
   const selectedAgreements = selected ? agreements.filter((agreement) => agreement.opportunity_id === selected.id) : [];
   const latestAgreement = selectedAgreements.find((agreement) => agreement.status === "active") || null;
   const activeAgreement = latestAgreement && latestAgreement.effective_from <= today && (!latestAgreement.valid_until || latestAgreement.valid_until >= today) ? latestAgreement : null;
+  const selectedJourney = useMemo(() => selected ? buildCustomerJourney({ opportunity: selected, samples, recipes, recipeVersions, quotes, orders, receivables, partners }) : null, [selected, samples, recipes, recipeVersions, quotes, orders, receivables, partners]);
+  const runJourneyCommand = (action) => {
+    if (action.command === "edit-rhythm") setEditing({ ...selected, next_action_at: selected.next_action_at?.slice(0, 10) || "" });
+    if (action.command === "create-quote") setQuoteDraft(newQuote(selected, activeAgreement));
+    if (action.command === "open-quote") document.getElementById("customer-quotes")?.scrollIntoView({ behavior: "auto", block: "start" });
+    if (action.command === "convert-quote") {
+      const quote = selectedQuotes.find((item) => item.id === action.sourceId);
+      if (quote) convertQuote(quote);
+    }
+  };
 
   return <main className={styles.page}>
     <header className={styles.top}><div><Link href="/admin"><ArrowLeft/>Điều phối</Link><span>Partner growth</span></div><div><span><b>{email}</b><small>Bàn phát triển đối tác</small></span><button onClick={load} disabled={loading} aria-label="Làm mới"><RefreshCw/></button></div></header>
@@ -264,6 +298,7 @@ export default function TradePipeline({ supabase, email }) {
     {selected && <div className={styles.overlay} onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><aside className={styles.drawer} aria-label="Chi tiết cơ hội" role="dialog" aria-modal="true">
       <header><div><p>{stageLabel(selected.stage)}</p><h2>{selected.business_name}</h2><span>{selected.contact}</span></div><button onClick={() => setSelected(null)} aria-label="Đóng"><X/></button></header>
       <section className={styles.next}><span>Bước tiếp theo</span><h3>{selected.next_action || "Chưa đặt bước tiếp theo"}</h3><time>{shortDate(selected.next_action_at)}</time><div><button onClick={() => setEditing({ ...selected, next_action_at: selected.next_action_at?.slice(0, 10) || "" })}>Sửa nhịp làm việc</button><Link className={styles.recipeBridge} href={`/admin/recipes?view=lab&opportunity=${encodeURIComponent(selected.id)}`}><FlaskConical/>Mở phòng công thức</Link></div></section>
+      <CustomerJourneyPanel journey={selectedJourney} onCommand={runJourneyCommand}/>
       <section className={styles.progress}><header><h3>Chuyển giai đoạn</h3><span>{selected.monthly_potential_kg || 0} kg/tháng</span></header><div>{TRADE_STAGES.map((stage) => <button key={stage.id} data-active={selected.stage === stage.id} onClick={() => moveStage(stage.id)}>{stage.short}</button>)}<button data-lost onClick={() => moveStage("lost")}>Tạm dừng</button></div></section>
       <section className={styles.priceBook}>
         <header><div><p>Partner price ledger</p><h3>Giá riêng đang áp dụng</h3></div><div className={styles.priceActions}><Link className={styles.priceCalculator} href={pricingHref(selected.id)}><Calculator/>Tính giá riêng</Link><button onClick={() => setPriceDraft(newPriceAgreement(selected, latestAgreement))}><Plus/>{latestAgreement ? "Phiên bản mới" : "Thiết lập giá"}</button></div></header>
@@ -277,7 +312,7 @@ export default function TradePipeline({ supabase, email }) {
           {selectedAgreements.length > 1 && <details className={styles.priceHistory}><summary><History/>Xem {selectedAgreements.length - 1} phiên bản trước</summary>{selectedAgreements.filter((agreement) => agreement.status !== "active").map((agreement) => <div key={agreement.id}><span><b>Phiên bản {agreement.version}</b><small>{shortDate(agreement.effective_from)} – {agreement.valid_until ? shortDate(agreement.valid_until) : "vô thời hạn"}</small></span><small>{agreement.created_by || "Nhân viên"}</small></div>)}</details>}
         </> : <div className={styles.emptyPrice}><BadgeDollarSign/><p><b>Chưa có giá thỏa thuận.</b><span>Lưu giá riêng để các báo giá sau tự điền đúng mức đã chốt với đối tác này.</span></p></div>}
       </section>
-      <section className={styles.quoteBook}><header><div><p>Quote book</p><h3>Báo giá</h3></div><button onClick={() => setQuoteDraft(newQuote(selected, activeAgreement))}><Plus/>Tạo báo giá</button></header>{selectedQuotes.length ? selectedQuotes.map((quote) => <article key={quote.id}><header><span><b>{quote.id}</b><small>{shortDate(quote.created_at)} · {quote.valid_until ? `hiệu lực ${shortDate(quote.valid_until)}` : "vô thời hạn"}</small></span><i data-status={quote.status}>{QUOTE_STATUS[quote.status]}</i></header><div>{quote.lines.map((line, index) => <span key={index}>{line.name?.vi || line.name?.en} · {line.qty} {line.unit}</span>)}</div><footer><b>{money(quote.total)}</b><div><button onClick={() => copyQuote(quote)}><Clipboard/>Sao chép</button>{quote.status === "draft" && <button onClick={() => setQuoteStatus(quote, "sent")}><Send/>Đã gửi</button>}{quote.status === "sent" && <button onClick={() => setQuoteStatus(quote, "accepted")}><Check/>Đồng ý</button>}{quote.status === "accepted" && <button className={styles.convert} onClick={() => convertQuote(quote)} disabled={saving}>Tạo đơn<ArrowRight/></button>}{quote.converted_order_id && <Link href="/admin/orders">{quote.converted_order_id}<ArrowRight/></Link>}</div></footer></article>) : <div className={styles.emptyQuote}><FileText/><p>Chưa có báo giá. Tạo bản đầu tiên từ danh mục đang bán.</p></div>}</section>
+      <section className={styles.quoteBook} id="customer-quotes"><header><div><p>Quote book</p><h3>Báo giá</h3></div><button onClick={() => setQuoteDraft(newQuote(selected, activeAgreement))}><Plus/>Tạo báo giá</button></header>{selectedQuotes.length ? selectedQuotes.map((quote) => <article key={quote.id}><header><span><b>{quote.id}</b><small>{shortDate(quote.created_at)} · {quote.valid_until ? `hiệu lực ${shortDate(quote.valid_until)}` : "vô thời hạn"}</small></span><i data-status={quote.status}>{QUOTE_STATUS[quote.status]}</i></header><div>{quote.lines.map((line, index) => <span key={index}>{line.name?.vi || line.name?.en} · {line.qty} {line.unit}</span>)}</div><footer><b>{money(quote.total)}</b><div><button onClick={() => copyQuote(quote)}><Clipboard/>Sao chép</button>{quote.status === "draft" && <button onClick={() => setQuoteStatus(quote, "sent")}><Send/>Đã gửi</button>}{quote.status === "sent" && <button onClick={() => setQuoteStatus(quote, "accepted")}><Check/>Đồng ý</button>}{quote.status === "accepted" && <button className={styles.convert} onClick={() => convertQuote(quote)} disabled={saving}>Tạo đơn<ArrowRight/></button>}{quote.converted_order_id && <Link href="/admin/orders">{quote.converted_order_id}<ArrowRight/></Link>}</div></footer></article>) : <div className={styles.emptyQuote}><FileText/><p>Chưa có báo giá. Tạo bản đầu tiên từ danh mục đang bán.</p></div>}</section>
       {selected.notes && <section className={styles.notes}><h3>Ghi chú quan hệ</h3><p>{selected.notes}</p></section>}
     </aside></div>}
 

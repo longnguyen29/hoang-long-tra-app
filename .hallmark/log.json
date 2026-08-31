@@ -1,5 +1,15 @@
 [
   {
+    "date": "2026-09-01",
+    "macrostructure": "Workbench journey ledger",
+    "theme": "House of Hoàng Long (design.md)",
+    "enrichment": "none",
+    "nav": "inherited N3 app rail",
+    "footer": "inherited Ft2 inline rule",
+    "knob_delta": "relationship timeline + ranked next-action queue inside the existing CRM drawer",
+    "brief": "Connect samples, recipes, quotes, orders, delivery and payment into one customer journey"
+  },
+  {
     "date": "2026-08-29",
     "macrostructure": "Split Studio",
     "theme": "House of Hoàng Long (design.md)",
