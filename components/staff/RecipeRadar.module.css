@@ -20,3 +20,6 @@
 @media(prefers-reduced-motion:reduce){.state svg,.spinning{animation:none}}
 @keyframes spin{to{transform:rotate(1turn)}}
 .sources i[data-ready=false]{background:var(--color-warning)}
+.teaMatch{display:grid;gap:var(--space-2xs);padding:var(--space-md) var(--space-xl);border-block-end:var(--rule-thin) solid var(--color-rule);background:color-mix(in oklch,var(--color-accent) 7%,var(--color-paper))}.teaMatch>span{color:var(--color-accent);font-size:var(--text-xs);font-weight:850;letter-spacing:.08em;text-transform:uppercase}.teaMatch>div{display:flex;align-items:center;justify-content:space-between;gap:var(--space-sm)}.teaMatch b{font-family:var(--font-display);font-size:var(--text-lg)}.teaMatch em{padding:.2rem .5rem;border:var(--rule-thin) solid var(--color-accent);border-radius:999px;color:var(--color-accent);font-size:var(--text-xs);font-style:normal;font-weight:800}.teaMatch p{margin:0;color:var(--color-muted);font-size:var(--text-sm);line-height:1.45}
+@media(max-width:52rem){.teaMatch{padding-inline:var(--space-sm)}}
+@media(max-width:34rem){.teaMatch>div{align-items:flex-start;flex-direction:column}}

@@ -1,4 +1,5 @@
 import { authenticateStaffRequest } from "@/lib/staff-api-auth";
+import { createHouseStarterRecipes, promoteRadarConceptWithFormula } from "@/lib/house-recipes-server";
 import { runRecipeRadar, saveManualRadarSignal } from "@/lib/recipe-radar-server";
 
 export const maxDuration = 60;
@@ -10,6 +11,14 @@ export async function POST(request) {
   try {
     if (body.action === "save-signal") {
       const result = await saveManualRadarSignal(staff.admin, body.signal || {}, { triggeredBy: staff.user.email || staff.user.id });
+      return Response.json({ ok: true, ...result });
+    }
+    if (body.action === "seed-house-recipes") {
+      const result = await createHouseStarterRecipes(staff.admin, { triggeredBy: staff.user.email || staff.user.id });
+      return Response.json({ ok: true, ...result });
+    }
+    if (body.action === "promote-concept") {
+      const result = await promoteRadarConceptWithFormula(staff.admin, body.conceptId, { triggeredBy: staff.user.email || staff.user.id });
       return Response.json({ ok: true, ...result });
     }
     const result = await runRecipeRadar(staff.admin, { mode: "manual", triggeredBy: staff.user.email || staff.user.id });

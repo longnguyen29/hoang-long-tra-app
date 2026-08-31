@@ -19,6 +19,7 @@ import {
   Target,
   Thermometer,
   Timer,
+  WandSparkles,
   X,
 } from "lucide-react";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
@@ -88,7 +89,7 @@ export default function RecipeLab({ supabase, email }) {
     const [recipeResult, versionResult, productResult, batchResult, opportunityResult, sampleResult] = await Promise.all([
       supabase.from("recipes").select("*").order("updated_at", { ascending: false }),
       supabase.from("recipe_versions").select("*").order("version_number", { ascending: false }),
-      supabase.from("catalog_products").select("id,name,kind,available,price").eq("kind", "tea").order("sort_order"),
+      supabase.from("catalog_products").select("id,name,kind,line,available,price").eq("kind", "tea").eq("available", true).order("id"),
       supabase.from("tea_batches").select("id,code,product_id,cost_per_kg,status,available_kg").order("created_at", { ascending: false }),
       supabase.from("trade_opportunities").select("id,business_name,contact,stage").neq("stage", "lost").order("updated_at", { ascending: false }),
       supabase.from("sample_requests").select("id,store_name,phone,status").order("ts", { ascending: false }).limit(100),
@@ -102,7 +103,7 @@ export default function RecipeLab({ supabase, email }) {
     const nextVersions = versionResult.data || [];
     setRecipes(nextRecipes);
     setVersions(nextVersions);
-    if (!productResult.error) setProducts(productResult.data || []);
+    if (!productResult.error) setProducts((productResult.data || []).filter((item) => item.line !== "sample"));
     if (!batchResult.error) setBatches(batchResult.data || []);
     if (!opportunityResult.error) setOpportunities(opportunityResult.data || []);
     if (!sampleResult.error) setSamples(sampleResult.data || []);
@@ -252,6 +253,25 @@ export default function RecipeLab({ supabase, email }) {
     flash("Đã chuyển sang khách thử");
   };
 
+  const addHouseStarters = async () => {
+    setSaving(true); setError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("not_authenticated");
+      const response = await fetch("/api/staff/recipe-radar/run", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "seed-house-recipes" }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) throw new Error(result.error || "seed_failed");
+      await load({ preserveSelection: false, preferredId: result.recipeIds?.[0] || "" });
+      flash(result.createdCount ? `Đã thêm ${result.createdCount} công thức V1 theo trà Hoàng Long` : "Bộ công thức Hoàng Long đã có sẵn");
+    } catch {
+      setError("Chưa thêm được bộ công thức. Kiểm tra danh mục trà rồi thử lại.");
+    } finally { setSaving(false); }
+  };
+
   const activeEconomics = activeVersion ? recipeEconomics({
     teaDoseG: activeVersion.tea_dose_g,
     teaCostPerKg: activeVersion.tea_cost_per_kg,
@@ -271,7 +291,7 @@ export default function RecipeLab({ supabase, email }) {
 
       <section className={styles.heading}>
         <div><p>Recipe development</p><h1>Biến mỗi lần pha thành một công thức có thể lặp lại.</h1><span>Gắn công thức với khách, trà, lô sản xuất và giá vốn—rồi giữ lại đúng phiên bản đã được nếm và chốt.</span></div>
-        <button onClick={() => setRecipeDraft(blankRecipe())}><Plus/>Tạo công thức</button>
+        <div className={styles.headingActions}><button className={styles.secondary} disabled={saving} onClick={addHouseStarters}><WandSparkles/>{saving ? "Đang tạo…" : "Thêm bộ gợi ý"}</button><button className={styles.primary} onClick={() => setRecipeDraft(blankRecipe())}><Plus/>Tạo công thức</button></div>
       </section>
 
       {error && <p className={styles.toast} data-error><span>{error}</span><button onClick={() => setError("")}>×</button></p>}

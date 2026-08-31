@@ -6,6 +6,7 @@ import {
   ArrowLeft, ArrowUpRight, Beaker, Check, ChevronRight, CircleGauge, Clock3, EyeOff,
   Globe2, Link2, ListFilter, Plus, Radar, RefreshCw, Save, Search, Sparkles, X,
 } from "lucide-react";
+import { recommendHouseTea } from "@/lib/house-recipes";
 import { RADAR_MARKETS, RADAR_STAGES, safeExternalUrl } from "@/lib/recipe-radar";
 import { uid } from "@/lib/recipe-lab";
 import styles from "./RecipeRadar.module.css";
@@ -16,11 +17,11 @@ const CATEGORY_LABELS = {
   "fruit-tea": "Trà trái cây", "tea-mixology": "Tea mixology", "texture-dessert": "Foam & tráng miệng",
 };
 const SCORE_ROWS = [
-  ["score_velocity", "Tốc độ tăng", "30%"],
-  ["score_cross_market", "Lan qua thị trường", "25%"],
-  ["score_vietnam_gap", "Khoảng trống Việt Nam", "20%"],
-  ["score_tea_fit", "Hợp trà Hoàng Long", "15%"],
-  ["score_feasibility", "Khả năng làm", "10%"],
+  ["score_velocity", "Tốc độ tăng", "20%"],
+  ["score_cross_market", "Lan qua thị trường", "20%"],
+  ["score_vietnam_gap", "Khoảng trống Việt Nam", "15%"],
+  ["score_tea_fit", "Hợp trà Hoàng Long", "30%"],
+  ["score_feasibility", "Khả năng làm", "15%"],
 ];
 
 const stageLabel = (value) => RADAR_STAGES.find((item) => item.id === value)?.label || value;
@@ -40,6 +41,7 @@ export default function RecipeRadar({ supabase, email }) {
   const [signals, setSignals] = useState([]);
   const [queries, setQueries] = useState([]);
   const [runs, setRuns] = useState([]);
+  const [products, setProducts] = useState([]);
   const [selectedId, setSelectedId] = useState("");
   const [stageFilter, setStageFilter] = useState("active");
   const [search, setSearch] = useState("");
@@ -59,11 +61,12 @@ export default function RecipeRadar({ supabase, email }) {
     setLoading(true);
     setError("");
     const since = new Date(Date.now() - 120 * 86400000).toISOString();
-    const [conceptResult, signalResult, queryResult, runResult] = await Promise.all([
+    const [conceptResult, signalResult, queryResult, runResult, productResult] = await Promise.all([
       supabase.from("recipe_radar_concepts").select("*").order("score_total", { ascending: false }).limit(300),
       supabase.from("recipe_radar_signals").select("*").gte("published_at", since).order("published_at", { ascending: false }).limit(1500),
       supabase.from("recipe_radar_queries").select("*").order("created_at"),
       supabase.from("recipe_radar_runs").select("*").order("started_at", { ascending: false }).limit(12),
+      supabase.from("catalog_products").select("id,name,kind,line,available,price").eq("kind", "tea").eq("available", true),
     ]);
     if (conceptResult.error || signalResult.error || queryResult.error || runResult.error) {
       setError("Radar chưa có bảng dữ liệu. Cần áp dụng migration 0049 và 0050 trước khi quét.");
@@ -75,6 +78,7 @@ export default function RecipeRadar({ supabase, email }) {
     setSignals(signalResult.data || []);
     setQueries(queryResult.data || []);
     setRuns(runResult.data || []);
+    if (!productResult.error) setProducts((productResult.data || []).filter((item) => item.line !== "sample"));
     if (!keepSelection || !nextConcepts.some((item) => item.id === selectedId)) setSelectedId(nextConcepts[0]?.id || "");
     setLoading(false);
   }, [selectedId, supabase]);
@@ -83,6 +87,7 @@ export default function RecipeRadar({ supabase, email }) {
 
   const selected = concepts.find((item) => item.id === selectedId) || null;
   const selectedSignals = selected ? signals.filter((item) => item.concept_key === selected.canonical_key) : [];
+  const selectedTea = selected ? recommendHouseTea(selected, products) : null;
   const lastRun = runs[0] || null;
   const filtered = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase("vi");
@@ -160,23 +165,14 @@ export default function RecipeRadar({ supabase, email }) {
 
   const promoteToRecipe = async () => {
     if (!selected) return;
-    if (selected.promoted_recipe_id) {
-      window.location.assign(`/admin/recipes?view=lab&recipe=${encodeURIComponent(selected.promoted_recipe_id)}`);
-      return;
-    }
     setWorking(true); setError("");
-    const recipeId = uid("recipe");
-    const leadSignal = selectedSignals[0];
-    const now = new Date().toISOString();
-    const { error: recipeError } = await supabase.from("recipes").insert({
-      id: recipeId, name: selected.name, purpose: `Thử nghiệm từ Radar. ${selected.summary}`,
-      status: "draft", source_type: "radar", source_reference: selected.id, source_url: leadSignal?.url || "",
-      target_serving_ml: 500, notes: `Điểm Radar ${selected.score_total}/100. Thị trường: ${(selected.regions || []).join(", ")}.`,
-      created_by: email, updated_at: now,
-    });
-    if (recipeError) { setWorking(false); setError("Chưa tạo được công thức. Cần áp dụng migration 0049_recipe_lab.sql."); return; }
-    await supabase.from("recipe_radar_concepts").update({ stage: "testing", promoted_recipe_id: recipeId, updated_at: now }).eq("id", selected.id);
-    window.location.assign(`/admin/recipes?view=lab&recipe=${encodeURIComponent(recipeId)}`);
+    try {
+      const result = await staffRequest({ action: "promote-concept", conceptId: selected.id });
+      window.location.assign(`/admin/recipes?view=lab&recipe=${encodeURIComponent(result.recipeId)}`);
+    } catch {
+      setWorking(false);
+      setError("Chưa chuyển được thành công thức V1. Kiểm tra danh mục trà rồi thử lại.");
+    }
   };
 
   if (loading) return <main className={styles.state}><RefreshCw/><p>Đang mở Radar…</p></main>;
@@ -229,6 +225,7 @@ export default function RecipeRadar({ supabase, email }) {
         {selected ? <>
           <header><div><span>Evidence passport · {selected.canonical_key}</span><h2>{selected.name}</h2><p>{selected.summary}</p></div><strong data-score={selected.score_total >= 70 ? "high" : selected.score_total >= 52 ? "mid" : "low"}><b>{selected.score_total}</b><small>/ 100</small></strong></header>
           <div className={styles.marketLine}><span>Đã thấy tại</span><div>{(selected.regions || []).map((region) => <b key={region} data-vietnam={region === "VN"}>{RADAR_MARKETS[region]?.label || region}</b>)}</div></div>
+          {selectedTea?.id && <section className={styles.teaMatch}><span>Trà nên thử trước</span><div><b>{selectedTea.name}</b><em>{selectedTea.match}</em></div><p>{selectedTea.reason}</p></section>}
           <section className={styles.scoreLedger}><header><span>Vì sao có điểm này</span><small>Trọng số</small></header>{SCORE_ROWS.map(([key, label, weight]) => <div key={key}><span>{label}</span><i><b style={{ width: `${selected[key]}%` }}/></i><strong>{selected[key]}</strong><small>{weight}</small></div>)}</section>
           <section className={styles.evidence}><header><span>Bằng chứng gần nhất</span><b>{selectedSignals.length} nguồn</b></header>{selectedSignals.slice(0, 8).map((signal) => <a href={signal.url} target="_blank" rel="noreferrer" key={signal.id}><div><span>{SOURCE_LABELS[signal.source] || signal.source} · {RADAR_MARKETS[signal.region]?.label || signal.region}</span><b>{signal.title}</b><small>{signal.publisher || "Nguồn đã lưu"} · {shortDate(signal.published_at)}</small></div><ArrowUpRight/></a>)}{!selectedSignals.length && <p>Chưa tải được bằng chứng cho ý tưởng này.</p>}</section>
           <footer><button className={styles.dismiss} onClick={() => updateStage(selected.stage === "dismissed" ? "watch" : "dismissed")}><EyeOff/>{selected.stage === "dismissed" ? "Đưa lại Radar" : "Bỏ qua"}</button>{selected.stage !== "candidate" && selected.stage !== "testing" && <button className={styles.secondary} onClick={() => updateStage("candidate")}><Check/>Đánh dấu đáng thử</button>}<button className={styles.primary} disabled={working} onClick={promoteToRecipe}><Beaker/>{selected.promoted_recipe_id ? "Mở công thức đang thử" : "Đưa vào thử công thức"}</button></footer>
