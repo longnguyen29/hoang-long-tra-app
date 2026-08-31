@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, FlaskConical, Globe2, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { notifyHouse } from "@/lib/notify";
 import { fromCatalogRow } from "@/lib/mappers";
 import { useLocale } from "@/components/i18n/LocaleProvider";
+import { recordPublicConversion } from "@/lib/public-attribution";
 import styles from "./TradeDesk.module.css";
 
 const COPY = {
@@ -89,6 +90,7 @@ export default function TradeDesk() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
+  const briefStarted = useRef(false);
   const supabase = useMemo(() => createClient(), []);
   const t = COPY[lang];
 
@@ -98,6 +100,10 @@ export default function TradeDesk() {
       if (live && !catalogError) setProducts((data || []).map(fromCatalogRow).filter((item) => item.kind !== "goods" && item.line === "everyday").slice(0, 6));
     });
     return () => { live = false; };
+  }, [supabase]);
+
+  useEffect(() => {
+    recordPublicConversion(supabase, "wholesale_view", { once: true, placement: "wholesale" }).catch(() => {});
   }, [supabase]);
 
   const local = (value) => value?.[lang] || value?.en || value?.vi || "";
@@ -126,6 +132,7 @@ export default function TradeDesk() {
       return;
     }
     notifyHouse("leads", leadId);
+    recordPublicConversion(supabase, "trade_lead_submitted", { placement: "wholesale_brief" }).catch(() => {});
     setSent(true);
   };
 
@@ -142,7 +149,9 @@ export default function TradeDesk() {
           <h1>{t.title}</h1>
           <p className={styles.intro}>{t.intro}</p>
           <div className={styles.actions}>
-            <Link href="/sample"><FlaskConical size={17}/>{t.sample}</Link>
+            <Link href="/sample?utm_source=website&utm_medium=owned&utm_campaign=wholesale_b2b">
+              <FlaskConical size={17}/>{t.sample}
+            </Link>
             <a href="#trade-brief">{t.discuss}<ArrowRight size={16}/></a>
           </div>
         </div>
@@ -167,7 +176,11 @@ export default function TradeDesk() {
       <section className={styles.brief} id="trade-brief">
         <div className={styles.briefIntro}><p>Trade brief</p><h2>{t.requestTitle}</h2><p>{t.requestBody}</p><a href="tel:+84903333841"><Phone size={16}/>{t.call}</a></div>
         {sent ? <div className={styles.success}><span><Check size={19}/></span><h3>{t.sent}</h3><p>{t.sentBody}</p><Link href="/">{t.back}<ArrowRight size={16}/></Link></div> :
-          <form onSubmit={submit}>
+          <form onSubmit={submit} onFocusCapture={() => {
+            if (briefStarted.current) return;
+            briefStarted.current = true;
+            recordPublicConversion(supabase, "trade_brief_started", { placement: "wholesale_brief" }).catch(() => {});
+          }}>
             <label>{t.name}<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required/></label>
             <label>{t.business}<input value={form.business} onChange={(e) => setForm({ ...form, business: e.target.value })}/></label>
             <label>{t.contact}<input value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} required/></label>

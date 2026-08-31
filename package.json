@@ -19,6 +19,7 @@
     "test:recipes": "node --test lib/recipe-lab.test.mjs lib/recipe-radar.test.mjs lib/house-recipes.test.mjs",
     "test:journey": "node --test lib/customer-journey.test.mjs",
     "test:materials": "node --test lib/material-planning.test.mjs",
+    "test:attribution": "node --test lib/public-attribution.test.mjs",
     "seed": "node --env-file=.env.local scripts/seed.mjs",
     "seed:v2": "node --env-file=.env.local scripts/seed-v2.mjs"
   },

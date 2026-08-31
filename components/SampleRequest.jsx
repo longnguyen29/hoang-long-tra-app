@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Check, Leaf, Loader2, Phone } from "lucide-react
 import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { notifyHouse } from "@/lib/notify";
+import { recordPublicConversion } from "@/lib/public-attribution";
 import styles from "./SampleRequest.module.css";
 
 const PACKS = [
@@ -142,7 +143,12 @@ export default function SampleRequest() {
   const [growthCode, setGrowthCode] = useState("");
 
   useEffect(() => {
-    const code = (new URLSearchParams(window.location.search).get("exp") || "").trim().toLowerCase();
+    recordPublicConversion(supabase, "sample_view", { once: true, placement: "sample" }).catch(() => {});
+    const query = new URLSearchParams(window.location.search);
+    const campaign = (query.get("utm_campaign") || "").trim().toLowerCase();
+    if (campaign === "home_b2b") recordPublicConversion(supabase, "home_sample_clicked", { once: true, placement: "home_hero" }).catch(() => {});
+    if (campaign === "wholesale_b2b") recordPublicConversion(supabase, "wholesale_sample_clicked", { once: true, placement: "wholesale_hero" }).catch(() => {});
+    const code = (query.get("exp") || "").trim().toLowerCase();
     setGrowthCode(code);
     if (code) setForm((current) => ({ ...current, heardFrom: current.heardFrom || "threads" }));
 
@@ -198,6 +204,7 @@ export default function SampleRequest() {
       });
       if (requestError) throw requestError;
       notifyHouse("sample_requests", data);
+      recordPublicConversion(supabase, "sample_submitted", { pack, placement: "sample_form" }).catch(() => {});
       setSent(true);
       scrollToTop();
     } catch (requestError) {
@@ -263,7 +270,10 @@ export default function SampleRequest() {
                   {PACKS.map((item) => {
                     const selected = pack === item.id;
                     return <button className={styles.pack} data-selected={selected} key={item.id} type="button" role="radio" aria-checked={selected}
-                      onClick={() => { setPack(item.id); setError(""); }}>
+                      onClick={() => {
+                        setPack(item.id); setError("");
+                        recordPublicConversion(supabase, "sample_pack_selected", { pack: item.id, placement: "sample_pack" }).catch(() => {});
+                      }}>
                       <span className={styles.radioMark} aria-hidden="true">{selected && <Check />}</span>
                       <span className={styles.packCopy}>
                         <span className={styles.packTop}><strong>{item.purpose[lang]}</strong><b>{item.free ? t.free : money(item.price)}</b></span>
@@ -285,7 +295,10 @@ export default function SampleRequest() {
                   {!qualified && Object.values(checks).some(Boolean) && <p className={styles.qualificationHint}>{t.qualifyFail}</p>}
                 </fieldset>}
                 <button className={styles.primaryButton} type="button" disabled={!canContinue}
-                  onClick={() => { setStep(2); setError(""); scrollToTop(); }}>
+                  onClick={() => {
+                    setStep(2); setError(""); scrollToTop();
+                    recordPublicConversion(supabase, "sample_details_started", { pack, placement: "sample_continue" }).catch(() => {});
+                  }}>
                   {t.continue}<ArrowRight aria-hidden="true" />
                 </button>
               </div>

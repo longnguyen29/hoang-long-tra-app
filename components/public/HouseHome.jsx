@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowDown, ArrowRight, Globe2, Menu, ShoppingBag, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { recordPublicConversion } from "@/lib/public-attribution";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import styles from "./HouseHome.module.css";
 
@@ -16,6 +17,7 @@ const COPY = {
     heroBody: "House of Hoang Long works with ancient Shan Tuyết tea from Hà Giang and a precise Japanese processing discipline. Family-made since 1995.",
     explore: "Explore this season",
     trade: "For tea houses & kitchens",
+    sampleCta: "Request the café sample set",
     season: "Current leaves",
     seasonBody: "Small harvests change. The catalogue follows what is actually available, not an imaginary permanent shelf.",
     viewTea: "View tea",
@@ -42,6 +44,7 @@ const COPY = {
     heroBody: "Từ năm 1995, nhà Hoàng Long làm bạn cùng cây trà Shan Tuyết cổ thụ Hà Giang, kết hợp kinh nghiệm làm trà truyền thống với công nghệ chế biến hiện đại của Nhật Bản.",
     explore: "Xem trà mùa này",
     trade: "Dành cho quán & nhà hàng",
+    sampleCta: "Nhận bộ mẫu cho quán",
     season: "Những lá trà hiện có",
     seasonBody: "Trà thay đổi theo mùa và sản lượng thực tế. Vì vậy, danh mục cũng được cập nhật theo từng vụ.",
     viewTea: "Xem trà",
@@ -85,6 +88,10 @@ export default function HouseHome() {
     return () => { live = false; };
   }, [supabase]);
 
+  useEffect(() => {
+    recordPublicConversion(supabase, "home_view", { once: true, placement: "home" }).catch(() => {});
+  }, [supabase]);
+
   const photos = home?.featured_photos?.length ? home.featured_photos : FALLBACK_PHOTOS;
   const teas = catalog.filter((item) => item.kind !== "goods").slice(0, 3);
   const local = (value) => value?.[lang] || value?.en || value?.vi || "";
@@ -125,7 +132,9 @@ export default function HouseHome() {
           <h1>{t.hero}</h1>
           <p className={styles.heroBody}>{t.heroBody}</p>
           <div className={styles.heroLinks}>
-            <Link href="/shop">{t.explore}<ArrowRight size={16}/></Link>
+            <Link href="/sample?utm_source=website&utm_medium=owned&utm_campaign=home_b2b">
+              {t.sampleCta}<ArrowRight size={16}/>
+            </Link>
             <Link href="/wholesale">{t.trade}</Link>
           </div>
           <a href="#season" className={styles.scrollCue} aria-label="Scroll to current teas"><ArrowDown size={17}/></a>

@@ -66,8 +66,41 @@ function ScoreStrip({ result }) {
   </div>;
 }
 
+function WebsiteFunnel({ snapshot }) {
+  const stages = [
+    ["Vào trang đối tác", snapshot.wholesale_visitors || 0],
+    ["Vào trang mẫu", snapshot.sample_visitors || 0],
+    ["Sang nhập thông tin", snapshot.sample_starts || 0],
+    ["Gửi yêu cầu mẫu", snapshot.sample_requests || 0],
+  ];
+  const max = Math.max(1, ...stages.map(([, value]) => Number(value || 0)));
+  const sources = (snapshot.by_source || []).slice(0, 5);
+  return <section className={styles.websiteFunnel} aria-labelledby="website-funnel-title">
+    <header>
+      <div><p>Website · {snapshot.days || 30} ngày</p><h2 id="website-funnel-title">Từ người xem thành một lần thử thật.</h2></div>
+      <span>{snapshot.sample_clicks || 0} lượt bấm nhận mẫu · {snapshot.trade_leads || 0} yêu cầu trao đổi</span>
+    </header>
+    <div className={styles.websiteFunnelGrid}>
+      <div className={styles.websiteStages}>
+        {stages.map(([label, value], index) => <article key={label}>
+          <span><b>{label}</b><strong>{compactNumber(value)}</strong></span>
+          <i style={{ "--fill": `${Math.max(value ? 7 : 0, Number(value || 0) / max * 100)}%` }}/>
+          <small>{index ? `${percent(value, stages[index - 1][1])} từ bước trước` : "Điểm vào luồng B2B"}</small>
+        </article>)}
+      </div>
+      <aside>
+        <h3>Nguồn tạo yêu cầu</h3>
+        {sources.length ? sources.map((source) => <div key={source.source}>
+          <span>{source.source || "direct"}</span><b>{Number(source.sample_requests || 0) + Number(source.trade_leads || 0)}</b>
+        </div>) : <p>Chưa có yêu cầu mới trong giai đoạn này. Số liệu sẽ tự tích lũy sau khi bản này được xuất bản.</p>}
+      </aside>
+    </div>
+  </section>;
+}
+
 export default function GrowthLab({ supabase, email, role }) {
   const [snapshot, setSnapshot] = useState({ active_prompt: {}, experiments: [] });
+  const [websiteFunnel, setWebsiteFunnel] = useState({ days: 30, by_source: [] });
   const [tab, setTab] = useState("experiments");
   const [selectedId, setSelectedId] = useState("");
   const [brief, setBrief] = useState(EMPTY_BRIEF);
@@ -81,12 +114,16 @@ export default function GrowthLab({ supabase, email, role }) {
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
-    const { data, error: loadError } = await supabase.rpc("growth_lab_snapshot");
+    const [{ data, error: loadError }, { data: funnelData }] = await Promise.all([
+      supabase.rpc("growth_lab_snapshot"),
+      supabase.rpc("b2b_conversion_snapshot", { p_days: 30 }),
+    ]);
     if (loadError) setError("Phòng tăng trưởng chưa đọc được dữ liệu. Cần áp dụng migration 0045_growth_content_lab rồi làm mới.");
     else {
       setSnapshot(data || { active_prompt: {}, experiments: [] });
       setSelectedId((current) => current || data?.experiments?.[0]?.id || "");
     }
+    if (funnelData) setWebsiteFunnel(funnelData);
     setLoading(false);
   }, [supabase]);
 
@@ -241,6 +278,8 @@ export default function GrowthLab({ supabase, email, role }) {
       <article><span>Đơn đầu tiên</span><b>{orders}</b><small>đối chiếu theo số điện thoại</small></article>
       <article><span>Nguyên tắc</span><b>Người duyệt</b><small>máy chỉ đề xuất thay đổi</small></article>
     </section>
+
+    <WebsiteFunnel snapshot={websiteFunnel}/>
 
     <nav className={styles.tabs} aria-label="Phòng tăng trưởng">
       <button data-active={tab === "experiments"} onClick={() => setTab("experiments")}><FlaskConical/>Thử nghiệm</button>
