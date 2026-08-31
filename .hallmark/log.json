@@ -1,6 +1,16 @@
 [
   {
     "date": "2026-09-01",
+    "macrostructure": "Workbench system health ledger",
+    "theme": "House of Hoàng Long (design.md)",
+    "enrichment": "none",
+    "nav": "inherited report and settings index",
+    "footer": "none; privacy note closes the ledger",
+    "knob_delta": "plain-language service state + secret-safe diagnostics",
+    "brief": "Let the owner see which integrations work without exposing credentials"
+  },
+  {
+    "date": "2026-09-01",
     "macrostructure": "Grouped Workbench navigation",
     "theme": "House of Hoàng Long (design.md)",
     "enrichment": "none",

@@ -46,7 +46,7 @@ begin
   insert into website_conversion_events(event_name,session_id,path,referrer,source,medium,campaign,content,metadata)
   values(
     p_event_name,left(btrim(p_session),80),left(btrim(coalesce(p_path,'')),120),
-    left(btrim(coalesce(p_referrer,'')),200),left(regexp_replace(lower(btrim(coalesce(p_source,'direct'))),'[^a-z0-9._-]','-','g'),80),
+    left(split_part(split_part(btrim(coalesce(p_referrer,'')),'?',1),'#',1),200),left(regexp_replace(lower(btrim(coalesce(p_source,'direct'))),'[^a-z0-9._-]','-','g'),80),
     left(regexp_replace(lower(btrim(coalesce(p_medium,''))),'[^a-z0-9._-]','-','g'),80),
     left(regexp_replace(lower(btrim(coalesce(p_campaign,''))),'[^a-z0-9._-]','-','g'),80),
     left(regexp_replace(lower(btrim(coalesce(p_content,''))),'[^a-z0-9._-]','-','g'),80),

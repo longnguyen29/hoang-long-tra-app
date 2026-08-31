@@ -4,13 +4,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
+  Activity,
+  AlertTriangle,
   BarChart3,
   Check,
+  CheckCircle2,
   CircleDollarSign,
   Download,
+  Clock3,
   Handshake,
   MessageSquareQuote,
   Percent,
+  PauseCircle,
   Plus,
   RefreshCw,
   RotateCcw,
@@ -73,6 +78,8 @@ export default function BusinessControl({ supabase, email, onLogout }) {
     [loading, setLoading] = useState(true),
     [saving, setSaving] = useState(false),
     [saved, setSaved] = useState(""),
+    [health, setHealth] = useState(null),
+    [healthLoading, setHealthLoading] = useState(false),
     [error, setError] = useState("");
   const load = useCallback(async () => {
     setLoading(true);
@@ -109,6 +116,17 @@ export default function BusinessControl({ supabase, email, onLogout }) {
   useEffect(() => {
     load();
   }, [load]);
+  const loadHealth = useCallback(async () => {
+    setHealthLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) { setHealthLoading(false); return; }
+    const response = await fetch("/api/staff/integrations/health", { headers: { Authorization: `Bearer ${session.access_token}` } });
+    const payload = await response.json().catch(() => null);
+    if (response.ok) setHealth(payload);
+    else setError("Chưa kiểm tra được các kết nối hệ thống.");
+    setHealthLoading(false);
+  }, [supabase]);
+  useEffect(() => { if (tab === "connections" && !health) loadHealth(); }, [tab, health, loadHealth]);
   const flash = (message) => {
     setSaved(message);
     setTimeout(() => setSaved(""), 1800);
@@ -324,6 +342,7 @@ export default function BusinessControl({ supabase, email, onLogout }) {
     ["offers", "Ưu đãi", Percent],
     ["reviews", "Đánh giá", MessageSquareQuote],
     ["payment", "Thanh toán", CircleDollarSign],
+    ["connections", "Kết nối", Activity],
     ["bin", "Khôi phục", RotateCcw],
   ];
   return (
@@ -598,6 +617,24 @@ export default function BusinessControl({ supabase, email, onLogout }) {
               Lưu thông tin thanh toán
             </button>
           </form>
+        </section>
+      )}
+      {tab === "connections" && (
+        <section className={`${styles.panel} ${styles.connections}`}>
+          <header><div><p>System health</p><h2>Các kết nối đang sống ra sao?</h2></div><button onClick={loadHealth} disabled={healthLoading}><RefreshCw/>{healthLoading ? "Đang kiểm tra…" : "Kiểm tra lại"}</button></header>
+          {health ? <>
+            <div className={styles.healthSummary}>
+              <article><CheckCircle2/><span><b>{health.summary.healthy}</b><small>Đang hoạt động</small></span></article>
+              <article><AlertTriangle/><span><b>{health.summary.attention}</b><small>Cần kiểm tra</small></span></article>
+              <article><Clock3/><span><b>{health.summary.waiting}</b><small>Chờ tín hiệu đầu</small></span></article>
+              <article><PauseCircle/><span><b>{health.summary.paused}</b><small>Đang tạm dừng</small></span></article>
+            </div>
+            <div className={styles.healthRows}>{health.services.map((service) => <article key={service.id} data-state={service.state}>
+              <i aria-hidden="true"/><span><b>{service.label}</b><small>{service.detail}</small></span>
+              <em>{service.state === "healthy" ? "Hoạt động" : service.state === "action" ? "Cần kiểm tra" : service.state === "waiting" ? "Đang chờ" : "Tạm dừng"}</em>
+            </article>)}</div>
+            <p className={styles.healthPrivacy}>Trang này chỉ đọc trạng thái. Khóa API, mật khẩu và nội dung tin nhắn không bao giờ được gửi ra trình duyệt.</p>
+          </> : <div className={styles.healthEmpty}><Activity/><p>{healthLoading ? "Đang kiểm tra từng kết nối…" : "Bấm “Kiểm tra lại” để đọc trạng thái hệ thống."}</p></div>}
         </section>
       )}
       {tab === "bin" && (
