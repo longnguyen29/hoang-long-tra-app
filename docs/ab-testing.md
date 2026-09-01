@@ -21,6 +21,15 @@ Use this pattern when a new Hoàng Long function is promising but should not rep
 
 Both routes submit to the existing sample-request system. Analytics can separate them by `path` and by placements beginning with `sample_control` or `sample_menu_lab`.
 
+## Current tea-journey experiment
+
+| Variant | Route | Purpose |
+| --- | --- | --- |
+| Control | `/` | Existing homepage: quickly introduce the House, current tea and customer paths. |
+| Tea journey | `/hanh-trinh-la-tra` | Explain the path from old tea tree to café recipe, then hand the visitor into Menu Lab. |
+
+The journey page records a privacy-safe page view with growth code `tea-journey`. Its sample links use `utm_medium=journey`, so downstream visits and requests can be separated from the homepage path. Keep it unlinked from the public navigation until the owner chooses a winner.
+
 ## Link discipline
 
 When testing a campaign, keep the same UTM tags and change only the destination URL. Do not redirect `/sample` automatically or randomly split traffic until the owner asks for it; direct links make the test easy to pause, explain and audit.

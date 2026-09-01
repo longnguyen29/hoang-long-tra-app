@@ -69,6 +69,7 @@
   --radius-round: 999px;
   --rule-thin: 1px;
   --rule-focus: 2px;
+  --rule-underline-offset: 2px;
   --control-height: 2.75rem;
   --topbar-height: 4.25rem;
   --page-gutter: clamp(1rem, 4vw, 4rem);

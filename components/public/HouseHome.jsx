@@ -99,9 +99,9 @@ export default function HouseHome() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <Link href="/" className={styles.wordmark} aria-label="House of Hoang Long home">
+        <Link href="/" className={styles.wordmark} aria-label="House of Hoang Long home" translate="no">
           <span className={styles.seal} aria-hidden="true">皇龍</span>
-          <span>House of Hoang Long</span>
+          <span className="notranslate" translate="no">House of Hoang Long</span>
         </Link>
 
         <nav className={styles.desktopNav} aria-label="Primary navigation">

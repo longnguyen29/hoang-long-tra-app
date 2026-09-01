@@ -611,12 +611,24 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
 
           <aside className={styles.contextColumn}>
             {canReview && <section className={styles.testReminder}>
-              <div className={styles.testReminderMeta}><span><FlaskConical />Phép thử cần tiếp tục</span><small>A/B sample</small></div>
-              <h2>So sánh hai luồng nhận mẫu</h2>
-              <p>Gửi hai đường dẫn cho các nhóm quán tương đương. Giữ cùng thông điệp và kênh; so sánh tỷ lệ sang nhập thông tin, gửi yêu cầu và chất lượng quán.</p>
-              <div className={styles.testLinks}>
-                <a href="/sample" target="_blank" rel="noreferrer">Mở bản gốc<ArrowRight /></a>
-                <a href="/sample/menu-lab" target="_blank" rel="noreferrer">Mở Menu Lab<ArrowRight /></a>
+              <div className={styles.testReminderMeta}><span><FlaskConical />Phép thử cần tiếp tục</span><small>2 thử nghiệm</small></div>
+              <h2>Các đường thử đang mở</h2>
+              <p>Gửi từng cặp đường dẫn cho nhóm quán tương đương. Giữ cùng thông điệp và kênh; chỉ thay trải nghiệm cần kiểm tra.</p>
+              <div className={styles.experimentList}>
+                <article>
+                  <b>Luồng nhận mẫu</b>
+                  <div className={styles.testLinks}>
+                    <a href="/sample" target="_blank" rel="noreferrer">Bản gốc<ArrowRight /></a>
+                    <a href="/sample/menu-lab" target="_blank" rel="noreferrer">Menu Lab<ArrowRight /></a>
+                  </div>
+                </article>
+                <article>
+                  <b>Câu chuyện hành trình trà</b>
+                  <div className={styles.testLinks}>
+                    <a href="/" target="_blank" rel="noreferrer">Trang chính<ArrowRight /></a>
+                    <a href="/hanh-trinh-la-tra" target="_blank" rel="noreferrer">Bản hành trình<ArrowRight /></a>
+                  </div>
+                </article>
               </div>
               <Link className={styles.testMeasure} href="/admin/growth"
                 onClick={(event) => openApp(event, APPS.growth, { reminder: "sample-funnel-ab-test" })}>
