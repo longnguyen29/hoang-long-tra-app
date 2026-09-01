@@ -1,6 +1,16 @@
 [
   {
     "date": "2026-09-01",
+    "macrostructure": "Workbench catalogue ledger",
+    "theme": "House of Hoàng Long (design.md)",
+    "enrichment": "none",
+    "nav": "inherited House control app index",
+    "footer": "none; product ledger closes the room",
+    "knob_delta": "searchable operational rows + inline variant disclosure + inventory-first mobile summary",
+    "brief": "Make catalogue price, sale state, variants and location stock scannable before editing"
+  },
+  {
+    "date": "2026-09-01",
     "macrostructure": "Workbench system health ledger",
     "theme": "House of Hoàng Long (design.md)",
     "enrichment": "none",
