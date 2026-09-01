@@ -92,6 +92,15 @@ export default function TradePipeline({ supabase, email }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
+  const closeSelected = useCallback(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("opportunity")) {
+      url.searchParams.delete("opportunity");
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+    setSelected(null);
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true); setError("");
     const [o, q, a, p, v, w, s, r, rv, ord, rec] = await Promise.all([
@@ -295,8 +304,8 @@ export default function TradePipeline({ supabase, email }) {
     </section>
     {showLost && <section className={styles.lost}><header><h2>Cơ hội đang tạm dừng</h2><span>Giữ lại lịch sử; đưa về pipeline khi thời điểm phù hợp.</span></header>{searchable.filter((item) => item.stage === "lost").map((item) => <button key={item.id} onClick={() => openOpportunity(item)}><span><b>{item.business_name}</b><small>{item.lost_reason || "Chưa ghi lý do"}</small></span><ChevronRight/></button>)}</section>}
 
-    {selected && <div className={styles.overlay} onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><aside className={styles.drawer} aria-label="Chi tiết cơ hội" role="dialog" aria-modal="true">
-      <header><div><p>{stageLabel(selected.stage)}</p><h2>{selected.business_name}</h2><span>{selected.contact}</span></div><button onClick={() => setSelected(null)} aria-label="Đóng"><X/></button></header>
+    {selected && <div className={styles.overlay} onPointerDown={(event) => { if (event.target === event.currentTarget) closeSelected(); }}><aside className={styles.drawer} aria-label="Chi tiết cơ hội" role="dialog" aria-modal="true">
+      <header><div><p>{stageLabel(selected.stage)}</p><h2>{selected.business_name}</h2><span>{selected.contact}</span></div><button type="button" onClick={closeSelected} aria-label="Đóng"><X/></button></header>
       <section className={styles.next}><span>Bước tiếp theo</span><h3>{selected.next_action || "Chưa đặt bước tiếp theo"}</h3><time>{shortDate(selected.next_action_at)}</time><div><button onClick={() => setEditing({ ...selected, next_action_at: selected.next_action_at?.slice(0, 10) || "" })}>Sửa nhịp làm việc</button><Link className={styles.recipeBridge} href={`/admin/recipes?view=lab&opportunity=${encodeURIComponent(selected.id)}`}><FlaskConical/>Mở phòng công thức</Link></div></section>
       <CustomerJourneyPanel journey={selectedJourney} onCommand={runJourneyCommand}/>
       <section className={styles.progress}><header><h3>Chuyển giai đoạn</h3><span>{selected.monthly_potential_kg || 0} kg/tháng</span></header><div>{TRADE_STAGES.map((stage) => <button key={stage.id} data-active={selected.stage === stage.id} onClick={() => moveStage(stage.id)}>{stage.short}</button>)}<button data-lost onClick={() => moveStage("lost")}>Tạm dừng</button></div></section>
