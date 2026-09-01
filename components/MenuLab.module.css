@@ -1,0 +1,45 @@
+/* Hallmark · genre: editorial · macrostructure: Split Studio workbench insert · design-system: design.md · menu-lab
+ * pre-emit critique: P5 H5 E5 S5 R5 V4 · interaction: native radio + live result · enrichment: none
+ * states: default · hover · focus · active · disabled · loading · error · success · contrast: pass (40–41)
+ * honest: pass (46) · chrome: pass (47) · tokens: pass (48) · responsive: pass (34, 49, 50–57) · icons: pass (30)
+ */
+.lab{min-width:0}.heading{display:grid;gap:var(--space-sm);margin-block-end:var(--space-xl)}
+.heading>p{margin:0;color:var(--color-accent);font-size:var(--text-xs);font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.heading h2{min-width:0;max-width:18ch;margin:0;font-family:var(--font-display);font-size:clamp(2rem,5vw,3.35rem);font-style:normal;font-weight:560;letter-spacing:-.025em;line-height:1;overflow-wrap:anywhere}
+.heading>span{max-width:56ch;color:var(--color-ink-2);line-height:1.55}
+.controls{border-block-start:var(--rule-thin) solid var(--color-rule)}
+.group{min-width:0;margin:0;padding:var(--space-md) 0;border:0;border-block-end:var(--rule-thin) solid var(--color-rule)}
+.group legend{margin-block-end:var(--space-xs);padding:0;color:var(--color-ink);font-size:var(--text-sm);font-weight:700}
+.group>div{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-2xs)}
+.group label{min-width:0;min-height:var(--control-height);display:grid;grid-template-columns:1.25rem minmax(0,1fr);align-items:center;gap:var(--space-xs);padding:var(--space-xs);border:var(--rule-thin) solid var(--color-rule-2);border-radius:var(--radius-control);outline:var(--rule-focus) solid transparent;outline-offset:1px;background:var(--color-paper);color:var(--color-ink);cursor:pointer}
+.group label[data-selected=true]{border-color:var(--color-ink);background:var(--color-paper-2);color:var(--color-ink)}
+.group input{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.group label>span{width:1.15rem;height:1.15rem;display:grid;place-items:center;border:var(--rule-thin) solid var(--color-rule);border-radius:var(--radius-round);background:var(--color-paper);color:var(--color-ink)}
+.group label[data-selected=true]>span{border:calc(var(--rule-thin) * 4) solid var(--color-ink)}
+.group strong{min-width:0;font-size:var(--text-sm);font-weight:650;line-height:1.25}
+.group label:has(input:focus-visible){outline-color:var(--color-focus)}
+.compact>div{grid-template-columns:repeat(3,minmax(0,1fr))}.compact label{grid-template-columns:minmax(0,1fr);justify-items:center}.compact label>span{display:none}.compact strong{white-space:nowrap}
+.result{margin-block-start:var(--space-xl);padding:var(--space-lg);background:var(--color-ink);color:var(--color-paper)}
+.resultHeading{display:grid;grid-template-columns:2rem minmax(0,1fr);gap:var(--space-sm);align-items:start}
+.resultHeading>svg{width:1.5rem;height:1.5rem;color:var(--color-accent)}
+.resultHeading span,.recipeLine span{color:var(--color-paper-3);font-size:var(--text-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.resultHeading h3{min-width:0;margin:var(--space-3xs) 0 0;font-family:var(--font-display);font-size:var(--text-xl);font-style:normal;font-weight:600;line-height:1.05;overflow-wrap:anywhere}
+.resultHeading p{max-width:50ch;margin:var(--space-xs) 0 0;color:var(--color-paper-2);font-size:var(--text-sm);line-height:1.5}
+.recipeLine{display:grid;gap:var(--space-3xs);margin-block-start:var(--space-lg);padding-block:var(--space-sm);border-block:var(--rule-thin) solid color-mix(in oklch,var(--color-paper) 24%,transparent)}
+.recipeLine strong{font-family:var(--font-display);font-size:var(--text-md);font-weight:600}
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin:0;border-block-end:var(--rule-thin) solid color-mix(in oklch,var(--color-paper) 24%,transparent)}
+.metrics>div{min-width:0;padding:var(--space-sm) var(--space-xs) var(--space-sm) 0;border-block-end:var(--rule-thin) solid color-mix(in oklch,var(--color-paper) 16%,transparent)}
+.metrics dt{color:var(--color-paper-3);font-size:var(--text-xs);font-weight:700}.metrics dd{min-width:0;margin:var(--space-3xs) 0 0;font-size:var(--text-base);font-variant-numeric:tabular-nums;font-weight:700;overflow-wrap:anywhere}
+.metrics [data-state=loading] dd{opacity:.72}.metrics [data-state=error] dd{color:var(--color-paper-2)}
+.costNote,.honestNote{max-width:58ch;font-size:var(--text-xs);line-height:1.5}.costNote{margin:var(--space-sm) 0 0;color:var(--color-paper-3)}
+.honestNote{margin:var(--space-xs) 0 0;color:var(--color-paper-2);font-weight:650}
+.actions{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-xs);margin-block-start:var(--space-lg)}
+.actions button{min-height:var(--control-height);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2xs);padding-inline:var(--space-sm);border-radius:var(--radius-control);font:inherit;font-size:var(--text-sm);font-weight:700;white-space:nowrap;cursor:pointer;transition:transform var(--dur-short) var(--ease-out),background-color var(--dur-short) var(--ease-out)}
+.actions button svg{width:1rem;height:1rem;flex:0 0 auto}.accept{border:var(--rule-thin) solid var(--color-paper);background:var(--color-paper);color:var(--color-ink)}
+.skip{border:var(--rule-thin) solid color-mix(in oklch,var(--color-paper) 38%,transparent);background:transparent;color:var(--color-paper)}
+.actions button:focus-visible{outline:var(--rule-focus) solid var(--color-focus);outline-offset:2px}.actions button:active{transform:translateY(1px)}.actions button:disabled{opacity:.55;cursor:not-allowed}
+@media(hover:hover) and (pointer:fine){.group label:hover{background:var(--color-paper-2);color:var(--color-ink)}.actions button:hover{transform:translateY(-1px)}.skip:hover{background:color-mix(in oklch,var(--color-paper) 10%,transparent);color:var(--color-paper)}}
+@media(min-width:34rem){.group>div{grid-template-columns:repeat(2,minmax(0,1fr))}.compact>div{grid-template-columns:repeat(3,minmax(0,1fr))}.actions{grid-template-columns:minmax(0,1fr) auto}}
+@media(min-width:46rem){.metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(pointer:coarse){.group label,.actions button{min-height:3rem}}
+@media(prefers-reduced-motion:reduce){.actions button{transition-duration:var(--dur-short);transform:none!important}}

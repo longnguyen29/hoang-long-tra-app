@@ -1,6 +1,16 @@
 [
   {
     "date": "2026-09-01",
+    "macrostructure": "Split Studio Menu Lab workbench",
+    "theme": "House of Hoàng Long (design.md)",
+    "enrichment": "none",
+    "nav": "inherited N9 House header",
+    "footer": "inherited Ft2 inline rule",
+    "knob_delta": "live catalogue price + deterministic recipe match + three-step sample handoff",
+    "brief": "Help a café choose a Hoàng Long tea and starting recipe before requesting samples"
+  },
+  {
+    "date": "2026-09-01",
     "macrostructure": "Workbench catalogue ledger",
     "theme": "House of Hoàng Long (design.md)",
     "enrichment": "none",

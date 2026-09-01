@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { notifyHouse } from "@/lib/notify";
 import { recordPublicConversion } from "@/lib/public-attribution";
+import { menuLabRequestNote } from "@/lib/menu-lab";
+import MenuLab from "@/components/MenuLab";
 import styles from "./SampleRequest.module.css";
 
 const PACKS = [
@@ -60,7 +62,7 @@ const STR = {
     imageCaption: "The point of a sample is not another tasting cup. It is a recipe your shop can actually serve.",
     setTitle: "Inside the test",
     facts: [["4", "tea samples selected from the batches currently available"], ["At your bar", "tested with your water, equipment and actual recipe"], ["A decision", "identify what fits before discussing a wholesale order"]],
-    stepPack: "Choose the test", stepDetails: "Delivery details",
+    stepLab: "Choose drink", stepPack: "Choose set", stepDetails: "Delivery",
     pickPack: "Choose the amount that matches the decision you need to make",
     packHelp: "All three options contain four tea samples. Only the working quantity changes.",
     free: "Free", paidCredit: "Credited to the first wholesale order",
@@ -69,6 +71,7 @@ const STR = {
     qualifyIntro: "The free 50g set is reserved for shops able to complete a useful working test.",
     qualifyFail: "Complete all three points to request the free set, or choose a paid set without these conditions.",
     continue: "Continue to delivery", selected: "Your selected test", change: "Change",
+    labSelected: "Menu Lab suggestion", changeLab: "Change drink",
     detailsTitle: "Where should we send it?",
     detailsIntro: "We use these details only to confirm the request and arrange delivery.",
     storeLabel: "Shop or business name", storePh: "For example: Mây Tea Lab",
@@ -98,7 +101,7 @@ const STR = {
     imageCaption: "Đích đến của bộ mẫu không phải thêm một ly trà thử. Mà là một công thức quán có thể phục vụ thật.",
     setTitle: "Bộ thử giúp quán làm gì?",
     facts: [["4", "mẫu trà được chọn theo những mẻ đang có"], ["Tại quầy", "thử bằng nguồn nước, thiết bị và công thức thực tế của quán"], ["Ra quyết định", "chọn loại phù hợp trước khi trao đổi đơn sỉ"]],
-    stepPack: "Chọn bộ thử", stepDetails: "Thông tin nhận mẫu",
+    stepLab: "Chọn món", stepPack: "Chọn bộ", stepDetails: "Nhận mẫu",
     pickPack: "Chọn lượng trà phù hợp với điều quán cần kiểm chứng",
     packHelp: "Cả ba lựa chọn đều có bốn mẫu trà. Khác nhau ở lượng trà để quán thử sâu đến đâu.",
     free: "Miễn phí", paidCredit: "Trừ vào đơn sỉ đầu tiên",
@@ -107,6 +110,7 @@ const STR = {
     qualifyIntro: "Bộ 50g miễn phí dành cho quán có thể thực hiện một lần thử thực tế và phản hồi kết quả.",
     qualifyFail: "Xác nhận đủ ba điều kiện để nhận bộ miễn phí, hoặc chọn bộ trả phí không cần điều kiện này.",
     continue: "Tiếp tục nhận mẫu", selected: "Bộ thử đã chọn", change: "Đổi",
+    labSelected: "Gợi ý từ Menu Lab", changeLab: "Đổi món",
     detailsTitle: "Gửi mẫu về đâu?", detailsIntro: "Thông tin chỉ được dùng để xác nhận yêu cầu và sắp xếp giao mẫu.",
     storeLabel: "Tên quán hoặc doanh nghiệp", storePh: "Ví dụ: Mây Tea Lab",
     nameLabel: "Người liên hệ", namePh: "Tên của bạn",
@@ -141,6 +145,9 @@ export default function SampleRequest() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
   const [growthCode, setGrowthCode] = useState("");
+  const [labProducts, setLabProducts] = useState([]);
+  const [catalogStatus, setCatalogStatus] = useState("loading");
+  const [labResult, setLabResult] = useState(null);
 
   useEffect(() => {
     recordPublicConversion(supabase, "sample_view", { once: true, placement: "sample" }).catch(() => {});
@@ -175,6 +182,22 @@ export default function SampleRequest() {
     });
   }, [supabase]);
 
+  useEffect(() => {
+    let live = true;
+    setCatalogStatus("loading");
+    supabase.from("catalog_products").select("id,name,available,price,kind").eq("available", true).eq("kind", "tea").order("id")
+      .then(({ data, error: catalogError }) => {
+        if (!live) return;
+        if (catalogError) {
+          setCatalogStatus("error");
+          return;
+        }
+        setLabProducts(data || []);
+        setCatalogStatus("ready");
+      });
+    return () => { live = false; };
+  }, [supabase]);
+
   const t = STR[lang];
   const selectedPack = PACKS.find((item) => item.id === pack) || PACKS[0];
   const needsQualifying = pack === "50g";
@@ -184,6 +207,10 @@ export default function SampleRequest() {
   const updateForm = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const scrollToTop = () => window.scrollTo({
     top: 0,
+    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+  });
+  const scrollToRequest = () => document.querySelector("[data-sample-request]")?.scrollIntoView({
+    block: "start",
     behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
   });
 
@@ -200,7 +227,8 @@ export default function SampleRequest() {
         p_store_name: form.store.trim(), p_contact_name: form.name.trim(), p_phone: form.phone.trim(),
         p_address: form.address.trim(), p_pack: pack, p_has_shop: checks.hasShop,
         p_can_reformulate: checks.canReformulate, p_can_feedback: checks.canFeedback,
-        p_note: form.note.trim(), p_heard_from: form.heardFrom, p_growth_code: growthCode,
+        p_note: [menuLabRequestNote(labResult), form.note.trim()].filter(Boolean).join("\n\n"),
+        p_heard_from: form.heardFrom, p_growth_code: growthCode,
       });
       if (requestError) throw requestError;
       notifyHouse("sample_requests", data);
@@ -257,14 +285,29 @@ export default function SampleRequest() {
             </section>
           </section>
 
-          <section className={styles.request} aria-label={step === 1 ? t.stepPack : t.stepDetails}>
+          <section className={styles.request} data-sample-request aria-label={[t.stepLab, t.stepPack, t.stepDetails][step - 1]}>
             <ol className={styles.steps} aria-label={lang === "vi" ? "Tiến trình đăng ký" : "Request progress"}>
-              <li data-active={step === 1} data-complete={step > 1}><span>1</span>{t.stepPack}</li>
-              <li data-active={step === 2}><span>2</span>{t.stepDetails}</li>
+              <li data-active={step === 1} data-complete={step > 1}><span>1</span>{t.stepLab}</li>
+              <li data-active={step === 2} data-complete={step > 2}><span>2</span>{t.stepPack}</li>
+              <li data-active={step === 3}><span>3</span>{t.stepDetails}</li>
             </ol>
 
             {step === 1 ? (
+              <MenuLab lang={lang} products={labProducts} catalogStatus={catalogStatus}
+                onAccept={(result) => {
+                  setLabResult(result); setPack(result.pack); setStep(2); setError(""); scrollToRequest();
+                  recordPublicConversion(supabase, "menu_lab_recommendation_used", {
+                    product_id: result.productId, recipe_id: result.starterId, pack: result.pack, placement: "sample_menu_lab",
+                  }).catch(() => {});
+                }}
+                onSkip={() => {
+                  setLabResult(null); setStep(2); setError(""); scrollToRequest();
+                  recordPublicConversion(supabase, "menu_lab_skipped", { placement: "sample_menu_lab" }).catch(() => {});
+                }} />
+            ) : step === 2 ? (
               <div className={styles.stepPanel}>
+                {labResult && <div className={styles.labSummary}><div><span>{t.labSelected}</span><strong>{labResult.teaName}</strong>
+                  <small>{labResult.recipeName}</small></div><button type="button" onClick={() => { setStep(1); setError(""); }}>{t.changeLab}</button></div>}
                 <div className={styles.panelHeading}><h2>{t.pickPack}</h2><p>{t.packHelp}</p></div>
                 <div className={styles.packList} role="radiogroup" aria-label={t.pickPack}>
                   {PACKS.map((item) => {
@@ -296,7 +339,7 @@ export default function SampleRequest() {
                 </fieldset>}
                 <button className={styles.primaryButton} type="button" disabled={!canContinue}
                   onClick={() => {
-                    setStep(2); setError(""); scrollToTop();
+                    setStep(3); setError(""); scrollToRequest();
                     recordPublicConversion(supabase, "sample_details_started", { pack, placement: "sample_continue" }).catch(() => {});
                   }}>
                   {t.continue}<ArrowRight aria-hidden="true" />
@@ -305,8 +348,8 @@ export default function SampleRequest() {
             ) : (
               <form className={styles.stepPanel} onSubmit={submit}>
                 <div className={styles.selectionSummary}><div><span>{t.selected}</span><strong>{selectedPack.purpose[lang]}</strong>
-                  <small>{selectedPack.weight[lang]} · {selectedPack.free ? t.free : money(selectedPack.price)}</small></div>
-                  <button type="button" onClick={() => { setStep(1); setError(""); }}>{t.change}</button></div>
+                  <small>{selectedPack.weight[lang]} · {selectedPack.free ? t.free : money(selectedPack.price)}{labResult ? ` · ${labResult.teaName}` : ""}</small></div>
+                  <button type="button" onClick={() => { setStep(2); setError(""); }}>{t.change}</button></div>
                 <div className={styles.panelHeading}><h2>{t.detailsTitle}</h2><p>{t.detailsIntro}</p></div>
                 <div className={styles.fields}>
                   {renderField({ key: "store", label: t.storeLabel, placeholder: t.storePh, required: true, autoComplete: "organization" })}
@@ -329,7 +372,7 @@ export default function SampleRequest() {
                 {error && <p className={styles.error} role="alert">{error}</p>}
                 <p className={styles.privacyLead}>{t.privacyLead} <a href="/privacy">{t.privacy}</a></p>
                 <div className={styles.formActions}>
-                  <button className={styles.secondaryButton} type="button" onClick={() => { setStep(1); setError(""); }}><ArrowLeft aria-hidden="true" />{t.back}</button>
+                  <button className={styles.secondaryButton} type="button" onClick={() => { setStep(2); setError(""); }}><ArrowLeft aria-hidden="true" />{t.back}</button>
                   <button className={styles.primaryButton} type="submit" disabled={sending || !canSend}>
                     {sending ? <Loader2 className={styles.spinner} aria-hidden="true" /> : <Leaf aria-hidden="true" />}{sending ? t.sending : t.send}
                   </button>
