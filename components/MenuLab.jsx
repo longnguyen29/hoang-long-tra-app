@@ -84,10 +84,18 @@ function OptionGroup({ legend, name, options, value, onChange, className = "" })
   );
 }
 
-export default function MenuLab({ lang = "vi", products = [], catalogStatus = "loading", onAccept, onSkip }) {
+export default function MenuLab({
+  lang = "vi",
+  products = [],
+  catalogStatus = "loading",
+  initialUseCase = "milk",
+  initialCharacter = "strong",
+  onAccept,
+  onSkip,
+}) {
   const t = STR[lang] || STR.vi;
-  const [useCase, setUseCase] = useState("milk");
-  const [character, setCharacter] = useState("strong");
+  const [useCase, setUseCase] = useState(() => MENU_LAB_USES.some((item) => item.id === initialUseCase) ? initialUseCase : "milk");
+  const [character, setCharacter] = useState(() => MENU_LAB_CHARACTERS.some((item) => item.id === initialCharacter) ? initialCharacter : "strong");
   const [cupMl, setCupMl] = useState(500);
   const [trial, setTrial] = useState("refine");
   const result = useMemo(

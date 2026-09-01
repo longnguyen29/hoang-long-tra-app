@@ -611,7 +611,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
 
           <aside className={styles.contextColumn}>
             {canReview && <section className={styles.testReminder}>
-              <div className={styles.testReminderMeta}><span><FlaskConical />Phép thử cần tiếp tục</span><small>2 thử nghiệm</small></div>
+              <div className={styles.testReminderMeta}><span><FlaskConical />Phép thử cần tiếp tục</span><small>3 thử nghiệm</small></div>
               <h2>Các đường thử đang mở</h2>
               <p>Gửi từng cặp đường dẫn cho nhóm quán tương đương. Giữ cùng thông điệp và kênh; chỉ thay trải nghiệm cần kiểm tra.</p>
               <div className={styles.experimentList}>
@@ -627,6 +627,13 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
                   <div className={styles.testLinks}>
                     <a href="/" target="_blank" rel="noreferrer">Trang chính<ArrowRight /></a>
                     <a href="/hanh-trinh-la-tra" target="_blank" rel="noreferrer">Bản hành trình<ArrowRight /></a>
+                  </div>
+                </article>
+                <article>
+                  <b>Chọn trà theo hướng vị</b>
+                  <div className={styles.testLinks}>
+                    <a href="/shop" target="_blank" rel="noreferrer">Danh mục<ArrowRight /></a>
+                    <a href="/chon-tra-theo-vi" target="_blank" rel="noreferrer">Chọn theo vị<ArrowRight /></a>
                   </div>
                 </article>
               </div>

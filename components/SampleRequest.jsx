@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { notifyHouse } from "@/lib/notify";
 import { recordPublicConversion } from "@/lib/public-attribution";
-import { menuLabRequestNote } from "@/lib/menu-lab";
+import { MENU_LAB_CHARACTERS, MENU_LAB_USES, menuLabRequestNote } from "@/lib/menu-lab";
 import MenuLab from "@/components/MenuLab";
 import styles from "./SampleRequest.module.css";
 
@@ -152,10 +152,19 @@ export default function SampleRequest({ variant = "control" }) {
   const [labProducts, setLabProducts] = useState([]);
   const [catalogStatus, setCatalogStatus] = useState(menuLabEnabled ? "loading" : "idle");
   const [labResult, setLabResult] = useState(null);
+  const [labDefaults, setLabDefaults] = useState({ useCase: "milk", character: "strong" });
 
   useEffect(() => {
     recordPublicConversion(supabase, "sample_view", { once: true, placement: experimentPlacement }).catch(() => {});
     const query = new URLSearchParams(window.location.search);
+    const requestedUse = query.get("use");
+    const requestedCharacter = query.get("character");
+    if (menuLabEnabled && (requestedUse || requestedCharacter)) {
+      setLabDefaults({
+        useCase: MENU_LAB_USES.some((item) => item.id === requestedUse) ? requestedUse : "milk",
+        character: MENU_LAB_CHARACTERS.some((item) => item.id === requestedCharacter) ? requestedCharacter : "strong",
+      });
+    }
     const campaign = (query.get("utm_campaign") || "").trim().toLowerCase();
     if (campaign === "home_b2b") recordPublicConversion(supabase, "home_sample_clicked", { once: true, placement: "home_hero" }).catch(() => {});
     if (campaign === "wholesale_b2b") recordPublicConversion(supabase, "wholesale_sample_clicked", { once: true, placement: "wholesale_hero" }).catch(() => {});
@@ -301,7 +310,9 @@ export default function SampleRequest({ variant = "control" }) {
             </ol>
 
             {menuLabEnabled && step === 1 ? (
-              <MenuLab lang={lang} products={labProducts} catalogStatus={catalogStatus}
+              <MenuLab key={`menu-lab-${labDefaults.useCase}-${labDefaults.character}`}
+                lang={lang} products={labProducts} catalogStatus={catalogStatus}
+                initialUseCase={labDefaults.useCase} initialCharacter={labDefaults.character}
                 onAccept={(result) => {
                   setLabResult(result); setPack(result.pack); setStep(packStep); setError(""); scrollToRequest();
                   recordPublicConversion(supabase, "sample_pack_selected", {

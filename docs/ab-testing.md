@@ -30,6 +30,15 @@ Both routes submit to the existing sample-request system. Analytics can separate
 
 The journey page records a privacy-safe page view with growth code `tea-journey`. Its sample links use `utm_medium=journey`, so downstream visits and requests can be separated from the homepage path. Keep it unlinked from the public navigation until the owner chooses a winner.
 
+## Current taste-selector experiment
+
+| Variant | Route | Purpose |
+| --- | --- | --- |
+| Control | `/shop` | Browse the complete tea catalogue and choose from product information. |
+| Taste selector | `/chon-tra-theo-vi` | Choose Mật, Khói, Mộc or Hoa first, then see matching live catalogue products and continue into Menu Lab. |
+
+The selector records a privacy-safe page view with growth code `tea-taste-selector`. Its handoff carries `utm_medium=taste-selector`, the chosen profile in `utm_content`, and the matching Menu Lab defaults in the URL. Keep it out of the public navigation while testing it against the catalogue.
+
 ## Link discipline
 
 When testing a campaign, keep the same UTM tags and change only the destination URL. Do not redirect `/sample` automatically or randomly split traffic until the owner asks for it; direct links make the test easy to pause, explain and audit.

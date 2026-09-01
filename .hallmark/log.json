@@ -1,6 +1,16 @@
 [
   {
     "date": "2026-09-01",
+    "macrostructure": "Catalogue taste selector",
+    "theme": "House of Hoàng Long (design.md)",
+    "enrichment": "live catalogue photography",
+    "nav": "N9 edge-aligned minimal",
+    "footer": "Ft1 mast-headed",
+    "knob_delta": "four keyboard-accessible taste profiles + live product match + preserved Menu Lab handoff",
+    "brief": "Help café owners choose tea by the taste they need in the cup before requesting samples"
+  },
+  {
+    "date": "2026-09-01",
     "macrostructure": "Narrative Workflow",
     "theme": "House of Hoàng Long (design.md)",
     "enrichment": "existing source, leaf, factory and café photography",
