@@ -10,5 +10,5 @@ export const metadata = {
 };
 
 export default function SamplePage() {
-  return <SampleRequest />;
+  return <SampleRequest variant="control" />;
 }

@@ -134,9 +134,13 @@ const STR = {
 
 const money = (amount) => `${amount.toLocaleString("vi-VN")}đ`;
 
-export default function SampleRequest() {
+export default function SampleRequest({ variant = "control" }) {
   const [supabase] = useState(() => createClient());
   const { locale: lang, toggleLocale } = useLocale();
+  const menuLabEnabled = variant === "menu-lab";
+  const experimentPlacement = menuLabEnabled ? "sample_menu_lab" : "sample_control";
+  const packStep = menuLabEnabled ? 2 : 1;
+  const detailsStep = menuLabEnabled ? 3 : 2;
   const [step, setStep] = useState(1);
   const [pack, setPack] = useState("50g");
   const [checks, setChecks] = useState({ hasShop: false, canReformulate: false, canFeedback: false });
@@ -146,11 +150,11 @@ export default function SampleRequest() {
   const [error, setError] = useState("");
   const [growthCode, setGrowthCode] = useState("");
   const [labProducts, setLabProducts] = useState([]);
-  const [catalogStatus, setCatalogStatus] = useState("loading");
+  const [catalogStatus, setCatalogStatus] = useState(menuLabEnabled ? "loading" : "idle");
   const [labResult, setLabResult] = useState(null);
 
   useEffect(() => {
-    recordPublicConversion(supabase, "sample_view", { once: true, placement: "sample" }).catch(() => {});
+    recordPublicConversion(supabase, "sample_view", { once: true, placement: experimentPlacement }).catch(() => {});
     const query = new URLSearchParams(window.location.search);
     const campaign = (query.get("utm_campaign") || "").trim().toLowerCase();
     if (campaign === "home_b2b") recordPublicConversion(supabase, "home_sample_clicked", { once: true, placement: "home_hero" }).catch(() => {});
@@ -160,17 +164,18 @@ export default function SampleRequest() {
     if (code) setForm((current) => ({ ...current, heardFrom: current.heardFrom || "threads" }));
 
     let session = "";
+    const pagePath = window.location.pathname;
     try {
       session = window.localStorage.getItem("hl-visitor-session") || crypto.randomUUID();
       window.localStorage.setItem("hl-visitor-session", session);
-      const viewKey = `hl-growth-view:${code || "direct"}`;
+      const viewKey = `hl-growth-view:${pagePath}:${code || "direct"}`;
       if (window.sessionStorage.getItem(viewKey)) return;
       window.sessionStorage.setItem(viewKey, "1");
     } catch {
       session = crypto.randomUUID();
     }
     supabase.rpc("record_growth_page_view", {
-      p_path: code ? `/sample?exp=${code}` : "/sample",
+      p_path: code ? `${pagePath}?exp=${code}` : pagePath,
       p_session: session,
       p_referrer: document.referrer || "",
       p_lang: document.documentElement.lang || "vi",
@@ -180,9 +185,10 @@ export default function SampleRequest() {
       // briefly serve the page before migration 0045 is applied.
       if (viewError) console.debug("Growth attribution unavailable", viewError.message);
     });
-  }, [supabase]);
+  }, [experimentPlacement, supabase]);
 
   useEffect(() => {
+    if (!menuLabEnabled) return undefined;
     let live = true;
     setCatalogStatus("loading");
     supabase.from("catalog_products").select("id,name,available,price,kind").eq("available", true).eq("kind", "tea").order("id")
@@ -196,7 +202,7 @@ export default function SampleRequest() {
         setCatalogStatus("ready");
       });
     return () => { live = false; };
-  }, [supabase]);
+  }, [menuLabEnabled, supabase]);
 
   const t = STR[lang];
   const selectedPack = PACKS.find((item) => item.id === pack) || PACKS[0];
@@ -227,12 +233,12 @@ export default function SampleRequest() {
         p_store_name: form.store.trim(), p_contact_name: form.name.trim(), p_phone: form.phone.trim(),
         p_address: form.address.trim(), p_pack: pack, p_has_shop: checks.hasShop,
         p_can_reformulate: checks.canReformulate, p_can_feedback: checks.canFeedback,
-        p_note: [menuLabRequestNote(labResult), form.note.trim()].filter(Boolean).join("\n\n"),
+        p_note: [menuLabEnabled ? menuLabRequestNote(labResult) : "", form.note.trim()].filter(Boolean).join("\n\n"),
         p_heard_from: form.heardFrom, p_growth_code: growthCode,
       });
       if (requestError) throw requestError;
       notifyHouse("sample_requests", data);
-      recordPublicConversion(supabase, "sample_submitted", { pack, placement: "sample_form" }).catch(() => {});
+      recordPublicConversion(supabase, "sample_submitted", { pack, placement: `${experimentPlacement}_form` }).catch(() => {});
       setSent(true);
       scrollToTop();
     } catch (requestError) {
@@ -256,7 +262,7 @@ export default function SampleRequest() {
   );
 
   return (
-    <main className={styles.page} data-sample-page>
+    <main className={styles.page} data-sample-page data-experiment-variant={variant}>
       <header className={styles.header}>
         <a className={styles.wordmark} href="/" aria-label={t.backHome}>
           <span className={styles.seal}>皇龍</span><span className={styles.brandName}>{t.backHome}</span>
@@ -285,26 +291,27 @@ export default function SampleRequest() {
             </section>
           </section>
 
-          <section className={styles.request} data-sample-request aria-label={[t.stepLab, t.stepPack, t.stepDetails][step - 1]}>
-            <ol className={styles.steps} aria-label={lang === "vi" ? "Tiến trình đăng ký" : "Request progress"}>
-              <li data-active={step === 1} data-complete={step > 1}><span>1</span>{t.stepLab}</li>
-              <li data-active={step === 2} data-complete={step > 2}><span>2</span>{t.stepPack}</li>
-              <li data-active={step === 3}><span>3</span>{t.stepDetails}</li>
+          <section className={styles.request} data-sample-request
+            aria-label={(menuLabEnabled ? [t.stepLab, t.stepPack, t.stepDetails] : [t.stepPack, t.stepDetails])[step - 1]}>
+            <ol className={styles.steps} data-count={menuLabEnabled ? 3 : 2}
+              aria-label={lang === "vi" ? "Tiến trình đăng ký" : "Request progress"}>
+              {menuLabEnabled && <li data-active={step === 1} data-complete={step > 1}><span>1</span>{t.stepLab}</li>}
+              <li data-active={step === packStep} data-complete={step > packStep}><span>{packStep}</span>{t.stepPack}</li>
+              <li data-active={step === detailsStep}><span>{detailsStep}</span>{t.stepDetails}</li>
             </ol>
 
-            {step === 1 ? (
+            {menuLabEnabled && step === 1 ? (
               <MenuLab lang={lang} products={labProducts} catalogStatus={catalogStatus}
                 onAccept={(result) => {
-                  setLabResult(result); setPack(result.pack); setStep(2); setError(""); scrollToRequest();
-                  recordPublicConversion(supabase, "menu_lab_recommendation_used", {
-                    product_id: result.productId, recipe_id: result.starterId, pack: result.pack, placement: "sample_menu_lab",
+                  setLabResult(result); setPack(result.pack); setStep(packStep); setError(""); scrollToRequest();
+                  recordPublicConversion(supabase, "sample_pack_selected", {
+                    pack: result.pack, placement: "sample_menu_lab_recommendation",
                   }).catch(() => {});
                 }}
                 onSkip={() => {
-                  setLabResult(null); setStep(2); setError(""); scrollToRequest();
-                  recordPublicConversion(supabase, "menu_lab_skipped", { placement: "sample_menu_lab" }).catch(() => {});
+                  setLabResult(null); setStep(packStep); setError(""); scrollToRequest();
                 }} />
-            ) : step === 2 ? (
+            ) : step === packStep ? (
               <div className={styles.stepPanel}>
                 {labResult && <div className={styles.labSummary}><div><span>{t.labSelected}</span><strong>{labResult.teaName}</strong>
                   <small>{labResult.recipeName}</small></div><button type="button" onClick={() => { setStep(1); setError(""); }}>{t.changeLab}</button></div>}
@@ -315,7 +322,7 @@ export default function SampleRequest() {
                     return <button className={styles.pack} data-selected={selected} key={item.id} type="button" role="radio" aria-checked={selected}
                       onClick={() => {
                         setPack(item.id); setError("");
-                        recordPublicConversion(supabase, "sample_pack_selected", { pack: item.id, placement: "sample_pack" }).catch(() => {});
+                        recordPublicConversion(supabase, "sample_pack_selected", { pack: item.id, placement: `${experimentPlacement}_pack` }).catch(() => {});
                       }}>
                       <span className={styles.radioMark} aria-hidden="true">{selected && <Check />}</span>
                       <span className={styles.packCopy}>
@@ -339,8 +346,8 @@ export default function SampleRequest() {
                 </fieldset>}
                 <button className={styles.primaryButton} type="button" disabled={!canContinue}
                   onClick={() => {
-                    setStep(3); setError(""); scrollToRequest();
-                    recordPublicConversion(supabase, "sample_details_started", { pack, placement: "sample_continue" }).catch(() => {});
+                    setStep(detailsStep); setError(""); scrollToRequest();
+                    recordPublicConversion(supabase, "sample_details_started", { pack, placement: `${experimentPlacement}_continue` }).catch(() => {});
                   }}>
                   {t.continue}<ArrowRight aria-hidden="true" />
                 </button>
@@ -349,7 +356,7 @@ export default function SampleRequest() {
               <form className={styles.stepPanel} onSubmit={submit}>
                 <div className={styles.selectionSummary}><div><span>{t.selected}</span><strong>{selectedPack.purpose[lang]}</strong>
                   <small>{selectedPack.weight[lang]} · {selectedPack.free ? t.free : money(selectedPack.price)}{labResult ? ` · ${labResult.teaName}` : ""}</small></div>
-                  <button type="button" onClick={() => { setStep(2); setError(""); }}>{t.change}</button></div>
+                  <button type="button" onClick={() => { setStep(packStep); setError(""); }}>{t.change}</button></div>
                 <div className={styles.panelHeading}><h2>{t.detailsTitle}</h2><p>{t.detailsIntro}</p></div>
                 <div className={styles.fields}>
                   {renderField({ key: "store", label: t.storeLabel, placeholder: t.storePh, required: true, autoComplete: "organization" })}
@@ -372,7 +379,7 @@ export default function SampleRequest() {
                 {error && <p className={styles.error} role="alert">{error}</p>}
                 <p className={styles.privacyLead}>{t.privacyLead} <a href="/privacy">{t.privacy}</a></p>
                 <div className={styles.formActions}>
-                  <button className={styles.secondaryButton} type="button" onClick={() => { setStep(2); setError(""); }}><ArrowLeft aria-hidden="true" />{t.back}</button>
+                  <button className={styles.secondaryButton} type="button" onClick={() => { setStep(packStep); setError(""); }}><ArrowLeft aria-hidden="true" />{t.back}</button>
                   <button className={styles.primaryButton} type="submit" disabled={sending || !canSend}>
                     {sending ? <Loader2 className={styles.spinner} aria-hidden="true" /> : <Leaf aria-hidden="true" />}{sending ? t.sending : t.send}
                   </button>
