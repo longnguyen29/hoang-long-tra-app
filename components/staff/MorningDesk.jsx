@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Circle,
+  FlaskConical,
   Leaf,
   LogOut,
   Menu,
@@ -609,6 +610,20 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
           </div>
 
           <aside className={styles.contextColumn}>
+            {canReview && <section className={styles.testReminder}>
+              <div className={styles.testReminderMeta}><span><FlaskConical />Phép thử cần tiếp tục</span><small>A/B sample</small></div>
+              <h2>So sánh hai luồng nhận mẫu</h2>
+              <p>Gửi hai đường dẫn cho các nhóm quán tương đương. Giữ cùng thông điệp và kênh; so sánh tỷ lệ sang nhập thông tin, gửi yêu cầu và chất lượng quán.</p>
+              <div className={styles.testLinks}>
+                <a href="/sample" target="_blank" rel="noreferrer">Mở bản gốc<ArrowRight /></a>
+                <a href="/sample/menu-lab" target="_blank" rel="noreferrer">Mở Menu Lab<ArrowRight /></a>
+              </div>
+              <Link className={styles.testMeasure} href="/admin/growth"
+                onClick={(event) => openApp(event, APPS.growth, { reminder: "sample-funnel-ab-test" })}>
+                Xem số liệu trong Công cụ<ChevronRight />
+              </Link>
+            </section>}
+
             {canReview && <section className={styles.pausedWork}>
               <div className={styles.pausedWorkMeta}><span><Pin />Việc để làm tiếp</span><small>Đã tạm dừng</small></div>
               <h2>Thử và chốt 6 công thức V1</h2>
