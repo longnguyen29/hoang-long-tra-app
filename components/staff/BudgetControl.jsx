@@ -45,8 +45,9 @@ const currentMonth = () => {
 const KIND_LABEL = {
   recurring: "Chi thường xuyên",
   one_off: "Đầu tư một lần",
-  reserve: "Dự phòng",
+  reserve: "Khoản linh hoạt",
 };
+const envelopeName = (envelope) => envelope?.code === "reserve" ? "Quỹ linh hoạt" : envelope?.name;
 const STATUS_LABEL = {
   pending: "Chờ duyệt",
   approved: "Đã duyệt",
@@ -402,7 +403,7 @@ export default function BudgetControl({ supabase, email, role, onLogout }) {
                   const ratio = item.amount > 0 ? item.committed / item.amount : 0;
                   return (
                     <article key={item.code} data-risk={ratio >= 0.8}>
-                      <div><b>{item.name}</b><p>{item.description}</p><small>{item.default_kind === "operating" ? "Vận hành" : item.default_kind === "investment" ? "Đầu tư" : "Dự phòng"}</small></div>
+                      <div><b>{envelopeName(item)}</b><p>{item.description}</p><small>{item.default_kind === "operating" ? "Vận hành" : item.default_kind === "investment" ? "Đầu tư" : "Linh hoạt"}</small></div>
                       <dl>
                         <div><dt>Được duyệt</dt><dd>{money(item.amount)}</dd></div>
                         <div><dt>Cam kết</dt><dd>{money(item.committed)}</dd></div>
@@ -469,9 +470,9 @@ export default function BudgetControl({ supabase, email, role, onLogout }) {
       {allocationDraft && (
         <Dialog title="Xin phân bổ ngân sách" onClose={() => setAllocationDraft(null)}>
           <form className={styles.form} onSubmit={saveAllocation}>
-            <label><span>Phong bì</span><select value={allocationDraft.envelopeCode} onChange={(event) => setAllocationDraft({ ...allocationDraft, envelopeCode: event.target.value })}>{envelopes.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}</select><small>Nhóm mục tiêu mà khoản tiền phục vụ.</small></label>
+            <label><span>Phong bì</span><select value={allocationDraft.envelopeCode} onChange={(event) => setAllocationDraft({ ...allocationDraft, envelopeCode: event.target.value })}>{envelopes.map((item) => <option key={item.code} value={item.code}>{envelopeName(item)}</option>)}</select><small>Nhóm mục tiêu mà khoản tiền phục vụ.</small></label>
             <label><span>Tên khoản phân bổ</span><input required maxLength={160} value={allocationDraft.title} onChange={(event) => setAllocationDraft({ ...allocationDraft, title: event.target.value })} placeholder="Ví dụ: Quảng cáo tìm quán pha chế tháng 9" /><small>Đủ cụ thể để phân biệt với các khoản khác.</small></label>
-            <div className={styles.formGrid}><label><span>Loại chi</span><select value={allocationDraft.spendKind} onChange={(event) => setAllocationDraft({ ...allocationDraft, spendKind: event.target.value })}><option value="recurring">Chi thường xuyên</option><option value="one_off">Đầu tư một lần</option><option value="reserve">Dự phòng</option></select><small>&nbsp;</small></label><label><span>Số tiền</span><FormattedNumberInput required min="1" step="1000" value={allocationDraft.amount} onChange={(event) => setAllocationDraft({ ...allocationDraft, amount: event.target.value })} /><small>&nbsp;</small></label></div>
+            <div className={styles.formGrid}><label><span>Loại chi</span><select value={allocationDraft.spendKind} onChange={(event) => setAllocationDraft({ ...allocationDraft, spendKind: event.target.value })}><option value="recurring">Chi thường xuyên</option><option value="one_off">Đầu tư một lần</option><option value="reserve">Khoản linh hoạt</option></select><small>&nbsp;</small></label><label><span>Số tiền</span><FormattedNumberInput required min="1" step="1000" value={allocationDraft.amount} onChange={(event) => setAllocationDraft({ ...allocationDraft, amount: event.target.value })} /><small>&nbsp;</small></label></div>
             <label><span>Người phụ trách</span><input value={allocationDraft.owner} onChange={(event) => setAllocationDraft({ ...allocationDraft, owner: event.target.value })} /><small>Người chịu trách nhiệm sử dụng và báo kết quả.</small></label>
             <label><span>Kết quả kỳ vọng</span><textarea required maxLength={500} value={allocationDraft.expectedOutcome} onChange={(event) => setAllocationDraft({ ...allocationDraft, expectedOutcome: event.target.value })} placeholder="Ví dụ: tạo 20 lead quán phù hợp và xác định chi phí trên mỗi lead" /><small>Viết một kết quả có thể kiểm tra sau khi chi.</small></label>
             <button disabled={saving || !allocationDraft.title.trim() || !allocationDraft.expectedOutcome.trim()}>{saving ? "Đang gửi" : "Đưa vào hàng chờ duyệt"}</button>

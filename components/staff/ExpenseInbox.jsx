@@ -22,7 +22,7 @@ const statusLabel = (locale, status) => ({
   committed: tx(locale,"Committed","Đã cam kết"),
   paid: tx(locale,"Paid","Đã thanh toán"),
 })[status] || status;
-const envelopeName = (locale, envelope) => locale === "vi" ? envelope?.name : ({
+const envelopeName = (locale, envelope) => locale === "vi" ? (envelope?.code === "reserve" ? "Quỹ linh hoạt" : envelope?.name) : ({
   customer_acquisition:"Customer acquisition", sales_conversion:"Sales conversion",
   packaging_label:"Packaging & labels", production_quality:"Production & quality",
   product_development:"Product development", reserve:"Reserve",
