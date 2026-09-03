@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { notifyHouse } from "@/lib/notify";
 import { recordPublicConversion } from "@/lib/public-attribution";
+import { trackMetaCustom, trackMetaLead } from "@/lib/meta-pixel";
 import { MENU_LAB_CHARACTERS, MENU_LAB_USES, menuLabRequestNote } from "@/lib/menu-lab";
 import MenuLab from "@/components/MenuLab";
 import styles from "./SampleRequest.module.css";
@@ -156,6 +157,9 @@ export default function SampleRequest({ variant = "control" }) {
 
   useEffect(() => {
     recordPublicConversion(supabase, "sample_view", { once: true, placement: experimentPlacement }).catch(() => {});
+    trackMetaCustom("SampleFunnelViewed", {
+      funnel: "tea_sample", placement: experimentPlacement, variant,
+    }, { onceKey: `sample-view:${variant}:${window.location.pathname}` });
     const query = new URLSearchParams(window.location.search);
     const requestedUse = query.get("use");
     const requestedCharacter = query.get("character");
@@ -248,6 +252,9 @@ export default function SampleRequest({ variant = "control" }) {
       if (requestError) throw requestError;
       notifyHouse("sample_requests", data);
       recordPublicConversion(supabase, "sample_submitted", { pack, placement: `${experimentPlacement}_form` }).catch(() => {});
+      trackMetaLead({
+        content_name: "tea_sample_request", content_category: "b2b", pack, variant,
+      }, { onceKey: `sample-lead:${data || "submitted"}` });
       setSent(true);
       scrollToTop();
     } catch (requestError) {
@@ -318,6 +325,9 @@ export default function SampleRequest({ variant = "control" }) {
                   recordPublicConversion(supabase, "sample_pack_selected", {
                     pack: result.pack, placement: "sample_menu_lab_recommendation",
                   }).catch(() => {});
+                  trackMetaCustom("SamplePackSelected", {
+                    funnel: "tea_sample", pack: result.pack, placement: "menu_lab_recommendation", variant,
+                  });
                 }}
                 onSkip={() => {
                   setLabResult(null); setStep(packStep); setError(""); scrollToRequest();
@@ -334,6 +344,9 @@ export default function SampleRequest({ variant = "control" }) {
                       onClick={() => {
                         setPack(item.id); setError("");
                         recordPublicConversion(supabase, "sample_pack_selected", { pack: item.id, placement: `${experimentPlacement}_pack` }).catch(() => {});
+                        trackMetaCustom("SamplePackSelected", {
+                          funnel: "tea_sample", pack: item.id, placement: `${experimentPlacement}_pack`, variant,
+                        });
                       }}>
                       <span className={styles.radioMark} aria-hidden="true">{selected && <Check />}</span>
                       <span className={styles.packCopy}>
@@ -359,6 +372,9 @@ export default function SampleRequest({ variant = "control" }) {
                   onClick={() => {
                     setStep(detailsStep); setError(""); scrollToRequest();
                     recordPublicConversion(supabase, "sample_details_started", { pack, placement: `${experimentPlacement}_continue` }).catch(() => {});
+                    trackMetaCustom("SampleDetailsStarted", {
+                      funnel: "tea_sample", pack, placement: `${experimentPlacement}_continue`, variant,
+                    }, { onceKey: `sample-details:${variant}:${pack}` });
                   }}>
                   {t.continue}<ArrowRight aria-hidden="true" />
                 </button>
