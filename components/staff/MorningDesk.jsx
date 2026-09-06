@@ -267,12 +267,15 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
   const [moving, setMoving] = useState("");
   const [error, setError] = useState("");
   const [editingSlot, setEditingSlot] = useState(1);
+  const [editingFocus, setEditingFocus] = useState(false);
+  const [dataIncomplete, setDataIncomplete] = useState(false);
   const [focusDraft, setFocusDraft] = useState({ title: "", appKey: "operations" });
   const [memoryDraft, setMemoryDraft] = useState({ kind: "decision", title: "", body: "" });
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
+    try {
     const [deskResult, budgetResult, radarResult, opportunitiesResult, samplesResult, recipesResult, versionsResult, quotesResult, ordersResult, receivablesResult, partnersResult] = await Promise.all([
       supabase.rpc("morning_desk_snapshot"),
       supabase.rpc("budget_morning_snapshot"),
@@ -286,6 +289,13 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
       supabase.from("receivables").select("*").order("created_at", { ascending: false }),
       supabase.from("wholesale_accounts").select("id,opportunity_id,contact,business_name,reorder_cadence_days,created_at"),
     ]);
+    const incomplete = [deskResult, budgetResult, radarResult, opportunitiesResult, samplesResult, recipesResult, versionsResult, quotesResult, ordersResult, receivablesResult, partnersResult].some(result => result.error);
+    setDataIncomplete(incomplete);
+    if (incomplete) {
+      setError("Chưa tải đủ dữ liệu hôm nay. Làm mới để kiểm tra công việc và số liệu.");
+      setLoading(false);
+      return;
+    }
     if (deskResult.error) {
       setError("Bảng điều khiển chưa tải được dữ liệu. Kiểm tra migration 0036 rồi thử lại.");
     } else {
@@ -303,7 +313,10 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
       if (budgetResult.error)
         setError("Bảng điều khiển đã tải, nhưng chưa đọc được ngân sách từ migration 0037.");
     }
-    setLoading(false);
+    } catch {
+      setDataIncomplete(true);
+      setError("Chưa tải được dữ liệu hôm nay. Kiểm tra kết nối rồi thử lại.");
+    } finally { setLoading(false); }
   }, [supabase]);
 
   useEffect(() => {
@@ -358,6 +371,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
   };
 
   const beginFocusEdit = (position, item = null) => {
+    setEditingFocus(true);
     setEditingSlot(position);
     setFocusDraft({
       title: item?.title || "",
@@ -388,6 +402,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
       return;
     }
     setFocusDraft({ title: "", appKey: MODE_DEFAULT_APP[mode] });
+    setEditingFocus(false);
     await load();
   };
 
@@ -473,30 +488,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
 
   return (
     <main className={styles.shell}>
-      <aside className={styles.rail}>
-        <div className={styles.brand}>
-          <span aria-hidden="true">皇龍</span>
-          <b>Hoàng Long</b>
-        </div>
-        <details className={styles.mobileMenu}>
-          <summary><Menu />Ứng dụng</summary>
-          <nav aria-label="Ứng dụng Hoàng Long">
-            <Link href="/admin" className={styles.active}><Brain />Bảng điều khiển</Link>
-            {STAFF_APP_GROUPS.map((group) => <div className={styles.navGroup} key={group.label}>
-              <span>{group.label}</span>
-              {group.keys.map((key) => { const app = APPS[key]; const Icon = app.icon; return <Link key={app.key} href={app.href} onClick={(event) => openApp(event, app)}><Icon />{app.short}</Link>; })}
-            </div>)}
-          </nav>
-        </details>
-        <nav className={styles.desktopNav} aria-label="Ứng dụng Hoàng Long">
-          <Link href="/admin" className={styles.active}><Brain /><span>Bảng điều khiển</span></Link>
-          {STAFF_APP_GROUPS.map((group) => <div className={styles.navGroup} key={group.label}>
-            <small>{group.label}</small>
-            {group.keys.map((key) => { const app = APPS[key]; const Icon = app.icon; return <Link key={app.key} href={app.href} onClick={(event) => openApp(event, app)} data-loading={moving === app.key}><Icon /><span>{app.short}</span></Link>; })}
-          </div>)}
-        </nav>
-        <button className={styles.logout} onClick={onLogout}><LogOut /><span>Đăng xuất</span></button>
-      </aside>
+
 
       <section className={styles.desk}>
         <header className={styles.topbar}>
@@ -513,7 +505,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
         <section className={styles.brief}>
           <div className={styles.briefCopy}>
             <p>Chọn góc nhìn trước khi mở công việc</p>
-            <h2>Hôm nay cần giữ điều gì?</h2>
+            <h2>Việc cần làm hôm nay</h2>
           </div>
           <div className={styles.modeTabs} role="tablist" aria-label="Góc nhìn buổi sáng">
             {MODES.map(([id, label]) => <button key={id} role="tab" aria-selected={mode === id} onClick={() => saveMode(id)}>{label}</button>)}
@@ -522,15 +514,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
 
         {error && <p className={styles.error} role="alert"><AlertTriangle />{error}<button onClick={() => setError("")} aria-label="Đóng thông báo">×</button></p>}
 
-        <section className={styles.metrics} aria-label="Sự thật vận hành">
-          {metrics.map(([label, value, note]) => (
-            <article key={label}>
-              <span>{label}</span>
-              <b>{loading ? "—" : value}</b>
-              <small>{note}</small>
-            </article>
-          ))}
-        </section>
+
 
         <div className={styles.workGrid}>
           <div className={styles.primaryColumn}>
@@ -567,7 +551,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
                   );
                 })}
               </div>
-              <form className={styles.focusEditor} id="focus-editor" onSubmit={saveFocus}>
+              {editingFocus && <form className={styles.focusEditor} id="focus-editor" onSubmit={saveFocus}>
                 <label>
                   <span>Ưu tiên {editingSlot}</span>
                   <input value={focusDraft.title} onChange={(event) => setFocusDraft({ ...focusDraft, title: event.target.value })} placeholder="Ví dụ: Chốt lịch giao cho đơn đang bị chặn" maxLength={160} />
@@ -579,7 +563,8 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
                   </select>
                 </label>
                 <button disabled={saving || !focusDraft.title.trim()}>{saving ? "Đang lưu" : "Chốt ưu tiên"}</button>
-              </form>
+              <button type="button" onClick={() => setEditingFocus(false)}>Đóng</button>
+              </form>}
             </section>
 
             <section className={styles.exceptions}>
@@ -589,7 +574,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
               </header>
               {loading ? (
                 <div className={styles.skeleton} aria-label="Đang tải ngoại lệ"><i /><i /><i /></div>
-              ) : exceptions.length ? (
+              ) : dataIncomplete ? (<p role="status">Chưa thể xác nhận danh sách công việc. <button onClick={load}>Thử tải lại</button></p>) : exceptions.length ? (
                 <div className={styles.exceptionRows}>
                   {exceptions.map((item) => {
                     const app = APPS[item.appKey];
@@ -706,6 +691,16 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
             </section>
           </aside>
         </div>
+
+        <section className={styles.metrics} aria-label="Sự thật vận hành">
+          {metrics.map(([label, value, note]) => (
+            <article key={label}>
+              <span>{label}</span>
+              <b>{loading || dataIncomplete ? "—" : value}</b>
+              <small>{note}</small>
+            </article>
+          ))}
+        </section>
 
         <footer className={styles.footer}>
           <span>Hoàng Long · Bảng điều khiển</span>

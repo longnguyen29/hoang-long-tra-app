@@ -13,8 +13,7 @@ const REVEAL_MS = 80000;       // colour is brushed in over eighty seconds, then
 // painted. Ink and watercolour belong on paper.
 const PAPER = "#EFE6D6";
 
-// On for every visitor, everywhere on the public site. ?kiosk=0 switches it off for a given
-// device and is remembered; ?kiosk=1 switches it back on. ?idle=<seconds> tunes the wait,
+// Opt-in tea-room display. ?kiosk=1 enables this device; ?kiosk=0 disables it. ?idle=<seconds> tunes the wait,
 // also remembered, so it can be changed without a deploy.
 //
 // ?paint=<seconds> shortens the painting itself. Deliberately NOT remembered — it exists so
@@ -28,21 +27,21 @@ function useIdleSettings() {
     const revealMs = Number.isFinite(paint) && paint > 0 ? paint * 1000 : REVEAL_MS;
     try {
       const k = q.get("kiosk");
-      if (k === "0") localStorage.setItem("hl_idle_off", "1");
-      if (k === "1") localStorage.removeItem("hl_idle_off");
+      if (k === "0") localStorage.removeItem("hl_kiosk_enabled");
+      if (k === "1") localStorage.setItem("hl_kiosk_enabled", "1");
 
       const secs = Number(q.get("idle"));
       if (Number.isFinite(secs) && secs > 0) localStorage.setItem("hl_idle_secs", String(secs));
 
       const stored = Number(localStorage.getItem("hl_idle_secs"));
       setState({
-        enabled: localStorage.getItem("hl_idle_off") !== "1",
+        enabled: localStorage.getItem("hl_kiosk_enabled") === "1",
         idleMs: Number.isFinite(stored) && stored > 0 ? stored * 1000 : DEFAULT_IDLE_MS,
         revealMs,
       });
     } catch {
-      // Storage blocked (private mode). Still run — just without the remembered preference.
-      setState({ enabled: true, idleMs: DEFAULT_IDLE_MS, revealMs });
+      // Explicit opt-in still works for this visit when storage is unavailable.
+      setState({ enabled: q.get("kiosk") === "1", idleMs: DEFAULT_IDLE_MS, revealMs });
     }
   }, []);
   return state;
