@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Check, Leaf, Loader2, Phone } from "lucide-react
 import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { notifyHouse } from "@/lib/notify";
+import { trackMetaLead } from "@/lib/meta-pixel";
 import { recordPublicConversion } from "@/lib/public-attribution";
 import { MENU_LAB_CHARACTERS, MENU_LAB_USES, menuLabRequestNote, recommendMenuLab } from "@/lib/menu-lab";
 import MenuLab from "@/components/MenuLab";
@@ -258,6 +259,7 @@ export default function SampleRequest({ variant = "control" }) {
       });
       if (requestError) throw requestError;
       notifyHouse("sample_requests", data);
+      trackMetaLead("sample_request");
       recordPublicConversion(supabase, "sample_submitted", { pack, placement: `${experimentPlacement}_form` }).catch(() => {});
       setSent(true);
       scrollToTop();

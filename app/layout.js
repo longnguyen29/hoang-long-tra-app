@@ -1,4 +1,5 @@
 import "./globals.css";
+import MetaPixel from "@/components/analytics/MetaPixel";
 import LocaleProvider from "@/components/i18n/LocaleProvider";
 
 export const metadata = {
@@ -40,7 +41,7 @@ export default function RootLayout({ children }) {
           }
         `}</style>
       </head>
-      <body><LocaleProvider>{children}</LocaleProvider></body>
+      <body><LocaleProvider>{children}<MetaPixel /></LocaleProvider></body>
     </html>
   );
 }
