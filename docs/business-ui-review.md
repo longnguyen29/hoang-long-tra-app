@@ -49,3 +49,12 @@ Verification: 71 website tests and 6 factory tests pass; both production builds 
 Release checks still open: authenticated staff role workflows and real backend write/read persistence in a separate test dataset; all nested forms/dialogs at mobile widths; print-dialog rendering; full public route navigation/locale regression; factory multi-collection operations under partial failure and multi-user edits. The per-key queue is not a database transaction or cross-user conflict-resolution system. Factory development review shows a React debugging warning about eval under the current CSP; production security policy was preserved.
 
 This checkpoint is ready for design review, not a claim that every acceptance box is complete. No publication or customer contact occurred.
+
+
+## Checkpoint 3 — direct order API regression coverage
+
+The UI work and subsequent Order Book deletion/type changes were pushed to the original website main branch with owner authorization (through 98d048b). Earlier notes saying unpublished describe earlier checkpoints.
+
+`npm run test:staff-orders` executes the actual PATCH route with a mocked authenticated backend and real domain helpers. Nine tests pass: unauthenticated rejection; preserving lines, units, quantities, amount and customer details on type change; rejecting unsupported types; calculating totals from new line prices; keeping an unquoted total unknown; rejecting duplicate line indices without partial type changes; blocking price edits when receivables exist; failing closed on receivable read errors; and not logging success for a failed update.
+
+Limits: mocked backend tests do not prove live authentication configuration, database transactions under concurrent requests, or production deployment status. Prior 85 library tests remain a separate layer of evidence. Remaining acceptance requirements stay open.
