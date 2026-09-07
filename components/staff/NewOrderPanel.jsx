@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { ArrowLeft, Check, Minus, Plus, ShoppingBag, Store, X } from "lucide-react";
 import { fromCatalogRow, fromOrderRow, fromVariantRow, toOrderRow } from "@/lib/mappers";
 import styles from "./NewOrderPanel.module.css";
+import {createOrderSubmission} from "@/lib/order-submission";
 import {useDialogFocus} from "./useDialogFocus";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
 
@@ -41,6 +42,10 @@ function flattenProducts(products) {
 }
 
 export default function NewOrderPanel({ supabase, onClose, onCreated }) {
+  const submissionRef=useRef(null);
+  const submissionBusyRef=useRef(false);
+  if(!submissionRef.current)submissionRef.current=createOrderSubmission();
+  const [submissionState,setSubmissionState]=useState("idle");
   const [step, setStep] = useState("edit");
   const [type, setType] = useState("retail");
   const [customerName, setCustomerName] = useState("");
@@ -154,7 +159,8 @@ export default function NewOrderPanel({ supabase, onClose, onCreated }) {
   };
 
   const createOrder = async () => {
-    if (!canReview || step !== "review") return;
+    if (!canReview || step !== "review" || submissionState==="uncertain" || submissionBusyRef.current) return;
+    submissionBusyRef.current=true;
     setSaving(true);
     setError("");
     const now = new Date().toISOString();
@@ -199,44 +205,33 @@ export default function NewOrderPanel({ supabase, onClose, onCreated }) {
       unread: true,
     };
 
-    let orderId = draft.id;
-    let writeError;
-    if (type === "retail") {
-      const result = await supabase.rpc("submit_retail_order", {
-        p_customer_name: draft.customerName,
-        p_contact: draft.contact,
-        p_address: draft.address,
-        p_tax_number: draft.taxNumber,
-        p_note: draft.note,
-        p_lines: draft.lines,
-        p_total_items: draft.totalItems,
-        p_estimated_total: draft.estimatedTotal,
-        p_promo: null,
-        p_payment_method: draft.paymentMethod,
+    try {
+      const result=await submissionRef.current.run({
+        create:async()=>{
+          if(type === "retail"){
+            const response=await supabase.rpc("submit_retail_order",{
+              p_customer_name:draft.customerName,p_contact:draft.contact,p_address:draft.address,
+              p_tax_number:draft.taxNumber,p_note:draft.note,p_lines:draft.lines,
+              p_total_items:draft.totalItems,p_estimated_total:draft.estimatedTotal,
+              p_promo:null,p_payment_method:draft.paymentMethod,
+            });
+            return {id:response.data?.[0]?.id,error:response.error};
+          }
+          const response=await supabase.from("orders").insert(toOrderRow(draft));
+          return {id:draft.id,error:response.error};
+        },
+        read:id=>supabase.from("orders").select("*").eq("id",id).single(),
       });
-      writeError = result.error;
-      orderId = result.data?.[0]?.id || orderId;
-    } else {
-      const result = await supabase.from("orders").insert(toOrderRow(draft));
-      writeError = result.error;
-    }
-
-    if (writeError) {
-      const message = writeError.message || "";
-      setError(message.includes("out_of_stock")
+      if(result.state==="busy"||result.state==="complete")return;
+      setSubmissionState(result.state);
+      if(result.state==="created"){onCreated(fromOrderRow(result.data));return}
+      if(result.state==="read_failed")setError(`Đơn ${result.id} đã được tạo. Chưa tải lại được; bấm “Tải đơn vừa tạo” để thử lại, không tạo đơn mới.`);
+      else if(result.state==="uncertain")setError("Chưa xác nhận được kết quả tạo đơn. Đóng phiếu và tải lại Order Book để kiểm tra trước khi tạo tiếp.");
+      else setError(result.error?.message?.includes("out_of_stock")
         ? "Sản phẩm vừa hết hàng hoặc không còn đủ số lượng. Hãy quay lại điều chỉnh đơn."
         : "Chưa tạo được đơn. Kiểm tra thông tin và thử lại.");
-      setSaving(false);
-      return;
-    }
+    } finally { submissionBusyRef.current=false;setSaving(false); }
 
-    const { data, error: readError } = await supabase.from("orders").select("*").eq("id", orderId).single();
-    if (readError || !data) {
-      setError("Đơn đã được tạo nhưng chưa tải lại được. Hãy làm mới danh sách.");
-      setSaving(false);
-      return;
-    }
-    onCreated(fromOrderRow(data));
   };
 
   const submit = (event) => {
@@ -315,12 +310,12 @@ export default function NewOrderPanel({ supabase, onClose, onCreated }) {
             </article>)}
           </div>
           {note.trim() && <div className={styles.reviewNote}><span>Ghi chú</span><p>{note.trim()}</p></div>}
-          <button className={styles.backToEdit} type="button" disabled={saving} onClick={() => setStep("edit")}><ArrowLeft /> Quay lại chỉnh đơn</button>
+          <button className={styles.backToEdit} type="button" disabled={saving||["read_failed","uncertain","created"].includes(submissionState)} onClick={() => setStep("edit")}><ArrowLeft /> Quay lại chỉnh đơn</button>
         </section>}
         {error && <p className={styles.error} role="alert">{error}</p>}
         <footer className={styles.footer}>
           <div><span>{unitSummary}</span><b>{estimatedTotal === null ? "Chưa đủ giá" : formatMoney(estimatedTotal)}</b></div>
-          <button type="submit" disabled={!canReview}>{saving ? "Đang tạo đơn…" : step === "edit" ? "Kiểm tra đơn" : "Xác nhận tạo đơn"}<ArrowMark /></button>
+          <button type="submit" disabled={!canReview||submissionState==="uncertain"||submissionState==="created"}>{saving ? "Đang xử lý…" : submissionState==="read_failed" ? "Tải đơn vừa tạo" : step === "edit" ? "Kiểm tra đơn" : "Xác nhận tạo đơn"}<ArrowMark /></button>
         </footer>
       </form>
     </aside>

@@ -63,3 +63,8 @@ Limits: mocked backend tests do not prove live authentication configuration, dat
 ## Checkpoint 4 — order dialog usability
 
 New-order entry now traps Tab within the dialog, handles thrown catalogue reads with a retry control, and explicitly returns focus to the Create order button after close. The development fixture supports in-memory order type/price edits and toggling a receivable. Browser verification: retail→wholesale preserved quantity; editing 2 kg from 500,000 to 450,000 per kg changed the displayed total to 900,000; Tab/Shift+Tab remained in the new-order dialog; closing returned focus to Create order. No live records were changed. Build and all 94 library/API tests passed. Catalogue retry was implemented and build-checked; a live backend failure/recovery test remains unverified. Unsaved-draft persistence and cross-user database races are still open.
+
+
+## Checkpoint 5 — prevent duplicate creation after failed reload
+
+The new-order form retains a confirmed server order ID and retries only its read when loading fails after creation. Concurrent submits are blocked. A thrown creation request or missing returned retail ID is treated as uncertain and cannot be resubmitted in the same form; staff are told to reconcile in Order Book. Definite backend rejection remains retryable. Six new state-machine tests cover read retry, concurrent submits, ambiguous creation, missing ID, definite rejection and thrown reads. All 100 library/API tests and production build pass. This is form-session protection, not backend idempotency across browser reloads or independent clients. A separate staging dataset is still needed for real persistence/concurrency verification.
