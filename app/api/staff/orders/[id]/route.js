@@ -1,3 +1,5 @@
+import { createClient } from "@supabase/supabase-js";
+import { deleteMistakenOrder } from "@/lib/delete-mistaken-order";
 import {
   ORDER_HEALTH_IDS,
   ORDER_STAGE_IDS,
@@ -197,4 +199,24 @@ export async function PATCH(request, { params }) {
 
   const { data: eventRows } = await readEvents(staff.admin, id);
   return Response.json({ ok: true, order: data, events: eventRows || [] });
+}
+
+
+export async function DELETE(request, { params }) {
+  const staff = await authenticateManagerRequest(request);
+  if (!staff) return Response.json({ok:false,error:"not_authorised"}, {status:401});
+  const {id} = await params;
+  let body;
+  try { body = await request.json(); } catch { return Response.json({ok:false,error:"invalid_body"},{status:400}); }
+  // archive_and_delete checks auth.uid(): forward the verified staff session,
+  // rather than using service-role credentials for this RPC.
+  const client = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+    global:{headers:{Authorization:request.headers.get("authorization")}},
+    auth:{persistSession:false,autoRefreshToken:false},
+  });
+  try {
+    const result = await deleteMistakenOrder({admin:staff.admin,id,confirmation:body?.confirmation,actor:staff.user.email,
+      archive:args=>client.rpc("archive_and_delete",args)});
+    return Response.json(result,{status:result.status});
+  } catch { return Response.json({ok:false,error:"delete_failed"},{status:500}); }
 }

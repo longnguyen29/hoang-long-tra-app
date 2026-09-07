@@ -53,6 +53,19 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
  const sendReply=async(event)=>{event.preventDefault();if(!activeThread||!reply.trim())return;const nextMessages=[...activeThread.messages,{from:"admin",text:reply.trim(),ts:new Date().toISOString()}];const {error:updateError}=await supabase.from("support_threads").update({messages:nextMessages,unread_for_admin:false}).eq("id",activeThread.id);if(updateError){setError("Chưa gửi được phản hồi.");return}const next={...activeThread,messages:nextMessages,unreadForAdmin:false};setThreads(current=>current.map(item=>item.id===next.id?next:item));setActiveThread(next);setReply("")};
  const openCustomer=async(profile)=>{setSelected(null);setTask(null);setActiveThread(null);const {data,error:detailError}=await supabase.rpc("customer_detail",{p_contact:profile.contact});if(detailError){setError("Chưa tải được hồ sơ khách hàng.");return}setCustomer({...profile,detail:data});setCustomerNote(data?.note||"")};
  const saveCustomerNote=async()=>{if(!customer)return;const {error:noteError}=await supabase.rpc("save_customer_note",{p_contact:customer.contact,p_note:customerNote,p_by:email});if(noteError){setError("Chưa lưu được ghi chú khách hàng.");return}setCustomer(current=>({...current,detail:{...current.detail,note:customerNote}}))};
+ const deleteMistaken = async (confirmation) => {
+  if(!selected || flowSaving)return {error:"Đơn đang được cập nhật."};
+  setFlowSaving(true);
+  try {
+   const {data:{session}}=await supabase.auth.getSession();
+   if(!session?.access_token)return {error:"Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại."};
+   const response=await fetch(`/api/staff/orders/${encodeURIComponent(selected.id)}`,{method:"DELETE",headers:{Authorization:`Bearer ${session.access_token}`,"Content-Type":"application/json"},body:JSON.stringify({confirmation})});
+   const result=await response.json();
+   if(!response.ok)return {error:({linked_records:"Đơn có công nợ, chi phí, kho, báo giá hoặc thưởng giới thiệu liên quan. Không thể xoá tại đây.",order_in_progress:"Đơn đã sang bước chuẩn bị hoặc giao hàng. Không thể xoá như đơn nhập nhầm.",confirmation_required:"Nhập đúng mã đơn để xác nhận.",not_found:"Đơn không còn tồn tại. Hãy tải lại danh sách."})[result.error]||"Chưa xoá được đơn. Hãy tải lại danh sách để kiểm tra trước khi thử lại."};
+   setOrders(current=>current.filter(order=>order.id!==selected.id));setSelected(null);await load();return {ok:true};
+  }catch{return {error:"Chưa xác nhận được kết quả xoá. Hãy tải lại danh sách trước khi thử lại."}}
+  finally{setFlowSaving(false)}
+ };
  const orderCreated=async(order)=>{setOrders(current=>[order,...current.filter(item=>item.id!==order.id)]);setCreatingOrder(false);try{await staffRequest(order.id,{method:"POST"})}catch{}await selectOrder(order);requestAnimationFrame(()=>document.querySelector("#orders")?.scrollIntoView({behavior:"smooth",block:"start"}))};
  const cards=[{label:"Cần xử lý",value:queue.length,icon:ClipboardList},{label:"Đơn đang mở",value:openOrders.length,icon:PackageCheck},{label:"Tin chưa đọc",value:unreadThreads.length,icon:MessageSquare},{label:"Lịch trà chờ",value:pendingSessions.length,icon:Calendar}];
  if(dataFailure)return <LoadFailure onRetry={load} loading={loading} title="Chưa tải được bàn đơn hàng"/>;
@@ -73,8 +86,8 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
    </div></section>
    <section className={styles.customers} id="customers"><header><div><p>Customer memory</p><h2>Lịch sử khách hàng</h2></div><span>{customers.length} hồ sơ</span></header><div>{customers.slice(0,20).map(profile=><button key={profile.contact_key} onClick={()=>openCustomer(profile)}><span><b>{profile.customer_name}</b><small>{profile.contact}</small></span><span>{profile.order_count} đơn</span><span>{money(profile.total_spent)}</span><ChevronRight/></button>)}</div></section>
   </section>
-  {selected&&<OrderDetail
-   detailError={detailError} onRetry={()=>loadEvents(selected.id)} order={selected} events={orderEvents} costs={orderCosts} receivable={orderReceivable} loadingEvents={detailLoading} saving={flowSaving}
+  {selected&&<OrderDetail key={selected.id}
+   onDelete={["admin","manager"].includes(role)?deleteMistaken:undefined} detailError={detailError} onRetry={()=>loadEvents(selected.id)} order={selected} events={orderEvents} costs={orderCosts} receivable={orderReceivable} loadingEvents={detailLoading} saving={flowSaving}
    healthDraft={healthDraft} setHealthDraft={setHealthDraft} waitingDraft={waitingDraft} setWaitingDraft={setWaitingDraft}
    healthNoteDraft={healthNoteDraft} setHealthNoteDraft={setHealthNoteDraft} trackingDraft={trackingDraft} setTrackingDraft={setTrackingDraft}
    carrierDraft={carrierDraft} setCarrierDraft={setCarrierDraft} onUpdate={updateOrderFlow} onIssueReceivable={issueOrderReceivable} onRecordPayment={recordOrderPayment} onAddCost={addOrderCost} onSyncCosts={syncOrderCosts} onDeleteCost={deleteOrderCost} onClose={()=>setSelected(null)}
@@ -85,9 +98,10 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
  </main>
 }
 
-export function OrderDetail({detailError="",onRetry,order,events,costs,receivable,loadingEvents,saving,healthDraft,setHealthDraft,waitingDraft,setWaitingDraft,healthNoteDraft,setHealthNoteDraft,trackingDraft,setTrackingDraft,carrierDraft,setCarrierDraft,onUpdate,onIssueReceivable,onRecordPayment,onAddCost,onSyncCosts,onDeleteCost,onClose}){
+export function OrderDetail({onDelete,detailError="",onRetry,order,events,costs,receivable,loadingEvents,saving,healthDraft,setHealthDraft,waitingDraft,setWaitingDraft,healthNoteDraft,setHealthNoteDraft,trackingDraft,setTrackingDraft,carrierDraft,setCarrierDraft,onUpdate,onIssueReceivable,onRecordPayment,onAddCost,onSyncCosts,onDeleteCost,onClose}){
+ const [deleteOpen,setDeleteOpen]=useState(false),[deleteConfirmation,setDeleteConfirmation]=useState(""),[deleteError,setDeleteError]=useState("");
  const dialogRef=useRef(null);
- useDialogFocus(dialogRef,true,onClose);
+ useDialogFocus(dialogRef,true,()=>{if(!saving)onClose()});
  const stageIndex=orderStageIndex(order.stage),stage=ORDER_STAGES[stageIndex],nextStage=ORDER_STAGES[stageIndex+1],previousStage=ORDER_STAGES[stageIndex-1];
  const amountDue=receivable&&["open","partial"].includes(receivable.status)?Math.max(0,Number(receivable.total||0)-Number(receivable.paid||0)):0;
  const defaultMessageKind=()=>(stage.id==="completed"||order.status==="completed")?(amountDue>0?"delivered_due":"delivered"):"shipping";
@@ -121,6 +135,14 @@ export function OrderDetail({detailError="",onRetry,order,events,costs,receivabl
  return <aside ref={dialogRef} tabIndex={-1} className={`${styles.detail} ${styles.orderDetail}`} aria-label="Kiểm tra và điều phối đơn hàng" aria-modal="true" role="dialog">
   <header><div><p>Điều phối đơn</p><h2>{order.customerName}</h2><span className={styles.detailStage}>{stage.number} · {stage.label}</span></div><button onClick={onClose} aria-label="Đóng">×</button></header>
   <dl className={styles.orderSummary} aria-label="Tóm tắt đơn hàng"><div><dt>Mã đơn</dt><dd>{order.id}</dd></div><div><dt>Tổng đơn</dt><dd>{money(order.estimatedTotal)}</dd></div><div><dt>Còn thanh toán</dt><dd>{loadingEvents || detailError ? "Chưa xác nhận" : receivable ? money(amountDue) : "Chưa mở theo dõi"}</dd></div><div><dt>Liên hệ</dt><dd>{order.contact || "Chưa có"}</dd></div></dl>
+  {onDelete && <section className={styles.deleteOrder}>
+   {!deleteOpen ? <button type="button" disabled={saving} onClick={()=>{setDeleteOpen(true);setDeleteError("")}}><Trash2 size={16}/>Xoá đơn nhập nhầm</button> : <form onSubmit={async event=>{event.preventDefault();setDeleteError("");const result=await onDelete(deleteConfirmation);if(result?.error)setDeleteError(result.error)}}>
+    <h3>Xoá đơn {order.id}?</h3><p>Đơn của {order.customerName} sẽ rời Order Book và chuyển vào Thùng rác, có thể khôi phục trong 7 ngày tại Báo cáo & thiết lập → Khôi phục. Chỉ xoá đơn mới hoặc đang xác nhận, chưa có dữ liệu công nợ, chi phí hay kho liên quan. Xoá đơn không tự hoàn tồn kho hoặc điều chỉnh số đã bán.</p>
+    <label>Nhập mã đơn để xác nhận<input autoFocus value={deleteConfirmation} onChange={event=>setDeleteConfirmation(event.target.value)} disabled={saving} autoComplete="off"/></label>
+    {deleteError&&<p role="alert">{deleteError}</p>}
+    <div><button type="button" disabled={saving} onClick={()=>{setDeleteOpen(false);setDeleteConfirmation("");setDeleteError("")}}>Giữ lại đơn</button><button type="submit" disabled={saving||deleteConfirmation!==order.id}>{saving?"Đang xoá…":"Xác nhận xoá"}</button></div>
+   </form>}
+  </section>}
   {detailError && <p className={styles.error} role="alert">{detailError} <button onClick={onRetry}>Thử tải lại</button></p>}
   <section className={styles.flowSection} aria-labelledby="order-flow-title"><div className={styles.detailSectionTitle}><Activity/><span><b id="order-flow-title">Luồng xử lý</b><small>Mỗi lần chỉ tiến hoặc lùi một bước.</small></span></div><ol className={styles.orderSpine}>{ORDER_STAGES.map((item,index)=><li key={item.id} data-state={index<stageIndex?"done":index===stageIndex?"current":"future"}><span>{index<stageIndex?<CheckCircle2/>:item.number}</span><div><b>{item.label}</b>{index===stageIndex&&<small>Đang ở đây</small>}</div></li>)}</ol>
    <div className={styles.nextAction}><span>Việc cần làm ở bước này</span><p>{stage.nextAction}</p></div>
