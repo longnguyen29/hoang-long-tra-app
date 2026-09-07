@@ -37,7 +37,7 @@ authorized `ads_read` / `ads_management` access. Keep access tokens server-side,
 outside Git and browser bundles. Conversions API is a separate server integration;
 use matching event IDs when adding it alongside browser events to avoid duplicates.
 
-As checked on 7 September 2026, the ad account had zero prepaid funds, enabled
-campaigns with payment errors, and 39 items awaiting publication. Funding may
-resume enabled campaigns. Review campaign budgets before adding money. Campaign
-objective, budget, duration and geography still need to be provided before launch.
+The Marketing API app is `Hoang Long Ads Manager` (ID `3426010064246807`).
+Ad-management token authorization is a separate step. Campaign objective, budget,
+duration and geography must be agreed before launch. Review existing enabled
+campaigns before changing funding or publishing ads.
