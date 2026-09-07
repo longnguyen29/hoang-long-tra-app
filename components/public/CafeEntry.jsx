@@ -14,7 +14,7 @@ import styles from "./CafeEntry.module.css";
 const COPY = {
   vi: {
     house: "Nhà Hoàng Long", nav: "Xem trà", audience: "Dành cho chủ quán & đội ngũ pha chế",
-    title: "Món của quán.\nNền trà nào cho hợp?",
+    title: "Trà pha chế cho quán.\nChọn nền trà phù hợp.",
     intro: "Chọn món. Xem nền trà và chi phí mỗi ly. Thử tại quầy của bạn.",
     legend: "Quán đang phát triển món gì?", result: "Gợi ý để bắt đầu thử", recipe: "Hướng món tham chiếu",
     cost: "Trà khô / ly 500 ml", dose: "Lượng trà khô", cups: "Ly ước tính / kg",
@@ -23,6 +23,12 @@ const COPY = {
     disclaimer: "Gợi ý để nếm và hiệu chỉnh tại quán, chưa phải công thức thành phẩm đã được kiểm chứng.",
     cta: "Chọn bộ mẫu cho món này", noGate: "Xem gợi ý không cần số điện thoại.",
     photo: "Ảnh ứng dụng trà từ thư viện của Nhà; không phải ảnh của mọi món gợi ý.",
+    faqTitle: "Chọn trà cho quán: những điều cần biết",
+    faqs: [
+      ["Nên chọn trà nào để pha trà sữa hoặc trà trái cây?", "Bắt đầu từ món quán muốn bán: chọn trà sữa, trà trái cây, trà có gas hoặc cold brew ở trên để xem nền trà và cách pha tham khảo. Pha thử với sữa, trái cây và nguồn nước thực tế của quán, rồi điều chỉnh độ đậm và vị chát trước khi đưa vào menu."],
+      ["Chi phí trà khô mỗi ly được tính như thế nào?", "Chi phí trà khô mỗi ly = giá trà mỗi kg × số gram trà dùng cho một ly ÷ 1.000. Ví dụ minh họa: trà 200.000đ/kg, dùng 8g/ly thì phần trà là 1.600đ/ly. Đây không phải báo giá; chưa gồm sữa, trái cây, syrup, đá, bao bì và hao hụt. Công cụ dùng giá danh mục khi tải được; giá sỉ cần xác nhận theo lượng đặt và lô trà."],
+      ["Có thể thử trà trước khi đặt sỉ không?", "Chọn bộ mẫu cho món đang phát triển để xem lựa chọn, giá và điều kiện trước khi gửi yêu cầu. Nhà Hoàng Long xác nhận bộ mẫu để bạn thử tại quán trước khi trao đổi đơn sỉ. Xem gợi ý ở trên không cần số điện thoại."],
+    ],
     proofTitle: "Thử tại quầy của bạn.",
     proofBody: "Trà Shan Tuyết Hà Giang, kinh nghiệm làm trà gia đình từ năm 1995. Bộ thử giúp bạn đánh giá trà bằng nguồn nước, thiết bị và nguyên liệu đang dùng tại quán.",
     step1: "Chọn hướng món", body1: "Điều chỉnh vị trà và cỡ ly trong Menu Lab.",
@@ -32,7 +38,7 @@ const COPY = {
   },
   en: {
     house: "House of Hoang Long", nav: "Teas", audience: "For café owners & drinks teams",
-    title: "Your drink.\nWhich tea belongs in it?",
+    title: "Tea for your café.\nFind the right base.",
     intro: "Choose a drink. See its tea base and tea cost per cup. Test it at your own bar.",
     legend: "What is your café developing?", result: "A starting point to test", recipe: "Reference drink direction",
     cost: "Dry tea / 500 ml cup", dose: "Dry tea dose", cups: "Estimated cups / kg",
@@ -41,6 +47,12 @@ const COPY = {
     disclaimer: "A starting point for tasting and calibration at your bar, not a validated finished recipe.",
     cta: "Choose samples for this drink", noGate: "No phone number needed to explore.",
     photo: "Tea application from the House archive; not a photograph of every suggested drink.",
+    faqTitle: "Choosing café tea: practical questions",
+    faqs: [
+      ["Which tea should I choose for milk tea or fruit tea?", "Start with the drink you plan to sell. Select milk tea, fruit tea, sparkling tea or cold brew above for a tea base and reference brew. Test it with your café’s actual milk, fruit and water, then adjust strength and astringency before adding it to your menu."],
+      ["How is dry tea cost per cup calculated?", "Dry tea cost per cup = price per kg × grams used per cup ÷ 1,000. For illustration, tea at 200,000 VND/kg and 8g per cup costs 1,600 VND in tea per cup. This is not a quotation and excludes milk, fruit, syrup, ice, packaging and waste. The tool uses catalogue prices when available; wholesale prices require confirmation for your quantity and tea lot."],
+      ["Can I try the tea before ordering wholesale?", "Choose samples for your drink to review options, prices and conditions before requesting them. House of Hoang Long confirms the sample set so you can test at your bar before discussing a wholesale order. Exploring the recommendations above does not require a phone number."],
+    ],
     proofTitle: "Test at your own bar.",
     proofBody: "Shan Tuyết tea from Hà Giang, with a family tea-making practice since 1995. Judge it with your own water, equipment and ingredients.",
     step1: "Choose a direction", body1: "Adjust tea character and cup size in Menu Lab.",
@@ -164,6 +176,10 @@ export default function CafeEntry() {
       <section className={styles.proof}>
         <div><h2>{t.proofTitle}</h2><p>{t.proofBody}</p><Link href="/shop">{t.shop}<ArrowRight size={17} aria-hidden="true" /></Link></div>
         <ol>{[1, 2, 3].map((step) => <li key={step}><h3>{t[`step${step}`]}</h3><p>{t[`body${step}`]}</p></li>)}</ol>
+      </section>
+      <section className={styles.proof} aria-labelledby="cafe-questions">
+        <div><h2 id="cafe-questions">{t.faqTitle}</h2></div>
+        <div>{t.faqs.map(([question, answer]) => <details className={styles.brewDetails} key={question}><summary>{question}</summary><p>{answer}</p></details>)}</div>
       </section>
       <footer className={styles.footer}><p>{t.closing}</p><span>House of Hoang Long · Hà Giang</span><Link href="/privacy">{t.privacy}</Link></footer>
     </main>
