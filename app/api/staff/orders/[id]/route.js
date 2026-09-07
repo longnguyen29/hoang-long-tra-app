@@ -80,9 +80,21 @@ export async function PATCH(request, { params }) {
     return Response.json({ ok: false, error: "invalid_body" }, { status: 400 });
   }
 
-  const { stage, health, waitingOn, healthNote, trackingCode, shippingCarrier, linePrices } = body || {};
+  const { stage, health, waitingOn, healthNote, trackingCode, shippingCarrier, linePrices, type } = body || {};
   const update = {};
   const events = [];
+
+  if (type !== undefined) {
+    if (!["retail", "wholesale"].includes(type)) return Response.json({ok:false,error:"invalid_type"},{status:400});
+    update.type = type;
+    events.push({kind:"type_change",message:`Đổi loại đơn thành ${type === "wholesale" ? "đơn sỉ" : "đơn lẻ"}. Giữ nguyên sản phẩm, số lượng và đơn giá.`});
+  }
+
+  if (linePrices !== undefined) {
+    const invoice = await readReceivable(staff.admin, id);
+    if (invoice.error) return Response.json({ok:false,error:"receivable_read_failed"},{status:500});
+    if (invoice.data) return Response.json({ok:false,error:"receivable_exists"},{status:409});
+  }
 
   if (stage !== undefined) {
     if (!ORDER_STAGE_IDS.includes(stage)) {
