@@ -11,14 +11,14 @@ import { useLocale } from "@/components/i18n/LocaleProvider";
 // Publicly indexable on purpose: advertising platforms fetch it, and a policy nobody can
 // read is not a policy.
 
-const UPDATED = { vi: "11 tháng 8, 2026", en: "August 11, 2026" };
+const UPDATED = { vi: "7 tháng 9, 2026", en: "September 7, 2026" };
 
 const S = {
   vi: {
     title: "Chính sách quyền riêng tư",
     updated: `Cập nhật lần cuối: ${UPDATED.vi}`,
     intro:
-      "Trang này giải thích Nhà làm Trà Hoàng Long thu thập thông tin gì của bạn, vì sao, và bạn có thể yêu cầu gì. Chúng tôi chỉ thu thập những gì cần để bán trà và giao hàng — không mua bán dữ liệu, không đổi dữ liệu lấy bất cứ thứ gì.",
+      "Trang này giải thích Nhà làm Trà Hoàng Long thu thập thông tin gì của bạn, vì sao, và bạn có thể yêu cầu gì. Chúng tôi thu thập thông tin để bán trà, giao hàng và, khi bạn cho phép, đo hiệu quả quảng cáo.",
     sections: [
       {
         h: "Chúng tôi thu thập gì",
@@ -50,12 +50,12 @@ const S = {
           "Hiểu trang nào được xem nhiều, để cải thiện nội dung.",
         ],
         after:
-          "Chúng tôi không bán, không cho thuê, không trao đổi thông tin của bạn với bên thứ ba vì mục đích quảng cáo.",
+          "Khi bạn cho phép cookie quảng cáo, chúng tôi chia sẻ các sự kiện truy cập và yêu cầu tư vấn với Meta để đo hiệu quả quảng cáo.",
       },
       {
         h: "Ai khác có thể chạm tới dữ liệu",
         p: [
-          "Chúng tôi dùng một vài dịch vụ kỹ thuật để vận hành trang. Họ xử lý dữ liệu thay chúng tôi, không được dùng cho mục đích riêng:",
+          "Chúng tôi dùng một vài dịch vụ kỹ thuật để vận hành trang. Các dịch vụ xử lý dữ liệu theo vai trò và chính sách của từng bên:",
         ],
         list: [
           "**Supabase** — lưu trữ cơ sở dữ liệu, tài khoản đăng nhập và hình ảnh.",
@@ -70,7 +70,7 @@ const S = {
       {
         h: "Cookie và theo dõi",
         p: [
-          "Chúng tôi không dùng cookie quảng cáo và hiện không cài mã theo dõi của bên thứ ba trên trang này. Trình duyệt của bạn lưu một vài thiết lập cục bộ: mã phiên ngẫu nhiên để đếm lượt truy cập, giỏ hàng, ngôn ngữ, và việc bạn đã tắt thanh giới thiệu mẫu thử hay chưa. Xoá dữ liệu trình duyệt sẽ xoá hết những thứ này.",
+          "Khi bạn chọn Cho phép, Meta Pixel sử dụng cookie và gửi lượt xem trang, yêu cầu mẫu thử hoặc tư vấn sỉ thành công tới Meta. Meta có thể nhận địa chỉ IP, thông tin trình duyệt, địa chỉ trang và mã cookie để đo hiệu quả quảng cáo, đối chiếu với tài khoản Meta theo chính sách của họ. Mã sự kiện của chúng tôi không gửi nội dung biểu mẫu, tên, số điện thoại hay địa chỉ giao hàng. Bạn có thể từ chối hoặc thay đổi lựa chọn bằng nút Tuỳ chọn cookie; việc rút lại lựa chọn dừng theo dõi tiếp theo, không xoá dữ liệu đã gửi. Trình duyệt của bạn lưu một vài thiết lập cục bộ: mã phiên ngẫu nhiên để đếm lượt truy cập, giỏ hàng, ngôn ngữ, và việc bạn đã tắt thanh giới thiệu mẫu thử hay chưa. Xoá dữ liệu trình duyệt sẽ xoá hết những thứ này.",
         ],
       },
       {
@@ -111,7 +111,7 @@ const S = {
     title: "Privacy policy",
     updated: `Last updated: ${UPDATED.en}`,
     intro:
-      "This page explains what House of Hoàng Long collects about you, why, and what you can ask us to do about it. We collect only what it takes to sell tea and deliver it — we do not sell data and we do not trade it for anything.",
+      "This page explains what House of Hoàng Long collects about you, why, and what you can ask us to do about it. We collect information to sell tea, deliver orders and, when you allow it, measure advertising.",
     sections: [
       {
         h: "What we collect",
@@ -143,12 +143,12 @@ const S = {
           "Understand which pages get read, so we can improve them.",
         ],
         after:
-          "We do not sell, rent or trade your details to anyone for advertising.",
+          "When you allow advertising cookies, we share page-view and enquiry events with Meta to measure advertising.",
       },
       {
         h: "Who else can touch the data",
         p: [
-          "A few technical services keep the site running. They process data on our behalf and may not use it for their own purposes:",
+          "A few technical services keep the site running. Their processing depends on their role and their own policies:",
         ],
         list: [
           "**Supabase** — database, logins and image storage.",
@@ -162,7 +162,7 @@ const S = {
       {
         h: "Cookies and tracking",
         p: [
-          "We use no advertising cookies and currently run no third-party tracking scripts on this site. Your browser holds a few local settings: a random session identifier for counting visits, your basket, your language, and whether you dismissed the sample bar. Clearing your browser data removes all of them.",
+          "If you choose Allow, Meta Pixel uses cookies and sends page views and successful sample or wholesale enquiries to Meta. Meta may receive your IP address, browser information, page URL and cookie identifiers to measure ads and match activity to Meta accounts under its own policy. Our event code does not send form contents, names, phone numbers or delivery addresses. You can decline or change your choice using Cookie preferences. Withdrawing stops further tracking; it does not delete information already sent. Your browser holds a few local settings: a random session identifier for counting visits, your basket, your language, and whether you dismissed the sample bar. Clearing your browser data removes all of them.",
         ],
       },
       {
