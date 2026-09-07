@@ -11,14 +11,14 @@ import { useLocale } from "@/components/i18n/LocaleProvider";
 // Publicly indexable on purpose: advertising platforms fetch it, and a policy nobody can
 // read is not a policy.
 
-const UPDATED = { vi: "11 tháng 8, 2026", en: "August 11, 2026" };
+const UPDATED = { vi: "3 tháng 9, 2026", en: "September 3, 2026" };
 
 const S = {
   vi: {
     title: "Chính sách quyền riêng tư",
     updated: `Cập nhật lần cuối: ${UPDATED.vi}`,
     intro:
-      "Trang này giải thích Nhà làm Trà Hoàng Long thu thập thông tin gì của bạn, vì sao, và bạn có thể yêu cầu gì. Chúng tôi chỉ thu thập những gì cần để bán trà và giao hàng — không mua bán dữ liệu, không đổi dữ liệu lấy bất cứ thứ gì.",
+      "Trang này giải thích Nhà làm Trà Hoàng Long thu thập thông tin gì của bạn, vì sao, và bạn có thể yêu cầu gì. Chúng tôi giới hạn dữ liệu theo những mục đích được nêu rõ dưới đây — không mua bán dữ liệu, không đổi dữ liệu lấy bất cứ thứ gì.",
     sections: [
       {
         h: "Chúng tôi thu thập gì",
@@ -31,6 +31,7 @@ const S = {
           "**Khi nhắn tin cho chúng tôi:** tên và nội dung tin nhắn.",
           "**Khi tạo tài khoản đối tác sỉ:** email, mật khẩu (được mã hoá, chúng tôi không đọc được), tên doanh nghiệp và thông tin liên hệ.",
           "**Thống kê truy cập:** trang bạn xem, nguồn dẫn đến trang, ngôn ngữ, và một mã ngẫu nhiên lưu trong trình duyệt để phân biệt lượt xem lặp lại với người xem mới. Mã này không gắn với tên, email hay số điện thoại của bạn.",
+          "**Nếu bạn cho phép Meta Pixel:** lượt xem trang và các bước trong quá trình xin mẫu (xem trang, chọn bộ, mở biểu mẫu và gửi yêu cầu thành công). Chúng tôi không gửi tên, số điện thoại, địa chỉ hoặc nội dung biểu mẫu cho Meta.",
         ],
       },
       {
@@ -48,6 +49,7 @@ const S = {
           "Xuất hoá đơn và lưu sổ sách theo quy định.",
           "Trả lời tin nhắn và câu hỏi của bạn.",
           "Hiểu trang nào được xem nhiều, để cải thiện nội dung.",
+          "Đo hiệu quả quảng cáo Meta và hiểu bước nào trong quá trình xin mẫu cần được cải thiện, nếu bạn đồng ý.",
         ],
         after:
           "Chúng tôi không bán, không cho thuê, không trao đổi thông tin của bạn với bên thứ ba vì mục đích quảng cáo.",
@@ -55,14 +57,14 @@ const S = {
       {
         h: "Ai khác có thể chạm tới dữ liệu",
         p: [
-          "Chúng tôi dùng một vài dịch vụ kỹ thuật để vận hành trang. Họ xử lý dữ liệu thay chúng tôi, không được dùng cho mục đích riêng:",
+          "Chúng tôi dùng một vài dịch vụ kỹ thuật để vận hành trang và đo hiệu quả quảng cáo khi bạn đồng ý. Cách mỗi dịch vụ xử lý dữ liệu được nêu dưới đây:",
         ],
         list: [
           "**Supabase** — lưu trữ cơ sở dữ liệu, tài khoản đăng nhập và hình ảnh.",
           "**Vercel** — máy chủ chạy trang web.",
           "**Telegram** — nếu bật, hệ thống gửi thông báo đơn hàng mới vào nhóm nội bộ của chúng tôi (tên, số điện thoại, địa chỉ, giá trị đơn).",
           "**Đơn vị vận chuyển** — nhận tên, số điện thoại và địa chỉ để giao hàng.",
-          "**Nền tảng quảng cáo (Facebook/Meta)** — nếu bạn để lại thông tin qua biểu mẫu quảng cáo trên nền tảng của họ, chúng tôi nhận thông tin đó từ họ. Việc họ thu thập dữ liệu tuân theo chính sách riêng của họ.",
+          "**Facebook/Meta** — nếu bạn cho phép Meta Pixel, Meta nhận các sự kiện đo lường quảng cáo cùng dữ liệu kỹ thuật do trình duyệt gửi khi tải Pixel. Nếu bạn để lại thông tin qua biểu mẫu trên nền tảng Meta, chúng tôi cũng nhận thông tin đó từ họ. Meta xử lý dữ liệu theo chính sách riêng của họ.",
         ],
         after:
           "Ngoài ra, chúng tôi chỉ cung cấp thông tin khi pháp luật yêu cầu.",
@@ -70,7 +72,7 @@ const S = {
       {
         h: "Cookie và theo dõi",
         p: [
-          "Chúng tôi không dùng cookie quảng cáo và hiện không cài mã theo dõi của bên thứ ba trên trang này. Trình duyệt của bạn lưu một vài thiết lập cục bộ: mã phiên ngẫu nhiên để đếm lượt truy cập, giỏ hàng, ngôn ngữ, và việc bạn đã tắt thanh giới thiệu mẫu thử hay chưa. Xoá dữ liệu trình duyệt sẽ xoá hết những thứ này.",
+          "Meta Pixel chỉ được tải sau khi bạn chọn “Cho phép” trên thông báo đo lường quảng cáo. Nếu bạn từ chối, mã Meta không được tải và các sự kiện không được gửi. Trình duyệt lưu lựa chọn này cùng một vài thiết lập cục bộ khác: mã phiên ngẫu nhiên để đếm lượt truy cập, giỏ hàng, ngôn ngữ, và việc bạn đã tắt thanh giới thiệu mẫu thử hay chưa. Bạn có thể rút lại lựa chọn bằng cách xoá dữ liệu của trang trong trình duyệt.",
         ],
       },
       {
@@ -111,7 +113,7 @@ const S = {
     title: "Privacy policy",
     updated: `Last updated: ${UPDATED.en}`,
     intro:
-      "This page explains what House of Hoàng Long collects about you, why, and what you can ask us to do about it. We collect only what it takes to sell tea and deliver it — we do not sell data and we do not trade it for anything.",
+      "This page explains what House of Hoàng Long collects about you, why, and what you can ask us to do about it. We limit data to the purposes described below — we do not sell it and we do not trade it for anything.",
     sections: [
       {
         h: "What we collect",
@@ -124,6 +126,7 @@ const S = {
           "**When you message us:** your name and the messages.",
           "**When you open a wholesale account:** email, password (hashed — we cannot read it), business name and contact details.",
           "**Visit statistics:** which pages you view, where you arrived from, language, and a random identifier kept in your browser so repeat views can be told from new visitors. It is not linked to your name, email or phone.",
+          "**If you allow Meta Pixel:** page views and sample-request steps (viewing the funnel, selecting a pack, opening the form, and successfully submitting a request). We do not send names, phone numbers, addresses, or form contents to Meta.",
         ],
       },
       {
@@ -141,6 +144,7 @@ const S = {
           "Issue invoices and keep the accounts the law requires.",
           "Answer your messages and questions.",
           "Understand which pages get read, so we can improve them.",
+          "Measure Meta advertising and understand where the sample-request journey can improve, if you consent.",
         ],
         after:
           "We do not sell, rent or trade your details to anyone for advertising.",
@@ -148,21 +152,21 @@ const S = {
       {
         h: "Who else can touch the data",
         p: [
-          "A few technical services keep the site running. They process data on our behalf and may not use it for their own purposes:",
+          "We use a few technical services to run the site and, when you consent, measure advertising. How each service handles data is described below:",
         ],
         list: [
           "**Supabase** — database, logins and image storage.",
           "**Vercel** — the servers this website runs on.",
           "**Telegram** — when enabled, new-order alerts are sent to our own internal chat (name, phone, address, order value).",
           "**Delivery companies** — given the name, phone and address needed to deliver.",
-          "**Advertising platforms (Facebook/Meta)** — if you submit your details through a form on their platform, we receive them from Meta. Their own collection is governed by their policy, not ours.",
+          "**Facebook/Meta** — if you allow Meta Pixel, Meta receives advertising-measurement events and the technical data the browser sends when loading the Pixel. If you submit details through a form on Meta's platform, we also receive those details from Meta. Meta handles that data under its own policy.",
         ],
         after: "Beyond that, we disclose information only where the law requires it.",
       },
       {
         h: "Cookies and tracking",
         p: [
-          "We use no advertising cookies and currently run no third-party tracking scripts on this site. Your browser holds a few local settings: a random session identifier for counting visits, your basket, your language, and whether you dismissed the sample bar. Clearing your browser data removes all of them.",
+          "Meta Pixel loads only after you choose “Allow” in the advertising-measurement notice. If you decline, Meta's code does not load and no events are sent. Your browser stores that choice alongside a few other local settings: a random session identifier for counting visits, your basket, your language, and whether you dismissed the sample bar. You can withdraw your choice by clearing this site's browser data.",
         ],
       },
       {

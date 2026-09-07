@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Loader2, Leaf, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { notifyHouse } from "@/lib/notify";
 import { TOKENS } from "@/lib/constants";
 import { useLocale } from "@/components/i18n/LocaleProvider";
+import { trackMetaCustom, trackMetaLead } from "@/lib/meta-pixel";
 
 // Advert landing page for café and milk-tea owners. Deliberately bare: no sidebar, no site
 // navigation, nothing to click but the one thing we want them to do. Someone arriving from an
@@ -251,6 +252,12 @@ export default function LandingWholesale() {
 
   const canSend = form.name.trim() && form.phone.trim() && form.address.trim();
 
+  useEffect(() => {
+    trackMetaCustom("SampleFunnelViewed", {
+      funnel: "tea_sample", placement: "paid_landing", variant: "advert",
+    }, { onceKey: "sample-view:advert:/mau-thu-doanh-nghiep" });
+  }, []);
+
   const submit = async () => {
     setError("");
     if (!canSend) { setError(COPY.errRequired); return; }
@@ -271,6 +278,10 @@ export default function LandingWholesale() {
       if (e) throw e;
       // The advert's whole point is a fast reply, and nobody watches a dashboard all day.
       notifyHouse("leads", leadId);
+      trackMetaLead({
+        content_name: "tea_sample_request", content_category: "b2b",
+        placement: "paid_landing", variant: "advert",
+      }, { onceKey: `sample-lead:${leadId}` });
       setSent(true);
     } catch (e) {
       console.error("Landing lead failed:", e);
@@ -298,7 +309,13 @@ export default function LandingWholesale() {
   const ctaButton = (big) => (
     <div style={{ textAlign: "center" }}>
     <button
-      onClick={() => { setOpen(true); setTimeout(() => document.getElementById("lp-form")?.scrollIntoView({ behavior: "smooth", block: "center" }), 60); }}
+      onClick={() => {
+        setOpen(true);
+        trackMetaCustom("SampleFormOpened", {
+          funnel: "tea_sample", placement: big ? "paid_landing_hero" : "paid_landing_form", variant: "advert",
+        }, { onceKey: "sample-form-opened:advert" });
+        setTimeout(() => document.getElementById("lp-form")?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
+      }}
       style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9,
         padding: big ? "16px 30px" : "13px 24px", borderRadius: 14, border: "none",
