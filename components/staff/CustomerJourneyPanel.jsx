@@ -42,9 +42,10 @@ function ActionControl({ action, onCommand }) {
   return null;
 }
 
-export default function CustomerJourneyPanel({ journey, onCommand }) {
+export default function CustomerJourneyPanel({ journey, onCommand, primaryActionTitle = "" }) {
   if (!journey) return null;
   const counts = journey.counts || {};
+  const actions = journey.actions.filter(action => !primaryActionTitle || action.title !== primaryActionTitle);
 
   return <section className={styles.journey} aria-labelledby="customer-journey-title">
     <header>
@@ -57,14 +58,14 @@ export default function CustomerJourneyPanel({ journey, onCommand }) {
 
 
 
-    <div className={styles.actionSection}>
+    {(!primaryActionTitle || actions.length > 0) && <div className={styles.actionSection}>
       <div className={styles.sectionTitle}><CalendarClock/><span><b>Bước tiếp theo</b><small>Dựa trên trạng thái thực tế, không tạo thêm danh sách riêng.</small></span></div>
-      {journey.actions.length ? <div className={styles.actions}>{journey.actions.slice(0, 4).map((action, index) => <article key={action.key} data-priority={action.priority}>
+      {actions.length ? <div className={styles.actions}>{actions.slice(0, 4).map((action, index) => <article key={action.key} data-priority={action.priority}>
         <span className={styles.actionNumber}>{String(index + 1).padStart(2, "0")}</span>
-        <div><b>{action.title}</b><small>{action.detail}</small><time dateTime={action.dueAt}>{relativeDueLabel(action.dueAt)}</time></div>
+        <div><b>{action.title}</b>{action.detail !== relativeDueLabel(action.dueAt) && <small>{action.detail}</small>}<time dateTime={action.dueAt}>{relativeDueLabel(action.dueAt)}</time></div>
         <ActionControl action={action} onCommand={onCommand}/>
       </article>)}</div> : <div className={styles.clear}><CheckCircle2/><span><b>Chưa có việc cần xử lý.</b><small>Hành trình đang đúng nhịp; đặt bước tiếp theo khi có cuộc trao đổi mới.</small></span></div>}
-    </div>
+    </div>}
 
     <dl className={styles.counts} aria-label="Dữ liệu đã kết nối">
       <div><dt>Mẫu</dt><dd>{counts.samples || 0}</dd></div>

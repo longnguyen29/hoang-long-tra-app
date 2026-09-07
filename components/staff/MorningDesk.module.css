@@ -50,3 +50,5 @@
 .briefCopy h2{font-family:var(--font-body);font-size:var(--text-xl);line-height:1.25}.brief{padding-block:var(--space-md)}
 
 .briefCopy h2{max-width:none}.focusRail article{min-height:var(--topbar-height)}
+
+@media(max-width:39.99rem){.modeTabs{display:flex;flex-wrap:wrap}.modeTabs button{flex:1 0 auto;white-space:nowrap;padding-inline:var(--space-sm);min-height:var(--control-height)}}

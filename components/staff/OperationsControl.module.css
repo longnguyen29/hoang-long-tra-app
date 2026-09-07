@@ -657,3 +657,8 @@
     min-height: 8.25rem;
   }
 }
+
+/* Shared outer navigation owns the sidebar; sections form a compact local toolbar. */
+@media(min-width:64rem){.page{display:block}.heading{display:block;padding:var(--space-lg) var(--page-gutter)}.heading>span{display:block;padding:0;border:0;margin-top:var(--space-xs)}.tabs{position:static;display:flex;flex-wrap:wrap;gap:var(--space-2xs);margin:0;padding:var(--space-sm) var(--page-gutter);border-bottom:var(--rule-thin) solid var(--color-rule)}.tabs button,.tabs a{width:auto;min-height:var(--control-height);padding:var(--space-xs);border:var(--rule-thin) solid var(--color-rule);border-radius:var(--radius-control)}.panel,.owner,.planning{margin:var(--space-lg) var(--page-gutter)}.owner{display:block}.owner>section{margin-top:var(--space-md)}}
+
+@media(max-width:48rem){.tabs{display:flex;flex-wrap:wrap}.tabs button,.tabs a{flex:1 0 auto;width:auto;white-space:nowrap;min-height:var(--control-height)}}

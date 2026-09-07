@@ -35,3 +35,5 @@
 
 /* Navigation is supplied by the shared admin layout. */
 .shell{display:block;min-height:0}
+
+.orderSummary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-sm);margin:var(--space-md);padding:var(--space-sm);background:var(--color-paper-2)}.orderSummary>div{min-width:0}.orderSummary dt{font-size:var(--text-xs);color:var(--color-muted)}.orderSummary dd{margin:var(--space-3xs) 0 0;font-size:var(--text-base);font-weight:600;overflow-wrap:anywhere}.orderDetail>header{position:sticky;top:0;z-index:var(--z-raised);background:var(--color-paper)}

@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Leaf, Loader2, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { notifyHouse } from "@/lib/notify";
 import { recordPublicConversion } from "@/lib/public-attribution";
-import { MENU_LAB_CHARACTERS, MENU_LAB_USES, menuLabRequestNote } from "@/lib/menu-lab";
+import { MENU_LAB_CHARACTERS, MENU_LAB_USES, menuLabRequestNote, recommendMenuLab } from "@/lib/menu-lab";
 import MenuLab from "@/components/MenuLab";
 import styles from "./SampleRequest.module.css";
 
@@ -152,6 +152,8 @@ export default function SampleRequest({ variant = "control" }) {
   const [labProducts, setLabProducts] = useState([]);
   const [catalogStatus, setCatalogStatus] = useState(menuLabEnabled ? "loading" : "idle");
   const [labResult, setLabResult] = useState(null);
+  const [cafeEntry, setCafeEntry] = useState(false);
+  const cafeAccepted = useRef(false);
   const [labDefaults, setLabDefaults] = useState({ useCase: "milk", character: "strong" });
 
   useEffect(() => {
@@ -159,6 +161,7 @@ export default function SampleRequest({ variant = "control" }) {
     const query = new URLSearchParams(window.location.search);
     const requestedUse = query.get("use");
     const requestedCharacter = query.get("character");
+    setCafeEntry(menuLabEnabled && query.get("entry") === "cafe" && MENU_LAB_USES.some(item => item.id === requestedUse) && MENU_LAB_CHARACTERS.some(item => item.id === requestedCharacter));
     if (menuLabEnabled && (requestedUse || requestedCharacter)) {
       setLabDefaults({
         useCase: MENU_LAB_USES.some((item) => item.id === requestedUse) ? requestedUse : "milk",
@@ -172,6 +175,7 @@ export default function SampleRequest({ variant = "control" }) {
     setGrowthCode(code);
     if (code) setForm((current) => ({ ...current, heardFrom: current.heardFrom || "threads" }));
 
+    if (["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname)) return;
     let session = "";
     const pagePath = window.location.pathname;
     try {
@@ -199,19 +203,26 @@ export default function SampleRequest({ variant = "control" }) {
   useEffect(() => {
     if (!menuLabEnabled) return undefined;
     let live = true;
+    const abort = new AbortController();
+    const timeout = setTimeout(() => {abort.abort();if(live)setCatalogStatus("error")},10000);
     setCatalogStatus("loading");
-    supabase.from("catalog_products").select("id,name,available,price,kind").eq("available", true).eq("kind", "tea").order("id")
-      .then(({ data, error: catalogError }) => {
-        if (!live) return;
-        if (catalogError) {
-          setCatalogStatus("error");
-          return;
-        }
-        setLabProducts(data || []);
-        setCatalogStatus("ready");
-      });
-    return () => { live = false; };
+    supabase.from("catalog_products").select("id,name,available,price,kind").eq("available", true).eq("kind", "tea").order("id").abortSignal(abort.signal)
+      .then(({data,error:catalogError}) => {
+        if(!live || abort.signal.aborted)return;
+        if(catalogError){setCatalogStatus("error");return}
+        setLabProducts(data || []);setCatalogStatus("ready");
+      }).catch(() => {if(live)setCatalogStatus("error")}).finally(() => clearTimeout(timeout));
+    return () => {live=false;abort.abort();clearTimeout(timeout)};
   }, [menuLabEnabled, supabase]);
+
+  useEffect(() => {
+    if (!cafeEntry || cafeAccepted.current || !["ready", "error"].includes(catalogStatus)) return;
+    cafeAccepted.current = true;
+    const result = recommendMenuLab({useCase: labDefaults.useCase, character: labDefaults.character, cupMl: 500}, labProducts, lang);
+    setLabResult(result);
+    setStep(packStep);
+    // The visitor chose a drink, not a paid pack. Keep the existing default pack.
+  }, [cafeEntry, catalogStatus, labDefaults, labProducts, lang, packStep]);
 
   const t = STR[lang];
   const selectedPack = PACKS.find((item) => item.id === pack) || PACKS[0];
@@ -271,7 +282,7 @@ export default function SampleRequest({ variant = "control" }) {
   );
 
   return (
-    <main className={styles.page} data-sample-page data-experiment-variant={variant}>
+    <main className={styles.page} data-sample-page data-cafe-entry={cafeEntry} data-experiment-variant={variant}>
       <header className={styles.header}>
         <a className={styles.wordmark} href="/" aria-label={t.backHome}>
           <span className={styles.seal}>皇龍</span><span className={styles.brandName}>{t.backHome}</span>

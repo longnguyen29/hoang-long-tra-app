@@ -25,6 +25,7 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
+import LoadFailure from "./LoadFailure";
 import styles from "./OperationsControl.module.css";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
 import MaterialPlanningPanel from "./MaterialPlanningPanel";
@@ -95,9 +96,11 @@ export default function OperationsControl({ supabase, email, role, onLogout }) {
     [payment, setPayment] = useState(null),
     [batch, setBatch] = useState(null),
     [allocation, setAllocation] = useState(null);
+  const [dataFailure, setDataFailure] = useState(false);
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
+    try {
     const [s, o, r, p, b, a, i, c, v] = await Promise.all([
       supabase.rpc("operations_control_snapshot"),
       supabase.from("orders").select("*").order("ts", { ascending: false }),
@@ -127,6 +130,9 @@ export default function OperationsControl({ supabase, email, role, onLogout }) {
         .order("name"),
       supabase.from("catalog_variants").select("product_id,weight").order("weight"),
     ]);
+    const failed = [s, o, r, p, b, a, i, c, v].some(result => result.error);
+    setDataFailure(failed);
+    if(failed) return;
     if ([s, o, r, p, b, a, i, c, v].some((result) => result.error))
       setError(
         "Chưa tải được toàn bộ dữ liệu vận hành. Kiểm tra migration 0035.",
@@ -141,6 +147,8 @@ export default function OperationsControl({ supabase, email, role, onLogout }) {
     if (!c.error) setProducts(c.data || []);
     if (!v.error) setVariants(v.data || []);
     setLoading(false);
+
+    } catch { setDataFailure(true); } finally { setLoading(false); }
   }, [supabase]);
   useEffect(() => {
     load();
@@ -325,6 +333,8 @@ export default function OperationsControl({ supabase, email, role, onLogout }) {
         <p>Đang tổng hợp vận hành…</p>
       </main>
     );
+  if(dataFailure) return <LoadFailure onRetry={load} loading={loading}/>;
+
   return (
     <main className={styles.page}>
       <header className={styles.top}>
@@ -343,12 +353,12 @@ export default function OperationsControl({ supabase, email, role, onLogout }) {
           <button onClick={load} aria-label="Làm mới">
             <RefreshCw />
           </button>
-          <button onClick={onLogout}>Đăng xuất</button>
+
         </div>
       </header>
       <section className={styles.heading}>
         <p>Từ doanh thu đến lá trà</p>
-        <h1>Một vòng vận hành, không đứt đoạn.</h1>
+        <h1>Vận hành & công nợ</h1>
         <span>
           Tiền phải thu, lô nào đang giao, khách nào sắp đặt lại và sản phẩm nào
           cần chuẩn bị.

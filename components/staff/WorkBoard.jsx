@@ -7,6 +7,7 @@ import {
   CirclePause, Clock3, LogOut, MailPlus, Play, Plus, RefreshCw, Repeat2,
   Share2, UserRound, UsersRound, X,
 } from "lucide-react";
+import LoadFailure from "./LoadFailure";
 import styles from "./WorkBoard.module.css";
 
 const OPEN_STATUSES = new Set(["assigned", "in_progress", "blocked"]);
@@ -59,10 +60,12 @@ export default function WorkBoard({ supabase, userId, email, role, onLogout }) {
   const [blockingId, setBlockingId] = useState("");
   const [blockNote, setBlockNote] = useState("");
 
+  const [dataFailure,setDataFailure] = useState(false);
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     if (canAssign) await supabase.rpc("generate_due_work_tasks");
+    try {
     const [taskResult, profileResult, templateResult] = await Promise.all([
       supabase.from("work_tasks").select("*").order("due_at", { ascending: true }),
       supabase.from("staff_profiles").select("*").eq("active", true).order("display_name"),
@@ -70,6 +73,8 @@ export default function WorkBoard({ supabase, userId, email, role, onLogout }) {
         ? supabase.from("work_templates").select("*").order("created_at", { ascending: false })
         : Promise.resolve({ data: [], error: null }),
     ]);
+    const failed=[taskResult, profileResult, templateResult].some(result=>result.error);
+    setDataFailure(failed);if(failed)return;
     if (taskResult.error || profileResult.error || templateResult.error) {
       setError("Chưa tải được sổ công việc. Cần áp dụng migration 0043.");
     }
@@ -78,6 +83,7 @@ export default function WorkBoard({ supabase, userId, email, role, onLogout }) {
     setTemplates(templateResult.data || []);
     setDraft((current) => ({ ...current, assignedTo: current.assignedTo || profileResult.data?.[0]?.user_id || userId }));
     setLoading(false);
+    } catch {setDataFailure(true)} finally {setLoading(false)}
   }, [canAssign, supabase, userId]);
 
   useEffect(() => { load(); }, [load]);
@@ -201,11 +207,12 @@ export default function WorkBoard({ supabase, userId, email, role, onLogout }) {
     await load();
   };
 
+  if(dataFailure)return <LoadFailure onRetry={()=>load()} loading={loading}/>;
   return <main className={styles.shell} data-no-translate>
     <header className={styles.topbar}>
       <div className={styles.brand}><span aria-hidden="true">皇龍</span><b>Hoàng Long</b></div>
       <nav aria-label="Công việc"><Link href={canAssign ? "/admin" : "/admin/work"}><ArrowLeft/> {canAssign ? "Bảng điều khiển" : "Việc của tôi"}</Link></nav>
-      <div className={styles.identity}><span><b>{profileById[userId]?.display_name || email}</b><small>{canAssign ? "Quản lý" : "Nhân viên"}</small></span><button onClick={load} disabled={loading} aria-label="Làm mới"><RefreshCw className={loading ? styles.spin : ""}/></button><button onClick={onLogout} aria-label="Đăng xuất"><LogOut/></button></div>
+      <div className={styles.identity}><span><b>{profileById[userId]?.display_name || email}</b><small>{canAssign ? "Quản lý" : "Nhân viên"}</small></span><button onClick={load} disabled={loading} aria-label="Làm mới"><RefreshCw className={loading ? styles.spin : ""}/></button></div>
     </header>
 
     <section className={styles.hero}>

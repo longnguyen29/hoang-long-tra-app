@@ -32,6 +32,7 @@ import {
   uid,
   versionSeed,
 } from "@/lib/recipe-lab";
+import LoadFailure from "./LoadFailure";
 import styles from "./RecipeLab.module.css";
 
 const money = (value) => value === null || value === undefined || value === ""
@@ -83,9 +84,11 @@ export default function RecipeLab({ supabase, email }) {
     window.setTimeout(() => setNotice(""), 2200);
   };
 
+  const [dataFailure,setDataFailure] = useState(false);
   const load = useCallback(async ({ preserveSelection = true, preferredId = "" } = {}) => {
     setLoading(true);
     setError("");
+    try {
     const [recipeResult, versionResult, productResult, batchResult, opportunityResult, sampleResult] = await Promise.all([
       supabase.from("recipes").select("*").order("updated_at", { ascending: false }),
       supabase.from("recipe_versions").select("*").order("version_number", { ascending: false }),
@@ -94,6 +97,8 @@ export default function RecipeLab({ supabase, email }) {
       supabase.from("trade_opportunities").select("id,business_name,contact,stage").neq("stage", "lost").order("updated_at", { ascending: false }),
       supabase.from("sample_requests").select("id,store_name,phone,status").order("ts", { ascending: false }).limit(100),
     ]);
+    const failed=[recipeResult, versionResult, productResult, batchResult, opportunityResult, sampleResult].some(result=>result.error);
+    setDataFailure(failed);if(failed)return;
     if (recipeResult.error || versionResult.error) {
       setError("Chưa mở được dữ liệu công thức. Cần áp dụng migration 0049_recipe_lab.sql.");
       setLoading(false);
@@ -124,6 +129,7 @@ export default function RecipeLab({ supabase, email }) {
     setActiveVersionId(currentRecipe?.approved_version_id || currentVersions[0]?.id || "");
     if (opportunityId && !connected && !preserveSelection) setRecipeDraft(blankRecipe(opportunityId));
     setLoading(false);
+    } catch {setDataFailure(true)} finally {setLoading(false)}
   }, [selectedId, supabase]);
 
   useEffect(() => { load({ preserveSelection: false }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -279,6 +285,7 @@ export default function RecipeLab({ supabase, email }) {
     sellPrice: selected?.target_sell_price,
   }) : null;
 
+  if(dataFailure)return <LoadFailure onRetry={()=>load()} loading={loading}/>;
   if (loading) return <main className={styles.state}><RefreshCw/><p>Đang mở sổ thử công thức…</p></main>;
 
   return (
@@ -290,7 +297,7 @@ export default function RecipeLab({ supabase, email }) {
       </header>
 
       <section className={styles.heading}>
-        <div><p>Recipe development</p><h1>Biến mỗi lần pha thành một công thức có thể lặp lại.</h1><span>Gắn công thức với khách, trà, lô sản xuất và giá vốn—rồi giữ lại đúng phiên bản đã được nếm và chốt.</span></div>
+        <div><p>Recipe development</p><h1>Công thức & thử nghiệm</h1><span>Gắn công thức với khách, trà, lô sản xuất và giá vốn—rồi giữ lại đúng phiên bản đã được nếm và chốt.</span></div>
         <div className={styles.headingActions}><button className={styles.secondary} disabled={saving} onClick={addHouseStarters}><WandSparkles/>{saving ? "Đang tạo…" : "Thêm bộ gợi ý"}</button><button className={styles.primary} onClick={() => setRecipeDraft(blankRecipe())}><Plus/>Tạo công thức</button></div>
       </section>
 

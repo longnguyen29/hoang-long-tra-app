@@ -1,6 +1,7 @@
+/* Hallmark · pre-emit critique: P4 H4 E3 S4 R4 V3 · local review; full form audit pending */
 /* Hallmark · macrostructure: Split Studio interactive café entry · tone: editorial · anchor hue: 82
  * theme: House of Hoàng Long (design.md) · nav: inherited N9 · footer: Ft2
- * enrichment: existing drink photograph · tokens: ../../tokens.css through app/globals.css
+ * enrichment: labeled AI drink concepts · tokens: ../../tokens.css through app/globals.css
  */
 .page { background: var(--color-paper); color: var(--color-ink); }
 .page h1, .page h2, .page h3 { font-family: var(--font-display); font-style: normal; margin: 0; min-width: 0; overflow-wrap: anywhere; }
@@ -81,3 +82,12 @@
 }
 @media (hover: hover) { .choices label:hover { border-color: var(--color-ink-2); } .cta:hover { background: var(--color-ink-2); } }
 @media (prefers-reduced-motion: reduce) { .page *, .page *::before, .page *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+
+/* Coordinated drink concept atlas: each selection reveals its own quadrant. */
+.drinkArt{width:100%;aspect-ratio:1;background-image:url('/cafe/drink-concepts-v2.webp');background-size:200% 200%;background-position:0 0}
+.drinkArt[data-drink=fruit]{background-position:100% 0}.drinkArt[data-drink=sparkling]{background-position:0 100%}.drinkArt[data-drink=cold]{background-position:100% 100%}
+.photo{align-self:start;position:sticky;top:var(--space-sm)}.photo figcaption{position:static;background:var(--color-paper-2);color:var(--color-muted);padding:var(--space-xs);font-size:var(--text-xs)}
+.brewDetails{margin-block:var(--space-sm);font-size:var(--text-sm);color:var(--color-ink-2)}.brewDetails summary{cursor:pointer;min-height:var(--control-height);display:flex;align-items:center;text-decoration:underline;text-underline-offset:var(--rule-underline-offset)}.brewDetails p{line-height:1.5}
+.shareActions{display:flex;gap:var(--space-xs);flex-wrap:wrap}.shareActions button{display:flex;gap:var(--space-2xs);align-items:center;min-height:var(--control-height);padding:var(--space-2xs);border:var(--rule-thin) solid var(--color-rule);background:transparent;color:var(--color-ink);font-size:var(--text-sm)}
+@media(max-width:59.99rem){.hero{grid-template-areas:"intro" "choices" "photo" "result"}.intro{padding-block:var(--space-lg) var(--space-sm)}.intro h1{font-size:clamp(2.2rem,8vw,3rem)}.audience{margin-top:var(--space-sm)}.description{font-size:var(--text-sm)}.choices{padding-bottom:var(--space-sm)}.choices label{min-height:var(--control-height)}.photo{position:static;margin:0 var(--page-gutter)}.result{padding-top:var(--space-md);margin-top:var(--space-sm)}.result h2{font-size:var(--text-xl)}.metrics{grid-template-columns:1.3fr 1fr 1fr;gap:var(--space-xs)}.mainMetric{grid-column:auto}.mainMetric dd{font-size:var(--text-xl)}.metrics dd{font-size:var(--text-md)}}
+@media print{.header,.choices,.shareActions,.cta,.proof,.footer,.noGate{display:none}.hero{display:block}.intro{padding:0}.photo{position:static;float:right;width:36%;margin:0}.result{margin:var(--space-sm) 0}.brewDetails{display:block}.brewDetails>*{display:block!important}.page{background:white;color:black}.note{color:inherit}}

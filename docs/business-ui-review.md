@@ -33,3 +33,19 @@ Branch: codex/business-ui-review. Production is the control. Do not publish or c
 - Factory reads now validate the complete snapshot before seed initialization; failed/malformed reads show a retry screen. Three read-validation tests and factory production build pass.
 
 Still required: review all other staff pages inside the shell, remaining form/save/error feedback, factory browser checks, customer/order detail refinement, public/café visual and handoff improvements, comprehensive acceptance review and publication approval. Checklist remains open until those requirements have direct evidence.
+
+
+## Checkpoint 2 — 7 September 2026, local design review
+
+Implemented across the isolated website and factory branches:
+- Public home: café-first message, authentic archive photograph, retail route retained, catalogue retry state and campaign attribution preserved.
+- Café page: four labeled AI drink concepts, live catalogue tea-only cost, shareable choice, print notes, direct handoff to sample pack selection without repeating the drink question. Free pack remains the default; qualification remains required.
+- Staff: compact shared navigation, actionable queues, compact local toolbars, customer next-action context, order amount/due summary, keyboard focus handling for order and opportunity drawers. Missing costs no longer imply a confirmed 100% margin.
+- Failed full loads in orders, pipeline, operations, work, house, recipes, control and growth now show a retry state rather than confirmed zero activity.
+- Factory: serialized saves per collection, retained failed values and retry, visible unsaved state, guarded purchase entry, success feedback that respects pending saves.
+
+Verification: 71 website tests and 6 factory tests pass; both production builds pass; diff whitespace checks pass. Local production builds return 404 for both development review routes and send protected routes to login. Browser checks cover home and café mobile visuals, selected drink sharing, direct sample handoff with free-pack qualification retained, order failure view, factory failed save and successful retry. Home, café and factory dashboard have no root horizontal overflow at measured CSS widths 320/375/414/768. Staff screen-switch smoke checks were also run, but are not a full settled-state visual audit of every form.
+
+Release checks still open: authenticated staff role workflows and real backend write/read persistence in a separate test dataset; all nested forms/dialogs at mobile widths; print-dialog rendering; full public route navigation/locale regression; factory multi-collection operations under partial failure and multi-user edits. The per-key queue is not a database transaction or cross-user conflict-resolution system. Factory development review shows a React debugging warning about eval under the current CSP; production security policy was preserved.
+
+This checkpoint is ready for design review, not a claim that every acceptance box is complete. No publication or customer contact occurred.

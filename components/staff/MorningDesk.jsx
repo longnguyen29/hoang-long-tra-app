@@ -123,7 +123,7 @@ function buildExceptions(snapshot, mode) {
   journeyQueue.slice(0, 4).forEach((action) => items.push({
     id: `journey-${action.key}-${action.opportunity.id}`,
     title: `${action.opportunity.business_name}: ${action.title}`,
-    detail: `${action.detail || "Cần xử lý bước tiếp theo"} · ${relativeDueLabel(action.dueAt)}`,
+    detail: [action.detail || "Cần xử lý bước tiếp theo", relativeDueLabel(action.dueAt)].filter((value, index, values) => values.indexOf(value) === index).join(" · "),
     appKey: "pipeline",
     href: `/admin/pipeline?opportunity=${encodeURIComponent(action.opportunity.id)}`,
     level: action.priority === 1 ? "critical" : action.priority === 2 ? "attention" : "normal",

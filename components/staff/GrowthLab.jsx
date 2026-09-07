@@ -10,6 +10,7 @@ import {
 import {
   DEFAULT_GROWTH_RUBRIC, buildGrowthPrompt, judgeThreadsDraft, starterVariants, trackingUrl,
 } from "@/lib/growth-judge";
+import LoadFailure from "./LoadFailure";
 import styles from "./GrowthLab.module.css";
 
 const EMPTY_BRIEF = {
@@ -112,12 +113,16 @@ export default function GrowthLab({ supabase, email, role }) {
   const [draftText, setDraftText] = useState("");
   const [generationStage, setGenerationStage] = useState("");
 
+  const [dataFailure,setDataFailure] = useState(false);
   const load = useCallback(async () => {
     setLoading(true); setError("");
-    const [{ data, error: loadError }, { data: funnelData }] = await Promise.all([
+    try {
+    const [{ data, error: loadError }, { data: funnelData, error: funnelError }] = await Promise.all([
       supabase.rpc("growth_lab_snapshot"),
       supabase.rpc("b2b_conversion_snapshot", { p_days: 30 }),
     ]);
+    setDataFailure(Boolean(loadError || funnelError));
+    if(loadError || funnelError)return;
     if (loadError) setError("Phòng tăng trưởng chưa đọc được dữ liệu. Cần áp dụng migration 0045_growth_content_lab rồi làm mới.");
     else {
       setSnapshot(data || { active_prompt: {}, experiments: [] });
@@ -125,6 +130,7 @@ export default function GrowthLab({ supabase, email, role }) {
     }
     if (funnelData) setWebsiteFunnel(funnelData);
     setLoading(false);
+    } catch {setDataFailure(true)} finally {setLoading(false)}
   }, [supabase]);
 
   useEffect(() => { load(); }, [load]);
@@ -256,6 +262,7 @@ export default function GrowthLab({ supabase, email, role }) {
     return { experiment, best, enough: candidates.reduce((sum, variant) => sum + Number(variant.outcomes?.visitors || 0), 0) >= 20 };
   }), [experiments]);
 
+  if(dataFailure)return <LoadFailure onRetry={load} loading={loading}/>;
   return <main className={styles.shell}>
     <header className={styles.topbar}>
       <div><Link href="/admin"><ArrowLeft/>Bảng điều khiển</Link><span>Growth lab · prompt v{activePrompt.version || "—"}</span></div>
@@ -263,7 +270,7 @@ export default function GrowthLab({ supabase, email, role }) {
     </header>
 
     <section className={styles.hero}>
-      <div><p>Phòng tăng trưởng</p><h1>Biến một bài viết thành một điều có thể học.</h1><span>Không hỏi bài nào nhiều like nhất. Hỏi cách mở bài nào đưa đúng quán tới một lần thử thật.</span></div>
+      <div><p>Phòng tăng trưởng</p><h1>Nội dung & hiệu quả</h1><span>Không hỏi bài nào nhiều like nhất. Hỏi cách mở bài nào đưa đúng quán tới một lần thử thật.</span></div>
       <div className={styles.heroPath} aria-label="Mục tiêu của phòng tăng trưởng">
         <span><Send/>Bài Threads</span><i/><span><Link2/>Trang sample</span><i/><span><Beaker/>Thử tại quán</span><i/><span><TrendingUp/>Đơn sỉ</span>
       </div>

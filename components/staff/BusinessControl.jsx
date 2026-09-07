@@ -30,6 +30,7 @@ import {
   toPaymentRow,
   toPromoRow,
 } from "@/lib/mappers";
+import LoadFailure from "./LoadFailure";
 import styles from "./BusinessControl.module.css";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
 
@@ -81,9 +82,11 @@ export default function BusinessControl({ supabase, email, onLogout }) {
     [health, setHealth] = useState(null),
     [healthLoading, setHealthLoading] = useState(false),
     [error, setError] = useState("");
+  const [dataFailure, setDataFailure] = useState(false);
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
+    try {
     const [o, p, t, r, w, pay, b] = await Promise.all([
       supabase.from("orders").select("*").order("ts", { ascending: false }),
       supabase.from("promos").select("*").order("code"),
@@ -102,6 +105,9 @@ export default function BusinessControl({ supabase, email, onLogout }) {
         .select("*")
         .order("deleted_at", { ascending: false }),
     ]);
+    const failed = [o, p, t, r, w, pay, b].some(result => result.error);
+    setDataFailure(failed);
+    if(failed) return;
     if ([o, p, t, r, w, pay, b].some((result) => result.error))
       setError("Không tải được toàn bộ dữ liệu thương mại.");
     if (!o.error) setOrders((o.data || []).map(fromOrderRow));
@@ -112,6 +118,8 @@ export default function BusinessControl({ supabase, email, onLogout }) {
     if (!pay.error) setPayment(fromPaymentRow(pay.data));
     if (!b.error) setBin(b.data || []);
     setLoading(false);
+
+    } catch { setDataFailure(true); } finally { setLoading(false); }
   }, [supabase]);
   useEffect(() => {
     load();
@@ -345,6 +353,8 @@ export default function BusinessControl({ supabase, email, onLogout }) {
     ["connections", "Kết nối", Activity],
     ["bin", "Khôi phục", RotateCcw],
   ];
+  if(dataFailure) return <LoadFailure onRetry={load} loading={loading}/>;
+
   return (
     <main className={styles.page}>
       <header className={styles.top}>
@@ -363,12 +373,12 @@ export default function BusinessControl({ supabase, email, onLogout }) {
           <button onClick={load} disabled={loading} aria-label="Làm mới">
             <RefreshCw />
           </button>
-          <button onClick={onLogout}>Đăng xuất</button>
+
         </div>
       </header>
       <section className={styles.heading}>
         <p>Sổ bán hàng & thiết lập</p>
-        <h1>Báo cáo rõ. Thiết lập gọn.</h1>
+        <h1>Báo cáo & thiết lập</h1>
         <span>
           Doanh thu, khách hàng, ưu đãi, đánh giá và tài khoản nhận tiền ở cùng một nơi.
         </span>

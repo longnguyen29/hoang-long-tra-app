@@ -13,11 +13,11 @@ const COPY = {
     nav: [["Teas", "/shop"], ["Wholesale", "/wholesale"], ["The house", "/story"], ["Journal", "/gallery"]],
     book: "Book tea",
     place: "Hà Giang · Việt Nam",
-    hero: "Tea from old trees, made for the world beyond them.",
-    heroBody: "House of Hoang Long works with ancient Shan Tuyết tea from Hà Giang and a precise Japanese processing discipline. Family-made since 1995.",
+    hero: "Shan Tuyết tea for your café’s own drinks.",
+    heroBody: "Choose your drink, explore a matching tea and see the tea cost per cup. Test it at your bar before choosing a tea for your menu.",
     explore: "Explore this season",
-    trade: "For tea houses & kitchens",
-    sampleCta: "Request the café sample set",
+    trade: "Shop tea for home",
+    sampleCta: "Find a tea for your café",
     season: "Current leaves",
     seasonBody: "Small harvests change. The catalogue follows what is actually available, not an imaginary permanent shelf.",
     viewTea: "View tea",
@@ -40,11 +40,11 @@ const COPY = {
     nav: [["Trà", "/shop"], ["Đối tác", "/wholesale"], ["Nhà Hoàng Long", "/story"], ["Thư viện", "/gallery"]],
     book: "Đặt lịch trà",
     place: "Hà Giang · Việt Nam",
-    hero: "Hương vị trà Shan tuyết cổ thụ: Tuyệt tác từ non cao gửi trao thế giới.",
-    heroBody: "Từ năm 1995, nhà Hoàng Long làm bạn cùng cây trà Shan Tuyết cổ thụ Hà Giang, kết hợp kinh nghiệm làm trà truyền thống với công nghệ chế biến hiện đại của Nhật Bản.",
+    hero: "Trà Shan Tuyết cho món riêng của quán.",
+    heroBody: "Chọn món muốn pha, tìm nền trà phù hợp và xem chi phí trà mỗi ly. Thử tại quán trước khi chọn nguồn trà cho menu.",
     explore: "Xem trà mùa này",
-    trade: "Dành cho quán & nhà hàng",
-    sampleCta: "Nhận bộ mẫu cho quán",
+    trade: "Mua trà để uống",
+    sampleCta: "Tìm nền trà cho quán",
     season: "Những lá trà hiện có",
     seasonBody: "Trà thay đổi theo mùa và sản lượng thực tế. Vì vậy, danh mục cũng được cập nhật theo từng vụ.",
     viewTea: "Xem trà",
@@ -71,24 +71,33 @@ export default function HouseHome() {
   const { locale: lang, toggleLocale } = useLocale();
   const [menuOpen, setMenuOpen] = useState(false);
   const [catalog, setCatalog] = useState([]);
+  const [catalogState, setCatalogState] = useState("loading");
+  const [attempt, setAttempt] = useState(0);
+  const [entryHref, setEntryHref] = useState("/cho-quan");
   const [home, setHome] = useState(null);
   const supabase = useMemo(() => createClient(), []);
   const t = COPY[lang];
 
   useEffect(() => {
     let live = true;
+    setCatalogState("loading");
     Promise.all([
       supabase.from("catalog_products").select("id,name,notes,photo_url,photo_position,available,kind,line,price").eq("available", true).order("sort_order").limit(6),
       supabase.from("settings_home").select("featured_photos,producer_name,producer_photo,producer_role,producer_quote").eq("id", 1).maybeSingle(),
     ]).then(([products, settings]) => {
       if (!live) return;
       if (!products.error) setCatalog(products.data || []);
+      setCatalogState(products.error ? "error" : "ready");
       if (!settings.error) setHome(settings.data || null);
-    });
+    }).catch(() => { if (live) setCatalogState("error"); });
     return () => { live = false; };
-  }, [supabase]);
+  }, [supabase, attempt]);
 
   useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const attribution = new URLSearchParams();
+    for (const key of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]) { const value = query.get(key); if(value) attribution.set(key, value.replace(/[^a-zA-Z0-9._-]/g,"-").slice(0,80)); }
+    setEntryHref(`/cho-quan${attribution.size ? `?${attribution}` : ""}`);
     recordPublicConversion(supabase, "home_view", { once: true, placement: "home" }).catch(() => {});
   }, [supabase]);
 
@@ -132,16 +141,16 @@ export default function HouseHome() {
           <h1>{t.hero}</h1>
           <p className={styles.heroBody}>{t.heroBody}</p>
           <div className={styles.heroLinks}>
-            <Link href="/sample?utm_source=website&utm_medium=owned&utm_campaign=home_b2b">
+            <Link href={entryHref}>
               {t.sampleCta}<ArrowRight size={16}/>
             </Link>
-            <Link href="/wholesale">{t.trade}</Link>
+            <Link href="/shop">{t.trade}</Link>
           </div>
           <a href="#season" className={styles.scrollCue} aria-label="Scroll to current teas"><ArrowDown size={17}/></a>
         </div>
         <figure className={styles.heroImage}>
-          <img src={photos[0]} alt="Hoàng Long tea landscape and craft" fetchPriority="high" />
-          <figcaption>House of Hoang Long · Est. 1995</figcaption>
+          <img src="/landing/4.jpg" alt={lang === "vi" ? "Ly trà phủ kem trong thư viện ảnh Hoàng Long" : "A cream-topped tea from the Hoàng Long archive"} fetchPriority="high" />
+          <figcaption>{lang === "vi" ? "Ảnh ứng dụng trà · Nhà Hoàng Long" : "Tea application · House of Hoang Long"}</figcaption>
         </figure>
       </section>
 
@@ -160,7 +169,7 @@ export default function HouseHome() {
               {tea.photo_url ? <img src={tea.photo_url} alt="" loading="lazy" style={{objectPosition: tea.photo_position || "50% 50%"}} /> : <span className={styles.teaBlank} aria-hidden="true" />}
               <ArrowRight size={18} aria-hidden="true" />
             </Link>
-          )) : <p className={styles.empty}>{t.noTea}</p>}
+          )) : <div className={styles.empty} role="status">{catalogState === "loading" ? (lang === "vi" ? "Đang tải danh mục trà…" : "Loading the tea catalogue…") : catalogState === "error" ? <><p>{lang === "vi" ? "Chưa tải được danh mục trà." : "The tea catalogue could not load."}</p><button onClick={() => setAttempt(value => value + 1)}>{lang === "vi" ? "Thử tải lại" : "Try again"}</button></> : t.noTea}</div>}
         </div>
       </section>
 
