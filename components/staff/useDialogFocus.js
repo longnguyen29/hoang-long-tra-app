@@ -1,10 +1,13 @@
 "use client";
 import {useEffect,useRef} from "react";
 export function useDialogFocus(ref, open, onClose) {
+ const openerRef=useRef(null);
  const close = useRef(onClose); close.current = onClose;
  useEffect(() => {
   if(!open || !ref.current)return;
-  const opener=document.activeElement, dialog=ref.current;
+  const dialog=ref.current;
+  if(!dialog.contains(document.activeElement))openerRef.current=document.activeElement;
+  const opener=openerRef.current;
   const controls=()=>[...dialog.querySelectorAll('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]')].filter(node=>node.getClientRects().length);
   (controls()[0] || dialog).focus();
   function keydown(event){
@@ -16,6 +19,6 @@ export function useDialogFocus(ref, open, onClose) {
    else if(!event.shiftKey && (document.activeElement===last || !dialog.contains(document.activeElement))){event.preventDefault();first.focus()}
   }
   document.addEventListener('keydown',keydown);
-  return ()=>{document.removeEventListener('keydown',keydown);if(opener?.isConnected)opener.focus()};
+  return ()=>{document.removeEventListener('keydown',keydown);queueMicrotask(()=>{if(!dialog.isConnected&&opener?.isConnected)opener.focus()})};
  },[open,ref]);
 }

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { ArrowLeft, Check, Minus, Plus, ShoppingBag, Store, X } from "lucide-react";
 import { fromCatalogRow, fromOrderRow, fromVariantRow, toOrderRow } from "@/lib/mappers";
 import styles from "./NewOrderPanel.module.css";
+import {useDialogFocus} from "./useDialogFocus";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
 
 const blankLine = () => ({ id: crypto.randomUUID(), productKey: "", qty: 1, unitPrice: "" });
@@ -53,17 +54,23 @@ export default function NewOrderPanel({ supabase, onClose, onCreated }) {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [catalogAttempt,setCatalogAttempt]=useState(0);
+  const [catalogFailed,setCatalogFailed]=useState(false);
+  const dialogRef=useRef(null);
+  useDialogFocus(dialogRef,true,()=>{if(!saving)onClose()});
 
   useEffect(() => {
     let active = true;
     async function loadProducts() {
+      setLoadingProducts(true);setCatalogFailed(false);
+      try {
       const [productResult, variantResult] = await Promise.all([
         supabase.from("catalog_products").select("*").order("line"),
         supabase.from("catalog_variants").select("*"),
       ]);
       if (!active) return;
       if (productResult.error || variantResult.error) {
-        setError("Chưa tải được danh mục sản phẩm.");
+        setCatalogFailed(true);
         setLoadingProducts(false);
         return;
       }
@@ -77,18 +84,11 @@ export default function NewOrderPanel({ supabase, onClose, onCreated }) {
         return product;
       }));
       setLoadingProducts(false);
+      }catch{if(active){setCatalogFailed(true);setLoadingProducts(false)}}
     }
     loadProducts();
     return () => { active = false; };
-  }, [supabase]);
-
-  useEffect(() => {
-    const onKeyDown = (event) => {
-      if (event.key === "Escape" && !saving) onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose, saving]);
+  }, [supabase,catalogAttempt]);
 
   const orderableProducts = useMemo(
     () => flattenProducts(products).filter((product) => product.available !== false),
@@ -253,11 +253,12 @@ export default function NewOrderPanel({ supabase, onClose, onCreated }) {
   return <div className={styles.backdrop} onMouseDown={(event) => {
     if (event.target === event.currentTarget && !saving) onClose();
   }}>
-    <aside className={styles.panel} aria-label="Tạo đơn hàng mới" aria-modal="true" role="dialog">
+    <aside ref={dialogRef} tabIndex={-1} className={styles.panel} aria-label="Tạo đơn hàng mới" aria-modal="true" role="dialog">
       <header className={styles.header}>
         <div><p>{step === "edit" ? "Order intake" : "Final check"}</p><h2>{step === "edit" ? "Tạo đơn mới" : "Kiểm tra trước khi tạo"}</h2></div>
         <button type="button" onClick={onClose} disabled={saving} aria-label="Đóng"><X /></button>
       </header>
+      {catalogFailed&&<p role="alert" className={styles.error}>Chưa tải được danh mục sản phẩm. <button type="button" onClick={()=>setCatalogAttempt(value=>value+1)}>Thử tải danh mục lại</button></p>}
       <form onSubmit={submit}>
         {step === "edit" ? <>
           <section className={styles.typeSwitch} aria-label="Loại đơn hàng">

@@ -58,3 +58,8 @@ The UI work and subsequent Order Book deletion/type changes were pushed to the o
 `npm run test:staff-orders` executes the actual PATCH route with a mocked authenticated backend and real domain helpers. Nine tests pass: unauthenticated rejection; preserving lines, units, quantities, amount and customer details on type change; rejecting unsupported types; calculating totals from new line prices; keeping an unquoted total unknown; rejecting duplicate line indices without partial type changes; blocking price edits when receivables exist; failing closed on receivable read errors; and not logging success for a failed update.
 
 Limits: mocked backend tests do not prove live authentication configuration, database transactions under concurrent requests, or production deployment status. Prior 85 library tests remain a separate layer of evidence. Remaining acceptance requirements stay open.
+
+
+## Checkpoint 4 — order dialog usability
+
+New-order entry now traps Tab within the dialog, handles thrown catalogue reads with a retry control, and explicitly returns focus to the Create order button after close. The development fixture supports in-memory order type/price edits and toggling a receivable. Browser verification: retail→wholesale preserved quantity; editing 2 kg from 500,000 to 450,000 per kg changed the displayed total to 900,000; Tab/Shift+Tab remained in the new-order dialog; closing returned focus to Create order. No live records were changed. Build and all 94 library/API tests passed. Catalogue retry was implemented and build-checked; a live backend failure/recovery test remains unverified. Unsaved-draft persistence and cross-user database races are still open.
