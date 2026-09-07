@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { notifyHouse } from "@/lib/notify";
 import { fromCatalogRow } from "@/lib/mappers";
 import { useLocale } from "@/components/i18n/LocaleProvider";
+import { trackMetaLead } from "@/lib/meta-pixel";
 import { recordPublicConversion } from "@/lib/public-attribution";
 import styles from "./TradeDesk.module.css";
 
@@ -132,6 +133,7 @@ export default function TradeDesk() {
       return;
     }
     notifyHouse("leads", leadId);
+    trackMetaLead("wholesale_enquiry");
     recordPublicConversion(supabase, "trade_lead_submitted", { placement: "wholesale_brief" }).catch(() => {});
     setSent(true);
   };
