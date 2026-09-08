@@ -176,7 +176,7 @@ export default function TradeDesk() {
       </section>
 
       <section className={styles.brief} id="trade-brief">
-        <div className={styles.briefIntro}><p>Trade brief</p><h2>{t.requestTitle}</h2><p>{t.requestBody}</p><a href="tel:+84903333841"><Phone size={16}/>{t.call}</a></div>
+        <div className={styles.briefIntro}><p>Trade brief</p><h2>{t.requestTitle}</h2><p>{t.requestBody}</p><a href="tel:+84903333841"><Phone size={16}/>{t.call}</a><p>{lang === "vi" ? "Văn phòng & kho: 36B QL2A, Sóc Sơn, Hà Nội. Bạn có thể ghé uống trà và trao đổi nhu cầu; vui lòng gọi trước để sắp xếp." : "Office & warehouse: 36B QL2A, Soc Son, Hanoi. You can visit for tea and discuss your requirements; please call ahead to arrange your visit."}</p><a href="https://maps.app.goo.gl/2CeRFCCd2eXo9E6p6" target="_blank" rel="noreferrer">{lang === "vi" ? "Xem đường đến văn phòng" : "Directions to the office"}<ArrowRight size={16}/></a></div>
         {sent ? <div className={styles.success}><span><Check size={19}/></span><h3>{t.sent}</h3><p>{t.sentBody}</p><Link href="/">{t.back}<ArrowRight size={16}/></Link></div> :
           <form onSubmit={submit} onFocusCapture={() => {
             if (briefStarted.current) return;
