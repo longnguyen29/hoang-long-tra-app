@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { TOKENS } from "@/lib/constants";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 
@@ -11,7 +10,7 @@ import { useLocale } from "@/components/i18n/LocaleProvider";
 // Publicly indexable on purpose: advertising platforms fetch it, and a policy nobody can
 // read is not a policy.
 
-const UPDATED = { vi: "7 tháng 9, 2026", en: "September 7, 2026" };
+const UPDATED = { vi: "8 tháng 9, 2026", en: "September 8, 2026" };
 
 const S = {
   vi: {
@@ -30,7 +29,7 @@ const S = {
           "**Khi viết đánh giá sản phẩm:** tên hiển thị, đánh giá sao, nội dung, và số điện thoại/email bạn đã dùng để mua — dùng để xác minh bạn thực sự đã mua. Số điện thoại/email này không bao giờ hiển thị công khai.",
           "**Khi nhắn tin cho chúng tôi:** tên và nội dung tin nhắn.",
           "**Khi tạo tài khoản đối tác sỉ:** email, mật khẩu (được mã hoá, chúng tôi không đọc được), tên doanh nghiệp và thông tin liên hệ.",
-          "**Thống kê truy cập:** trang bạn xem, nguồn dẫn đến trang, ngôn ngữ, và một mã ngẫu nhiên lưu trong trình duyệt để phân biệt lượt xem lặp lại với người xem mới. Mã này không gắn với tên, email hay số điện thoại của bạn.",
+          "**Thống kê truy cập:** trang bạn xem, nguồn dẫn đến trang, ngôn ngữ, và một mã ngẫu nhiên lưu trong trình duyệt để phân biệt lượt xem lặp lại với người xem mới. Các sự kiện thống kê này không chứa tên, email hay số điện thoại từ biểu mẫu. Hệ thống vẫn lưu từng sự kiện cùng mã trình duyệt, không chỉ số liệu tổng hợp.",
         ],
       },
       {
@@ -60,6 +59,8 @@ const S = {
         list: [
           "**Supabase** — lưu trữ cơ sở dữ liệu, tài khoản đăng nhập và hình ảnh.",
           "**Vercel** — máy chủ chạy trang web.",
+          "**Dịch vụ SMS và Zalo** — khi nhân viên hoặc chức năng gửi tin được bật, số điện thoại và nội dung thông báo đơn hàng hoặc thanh toán được xử lý qua dịch vụ gửi tin tương ứng.",
+          "**Google Fonts** — trình duyệt tải phông chữ từ Google; yêu cầu tải có thể cung cấp địa chỉ IP và thông tin trình duyệt cho Google.",
           "**Telegram** — nếu bật, hệ thống gửi thông báo đơn hàng mới vào nhóm nội bộ của chúng tôi (tên, số điện thoại, địa chỉ, giá trị đơn).",
           "**Đơn vị vận chuyển** — nhận tên, số điện thoại và địa chỉ để giao hàng.",
           "**Nền tảng quảng cáo (Facebook/Meta)** — nếu bạn để lại thông tin qua biểu mẫu quảng cáo trên nền tảng của họ, chúng tôi nhận thông tin đó từ họ. Việc họ thu thập dữ liệu tuân theo chính sách riêng của họ.",
@@ -70,20 +71,20 @@ const S = {
       {
         h: "Cookie và theo dõi",
         p: [
-          "Khi bạn chọn Cho phép, Meta Pixel sử dụng cookie và gửi lượt xem trang, yêu cầu mẫu thử hoặc tư vấn sỉ thành công tới Meta. Meta có thể nhận địa chỉ IP, thông tin trình duyệt, địa chỉ trang và mã cookie để đo hiệu quả quảng cáo, đối chiếu với tài khoản Meta theo chính sách của họ. Mã sự kiện của chúng tôi không gửi nội dung biểu mẫu, tên, số điện thoại hay địa chỉ giao hàng. Bạn có thể từ chối hoặc thay đổi lựa chọn bằng nút Tuỳ chọn cookie; việc rút lại lựa chọn dừng theo dõi tiếp theo, không xoá dữ liệu đã gửi. Trình duyệt của bạn lưu một vài thiết lập cục bộ: mã phiên ngẫu nhiên để đếm lượt truy cập, giỏ hàng, ngôn ngữ, và việc bạn đã tắt thanh giới thiệu mẫu thử hay chưa. Xoá dữ liệu trình duyệt sẽ xoá hết những thứ này.",
+          "Khi bạn chọn Cho phép, Meta Pixel sử dụng cookie và gửi lượt xem trang, yêu cầu mẫu thử hoặc tư vấn sỉ thành công tới Meta. Meta có thể nhận địa chỉ IP, thông tin trình duyệt, địa chỉ trang và mã cookie để đo hiệu quả quảng cáo, đối chiếu với tài khoản Meta theo chính sách của họ. Mã sự kiện của chúng tôi không gửi nội dung biểu mẫu, tên, số điện thoại hay địa chỉ giao hàng. Bạn có thể từ chối hoặc thay đổi lựa chọn bằng nút Tuỳ chọn cookie; việc rút lại lựa chọn dừng theo dõi tiếp theo, không xoá dữ liệu đã gửi. Lựa chọn trên chỉ điều khiển Meta Pixel. Thống kê nội bộ vẫn được ghi nhận khi bạn từ chối Meta, chỉ lưu tên miền nguồn truy cập cho các sự kiện mới. Trình duyệt của bạn lưu một vài thiết lập cục bộ: mã phiên ngẫu nhiên để đếm lượt truy cập, giỏ hàng, ngôn ngữ, và việc bạn đã tắt thanh giới thiệu mẫu thử hay chưa. Xoá dữ liệu trình duyệt sẽ xoá hết những thứ này.",
         ],
       },
       {
         h: "Chúng tôi giữ dữ liệu bao lâu",
         p: [
-          "Đơn hàng và hoá đơn được giữ theo thời hạn kế toán và thuế yêu cầu. Thông tin khách tiềm năng, yêu cầu mẫu thử và tin nhắn được giữ chừng nào còn hữu ích cho việc liên hệ, và sẽ xoá khi bạn yêu cầu. Thống kê truy cập không gắn với danh tính nên được giữ ở dạng tổng hợp.",
+          "Đơn hàng và hoá đơn được giữ theo thời hạn kế toán và thuế yêu cầu. Thông tin khách tiềm năng, yêu cầu mẫu thử và tin nhắn được giữ chừng nào còn hữu ích cho việc liên hệ, và sẽ xoá khi bạn yêu cầu. Thống kê truy cập gồm bản ghi từng sự kiện và báo cáo tổng hợp; hiện chưa có lịch tự động xoá riêng cho các bản ghi này.",
         ],
       },
       {
         h: "Quyền của bạn",
         p: [
           "Bạn có quyền yêu cầu xem thông tin chúng tôi đang giữ về mình, yêu cầu sửa nếu sai, và yêu cầu xoá. Gọi hoặc email theo thông tin bên dưới — chúng tôi xử lý trong vòng 7 ngày làm việc. Với đơn hàng đã xuất hoá đơn, chúng tôi có thể phải giữ lại bản ghi tối thiểu theo quy định kế toán, và sẽ nói rõ nếu rơi vào trường hợp đó.",
-          "Việc xử lý dữ liệu cá nhân tại đây tuân theo pháp luật Việt Nam, bao gồm Nghị định 13/2023/NĐ-CP về bảo vệ dữ liệu cá nhân.",
+          "Bạn cũng có các quyền theo pháp luật Việt Nam về bảo vệ dữ liệu cá nhân. Nội dung trang này không giới hạn các quyền đó.",
         ],
       },
       {
@@ -101,7 +102,7 @@ const S = {
       {
         h: "Liên hệ",
         p: [
-          "Nhà làm Trà Hoàng Long\nĐiện thoại: 0903 333 841\nEmail: hotro.trahoanglong@gmail.com",
+          "Nhà làm Trà Hoàng Long\nVăn phòng / kho: 36B QL2A, Sóc Sơn, Hà Nội. Vui lòng gọi trước khi ghé.\nĐiện thoại: 0903 333 841\nEmail: hotro.trahoanglong@gmail.com",
         ],
       },
     ],
@@ -123,7 +124,7 @@ const S = {
           "**When you review a product:** display name, star rating, the review itself, and the phone or email you ordered with — used to check you actually bought it. That contact is never shown publicly.",
           "**When you message us:** your name and the messages.",
           "**When you open a wholesale account:** email, password (hashed — we cannot read it), business name and contact details.",
-          "**Visit statistics:** which pages you view, where you arrived from, language, and a random identifier kept in your browser so repeat views can be told from new visitors. It is not linked to your name, email or phone.",
+          "**Visit statistics:** which pages you view, where you arrived from, language, and a random identifier kept in your browser so repeat views can be told from new visitors. These analytics events do not contain names, emails or phone numbers from forms. Individual events and browser identifiers are stored, as well as aggregate reports.",
         ],
       },
       {
@@ -153,6 +154,8 @@ const S = {
         list: [
           "**Supabase** — database, logins and image storage.",
           "**Vercel** — the servers this website runs on.",
+          "**SMS and Zalo services** — when staff send a message or a messaging feature is enabled, the relevant service processes the phone number and order or payment message content.",
+          "**Google Fonts** — your browser requests fonts from Google; these requests may expose your IP address and browser information to Google.",
           "**Telegram** — when enabled, new-order alerts are sent to our own internal chat (name, phone, address, order value).",
           "**Delivery companies** — given the name, phone and address needed to deliver.",
           "**Advertising platforms (Facebook/Meta)** — if you submit your details through a form on their platform, we receive them from Meta. Their own collection is governed by their policy, not ours.",
@@ -162,20 +165,20 @@ const S = {
       {
         h: "Cookies and tracking",
         p: [
-          "If you choose Allow, Meta Pixel uses cookies and sends page views and successful sample or wholesale enquiries to Meta. Meta may receive your IP address, browser information, page URL and cookie identifiers to measure ads and match activity to Meta accounts under its own policy. Our event code does not send form contents, names, phone numbers or delivery addresses. You can decline or change your choice using Cookie preferences. Withdrawing stops further tracking; it does not delete information already sent. Your browser holds a few local settings: a random session identifier for counting visits, your basket, your language, and whether you dismissed the sample bar. Clearing your browser data removes all of them.",
+          "If you choose Allow, Meta Pixel uses cookies and sends page views and successful sample or wholesale enquiries to Meta. Meta may receive your IP address, browser information, page URL and cookie identifiers to measure ads and match activity to Meta accounts under its own policy. Our event code does not send form contents, names, phone numbers or delivery addresses. You can decline or change your choice using Cookie preferences. Withdrawing stops further tracking; it does not delete information already sent. This choice controls Meta Pixel only. Internal visit statistics are still recorded when you decline Meta, with only the referring origin retained for new events. Your browser holds a few local settings: a random session identifier for counting visits, your basket, your language, and whether you dismissed the sample bar. Clearing your browser data removes all of them.",
         ],
       },
       {
         h: "How long we keep it",
         p: [
-          "Orders and invoices are kept for as long as accounting and tax rules require. Enquiries, sample requests and messages are kept while they are useful for contacting you, and deleted on request. Visit statistics are not tied to an identity and are kept in aggregate.",
+          "Orders and invoices are kept for as long as accounting and tax rules require. Enquiries, sample requests and messages are kept while they are useful for contacting you, and deleted on request. Visit statistics include individual event records and aggregate reports; these records do not currently have a separate automatic deletion schedule.",
         ],
       },
       {
         h: "Your rights",
         p: [
           "You may ask to see what we hold about you, ask us to correct it, and ask us to delete it. Call or email using the details below and we will deal with it within 7 working days. Where an order has been invoiced we may have to keep a minimum record for accounting purposes, and we will tell you plainly if that applies.",
-          "Personal data here is handled under Vietnamese law, including Decree 13/2023/ND-CP on personal data protection.",
+          "You also have rights under Vietnamese personal data protection law. This page does not limit those rights.",
         ],
       },
       {
@@ -193,7 +196,7 @@ const S = {
       {
         h: "Contact",
         p: [
-          "Nhà làm Trà Hoàng Long\nPhone: 0903 333 841\nEmail: hotro.trahoanglong@gmail.com",
+          "Nhà làm Trà Hoàng Long\nOffice / warehouse: 36B QL2A, Sóc Sơn, Hà Nội. Please call before visiting.\nPhone: 0903 333 841\nEmail: hotro.trahoanglong@gmail.com",
         ],
       },
     ],
@@ -234,7 +237,7 @@ export default function PrivacyPolicy() {
         <h1 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: "clamp(26px, 5.5vw, 34px)", lineHeight: 1.25, margin: "14px 0 6px" }}>
           {t.title}
         </h1>
-        <div style={{ fontSize: 12, color: `${TOKENS.jadeSoft}AA`, marginBottom: 22 }}>{t.updated}</div>
+        <div style={{ fontSize: 12, color: TOKENS.jadeSoft, marginBottom: 22 }}>{t.updated}</div>
         <p style={{ fontSize: 15, color: TOKENS.jadeSoft, lineHeight: 1.7, margin: "0 0 10px" }}>{t.intro}</p>
 
         {t.sections.map((s) => (

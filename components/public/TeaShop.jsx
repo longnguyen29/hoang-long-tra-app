@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, Globe2, Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { fromCatalogRow, fromVariantRow } from "@/lib/mappers";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import styles from "./TeaShop.module.css";
+
+import { useDialogFocus } from "@/components/hooks/useDialogFocus";
 
 const money = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
 
@@ -121,6 +123,8 @@ export default function TeaShop({ mode = "tea" }) {
   const [vendors, setVendors] = useState([]);
   const [cart, setCart] = useState({});
   const [cartOpen, setCartOpen] = useState(false);
+  const cartRef = useRef(null);
+  useDialogFocus(cartRef, cartOpen, () => setCartOpen(false));
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
@@ -242,7 +246,7 @@ export default function TeaShop({ mode = "tea" }) {
       {count > 0 && <button className={styles.cartRail} onClick={() => setCartOpen(true)}><span>{t.itemCount(count)}</span><b>{money.format(total)}</b><span>{t.checkout} <ArrowRight size={16}/></span></button>}
 
       {cartOpen && <div className={styles.overlay} role="presentation" onMouseDown={(e) => e.target === e.currentTarget && setCartOpen(false)}>
-        <aside className={styles.drawer} role="dialog" aria-modal="true" aria-labelledby="cart-title">
+        <aside ref={cartRef} tabIndex={-1} className={styles.drawer} role="dialog" aria-modal="true" aria-labelledby="cart-title">
           <header><div><p>{t.yourOrder}</p><h2 id="cart-title">{t.cart}</h2></div><button onClick={() => setCartOpen(false)} aria-label={t.closeCart}><X size={19}/></button></header>
           {!lines.length ? <div className={styles.empty}><ShoppingBag size={22}/><p>{t.emptyCart}</p><button onClick={() => setCartOpen(false)}>{t.continueTea}</button></div> : <>
             <div className={styles.lines}>{lines.map((line) => <div key={line.key}><span><b>{line.product.name?.[locale] || line.product.name?.vi || line.product.name?.en}</b><small>{line.weight || line.product.packSize}</small></span><span>{line.qty} × {line.price ? money.format(line.price) : "—"}</span></div>)}</div>

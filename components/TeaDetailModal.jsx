@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useId } from "react";
 import { X, Check, Plus, Sparkles, Star } from "lucide-react";
 import { getStockTotal, YIELD_GUIDE } from "@/lib/constants";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
+
+import { useDialogFocus } from "@/components/hooks/useDialogFocus";
 
 // Row of 1-5 stars. Interactive when onPick is given, read-only otherwise.
 function Stars({ value, size = 14, onPick, TOKENS }) {
@@ -25,8 +27,9 @@ function Stars({ value, size = 14, onPick, TOKENS }) {
             key={n}
             type="button"
             onClick={() => onPick(n)}
-            aria-label={`${n}`}
-            style={{ background: "none", border: "none", padding: 1, cursor: "pointer", display: "flex", color: TOKENS.jade }}
+            aria-label={`${n} / 5`}
+            aria-pressed={value === n}
+            style={{ background: "none", border: "none", padding: 1, minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center", cursor: "pointer", display: "flex", color: TOKENS.jade }}
           >
             {star}
           </button>
@@ -37,6 +40,9 @@ function Stars({ value, size = 14, onPick, TOKENS }) {
 }
 
 export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKENS, onConfirm, onClose, supabase, reviews = [], stats, onReviewSubmitted }) {
+  const dialogRef = useRef(null);
+  const titleId = useId();
+  useDialogFocus(dialogRef, true, onClose);
   const hasVariants = product.variants && product.variants.length > 0;
   const [selectedWeight, setSelectedWeight] = useState(hasVariants ? product.variants[0].weight : null);
   const variant = hasVariants ? (product.variants.find((v) => v.weight === selectedWeight) || product.variants[0]) : null;
@@ -103,7 +109,7 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
       }}
       onClick={onClose}
     >
-      <div
+      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId}
         style={{
           background: TOKENS.paper, borderRadius: 16, width: "min(420px, 100%)", maxHeight: "85vh",
           overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
@@ -119,7 +125,7 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
           {product.limited && (
             <div style={{
               position: "absolute", top: 12, left: 12,
-              background: TOKENS.jade, color: TOKENS.brass, borderRadius: 20,
+              background: TOKENS.jade, color: TOKENS.brassOnDark, borderRadius: 20,
               padding: "4px 10px", display: "flex", alignItems: "center", gap: 5,
               fontSize: 11, fontWeight: 700,
             }}>
@@ -139,7 +145,7 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
         </div>
 
         <div style={{ padding: 20 }}>
-          <h3 style={{
+          <h3 id={titleId} style={{
             fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: "clamp(26px, 7vw, 34px)",
             lineHeight: 1.12, letterSpacing: -0.4, margin: "0 0 4px", overflowWrap: "anywhere", color: TOKENS.jade,
           }}>
@@ -183,12 +189,13 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
               {product.variants.map((v) => (
                 <button
                   key={v.weight}
+                  aria-pressed={v.weight === selectedWeight}
                   onClick={() => { setSelectedWeight(v.weight); setQty(""); }}
                   style={{
                     flex: 1, padding: "10px 8px", borderRadius: 10, cursor: "pointer",
                     border: `1px solid ${v.weight === selectedWeight ? TOKENS.brass : TOKENS.brassDeep}55`,
                     background: v.weight === selectedWeight ? TOKENS.jade : TOKENS.paperDeep,
-                    color: v.weight === selectedWeight ? TOKENS.brass : TOKENS.jade,
+                    color: v.weight === selectedWeight ? TOKENS.brassOnDark : TOKENS.jade,
                     display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
                   }}
                 >
@@ -200,7 +207,7 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
           )}
 
           {effectivePrice ? (
-            <div style={{ fontSize: 17, fontWeight: 700, color: TOKENS.brassDeep, marginTop: 4 }}>
+            <div style={{ fontSize: 17, fontWeight: 700, color: TOKENS.brassOnPaper, marginTop: 4 }}>
               {effectivePrice.toLocaleString("vi-VN")}đ <span style={{ fontSize: 11, fontWeight: 600, color: TOKENS.jadeSoft }}>/ {unit}</span>
             </div>
           ) : null}
@@ -238,6 +245,7 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 11.5, color: TOKENS.jadeSoft, marginBottom: 4 }}>{t.quantityLabel}</div>
                 <FormattedNumberInput
+                  aria-label={t.quantityLabel}
                   min="0"
                   max={typeof effectiveStock === "number" ? effectiveStock : undefined}
                   inputMode="numeric"
@@ -298,25 +306,28 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
                   <Stars value={reviewDraft.rating} size={20} TOKENS={TOKENS} onPick={(n) => setReviewDraft({ ...reviewDraft, rating: n })} />
                 </div>
                 <input
+                  aria-label={t.yourReviewNamePh}
                   value={reviewDraft.name}
                   onChange={(e) => setReviewDraft({ ...reviewDraft, name: e.target.value })}
                   placeholder={t.yourReviewNamePh}
                   style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
                 />
                 <input
+                  aria-label={t.reviewContactPh}
                   value={reviewDraft.contact}
                   onChange={(e) => setReviewDraft({ ...reviewDraft, contact: e.target.value })}
                   placeholder={t.reviewContactPh}
                   style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5 }}
                 />
                 <textarea
+                  aria-label={t.reviewBodyPh}
                   value={reviewDraft.body}
                   onChange={(e) => setReviewDraft({ ...reviewDraft, body: e.target.value })}
                   placeholder={t.reviewBodyPh}
                   rows={2}
                   style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 13.5, resize: "vertical", fontFamily: "inherit" }}
                 />
-                {reviewError && <p style={{ fontSize: 12.5, color: TOKENS.lacquer, margin: 0 }}>{reviewError}</p>}
+                {reviewError && <p role="alert" style={{ fontSize: 12.5, color: TOKENS.lacquer, margin: 0 }}>{reviewError}</p>}
                 <button
                   onClick={submitReview}
                   disabled={reviewSending || !reviewDraft.rating || !reviewDraft.name.trim() || !reviewDraft.contact.trim()}

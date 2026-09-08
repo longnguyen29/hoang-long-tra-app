@@ -1,4 +1,5 @@
 "use client";
+import { safeReferrer } from "@/lib/public-attribution";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -113,7 +114,7 @@ export default function TeaTasteSelector() {
     supabase.rpc("record_growth_page_view", {
       p_path: path,
       p_session: session,
-      p_referrer: document.referrer || "",
+      p_referrer: safeReferrer(document.referrer),
       p_lang: "vi",
       p_growth_code: "tea-taste-selector",
     }).then(({ error }) => {

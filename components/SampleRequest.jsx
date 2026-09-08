@@ -1,4 +1,5 @@
 "use client";
+import { safeReferrer } from "@/lib/public-attribution";
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Leaf, Loader2, Phone } from "lucide-react";
@@ -191,7 +192,7 @@ export default function SampleRequest({ variant = "control" }) {
     supabase.rpc("record_growth_page_view", {
       p_path: code ? `${pagePath}?exp=${code}` : pagePath,
       p_session: session,
-      p_referrer: document.referrer || "",
+      p_referrer: safeReferrer(document.referrer),
       p_lang: document.documentElement.lang || "vi",
       p_growth_code: code,
     }).then(({ error: viewError }) => {
@@ -343,7 +344,15 @@ export default function SampleRequest({ variant = "control" }) {
                 <div className={styles.packList} role="radiogroup" aria-label={t.pickPack}>
                   {PACKS.map((item) => {
                     const selected = pack === item.id;
-                    return <button className={styles.pack} data-selected={selected} key={item.id} type="button" role="radio" aria-checked={selected}
+                    return <button className={styles.pack} data-selected={selected} key={item.id} type="button" role="radio" aria-checked={selected} tabIndex={selected ? 0 : -1}
+                      onKeyDown={(event) => {
+                        const directions = {ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1};
+                        if (!(event.key in directions) && event.key !== "Home" && event.key !== "End") return;
+                        event.preventDefault();
+                        const radios = [...event.currentTarget.parentElement.querySelectorAll('[role="radio"]')];
+                        const index = event.key === "Home" ? 0 : event.key === "End" ? radios.length - 1 : (radios.indexOf(event.currentTarget) + directions[event.key] + radios.length) % radios.length;
+                        radios[index].focus(); radios[index].click();
+                      }}
                       onClick={() => {
                         setPack(item.id); setError("");
                         recordPublicConversion(supabase, "sample_pack_selected", { pack: item.id, placement: `${experimentPlacement}_pack` }).catch(() => {});

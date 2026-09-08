@@ -1,4 +1,5 @@
 "use client";
+import { safeReferrer } from "@/lib/public-attribution";
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
@@ -81,7 +82,7 @@ export default function TeaJourney() {
     supabase.rpc("record_growth_page_view", {
       p_path: path,
       p_session: session,
-      p_referrer: document.referrer || "",
+      p_referrer: safeReferrer(document.referrer),
       p_lang: "vi",
       p_growth_code: "tea-journey",
     }).then(({ error }) => {

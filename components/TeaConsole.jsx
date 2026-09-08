@@ -1,4 +1,5 @@
 "use client";
+import { safeReferrer } from "@/lib/public-attribution";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
@@ -779,7 +780,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
     supabase.rpc("record_page_view", {
       p_path: section,
       p_session: sid,
-      p_referrer: typeof document !== "undefined" ? document.referrer || "" : "",
+      p_referrer: typeof document !== "undefined" ? safeReferrer(document.referrer) : "",
       p_lang: lang,
     }).then(({ error }) => {
       if (error) console.error("Page view not recorded:", error.message);
