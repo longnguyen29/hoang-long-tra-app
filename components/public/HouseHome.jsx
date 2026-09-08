@@ -118,11 +118,11 @@ export default function HouseHome() {
         </nav>
 
         <div className={styles.headerActions}>
-          <button className={styles.language} onClick={toggleLocale} aria-label={`Switch to ${t.language}`}>
+          <button className={styles.language} onClick={toggleLocale} aria-label={lang === "vi" ? "Chuyển sang tiếng Anh" : "Switch to Vietnamese"}>
             <Globe2 size={15} aria-hidden="true" /> <span>{lang.toUpperCase()}</span>
           </button>
           <Link href="/sessions" className={styles.book}>{t.book}</Link>
-          <button className={styles.menuButton} onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-controls="mobile-navigation" aria-label={menuOpen ? "Close menu" : "Open menu"}>
+          <button className={styles.menuButton} onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-controls="mobile-navigation" aria-label={lang === "vi" ? (menuOpen ? "Đóng trình đơn" : "Mở trình đơn") : (menuOpen ? "Close menu" : "Open menu")}>
             {menuOpen ? <X size={21}/> : <Menu size={21}/>} 
           </button>
         </div>
@@ -175,7 +175,7 @@ export default function HouseHome() {
 
       <section className={styles.origin}>
         <figure>
-          <img src={home?.producer_photo || photos[1]} alt="The people and landscape behind Hoàng Long tea" loading="lazy" />
+          <img src={home?.producer_photo || photos[1]} alt={home?.producer_photo ? (home.producer_name || (lang === "vi" ? "Người làm trà Hoàng Long" : "Hoàng Long tea maker")) : (lang === "vi" ? "Ảnh trong thư viện Hoàng Long" : "From the Hoàng Long archive")} loading="lazy" />
           {home?.producer_name && <figcaption>{home.producer_name} · {local(home.producer_role)}</figcaption>}
         </figure>
         <div>
@@ -208,7 +208,7 @@ export default function HouseHome() {
         <div>
           <span>House of Hoang Long · Hà Giang / Hà Nội</span>
           <a href="https://zalo.me/0903333841" target="_blank" rel="noreferrer">{t.contact} · 0903 333 841</a>
-          <Link href="/privacy">Privacy</Link>
+          <Link href="/privacy">{lang === "vi" ? "Quyền riêng tư & cookie" : "Privacy & cookies"}</Link>
         </div>
       </footer>
     </main>

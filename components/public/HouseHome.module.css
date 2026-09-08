@@ -46,3 +46,6 @@
 /* Café-first branch preview, keeping the House's existing identity. */
 .heroCopy{padding-block:var(--space-lg)}.hero h1{max-width:14ch;line-height:1.04}.heroBody{margin-block:var(--space-sm);max-width:42ch}.scrollCue{display:none}.heroImage img{object-position:center 64%}.empty button{min-height:var(--control-height);padding:var(--space-xs) var(--space-sm);background:var(--color-ink);color:var(--color-paper);border:0;border-radius:var(--radius-control)}
 @media(max-width:47.99rem){.heroCopy{min-height:0;gap:var(--space-sm)}.hero h1{font-size:clamp(2.35rem,9vw,3.3rem)}.heroImage,.heroImage img{height:22rem;min-height:0}.heroLinks{margin-top:var(--space-sm)}.season,.paths{padding-block:var(--space-xl)}}
+
+/* Keep captions legible regardless of the underlying archive photograph. */
+.origin figcaption { background:#183f35; color:#f6f2e9; padding:.5rem .75rem; width:fit-content; max-width:calc(100% - 2rem); }

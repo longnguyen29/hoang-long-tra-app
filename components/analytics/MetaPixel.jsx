@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useLocale } from "@/components/i18n/LocaleProvider";
-import { canTrackMeta, META_CONSENT_KEY, META_PIXEL_ID } from "@/lib/meta-pixel";
+import { canTrackMeta, canShowCookiePreferences, META_CONSENT_KEY, META_PIXEL_ID } from "@/lib/meta-pixel";
 import styles from "./MetaPixel.module.css";
 
 function loadPixel() {
@@ -52,7 +52,7 @@ export default function MetaPixel() {
 
   useEffect(() => {
     const allowed = canTrackMeta(window.location);
-    setEligible(allowed);
+    setEligible(canShowCookiePreferences(window.location));
     if (!ready || !allowed || choice !== "granted") {
       window.fbq?.("consent", "revoke");
       lastPage.current = null;
