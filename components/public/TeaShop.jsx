@@ -1,4 +1,5 @@
 "use client";
+import PolicyLinks from "@/components/PolicyLinks";
 
 import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
@@ -245,6 +246,7 @@ export default function TeaShop({ mode = "tea" }) {
 
       {count > 0 && <button className={styles.cartRail} onClick={() => setCartOpen(true)}><span>{t.itemCount(count)}</span><b>{money.format(total)}</b><span>{t.checkout} <ArrowRight size={16}/></span></button>}
 
+      <div style={{padding:"24px var(--page-gutter)"}}><PolicyLinks/></div>
       {cartOpen && <div className={styles.overlay} role="presentation" onMouseDown={(e) => e.target === e.currentTarget && setCartOpen(false)}>
         <aside ref={cartRef} tabIndex={-1} className={styles.drawer} role="dialog" aria-modal="true" aria-labelledby="cart-title">
           <header><div><p>{t.yourOrder}</p><h2 id="cart-title">{t.cart}</h2></div><button onClick={() => setCartOpen(false)} aria-label={t.closeCart}><X size={19}/></button></header>
@@ -259,6 +261,7 @@ export default function TeaShop({ mode = "tea" }) {
               <label>{t.note} <small>{t.optional}</small><textarea value={customer.note} onChange={(e)=>setCustomer({...customer,note:e.target.value})}/></label>
               <fieldset><legend>{t.payment}</legend><label><input type="radio" name="payment" checked={customer.payment==="qr"} onChange={()=>setCustomer({...customer,payment:"qr"})}/> {t.bankTransfer}</label><label><input type="radio" name="payment" checked={customer.payment==="cash"} onChange={()=>setCustomer({...customer,payment:"cash"})}/> {t.cash}</label></fieldset>
               <label className={styles.consent}><input type="checkbox" checked={customer.consent} onChange={(e)=>setCustomer({...customer,consent:e.target.checked})}/> {t.consent}</label>
+              <PolicyLinks/>
               {error && <p className={styles.error} role="alert">{error}</p>}
               <button className={styles.submit} disabled={sending || !customer.name.trim() || !customer.contact.trim() || !customer.address.trim() || !customer.consent}>{sending ? t.placing : t.placeOrder}<ArrowRight size={16}/></button>
             </form>

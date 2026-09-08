@@ -1,4 +1,5 @@
 "use client";
+import PolicyLinks from "@/components/PolicyLinks";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -210,6 +211,7 @@ export default function HouseHome() {
           <a href="https://zalo.me/0903333841" target="_blank" rel="noreferrer">{t.contact} · 0903 333 841</a>
           <Link href="/privacy">{lang === "vi" ? "Quyền riêng tư & cookie" : "Privacy & cookies"}</Link>
         </div>
+        <PolicyLinks/>
       </footer>
     </main>
   );

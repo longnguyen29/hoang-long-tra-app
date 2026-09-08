@@ -1,4 +1,5 @@
 "use client";
+import PolicyLinks from "@/components/PolicyLinks";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -193,7 +194,7 @@ export default function TradeDesk() {
           </form>}
       </section>
 
-      <footer className={styles.footer}><p>{t.footer}</p><span>House of Hoàng Long · Since 1995</span></footer>
+      <footer className={styles.footer}><p>{t.footer}</p><span>House of Hoàng Long · Since 1995</span><PolicyLinks/></footer>
     </main>
   );
 }

@@ -1,4 +1,5 @@
 "use client";
+import PolicyLinks from "@/components/PolicyLinks";
 import { safeReferrer } from "@/lib/public-attribution";
 
 import { useEffect, useRef, useState } from "react";
@@ -422,7 +423,7 @@ export default function SampleRequest({ variant = "control" }) {
           </section>
         </div>
       )}
-      <footer className={styles.footer}><span>House of Hoàng Long · Hà Giang</span><a href="/privacy">{t.privacy}</a></footer>
+      <footer className={styles.footer}><span>House of Hoàng Long · Hà Giang</span><a href="/privacy">{t.privacy}</a><PolicyLinks/></footer>
     </main>
   );
 }

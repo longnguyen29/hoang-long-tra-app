@@ -1,4 +1,5 @@
 "use client";
+import PolicyLinks from "@/components/PolicyLinks";
 
 import { TOKENS } from "@/lib/constants";
 import { useLocale } from "@/components/i18n/LocaleProvider";
@@ -240,6 +241,7 @@ export default function PrivacyPolicy() {
         <div style={{ fontSize: 12, color: TOKENS.jadeSoft, marginBottom: 22 }}>{t.updated}</div>
         <p style={{ fontSize: 15, color: TOKENS.jadeSoft, lineHeight: 1.7, margin: "0 0 10px" }}>{t.intro}</p>
 
+        <PolicyLinks/>
         {t.sections.map((s) => (
           <section key={s.h} style={{ marginTop: 34 }}>
             <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 500, fontSize: "clamp(19px, 3.4vw, 23px)", lineHeight: 1.3, margin: "0 0 10px" }}>

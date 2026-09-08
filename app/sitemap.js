@@ -4,7 +4,7 @@ export default function sitemap() {
   return [
     { url: base, changeFrequency: "weekly", priority: 1 },
     { url: `${base}/cho-quan`, changeFrequency: "weekly", priority: 0.9 },
-    ...["/wholesale", "/shop", "/story"].map(path => ({url: `${base}${path}`, changeFrequency: "monthly", priority: 0.7})),
+    ...["/wholesale", "/shop", "/story", "/terms", "/shipping", "/returns"].map(path => ({url: `${base}${path}`, changeFrequency: "monthly", priority: 0.7})),
     { url: `${base}/privacy`, changeFrequency: "yearly", priority: 0.3 },
   ];
 }
