@@ -171,7 +171,7 @@ export default function OperationsControl({ supabase, email, role, onLogout }) {
     );
   const uninvoiced = orders.filter(
     (order) =>
-      !receivables.some((item) => item.order_id === order.id) &&
+      !receivables.some((item) => item.order_id === order.id && item.status !== "void") &&
       order.estimated_total > 0,
   );
   const openReceivables = receivables.filter((item) =>

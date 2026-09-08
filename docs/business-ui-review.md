@@ -73,3 +73,8 @@ The new-order form retains a confirmed server order ID and retries only its read
 ## Checkpoint 6 — returned network errors
 
 The installed database client returns some fetch failures as error responses with status 0, rather than throwing. Order submission now treats missing responses, transport errors, HTTP 408 and server/proxy failures as uncertain, preventing another insert in the same form. Only explicit HTTP 4xx rejections other than 408 permit retry. Both retail and wholesale adapters forward response status. Thirteen submission tests and nine actual PATCH-route tests with a mocked backend pass; production build passes. This does not establish backend idempotency or live persistence/concurrency correctness.
+
+
+## Checkpoint 7 — reverse mistaken payment requests
+
+Order Book now provides a confirmed cancellation action for unpaid open/draft requests. Migration 0056 locks the order and receivable, checks manager authorization and the observed updated_at, rejects any recorded payments, marks the request void and stores the prior record in the order timeline. Reissuing reuses the existing unique receivable row with the current order total; cancelled requests no longer exclude orders from Operations payment-request creation. Customer tracking and price editing already ignore void records. SQL was executed against an isolated PGlite PostgreSQL database: cancel, retry, role rejection, reissue at a revised total, stale cancellation rejection and payment preservation passed. Nine PATCH route tests and production build passed. Real migration application and browser verification remain pending; no real receivable was changed. Run the SQL test with PGLITE_MODULE pointing to an installed @electric-sql/pglite module.

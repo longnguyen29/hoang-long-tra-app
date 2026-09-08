@@ -31,7 +31,7 @@ async function readCosts(admin, orderId) {
 async function readReceivable(admin, orderId) {
   return admin
     .from("receivables")
-    .select("id,total,paid,status,due_at")
+    .select("id,total,paid,status,due_at,updated_at")
     .eq("order_id", orderId)
     .neq("status", "void")
     .maybeSingle();
