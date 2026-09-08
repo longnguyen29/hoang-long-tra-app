@@ -68,3 +68,8 @@ New-order entry now traps Tab within the dialog, handles thrown catalogue reads 
 ## Checkpoint 5 — prevent duplicate creation after failed reload
 
 The new-order form retains a confirmed server order ID and retries only its read when loading fails after creation. Concurrent submits are blocked. A thrown creation request or missing returned retail ID is treated as uncertain and cannot be resubmitted in the same form; staff are told to reconcile in Order Book. Definite backend rejection remains retryable. Six new state-machine tests cover read retry, concurrent submits, ambiguous creation, missing ID, definite rejection and thrown reads. All 100 library/API tests and production build pass. This is form-session protection, not backend idempotency across browser reloads or independent clients. A separate staging dataset is still needed for real persistence/concurrency verification.
+
+
+## Checkpoint 6 — returned network errors
+
+The installed database client returns some fetch failures as error responses with status 0, rather than throwing. Order submission now treats missing responses, transport errors, HTTP 408 and server/proxy failures as uncertain, preventing another insert in the same form. Only explicit HTTP 4xx rejections other than 408 permit retry. Both retail and wholesale adapters forward response status. Thirteen submission tests and nine actual PATCH-route tests with a mocked backend pass; production build passes. This does not establish backend idempotency or live persistence/concurrency correctness.

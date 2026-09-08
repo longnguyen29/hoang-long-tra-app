@@ -215,10 +215,10 @@ export default function NewOrderPanel({ supabase, onClose, onCreated }) {
               p_total_items:draft.totalItems,p_estimated_total:draft.estimatedTotal,
               p_promo:null,p_payment_method:draft.paymentMethod,
             });
-            return {id:response.data?.[0]?.id,error:response.error};
+            return {id:response.data?.[0]?.id,error:response.error,status:response.status};
           }
           const response=await supabase.from("orders").insert(toOrderRow(draft));
-          return {id:draft.id,error:response.error};
+          return {id:draft.id,error:response.error,status:response.status};
         },
         read:id=>supabase.from("orders").select("*").eq("id",id).single(),
       });
