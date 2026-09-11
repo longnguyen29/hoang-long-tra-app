@@ -148,7 +148,11 @@ export default function CafeEntry() {
         </fieldset>
 
         <figure className={styles.photo}>
-          <div className={styles.drinkArt} data-drink={drinkId} role="img" aria-label={locale === "vi" ? `Minh họa AI: ${drink.vi}` : `AI illustration: ${drink.en}`}/>
+          {["milk", "fruit"].includes(drinkId) ? <img className={styles.servingPhoto}
+            src={`/cafe/serving-20260910/${drinkId === "milk" ? "milk-tea" : "citrus-tea"}-1200.webp`}
+            srcSet={`/cafe/serving-20260910/${drinkId === "milk" ? "milk-tea" : "citrus-tea"}-640.webp 640w, /cafe/serving-20260910/${drinkId === "milk" ? "milk-tea" : "citrus-tea"}-1200.webp 1122w`}
+            sizes="(min-width: 960px) 45vw, 100vw" width={1122} height={1402}
+            alt={locale === "vi" ? (drinkId === "milk" ? "Gợi ý phục vụ: trà sữa đá trong ly thủy tinh, nền kem và khăn xanh trầm" : "Gợi ý phục vụ: trà chanh màu hổ phách với đá và lát chanh mỏng") : (drinkId === "milk" ? "Serving concept: iced milk tea in a clear glass on a cream counter" : "Serving concept: amber iced citrus tea with a thin lime slice")} /> : <div className={styles.drinkArt} data-drink={drinkId} role="img" aria-label={locale === "vi" ? `Minh họa AI: ${drink.vi}` : `AI illustration: ${drink.en}`}/>}
           <figcaption>{locale === "vi" ? "Minh họa AI về hướng món · Hãy pha thử để đánh giá thực tế." : "AI drink concept · Brew and taste to evaluate the result."}</figcaption>
         </figure>
 

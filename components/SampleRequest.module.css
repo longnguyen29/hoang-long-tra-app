@@ -94,3 +94,5 @@
 
 /* Returning café visitors have already chosen a drink: put pack selection first. */
 .page[data-cafe-entry=true] .studio{display:flex;flex-direction:column}.page[data-cafe-entry=true] .request{order:0;max-width:54rem;width:100%;margin-inline:auto}.page[data-cafe-entry=true] .story{order:1}.page[data-cafe-entry=true] .storyCopy h1{font-size:var(--text-xl)}.page[data-cafe-entry=true] .evidence,.page[data-cafe-entry=true] .facts{display:none}.page[data-cafe-entry=true] .storyCopy{padding-block:var(--space-md)}
+
+.evidence img{height:auto;aspect-ratio:3/2;object-fit:contain;object-position:center;filter:none}

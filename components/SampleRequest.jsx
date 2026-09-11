@@ -309,7 +309,7 @@ export default function SampleRequest({ variant = "control" }) {
         <div className={styles.studio}>
           <section className={styles.story}>
             <div className={styles.storyCopy}><p className={styles.eyebrow}>{t.eyebrow}</p><h1>{t.title}</h1><p className={styles.intro}>{t.intro}</p></div>
-            <figure className={styles.evidence}><img src="/landing/4.jpg" alt={t.imageAlt} /><figcaption>{t.imageCaption}</figcaption></figure>
+            <figure className={styles.evidence}><img src="/cafe/serving-20260910/tea-trio-1200.webp" srcSet="/cafe/serving-20260910/tea-trio-640.webp 640w, /cafe/serving-20260910/tea-trio-1200.webp 1200w" sizes="(min-width: 1024px) 44vw, 100vw" width={1200} height={800} alt={lang === "vi" ? "Gợi ý phục vụ trà: trà đen đá, trà sữa và trà chanh trên quầy màu kem" : "Tea serving concepts: iced black tea, milk tea and citrus tea on a cream counter"} /><figcaption>{lang === "vi" ? "Hình ảnh gợi ý phục vụ · Tạo bằng AI. Hãy pha thử để đánh giá màu sắc và hương vị thực tế." : "AI-generated serving concepts. Brew and taste to evaluate actual colour and flavour."}</figcaption></figure>
             <section className={styles.facts} aria-labelledby="sample-set-title">
               <h2 id="sample-set-title">{t.setTitle}</h2><div>{t.facts.map(([lead, body]) => <article key={lead}><strong>{lead}</strong><p>{body}</p></article>)}</div>
             </section>
