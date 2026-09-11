@@ -1,9 +1,13 @@
 import {
   BarChart3, Beaker, ClipboardCheck, ClipboardList, FlaskConical,
-  Handshake, Settings2, Sprout,
+  Handshake, Settings2, Sprout, Search,
 } from "lucide-react";
 
 export const STAFF_APPS = {
+  discovery: {
+    key: "discovery", label: "Tìm quán mới", short: "Tìm quán", href: "/admin/discovery",
+    description: "Tìm nguồn quán mới, kiểm tra menu và lưu cơ hội phù hợp.", icon: Search,
+  },
   work: {
     key: "work", label: "Giao việc", short: "Giao việc", href: "/admin/work",
     description: "Giao việc một lần, tạo lịch lặp và xem ai đang bị vướng.", icon: ClipboardCheck,
@@ -40,7 +44,7 @@ export const STAFF_APPS = {
 
 export const STAFF_APP_GROUPS = [
   { label: "Hằng ngày", keys: ["work", "orders", "pipeline"] },
-  { label: "Doanh nghiệp", keys: ["operations", "house"] },
+  { label: "Doanh nghiệp", keys: ["discovery", "operations", "house"] },
   { label: "Phòng chuyên môn", keys: ["recipes", "control", "growth"] },
 ];
 
