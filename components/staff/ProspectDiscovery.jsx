@@ -1,12 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PROSPECT_STATES, SEGMENTS, normalizeProspect, sourceKey, teaSignals, outreachDraft } from "@/lib/prospect-discovery";
+import { PROSPECT_STATES, SEGMENTS, normalizeProspect, sourceKey, teaSignals } from "@/lib/prospect-discovery";
 import { DISCOVERY_SEED } from "@/lib/prospect-discovery-seed";
+import ProspectContacts from "./ProspectContacts";
+import { possibleDuplicates, matchesQueue } from "@/lib/prospect-dedupe";
 import styles from "./ProspectDiscovery.module.css";
 
 export default function ProspectDiscovery({ supabase, preview = false }) {
   const [saved, setSaved] = useState([]);
+  const [summaries, setSummaries] = useState([]);
+  const [previewDrafts, setPreviewDrafts] = useState({});
+  const [queue, setQueue] = useState("all");
   const [candidates, setCandidates] = useState(DISCOVERY_SEED);
   const [selected, setSelected] = useState(DISCOVERY_SEED[0]);
   const [region, setRegion] = useState("");
@@ -23,9 +28,16 @@ export default function ProspectDiscovery({ supabase, preview = false }) {
     const { data: { session } } = await supabase.auth.getSession();
     return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token || ""}` };
   }
+  async function loadSummary() {
+    if (preview) return;
+    const {data,error} = await supabase.rpc("discovery_review_summary");
+    if(error) {setMessage("Chưa tải được hàng chờ liên hệ/bản nháp. Thử tải lại danh sách."); return;}
+    setSummaries(data || []);
+  }
   async function reload() {
     const { data, error } = await supabase.from("discovery_prospects").select("*").order("updated_at", { ascending: false }).limit(500);
     if (error) { setReady(false); setLoadError("Chưa tải được hồ sơ đã lưu. Cần kiểm tra kết nối hoặc hoàn tất thiết lập dữ liệu; chưa thể lưu thay đổi."); return []; }
+    await loadSummary();
     setSaved(data || []); setReady(true); setLoadError(""); return data || [];
   }
   useEffect(() => {
@@ -45,7 +57,8 @@ export default function ProspectDiscovery({ supabase, preview = false }) {
 
   const existing = selected && saved.find(p => p.source_key === sourceKey(selected.source_url));
   const current = existing || selected;
-  const rows = (tab === "saved" ? saved : candidates.map(p => saved.find(s => s.source_key === sourceKey(p.source_url)) || p)).filter(p => filter === "all" || p.status === filter);
+  const duplicates = current ? possibleDuplicates(current, saved) : [];
+  const rows = (tab === "saved" ? saved : candidates.map(p => saved.find(s => s.source_key === sourceKey(p.source_url)) || p)).filter(p => (filter === "all" || p.status === filter) && (queue === "duplicates" ? possibleDuplicates(p,saved).length > 0 : matchesQueue(p, preview ? {has_draft:Boolean(previewDrafts[p.id])} : summaries.find(s=>s.prospect_id===p.id), queue)));
   async function runSearch(event) {
     event.preventDefault(); setBusy(true); setMessage("");
     try {
@@ -84,7 +97,7 @@ export default function ProspectDiscovery({ supabase, preview = false }) {
         if (error) throw new Error(error.message.includes("stale_prospect") ? "Có người vừa sửa hồ sơ này. Bấm tải lại danh sách để đọc bản mới trước khi lưu." : "Chưa lưu được thay đổi. Thử lại sau.");
         updated = data;
       }
-      setSaved(rows => rows.map(p => p.id === updated.id ? updated : p)); setSelected(updated);
+      setSaved(rows => rows.map(p => p.id === updated.id ? updated : p)); setSelected(updated); loadSummary();
       setMessage(preview ? "Đã cập nhật trong bản xem thử." : "Đã cập nhật hồ sơ.");
     } catch (error) { setMessage(error.message); } finally { setBusy(false); }
   }
@@ -93,7 +106,7 @@ export default function ProspectDiscovery({ supabase, preview = false }) {
     const data = Object.fromEntries(new FormData(event.currentTarget));
     saveProspect({ ...data, evidence_kind: "page_review" });
   }
-  const draft = current ? outreachDraft(current) : "";
+
 
   return <main className={styles.page}>
     <header className={styles.header}><span>HOÀNG LONG · PHÁT TRIỂN KHÁCH HÀNG</span><h1>Tìm quán mới.</h1><p>Từ menu công khai đến cuộc trao đổi phù hợp. Tìm trên toàn quốc, kiểm tra từng quán và giữ lại những cơ hội đáng theo đuổi.</p></header>
@@ -107,7 +120,7 @@ export default function ProspectDiscovery({ supabase, preview = false }) {
     <section className={styles.workspace} aria-label="Hồ sơ tìm khách">
       <div className={styles.list}>
         <nav className={styles.tabs} aria-label="Danh sách quán"><button aria-pressed={tab === "research"} onClick={() => { setTab("research"); setFilter("all"); }}>Nguồn nghiên cứu ({candidates.length})</button><button aria-pressed={tab === "saved"} onClick={() => setTab("saved")}>Đã lưu ({saved.length})</button></nav>
-        <div className={styles.filters}><label>Lọc trạng thái<select value={filter} onChange={e => setFilter(e.target.value)}><option value="all">Tất cả</option>{Object.entries(PROSPECT_STATES).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label>{!preview && <button disabled={busy} onClick={async () => { try { await reload(); } catch { setMessage("Chưa tải lại được danh sách."); } }}>Tải lại danh sách</button>}</div>
+        <div className={styles.filters}><label>Việc cần làm<select value={queue} onChange={e=>{setQueue(e.target.value);setTab("saved");}}><option value="all">Tất cả hồ sơ</option><option value="review">Cần kiểm tra quán</option><option value="missing_contact">Phù hợp · còn thiếu liên hệ</option><option value="prepare">Có liên hệ · cần soạn bản nháp</option><option value="draft">Có bản nháp đã lưu</option><option value="duplicates">Cùng website · cần đối chiếu</option></select></label><label>Lọc trạng thái<select value={filter} onChange={e => setFilter(e.target.value)}><option value="all">Tất cả</option>{Object.entries(PROSPECT_STATES).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label>{!preview && <button disabled={busy} onClick={async () => { try { await reload(); } catch { setMessage("Chưa tải lại được danh sách."); } }}>Tải lại danh sách</button>}</div>
         {rows.map(p => <button className={styles.row} key={p.id} aria-pressed={sourceKey(current?.source_url) === sourceKey(p.source_url)} onClick={() => setSelected(p)}><strong>{p.name}</strong><span>{p.region || "Chưa xác minh địa điểm"}</span><small>{PROSPECT_STATES[(saved.find(s => s.source_key === sourceKey(p.source_url)) || p).status]} · {p.evidence_kind === "page_review" ? "Đã đọc website" : "Trích đoạn tìm kiếm"}</small></button>)}
         {!rows.length && <p className={styles.empty}>Chưa có quán trong danh sách này. Chọn một nguồn nghiên cứu để lưu, hoặc thêm quán bên dưới.</p>}
         <details className={styles.manual}><summary>Thêm quán từ đường dẫn</summary><form onSubmit={addManual}><label>Tên quán<input name="name" required maxLength={160}/></label><label>Đường dẫn nguồn công khai<input name="source_url" type="url" required placeholder="https://…" maxLength={2000}/></label><label>Tỉnh / thành đã xác minh<input name="region" maxLength={120}/></label><label>Thông tin bạn đã đọc trên nguồn<textarea name="evidence" required maxLength={1500}/></label><button disabled={busy || !ready} className={styles.primary}>Lưu quán để kiểm tra</button></form></details>
@@ -115,10 +128,12 @@ export default function ProspectDiscovery({ supabase, preview = false }) {
       </div>
       {current ? <article className={styles.detail} key={`${current.id}-${current.version || 0}`}><header><span className={styles.badge}>{PROSPECT_STATES[current.status]}</span><h2>{current.name}</h2><p>{current.region || "Địa điểm chưa xác minh"}</p><a href={current.source_url} target="_blank" rel="noopener noreferrer">Mở nguồn để kiểm tra ↗</a></header>
         <section><h3>{current.evidence_kind === "page_review" ? "Thông tin đọc được từ website" : "Trích đoạn tìm kiếm — chưa xác minh"}</h3><p>{current.evidence || "Chưa có ghi nhận về menu."}</p><small>Ghi nhận: {new Date(current.observed_at).toLocaleDateString("vi-VN")} · Website có thể đã thay đổi.</small></section>
+        {duplicates.length>0 && <aside className={styles.notice}><strong>Cùng website với hồ sơ đã lưu</strong>{duplicates.map(p=><p key={p.id}>{p.name} <button type="button" onClick={()=>setSelected(p)}>Xem hồ sơ</button></p>)}<small>Có thể là một quán hoặc các chi nhánh. Đối chiếu trước khi chuẩn bị liên hệ; app không tự gộp.</small></aside>}
         <section className={styles.fit}><h3>Hướng thử trà có thể phù hợp</h3>{teaSignals(current.evidence).length ? teaSignals(current.evidence).map(signal => <p key={signal.label}><strong>{signal.label}</strong><br/>{signal.suggestion}</p>) : <p>Chưa đủ thông tin để gợi ý nền trà. Đọc menu trước.</p>}<small>Gợi ý dựa trên từ khóa trong nguồn, không phải đánh giá nhu cầu mua hàng.</small></section>
         <section><h3>Còn cần xác nhận</h3><p>Quán còn hoạt động? Ai phụ trách nguyên liệu? Họ có muốn thử trà mới, cần vị trà và mức giá vốn nào? Chưa có dữ liệu về lượng mua hoặc nhà cung cấp hiện tại.</p></section>
         {!existing ? <button className={styles.primary} disabled={busy || !ready} onClick={() => saveProspect(current)}>Lưu quán để kiểm tra</button> : <form className={styles.review} onSubmit={review}><h3>Kết quả bạn kiểm tra</h3><label>Tên quán đã xác minh<input name="name" defaultValue={existing.name} required maxLength={160}/></label><label>Tỉnh / thành đã xác minh<input name="region" defaultValue={existing.region} maxLength={120}/></label><label>Thông tin về menu<textarea name="evidence" defaultValue={existing.evidence} maxLength={1500}/></label><label className={styles.check}><input type="checkbox" name="page_review" defaultChecked={existing.evidence_kind === "page_review"}/>Tôi đã đọc và đối chiếu thông tin trên nguồn</label><label>Trạng thái<select name="status" defaultValue={existing.status}>{Object.entries(PROSPECT_STATES).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label><label>Kênh liên hệ doanh nghiệp đã xác minh<input name="contact" defaultValue={existing.contact} maxLength={240} placeholder="Để trống nếu chưa biết"/></label><label>Ghi chú và việc cần làm tiếp<textarea name="notes" maxLength={2000} defaultValue={existing.notes}/></label><button disabled={busy || !ready} className={styles.primary}>Lưu kết quả kiểm tra</button></form>}
-        {draft && <section className={styles.draft}><h3>Lời giới thiệu · bản nháp</h3><p>Chỉ là nội dung để bạn chỉnh sửa; chưa gửi cho quán.</p><textarea aria-label="Bản nháp lời giới thiệu" defaultValue={draft} rows={7}/></section>}
+        {existing && <ProspectContacts key={`${existing.id}-${existing.version}`} prospect={existing} supabase={supabase} preview={preview} previewDraft={previewDrafts[existing.id]} onPreviewDraft={d=>setPreviewDrafts(prev=>({...prev,[existing.id]:d}))} onChanged={loadSummary}/>}
+
       </article> : <article className={styles.detail}><h2>Chọn một quán để đọc nguồn</h2><p>Kết quả tìm kiếm sẽ xuất hiện ở danh sách bên cạnh.</p></article>}
     </section>
   </main>;
