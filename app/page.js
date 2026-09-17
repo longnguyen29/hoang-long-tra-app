@@ -1,12 +1,12 @@
 export const metadata = {
-  "title": "Trà Shan Tuyết Hà Giang cho quán & thưởng trà | Hoàng Long",
-  "description": "Khám phá trà Shan Tuyết Hoàng Long: chọn trà cho quán, tính chi phí trà mỗi ly, thử mẫu và tìm hiểu câu chuyện nhà làm trà.",
+  "title": "Sản xuất trà cho phân phối & xuất khẩu | Hoàng Long",
+  "description": "Năng lực sản xuất 1.000 tấn trà/năm. Nguyên liệu Tây Bắc, Hà Giang, trà cổ thụ vùng cao. Công nghệ Nhật Bản, hấp hơi, giá tại xưởng và hợp tác dài hạn.",
   "alternates": {
     "canonical": "https://www.hoanglongtra.com/"
   },
   "openGraph": {
-    "title": "Trà Shan Tuyết Hà Giang cho quán & thưởng trà | Hoàng Long",
-    "description": "Khám phá trà Shan Tuyết Hoàng Long: chọn trà cho quán, tính chi phí trà mỗi ly, thử mẫu và tìm hiểu câu chuyện nhà làm trà.",
+    "title": "Sản xuất trà cho phân phối & xuất khẩu | Hoàng Long",
+    "description": "Năng lực sản xuất 1.000 tấn trà/năm. Nguyên liệu Tây Bắc, Hà Giang, trà cổ thụ vùng cao. Công nghệ Nhật Bản, hấp hơi, giá tại xưởng và hợp tác dài hạn.",
     "url": "https://www.hoanglongtra.com/",
     "type": "website",
     "locale": "vi_VN"
