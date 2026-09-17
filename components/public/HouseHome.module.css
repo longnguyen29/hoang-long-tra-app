@@ -49,3 +49,16 @@
 
 /* Keep captions legible regardless of the underlying archive photograph. */
 .origin figcaption { background:#183f35; color:#f6f2e9; padding:.5rem .75rem; width:fit-content; max-width:calc(100% - 2rem); }
+
+/* Factory supply positioning, using the existing House visual system. */
+.capacity{padding:var(--space-3xl) var(--page-gutter);background:var(--color-ink);color:var(--color-paper);scroll-margin-top:var(--topbar-height)}
+.capacity h2{font-family:var(--font-display);font-size:clamp(2rem,5vw,4rem);font-weight:500;line-height:1.08;max-width:22ch;margin:0 0 var(--space-xl)}
+.capacity dl{margin:0;display:grid;gap:0 var(--space-xl)}
+.capacity dl>div{padding:var(--space-lg) 0;border-top:var(--rule-thin) solid var(--color-muted)}
+.capacity dt{font-family:var(--font-display);font-size:var(--text-xl);line-height:1.15}
+.capacity dd{margin:var(--space-sm) 0 0;max-width:55ch;line-height:1.6;color:var(--color-paper-2)}
+.heroLinks a{white-space:normal}.heroImage img{object-position:center}.hero h1{text-wrap:balance}
+@media(min-width:48rem){.capacity dl{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{height:auto;min-height:calc(100svh - var(--topbar-height))}.heroCopy{padding-block:var(--space-2xl)}}
+@media(max-width:47.99rem){.capacity{padding-block:var(--space-xl)}}
+
+@media(min-width:48rem){.heroImage img{position:absolute;inset:0}.heroCopy{justify-content:center}.paths a{white-space:normal}}

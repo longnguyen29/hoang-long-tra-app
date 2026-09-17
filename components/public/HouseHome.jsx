@@ -10,60 +10,142 @@ import { useLocale } from "@/components/i18n/LocaleProvider";
 import styles from "./HouseHome.module.css";
 
 const COPY = {
-  en: {
-    nav: [["Teas", "/shop"], ["Wholesale", "/wholesale"], ["The house", "/story"], ["Journal", "/gallery"]],
-    book: "Book tea",
-    place: "Hà Giang · Việt Nam",
-    hero: "Shan Tuyết tea for your café’s own drinks.",
-    heroBody: "Choose your drink, explore a matching tea and see the tea cost per cup. Test it at your bar before choosing a tea for your menu.",
-    explore: "Explore this season",
-    trade: "Shop tea for home",
-    sampleCta: "Find a tea for your café",
-    season: "Current leaves",
-    seasonBody: "Small harvests change. The catalogue follows what is actually available, not an imaginary permanent shelf.",
-    viewTea: "View tea",
-    noTea: "The current catalogue is being prepared.",
-    origin: "The house behind the leaf",
-    originBody: "Not a farm story polished into a campaign. A working tea house: mountain relationships, careful processing, and the long work of making Vietnamese origin legible abroad.",
-    readStory: "Read our story",
-    twoWays: "Two ways into the house",
-    retailTitle: "Tea for your table",
-    retailBody: "Small packs, seasonal releases, and a direct line back to the people who made them.",
-    wholesaleTitle: "Tea for your work",
-    wholesaleBody: "Samples, café recipes, bulk formats, and export conversations for serious partners.",
-    shopNow: "Visit the shop",
-    wholesaleNow: "Enter wholesale",
-    closing: "Good tea does not need a louder story. It needs a clearer one.",
-    contact: "Speak with the house",
-    language: "Tiếng Việt",
+  "vi": {
+    "nav": [
+      [
+        "Năng lực",
+        "#capacity"
+      ],
+      [
+        "Danh mục trà",
+        "#season"
+      ],
+      [
+        "Hợp tác",
+        "/wholesale"
+      ],
+      [
+        "Nguồn trà",
+        "/story"
+      ]
+    ],
+    "book": "Trao đổi hợp tác",
+    "hero": "Nguồn trà Việt cho phân phối & xuất khẩu.",
+    "heroBody": "Năng lực sản xuất 1.000 tấn/năm. Hoàng Long cung cấp trà tại xưởng cho nhà phân phối và doanh nghiệp xuất khẩu quy mô lớn, với chất lượng tinh chỉnh theo nhu cầu.",
+    "sampleCta": "Trao đổi nhu cầu cung ứng",
+    "trade": "Xem năng lực sản xuất",
+    "season": "Danh mục để bắt đầu trao đổi",
+    "seasonBody": "Chọn dòng trà làm cơ sở thử mẫu. Chất lượng, quy cách, khối lượng và giá tại xưởng được thống nhất theo từng đơn hàng.",
+    "viewTea": "Xem trà",
+    "noTea": "Danh mục trà đang được cập nhật.",
+    "origin": "Từ vùng trà cao đến đối tác dài hạn.",
+    "originBody": "Nguyên liệu từ Tây Bắc, Hà Giang và trà cổ thụ vùng cao. Kết hợp nguồn trà với công nghệ Nhật Bản, chế biến hấp hơi và khả năng tinh chỉnh chất lượng theo yêu cầu đối tác.",
+    "readStory": "Tìm hiểu nguồn trà",
+    "twoWays": "Hợp tác theo thị trường của bạn",
+    "retailTitle": "Nhà phân phối",
+    "retailBody": "Trao đổi dòng trà, phân khúc giá và kế hoạch đặt hàng. Thống nhất mẫu, quy cách và lịch cung ứng phù hợp với mạng lưới phân phối.",
+    "shopNow": "Trao đổi phân phối",
+    "wholesaleTitle": "Doanh nghiệp xuất khẩu lớn",
+    "wholesaleBody": "Làm việc trực tiếp về yêu cầu chất lượng, thị trường đích và khối lượng dự kiến. Đối chiếu mẫu cùng các yêu cầu của từng đơn hàng trước khi chốt.",
+    "wholesaleNow": "Trao đổi nguồn hàng xuất khẩu",
+    "closing": "Cùng xây dựng nguồn cung trà lâu dài.",
+    "contact": "Liên hệ hợp tác",
+    "capacityTitle": "Năng lực sản xuất. Điều kiện hợp tác rõ ràng.",
+    "capabilities": [
+      [
+        "1.000 tấn/năm",
+        "Năng lực sản xuất phục vụ kế hoạch cung ứng quy mô lớn. Khối lượng và lịch giao được xác nhận theo đơn hàng."
+      ],
+      [
+        "Nguyên liệu vùng cao",
+        "Trà Tây Bắc, Hà Giang và trà cổ thụ vùng cao — lựa chọn nguồn nguyên liệu theo dòng sản phẩm."
+      ],
+      [
+        "Công nghệ Nhật Bản",
+        "Chế biến hấp hơi, kết hợp tinh chỉnh chất lượng theo mẫu và yêu cầu đã thống nhất."
+      ],
+      [
+        "Giá tại xưởng",
+        "Trao đổi trực tiếp về chất lượng, quy cách và khối lượng để xây dựng báo giá phù hợp."
+      ],
+      [
+        "Thanh toán linh hoạt",
+        "Điều khoản thanh toán được thỏa thuận theo đơn hàng và quá trình hợp tác."
+      ],
+      [
+        "Đồng hành lâu dài",
+        "Hỗ trợ đối tác thử mẫu, phản hồi chất lượng và lên kế hoạch cung ứng cho các đơn hàng tiếp theo."
+      ]
+    ]
   },
-  vi: {
-    nav: [["Trà", "/shop"], ["Đối tác", "/wholesale"], ["Nhà Hoàng Long", "/story"], ["Thư viện", "/gallery"]],
-    book: "Hẹn ghé uống trà",
-    place: "Hà Giang · Việt Nam",
-    hero: "Trà Shan Tuyết Hà Giang cho quán của bạn.",
-    heroBody: "Chọn trà cho trà sữa, trà trái cây và các món quán đang phục vụ. Tham khảo chi phí trà khô mỗi ly, rồi chọn mẫu để pha thử trước khi đặt sỉ.",
-    explore: "Xem trà mùa này",
-    trade: "Mua trà thưởng thức",
-    sampleCta: "Chọn trà cho quán",
-    season: "Các dòng trà đang có",
-    seasonBody: "Trà thay đổi theo mùa và sản lượng thực tế. Vì vậy, danh mục cũng được cập nhật theo từng vụ.",
-    viewTea: "Xem trà",
-    noTea: "Danh mục trà mùa này đang được chuẩn bị.",
-    origin: "Người làm trà Hoàng Long",
-    originBody: "Tìm hiểu nguồn trà, người làm trà và những ghi chép của Hoàng Long.",
-    readStory: "Đọc câu chuyện",
-    twoWays: "Chọn cách bạn muốn bắt đầu",
-    retailTitle: "Trà cho bàn trà của bạn",
-    retailBody: "Chọn trà theo hương vị, xem quy cách và đặt mua trực tiếp từ Hoàng Long.",
-    wholesaleTitle: "Trà cho quán và doanh nghiệp",
-    wholesaleBody: "Chọn mẫu để thử tại quán, trao đổi quy cách và nhận báo giá theo nhu cầu đặt hàng.",
-    shopNow: "Vào cửa hàng",
-    wholesaleNow: "Dành cho đối tác",
-    closing: "Tìm hiểu nguồn trà. Nếm thử và chọn vị bạn thích.",
-    contact: "Nói chuyện với Nhà",
-    language: "English",
-  },
+  "en": {
+    "nav": [
+      [
+        "Capabilities",
+        "#capacity"
+      ],
+      [
+        "Tea range",
+        "#season"
+      ],
+      [
+        "Partnerships",
+        "/wholesale"
+      ],
+      [
+        "Origins",
+        "/story"
+      ]
+    ],
+    "book": "Discuss supply",
+    "hero": "Vietnamese tea for distribution & export.",
+    "heroBody": "Production capacity of 1,000 tonnes per year. Hoàng Long supplies distributors and large-scale exporters directly from the factory, with quality tailored to partner requirements.",
+    "sampleCta": "Discuss your supply requirements",
+    "trade": "Explore production capabilities",
+    "season": "A tea range to build on",
+    "seasonBody": "Choose a starting point for sampling. Quality specifications, packing, volume and factory pricing are agreed for each order.",
+    "viewTea": "View tea",
+    "noTea": "The tea catalogue is being updated.",
+    "origin": "From highland tea to lasting partnerships.",
+    "originBody": "Raw materials from Northwest Vietnam, Hà Giang and ancient highland tea trees. Japanese technology and steam processing support quality adjustments to agreed partner requirements.",
+    "readStory": "Explore our origins",
+    "twoWays": "Supply shaped around your market",
+    "retailTitle": "Distributors",
+    "retailBody": "Discuss tea ranges, price positioning and purchasing plans. Agree on samples, packing and delivery schedules for your distribution network.",
+    "shopNow": "Discuss distribution",
+    "wholesaleTitle": "Large-scale exporters",
+    "wholesaleBody": "Work directly with us on quality requirements, destination markets and planned volumes. Review samples and order-specific requirements before confirming supply.",
+    "wholesaleNow": "Discuss export supply",
+    "closing": "Build a long-term tea supply partnership.",
+    "contact": "Talk to our team",
+    "capacityTitle": "Production capacity. Clear partnership terms.",
+    "capabilities": [
+      [
+        "1,000 tonnes/year",
+        "Production capacity for large-scale supply planning. Volumes and delivery schedules are confirmed per order."
+      ],
+      [
+        "Highland raw materials",
+        "Tea from Northwest Vietnam, Hà Giang and ancient highland trees, selected for each product range."
+      ],
+      [
+        "Japanese technology",
+        "Steam processing and quality adjustments against agreed samples and specifications."
+      ],
+      [
+        "Factory-direct pricing",
+        "Discuss quality, packing and volume directly to establish a suitable quotation."
+      ],
+      [
+        "Flexible payment",
+        "Payment terms agreed according to each order and the partnership."
+      ],
+      [
+        "Long-term support",
+        "Support with samples, quality feedback and supply planning for repeat orders."
+      ]
+    ]
+  }
 };
 
 const FALLBACK_PHOTOS = ["/landing/1.jpg", "/landing/2.jpg", "/landing/3.jpg"];
@@ -74,7 +156,7 @@ export default function HouseHome() {
   const [catalog, setCatalog] = useState([]);
   const [catalogState, setCatalogState] = useState("loading");
   const [attempt, setAttempt] = useState(0);
-  const [entryHref, setEntryHref] = useState("/cho-quan");
+  const [entryHref, setEntryHref] = useState("/wholesale");
   const [home, setHome] = useState(null);
   const supabase = useMemo(() => createClient(), []);
   const t = COPY[lang];
@@ -98,7 +180,7 @@ export default function HouseHome() {
     const query = new URLSearchParams(window.location.search);
     const attribution = new URLSearchParams();
     for (const key of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]) { const value = query.get(key); if(value) attribution.set(key, value.replace(/[^a-zA-Z0-9._-]/g,"-").slice(0,80)); }
-    setEntryHref(`/cho-quan${attribution.size ? `?${attribution}` : ""}`);
+    setEntryHref(`/wholesale${attribution.size ? `?${attribution}` : ""}`);
     recordPublicConversion(supabase, "home_view", { once: true, placement: "home" }).catch(() => {});
   }, [supabase]);
 
@@ -122,7 +204,7 @@ export default function HouseHome() {
           <button className={styles.language} onClick={toggleLocale} aria-label={lang === "vi" ? "Chuyển sang tiếng Anh" : "Switch to Vietnamese"}>
             <Globe2 size={15} aria-hidden="true" /> <span>{lang.toUpperCase()}</span>
           </button>
-          <Link href="/sessions" className={styles.book}>{t.book}</Link>
+          <Link href="/wholesale" className={styles.book}>{t.book}</Link>
           <button className={styles.menuButton} onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-controls="mobile-navigation" aria-label={lang === "vi" ? (menuOpen ? "Đóng trình đơn" : "Mở trình đơn") : (menuOpen ? "Close menu" : "Open menu")}>
             {menuOpen ? <X size={21}/> : <Menu size={21}/>} 
           </button>
@@ -132,27 +214,31 @@ export default function HouseHome() {
       {menuOpen && (
         <nav id="mobile-navigation" className={styles.mobileNav} aria-label="Mobile navigation">
           {t.nav.map(([label, href]) => <Link key={href} href={href} onClick={() => setMenuOpen(false)}>{label}<ArrowRight size={18}/></Link>)}
-          <Link href="/sessions" onClick={() => setMenuOpen(false)}>{t.book}<ArrowRight size={18}/></Link>
+          <Link href="/wholesale" onClick={() => setMenuOpen(false)}>{t.book}<ArrowRight size={18}/></Link>
         </nav>
       )}
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <p className={styles.place}>{t.place}</p>
           <h1>{t.hero}</h1>
           <p className={styles.heroBody}>{t.heroBody}</p>
           <div className={styles.heroLinks}>
             <Link href={entryHref}>
               {t.sampleCta}<ArrowRight size={16}/>
             </Link>
-            <Link href="/shop">{t.trade}</Link>
+            <a href="#capacity">{t.trade}</a>
           </div>
           <a href="#season" className={styles.scrollCue} aria-label="Scroll to current teas"><ArrowDown size={17}/></a>
         </div>
         <figure className={styles.heroImage}>
-          <img src="/landing/4.jpg" alt={lang === "vi" ? "Ly trà phủ kem trong thư viện ảnh Hoàng Long" : "A cream-topped tea from the Hoàng Long archive"} fetchPriority="high" />
-          <figcaption>{lang === "vi" ? "Ảnh ứng dụng trà · Nhà Hoàng Long" : "Tea application · House of Hoang Long"}</figcaption>
+          <img src="/landing/1.jpg" alt={lang === "vi" ? "Cây trà trong thư viện ảnh Hoàng Long" : "Tea tree from the Hoàng Long archive"} fetchPriority="high" />
+          <figcaption>{lang === "vi" ? "Nguồn trà · Nhà Hoàng Long" : "Tea origins · House of Hoang Long"}</figcaption>
         </figure>
+      </section>
+
+      <section id="capacity" className={styles.capacity}>
+        <h2>{t.capacityTitle}</h2>
+        <dl>{t.capabilities.map(([title,body])=><div key={title}><dt>{title}</dt><dd>{body}</dd></div>)}</dl>
       </section>
 
       <section id="season" className={styles.season}>
@@ -163,7 +249,7 @@ export default function HouseHome() {
 
         <div className={styles.teaIndex}>
           {teas.length ? teas.map((tea, index) => (
-            <Link href="/shop" className={styles.teaRow} key={tea.id}>
+            <Link href={entryHref} className={styles.teaRow} key={tea.id}>
               <span className={styles.teaNumber}>{String(index + 1).padStart(2, "0")}</span>
               <span className={styles.teaName}>{local(tea.name)}</span>
               <span className={styles.teaNote}>{local(tea.notes) || t.viewTea}</span>
@@ -181,7 +267,7 @@ export default function HouseHome() {
         </figure>
         <div>
           <h2>{t.origin}</h2>
-          <p>{local(home?.producer_quote) || t.originBody}</p>
+          <p>{t.originBody}</p>
           <Link href="/story">{t.readStory}<ArrowRight size={16}/></Link>
         </div>
       </section>
@@ -193,7 +279,7 @@ export default function HouseHome() {
             <ShoppingBag size={20} aria-hidden="true" />
             <h3>{t.retailTitle}</h3>
             <p>{t.retailBody}</p>
-            <Link href="/shop">{t.shopNow}<ArrowRight size={16}/></Link>
+            <Link href="/wholesale">{t.shopNow}<ArrowRight size={16}/></Link>
           </article>
           <article>
             <span className={styles.tradeMark} aria-hidden="true">kg</span>
