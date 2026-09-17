@@ -4,13 +4,18 @@ import { useEffect, useState } from "react";
 import { PROSPECT_STATES, SEGMENTS, normalizeProspect, sourceKey, teaSignals } from "@/lib/prospect-discovery";
 import { DISCOVERY_SEED } from "@/lib/prospect-discovery-seed";
 import ProspectContacts from "./ProspectContacts";
+import ProspectFollowup from "./ProspectFollowup";
+import ProspectPromotion from "./ProspectPromotion";
 import { possibleDuplicates, matchesQueue } from "@/lib/prospect-dedupe";
 import styles from "./ProspectDiscovery.module.css";
+import { ACCOUNT_TYPES, VERTICAL_TAGS, accountMetadata } from "@/lib/prospect-types";
+import ProspectAccountFields, { metadataFromForm } from "./ProspectAccountFields";
 
 export default function ProspectDiscovery({ supabase, preview = false }) {
   const [saved, setSaved] = useState([]);
   const [summaries, setSummaries] = useState([]);
   const [previewDrafts, setPreviewDrafts] = useState({});
+  const [previewActivities, setPreviewActivities] = useState({});
   const [queue, setQueue] = useState("all");
   const [candidates, setCandidates] = useState(DISCOVERY_SEED);
   const [selected, setSelected] = useState(DISCOVERY_SEED[0]);
@@ -23,6 +28,13 @@ export default function ProspectDiscovery({ supabase, preview = false }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [loadError, setLoadError] = useState("");
+  const [accountFilter, setAccountFilter] = useState("all");
+  const [tagFilter, setTagFilter] = useState("all");
+  const [watchlistOnly, setWatchlistOnly] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [priorityFilter,setPriorityFilter]=useState('all');
+  const [dueOnly,setDueOnly]=useState(false);
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
   async function headers() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -38,7 +50,10 @@ export default function ProspectDiscovery({ supabase, preview = false }) {
     const { data, error } = await supabase.from("discovery_prospects").select("*").order("updated_at", { ascending: false }).limit(500);
     if (error) { setReady(false); setLoadError("Chưa tải được hồ sơ đã lưu. Cần kiểm tra kết nối hoặc hoàn tất thiết lập dữ liệu; chưa thể lưu thay đổi."); return []; }
     await loadSummary();
-    setSaved(data || []); setReady(true); setLoadError(""); return data || [];
+    setSaved(data || []); setReloadKey(key => key + 1); setReady(true); setLoadError("");
+    const target=new URLSearchParams(window.location.search).get('prospect');
+    const linked=(data||[]).find(p=>p.id===target);if(linked){setSelected(linked);setTab('saved');}
+    return data || [];
   }
   useEffect(() => {
     if (preview) return;
@@ -58,13 +73,17 @@ export default function ProspectDiscovery({ supabase, preview = false }) {
   const existing = selected && saved.find(p => p.source_key === sourceKey(selected.source_url));
   const current = existing || selected;
   const duplicates = current ? possibleDuplicates(current, saved) : [];
-  const rows = (tab === "saved" ? saved : candidates.map(p => saved.find(s => s.source_key === sourceKey(p.source_url)) || p)).filter(p => (filter === "all" || p.status === filter) && (queue === "duplicates" ? possibleDuplicates(p,saved).length > 0 : matchesQueue(p, preview ? {has_draft:Boolean(previewDrafts[p.id])} : summaries.find(s=>s.prospect_id===p.id), queue)));
+  const rows = (tab === "saved" ? saved : candidates.map(p => saved.find(s => s.source_key === sourceKey(p.source_url)) || p)).filter(p =>
+    (priorityFilter==='all'||p.priority===priorityFilter) && (!dueOnly||(p.next_action_on&&p.next_action_on<=today&&!['do_not_contact','not_fit'].includes(p.status))) &&
+    (accountFilter === "all" || (p.account_type || "shop") === accountFilter) &&
+    (tagFilter === "all" || p.vertical_tags?.includes(tagFilter)) && (!watchlistOnly || p.is_watchlisted) &&
+    (filter === "all" || p.status === filter) && (queue === "duplicates" ? possibleDuplicates(p,saved).length > 0 : matchesQueue(p, preview ? {has_draft:Boolean(previewDrafts[p.id])} : summaries.find(s=>s.prospect_id===p.id), queue)));
   async function runSearch(event) {
     event.preventDefault(); setBusy(true); setMessage("");
     try {
       const response = await fetch("/api/staff/discovery", { method: "POST", headers: await headers(), body: JSON.stringify({ region, segment }) });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Chưa tìm được quán. Thử lại sau.");
+      if (!response.ok) throw new Error(data.error || "Chưa tìm được khách hàng. Thử lại sau.");
       setCandidates(data.candidates); setSelected(data.candidates[0] || null); setTab("research"); setFilter("all");
       setMessage(data.warning || "Đã tìm xong. Mở nguồn để kiểm tra trước khi lưu.");
     } catch (error) { setMessage(error.message); } finally { setBusy(false); }
@@ -80,7 +99,7 @@ export default function ProspectDiscovery({ supabase, preview = false }) {
       } else {
         const { data, error } = await supabase.from("discovery_prospects").insert({ ...clean, ...(p.observed_at ? { observed_at: p.observed_at } : {}) }).select().single();
         if (error) throw new Error(error.code === "23505" ? "Nguồn này đã được người khác lưu. Tải lại danh sách để mở hồ sơ." : "Chưa lưu được. Dữ liệu trên màn hình vẫn còn; thử lại sau.");
-        setSaved(rows => [data, ...rows]); setSelected(data); setMessage("Đã lưu quán vào danh sách cần kiểm tra.");
+        setSaved(rows => [data, ...rows]); setSelected(data); setMessage("Đã lưu hồ sơ vào danh sách cần kiểm tra.");
       }
     } catch (error) { setMessage(error.message); } finally { setBusy(false); }
   }
@@ -103,38 +122,63 @@ export default function ProspectDiscovery({ supabase, preview = false }) {
   }
   function addManual(event) {
     event.preventDefault();
-    const data = Object.fromEntries(new FormData(event.currentTarget));
+    const form = new FormData(event.currentTarget);
+    const data = { ...Object.fromEntries(form), ...metadataFromForm(form) };
     saveProspect({ ...data, evidence_kind: "page_review" });
+  }
+
+  async function saveMetadata(event) {
+    event.preventDefault(); if (!existing) return;
+    const form = new FormData(event.currentTarget);
+    setBusy(true); setMessage("");
+    try {
+      const meta = accountMetadata(metadataFromForm(form));
+      let updated;
+      if (preview) updated = { ...existing, ...meta, version: existing.version + 1 };
+      else {
+        const { data, error } = await supabase.rpc("update_discovery_account_meta", {
+          p_id: existing.id, p_version: existing.version, p_account_type: meta.account_type,
+          p_country_code: meta.country_code, p_vertical_tags: meta.vertical_tags, p_watchlisted: meta.is_watchlisted,
+        });
+        if (error) throw new Error(error.message.includes("stale_prospect") ? "Có người vừa sửa hồ sơ này. Giữ nội dung đang sửa trước khi tải lại danh sách để đối chiếu." : "Chưa lưu được phân loại. Dữ liệu đang nhập vẫn còn; kiểm tra kết nối và thử lại.");
+        updated = data;
+      }
+      setSaved(rows => rows.map(p => p.id === updated.id ? updated : p)); setSelected(updated);
+      setMessage("Đã lưu phân loại. Nội dung kiểm tra và bản nháp đang sửa được giữ lại.");
+    } catch (error) { setMessage(error.message); } finally { setBusy(false); }
   }
 
 
   return <main className={styles.page}>
-    <header className={styles.header}><span>HOÀNG LONG · PHÁT TRIỂN KHÁCH HÀNG</span><h1>Tìm quán mới.</h1><p>Từ menu công khai đến cuộc trao đổi phù hợp. Tìm trên toàn quốc, kiểm tra từng quán và giữ lại những cơ hội đáng theo đuổi.</p></header>
+    <header className={styles.header}><span>HOÀNG LONG · PHÁT TRIỂN KHÁCH HÀNG</span><h1>Tìm khách hàng.</h1><p>Từ nguồn công khai đến cuộc trao đổi phù hợp. Kiểm tra thông tin, phân loại khách hàng và theo dõi từng hồ sơ.</p></header>
     {preview && <aside className={styles.notice}>Bản xem thử · 4 hồ sơ nghiên cứu từ website công khai. Thao tác chỉ lưu trong phiên này, không thay đổi dữ liệu khách hàng.</aside>}
     <section className={styles.search} aria-labelledby="discovery-search-title"><h2 id="discovery-search-title">Bạn muốn tìm nhóm quán nào?</h2>
       <form onSubmit={runSearch}><label>Tỉnh / thành<input value={region} onChange={e => setRegion(e.target.value)} placeholder="Toàn quốc" maxLength={100}/></label><label>Nhóm quán<select value={segment} onChange={e => setSegment(e.target.value)}>{Object.entries(SEGMENTS).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label><button className={styles.primary} disabled={busy || !enabled || preview || !ready}>{busy ? "Đang xử lý…" : "Tìm quán trên web"}</button></form>
-      <p>{enabled ? "Mỗi lượt tìm lấy tối đa 20 trang kết quả. Hệ thống giới hạn lượt dùng trong ngày; không tự gửi tin." : "Tìm trên web chưa được kích hoạt. Hiện có thể xem hồ sơ nghiên cứu và thêm quán từ nguồn bạn tìm được."}</p>
+      <p>Hiện chỉ tìm tự động quán café / quán trà tại Việt Nam. Các nhóm khác và quốc gia khác: thêm từ đường dẫn bên dưới.</p><p>{enabled ? "Mỗi lượt tìm lấy tối đa 20 trang kết quả. Hệ thống giới hạn lượt dùng trong ngày; không tự gửi tin." : "Tìm trên web chưa được kích hoạt. Hiện có thể xem hồ sơ nghiên cứu và thêm khách hàng từ nguồn bạn tìm được."}</p>
     </section>
     {loadError && <p role="alert" className={styles.notice}>{loadError}</p>}
     <p role="status" aria-live="polite" className={styles.message}>{message}</p>
     <section className={styles.workspace} aria-label="Hồ sơ tìm khách">
       <div className={styles.list}>
-        <nav className={styles.tabs} aria-label="Danh sách quán"><button aria-pressed={tab === "research"} onClick={() => { setTab("research"); setFilter("all"); }}>Nguồn nghiên cứu ({candidates.length})</button><button aria-pressed={tab === "saved"} onClick={() => setTab("saved")}>Đã lưu ({saved.length})</button></nav>
-        <div className={styles.filters}><label>Việc cần làm<select value={queue} onChange={e=>{setQueue(e.target.value);setTab("saved");}}><option value="all">Tất cả hồ sơ</option><option value="review">Cần kiểm tra quán</option><option value="missing_contact">Phù hợp · còn thiếu liên hệ</option><option value="prepare">Có liên hệ · cần soạn bản nháp</option><option value="draft">Có bản nháp đã lưu</option><option value="duplicates">Cùng website · cần đối chiếu</option></select></label><label>Lọc trạng thái<select value={filter} onChange={e => setFilter(e.target.value)}><option value="all">Tất cả</option>{Object.entries(PROSPECT_STATES).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label>{!preview && <button disabled={busy} onClick={async () => { try { await reload(); } catch { setMessage("Chưa tải lại được danh sách."); } }}>Tải lại danh sách</button>}</div>
-        {rows.map(p => <button className={styles.row} key={p.id} aria-pressed={sourceKey(current?.source_url) === sourceKey(p.source_url)} onClick={() => setSelected(p)}><strong>{p.name}</strong><span>{p.region || "Chưa xác minh địa điểm"}</span><small>{PROSPECT_STATES[(saved.find(s => s.source_key === sourceKey(p.source_url)) || p).status]} · {p.evidence_kind === "page_review" ? "Đã đọc website" : "Trích đoạn tìm kiếm"}</small></button>)}
-        {!rows.length && <p className={styles.empty}>Chưa có quán trong danh sách này. Chọn một nguồn nghiên cứu để lưu, hoặc thêm quán bên dưới.</p>}
-        <details className={styles.manual}><summary>Thêm quán từ đường dẫn</summary><form onSubmit={addManual}><label>Tên quán<input name="name" required maxLength={160}/></label><label>Đường dẫn nguồn công khai<input name="source_url" type="url" required placeholder="https://…" maxLength={2000}/></label><label>Tỉnh / thành đã xác minh<input name="region" maxLength={120}/></label><label>Thông tin bạn đã đọc trên nguồn<textarea name="evidence" required maxLength={1500}/></label><button disabled={busy || !ready} className={styles.primary}>Lưu quán để kiểm tra</button></form></details>
-        <small className={styles.footnote}>Chống trùng theo đường dẫn nguồn. Một quán có nhiều website hoặc chi nhánh vẫn cần kiểm tra thủ công. Danh sách hiển thị tối đa 500 hồ sơ mới cập nhật.</small>
+        <div className={styles.filters}><label>Ưu tiên<select value={priorityFilter} onChange={e=>setPriorityFilter(e.target.value)}><option value="all">Tất cả ưu tiên</option>{['A','B','C'].map(value=><option key={value} value={value}>{value}</option>)}</select></label><label className={styles.check}><input type="checkbox" checked={dueOnly} onChange={e=>{setDueOnly(e.target.checked);setTab('saved');}}/>Đến hạn hôm nay / quá hạn</label></div>
+        <nav className={styles.tabs} aria-label="Danh sách khách hàng"><button aria-pressed={tab === "research"} onClick={() => { setTab("research"); setFilter("all"); }}>Nguồn nghiên cứu ({candidates.length})</button><button aria-pressed={tab === "saved"} onClick={() => setTab("saved")}>Đã lưu ({saved.length})</button></nav>
+        <div className={styles.filters}><label>Lọc loại khách hàng<select value={accountFilter} onChange={e=>setAccountFilter(e.target.value)}><option value="all">Tất cả loại</option>{Object.entries(ACCOUNT_TYPES).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label><label>Lọc lĩnh vực<select value={tagFilter} onChange={e=>setTagFilter(e.target.value)}><option value="all">Tất cả lĩnh vực</option>{Object.entries(VERTICAL_TAGS).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label><label className={styles.check}><input type="checkbox" checked={watchlistOnly} onChange={e=>setWatchlistOnly(e.target.checked)}/>Chỉ hồ sơ đang theo dõi</label><label>Việc cần làm<select value={queue} onChange={e=>{setQueue(e.target.value);setTab("saved");}}><option value="all">Tất cả hồ sơ</option><option value="review">Cần kiểm tra hồ sơ</option><option value="missing_contact">Phù hợp · còn thiếu liên hệ</option><option value="prepare">Có liên hệ · cần soạn bản nháp</option><option value="draft">Có bản nháp đã lưu</option><option value="duplicates">Cùng website · cần đối chiếu</option></select></label><label>Lọc trạng thái<select value={filter} onChange={e => setFilter(e.target.value)}><option value="all">Tất cả</option>{Object.entries(PROSPECT_STATES).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label>{!preview && <button disabled={busy} onClick={async () => { try { await reload(); } catch { setMessage("Chưa tải lại được danh sách."); } }}>Tải lại danh sách (thay nội dung đang sửa)</button>}</div>
+        {rows.map(p => <button className={styles.row} key={p.id} aria-pressed={sourceKey(current?.source_url) === sourceKey(p.source_url)} onClick={() => setSelected(p)}><strong>{p.name}</strong>{p.priority&&<span>Ưu tiên {p.priority}</span>}{p.next_action&&<span>{p.next_action} · {p.next_action_on||"Chưa đặt ngày"}</span>}<span>{p.region || "Chưa xác minh địa điểm"}</span><span>{ACCOUNT_TYPES[p.account_type || "shop"]} · {p.country_code || "VN"}{p.is_watchlisted ? " · Đang theo dõi" : ""}</span><span className={styles.chips}>{(p.vertical_tags || []).map(tag => <span key={tag}>{VERTICAL_TAGS[tag]}</span>)}</span><small>{PROSPECT_STATES[(saved.find(s => s.source_key === sourceKey(p.source_url)) || p).status]} · {p.evidence_kind === "page_review" ? "Đã đọc website" : "Trích đoạn tìm kiếm"}</small></button>)}
+        {!rows.length && <p className={styles.empty}>Chưa có khách hàng trong danh sách này. Chọn một nguồn nghiên cứu để lưu, hoặc thêm khách hàng bên dưới.</p>}
+        <details className={styles.manual}><summary>Thêm khách hàng từ đường dẫn</summary><form onSubmit={addManual}><ProspectAccountFields/><label>Tên khách hàng<input name="name" required maxLength={160}/></label><label>Đường dẫn nguồn công khai<input name="source_url" type="url" required placeholder="https://…" maxLength={2000}/></label><label>Tỉnh / thành đã xác minh<input name="region" maxLength={120}/></label><label>Thông tin bạn đã đọc trên nguồn<textarea name="evidence" required maxLength={1500}/></label><button disabled={busy || !ready} className={styles.primary}>Lưu hồ sơ để kiểm tra</button></form></details>
+        <small className={styles.footnote}>Chống trùng theo đường dẫn nguồn. Một khách hàng có nhiều website hoặc chi nhánh vẫn cần kiểm tra thủ công. Danh sách hiển thị tối đa 500 hồ sơ mới cập nhật.</small>
       </div>
-      {current ? <article className={styles.detail} key={`${current.id}-${current.version || 0}`}><header><span className={styles.badge}>{PROSPECT_STATES[current.status]}</span><h2>{current.name}</h2><p>{current.region || "Địa điểm chưa xác minh"}</p><a href={current.source_url} target="_blank" rel="noopener noreferrer">Mở nguồn để kiểm tra ↗</a></header>
-        <section><h3>{current.evidence_kind === "page_review" ? "Thông tin đọc được từ website" : "Trích đoạn tìm kiếm — chưa xác minh"}</h3><p>{current.evidence || "Chưa có ghi nhận về menu."}</p><small>Ghi nhận: {new Date(current.observed_at).toLocaleDateString("vi-VN")} · Website có thể đã thay đổi.</small></section>
-        {duplicates.length>0 && <aside className={styles.notice}><strong>Cùng website với hồ sơ đã lưu</strong>{duplicates.map(p=><p key={p.id}>{p.name} <button type="button" onClick={()=>setSelected(p)}>Xem hồ sơ</button></p>)}<small>Có thể là một quán hoặc các chi nhánh. Đối chiếu trước khi chuẩn bị liên hệ; app không tự gộp.</small></aside>}
-        <section className={styles.fit}><h3>Hướng thử trà có thể phù hợp</h3>{teaSignals(current.evidence).length ? teaSignals(current.evidence).map(signal => <p key={signal.label}><strong>{signal.label}</strong><br/>{signal.suggestion}</p>) : <p>Chưa đủ thông tin để gợi ý nền trà. Đọc menu trước.</p>}<small>Gợi ý dựa trên từ khóa trong nguồn, không phải đánh giá nhu cầu mua hàng.</small></section>
-        <section><h3>Còn cần xác nhận</h3><p>Quán còn hoạt động? Ai phụ trách nguyên liệu? Họ có muốn thử trà mới, cần vị trà và mức giá vốn nào? Chưa có dữ liệu về lượng mua hoặc nhà cung cấp hiện tại.</p></section>
-        {!existing ? <button className={styles.primary} disabled={busy || !ready} onClick={() => saveProspect(current)}>Lưu quán để kiểm tra</button> : <form className={styles.review} onSubmit={review}><h3>Kết quả bạn kiểm tra</h3><label>Tên quán đã xác minh<input name="name" defaultValue={existing.name} required maxLength={160}/></label><label>Tỉnh / thành đã xác minh<input name="region" defaultValue={existing.region} maxLength={120}/></label><label>Thông tin về menu<textarea name="evidence" defaultValue={existing.evidence} maxLength={1500}/></label><label className={styles.check}><input type="checkbox" name="page_review" defaultChecked={existing.evidence_kind === "page_review"}/>Tôi đã đọc và đối chiếu thông tin trên nguồn</label><label>Trạng thái<select name="status" defaultValue={existing.status}>{Object.entries(PROSPECT_STATES).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label><label>Kênh liên hệ doanh nghiệp đã xác minh<input name="contact" defaultValue={existing.contact} maxLength={240} placeholder="Để trống nếu chưa biết"/></label><label>Ghi chú và việc cần làm tiếp<textarea name="notes" maxLength={2000} defaultValue={existing.notes}/></label><button disabled={busy || !ready} className={styles.primary}>Lưu kết quả kiểm tra</button></form>}
-        {existing && <ProspectContacts key={`${existing.id}-${existing.version}`} prospect={existing} supabase={supabase} preview={preview} previewDraft={previewDrafts[existing.id]} onPreviewDraft={d=>setPreviewDrafts(prev=>({...prev,[existing.id]:d}))} onChanged={loadSummary}/>}
+      {current ? <article className={styles.detail} key={`${current.id}-${reloadKey}`}><header><span className={styles.badge}>{PROSPECT_STATES[current.status]}</span><h2>{current.name}</h2><p>{current.region || "Địa điểm chưa xác minh"}</p><a href={current.source_url} target="_blank" rel="noopener noreferrer">Mở nguồn để kiểm tra ↗</a></header>
+        <section><h3>{current.evidence_kind === "page_review" ? "Thông tin đọc được từ website" : "Trích đoạn tìm kiếm — chưa xác minh"}</h3><p>{current.evidence || "Chưa có ghi nhận từ nguồn."}</p><small>Ghi nhận: {new Date(current.observed_at).toLocaleDateString("vi-VN")} · Website có thể đã thay đổi.</small></section>
+        {duplicates.length>0 && <aside className={styles.notice}><strong>Cùng website với hồ sơ đã lưu</strong>{duplicates.map(p=><p key={p.id}>{p.name} <button type="button" onClick={()=>setSelected(p)}>Xem hồ sơ</button></p>)}<small>Có thể là một doanh nghiệp hoặc các chi nhánh. Đối chiếu trước khi chuẩn bị liên hệ; app không tự gộp.</small></aside>}
+        {(current.account_type || "shop") === "shop" && <section className={styles.fit}><h3>Hướng thử trà có thể phù hợp</h3>{teaSignals(current.evidence).length ? teaSignals(current.evidence).map(signal => <p key={signal.label}><strong>{signal.label}</strong><br/>{signal.suggestion}</p>) : <p>Chưa đủ thông tin để gợi ý nền trà. Đọc menu trước.</p>}<small>Gợi ý dựa trên từ khóa trong nguồn, không phải đánh giá nhu cầu mua hàng.</small></section>}
+        <section><h3>Còn cần xác nhận</h3><p>{(current.account_type || "shop") === "shop" ? "Quán còn hoạt động? Ai phụ trách nguyên liệu? Họ có muốn thử trà mới, cần vị trà và mức giá vốn nào? Chưa có dữ liệu về lượng mua hoặc nhà cung cấp hiện tại." : "Doanh nghiệp còn hoạt động? Nguồn công khai xác nhận được những gì? Chưa xác minh vai trò mua hàng, nhu cầu, sản lượng hoặc nhà cung cấp hiện tại."}</p></section>
+        {existing && <form className={styles.review} onSubmit={saveMetadata}><ProspectAccountFields prospect={existing}/><button className={styles.primary} disabled={busy || !ready}>Lưu phân loại</button></form>}{!existing ? <button className={styles.primary} disabled={busy || !ready} onClick={() => saveProspect(current)}>Lưu hồ sơ để kiểm tra</button> : <form className={styles.review} onSubmit={review}><h3>Kết quả bạn kiểm tra</h3><label>Tên khách hàng đã xác minh<input name="name" defaultValue={existing.name} required maxLength={160}/></label><label>Tỉnh / thành đã xác minh<input name="region" defaultValue={existing.region} maxLength={120}/></label><label>Thông tin đã xác minh<textarea name="evidence" defaultValue={existing.evidence} maxLength={1500}/></label><label className={styles.check}><input type="checkbox" name="page_review" defaultChecked={existing.evidence_kind === "page_review"}/>Tôi đã đọc và đối chiếu thông tin trên nguồn</label><label>Trạng thái<select name="status" defaultValue={existing.status}>{Object.entries(PROSPECT_STATES).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label><label>Kênh liên hệ doanh nghiệp đã xác minh<input name="contact" defaultValue={existing.contact} maxLength={240} placeholder="Để trống nếu chưa biết"/></label><label>Ghi chú và việc cần làm tiếp<textarea name="notes" maxLength={2000} defaultValue={existing.notes}/></label><button disabled={busy || !ready} className={styles.primary}>Lưu kết quả kiểm tra</button></form>}
+        {existing && <ProspectFollowup prospect={existing} supabase={supabase} preview={preview} previewActivities={previewActivities[existing.id]||[]} onPreviewActivities={items=>setPreviewActivities(prev=>({...prev,[existing.id]:items}))} onUpdated={updated=>{setSaved(rows=>rows.map(p=>p.id===updated.id?updated:p));setSelected(updated);}}/>}
+        {existing && <ProspectContacts key={existing.id} prospect={existing} supabase={supabase} preview={preview} previewDraft={previewDrafts[existing.id]} onPreviewDraft={d=>setPreviewDrafts(prev=>({...prev,[existing.id]:d}))} onChanged={loadSummary}/>}
+        {existing && <ProspectPromotion prospect={existing} supabase={supabase} preview={preview} onUpdated={updated=>{setSaved(rows=>rows.map(p=>p.id===updated.id?updated:p));setSelected(updated);}}/>}
 
-      </article> : <article className={styles.detail}><h2>Chọn một quán để đọc nguồn</h2><p>Kết quả tìm kiếm sẽ xuất hiện ở danh sách bên cạnh.</p></article>}
+      </article> : <article className={styles.detail}><h2>Chọn một khách hàng để đọc nguồn</h2><p>Kết quả tìm kiếm sẽ xuất hiện ở danh sách bên cạnh.</p></article>}
     </section>
   </main>;
 }

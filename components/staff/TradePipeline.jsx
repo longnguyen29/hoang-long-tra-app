@@ -11,6 +11,7 @@ import LoadFailure from "./LoadFailure";
 import styles from "./TradePipeline.module.css";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
 import CustomerJourneyPanel from "./CustomerJourneyPanel";
+import PipelineSample from "./PipelineSample";
 
 const newOpportunity = () => ({ business_name: "", contact: "", stage: "lead", owner: "", monthly_potential_kg: "", next_action: "Liên hệ và xác nhận nhu cầu", next_action_at: dateInput(1), notes: "" });
 const blankQuoteLine = () => ({ id: crypto.randomUUID(), productKey: "", qty: 1, price: "" });
@@ -83,7 +84,8 @@ export default function TradePipeline({ supabase, email }) {
   const [orders, setOrders] = useState([]);
   const [receivables, setReceivables] = useState([]);
   const [products, setProducts] = useState([]);
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelectedRaw] = useState(null);
+  const setSelected = (value) => setSelectedRaw(previous => value && ({...value, prospect_suppressed: value.prospect_suppressed ?? (previous?.id===value.id ? previous.prospect_suppressed : Boolean(value.discovery_prospect_id))}));
   const [editing, setEditing] = useState(null);
   const [quoteDraft, setQuoteDraft] = useState(null);
   const [priceDraft, setPriceDraft] = useState(null);
@@ -128,7 +130,14 @@ export default function TradePipeline({ supabase, email }) {
     if(failed) return;
     if (o.error || q.error) setError("Chưa tải được dữ liệu phát triển đối tác. Kiểm tra migration 0033.");
     else if (a.error) setError("Chưa tải được sổ giá đối tác. Kiểm tra migration 0034.");
-    if (!o.error) setOpportunities(o.data || []);
+    if (!o.error) {
+      const enriched=await Promise.all((o.data||[]).map(async item=>{
+        if(!item.discovery_prospect_id)return item;
+        const result=await supabase.rpc('pipeline_prospect_suppressed',{p_opportunity_id:item.id});
+        return {...item,prospect_suppressed:result.error?true:result.data};
+      }));
+      setOpportunities(enriched);
+    }
     if (!q.error) setQuotes(q.data || []);
     if (!a.error) setAgreements((a.data || []).map((agreement) => ({ ...agreement, partner_price_rules: [...(agreement.partner_price_rules || [])].sort((left, right) => left.sort_order - right.sort_order) })));
     if (!w.error) setPartners(w.data || []);
@@ -181,6 +190,9 @@ export default function TradePipeline({ supabase, email }) {
       source_type: editing.source_type || "manual",
       updated_at: new Date().toISOString(),
     };
+    // The prospect link is managed only by promotion; omit it from ordinary upserts.
+    delete row.discovery_prospect_id;
+    delete row.prospect_suppressed;
     const { data, error: saveError } = await supabase.from("trade_opportunities").upsert(row).select().single();
     setSaving(false);
     if (saveError) { setError(saveError.code === "23505" ? "Liên hệ này đã có trong pipeline." : "Chưa lưu được cơ hội."); return; }
@@ -190,6 +202,7 @@ export default function TradePipeline({ supabase, email }) {
 
   const moveStage = async (stage) => {
     if (!selected) return;
+    if(selected.prospect_suppressed && ["sample_requested","sample_sent","feedback","quoted"].includes(stage)){setError("Không liên hệ: dừng bước chuẩn bị mới.");return;}
     const nextAction = stage === "sample_sent" ? "Hỏi phản hồi sau khi thử trà" : stage === "quoted" ? "Xác nhận khách đã nhận báo giá" : stage === "won" ? "Xác nhận và chuẩn bị đơn đầu tiên" : selected.next_action;
     const patch = { stage, next_action: nextAction, updated_at: new Date().toISOString() };
     const { data, error: updateError } = await supabase.from("trade_opportunities").update(patch).eq("id", selected.id).select().single();
@@ -199,6 +212,7 @@ export default function TradePipeline({ supabase, email }) {
 
   const saveQuote = async (event) => {
     event.preventDefault();
+    if(selected?.prospect_suppressed){setError("Không liên hệ: không tạo báo giá mới.");return;}
     const chosen = quoteDraft.lines.map((line) => {
       const product = orderableProducts.find((item) => item.key === line.productKey);
       return product ? { ...line, product } : null;
@@ -321,21 +335,22 @@ export default function TradePipeline({ supabase, email }) {
     {selected && <div className={styles.overlay} onPointerDown={(event) => { if (event.target === event.currentTarget) closeSelected(); }}><aside ref={dialogRef} tabIndex={-1} className={styles.drawer} aria-label="Chi tiết cơ hội" role="dialog" aria-modal="true">
       <header><div><p>{stageLabel(selected.stage)}</p><h2>{selected.business_name}</h2><span>{selected.contact}</span></div><button type="button" onClick={closeSelected} aria-label="Đóng"><X/></button></header>
       <section className={styles.next}><span>Bước tiếp theo</span><h3>{selected.next_action || "Chưa đặt bước tiếp theo"}</h3><time>{shortDate(selected.next_action_at)}</time><p>Phụ trách: {selected.owner || "Chưa phân công"}</p><div><button onClick={() => setEditing({ ...selected, next_action_at: selected.next_action_at?.slice(0, 10) || "" })}>Sửa nhịp làm việc</button><Link className={styles.recipeBridge} href={`/admin/recipes?view=lab&opportunity=${encodeURIComponent(selected.id)}`}><FlaskConical/>Mở phòng công thức</Link></div></section>
-      <CustomerJourneyPanel primaryActionTitle={selected.next_action} journey={selectedJourney} onCommand={runJourneyCommand}/>
-      <section className={styles.progress}><header><h3>Chuyển giai đoạn</h3><span>{selected.monthly_potential_kg || 0} kg/tháng</span></header><div>{TRADE_STAGES.map((stage) => <button key={stage.id} data-active={selected.stage === stage.id} onClick={() => moveStage(stage.id)}>{stage.short}</button>)}<button data-lost onClick={() => moveStage("lost")}>Tạm dừng</button></div></section>
+      <CustomerJourneyPanel primaryActionTitle={selected.prospect_suppressed?"Không liên hệ · chỉ xử lý giao dịch đã có":selected.next_action} journey={selectedJourney} onCommand={runJourneyCommand}/>
+      <PipelineSample key={selected.id} opportunity={selected} supabase={supabase} samples={samples} onCreated={async()=>{await load();const {data}=await supabase.from('trade_opportunities').select('*').eq('id',selected.id).single();if(data)setSelected(data);}}/>
+      <section className={styles.progress}><header><h3>Chuyển giai đoạn</h3><span>{Number(selected.monthly_potential_kg)>0?`${selected.monthly_potential_kg} kg/tháng`:'Chưa xác minh sản lượng'}</span></header><div>{TRADE_STAGES.map((stage) => <button key={stage.id} data-active={selected.stage === stage.id} disabled={selected.prospect_suppressed&&["sample_requested","sample_sent","feedback","quoted"].includes(stage.id)} onClick={() => moveStage(stage.id)}>{stage.short}</button>)}<button data-lost onClick={() => moveStage("lost")}>Tạm dừng</button></div></section>
       <section className={styles.priceBook}>
-        <header><div><p>Partner price ledger</p><h3>Giá riêng đang áp dụng</h3></div><div className={styles.priceActions}><Link className={styles.priceCalculator} href={pricingHref(selected.id)}><Calculator/>Tính giá riêng</Link><button onClick={() => setPriceDraft(newPriceAgreement(selected, latestAgreement))}><Plus/>{latestAgreement ? "Phiên bản mới" : "Thiết lập giá"}</button></div></header>
+        <header><div><p>Partner price ledger</p><h3>Giá riêng đang áp dụng</h3></div><div className={styles.priceActions}><Link className={styles.priceCalculator} href={pricingHref(selected.id)}><Calculator/>Tính giá riêng</Link><button disabled={selected.prospect_suppressed} onClick={() => setPriceDraft(newPriceAgreement(selected, latestAgreement))}><Plus/>{latestAgreement ? "Phiên bản mới" : "Thiết lập giá"}</button></div></header>
         {latestAgreement ? <>
           <article className={styles.activePrice} data-expired={!activeAgreement}>
             <header><span><b>Phiên bản {latestAgreement.version}</b><small>Từ {shortDate(latestAgreement.effective_from)} · {latestAgreement.valid_until ? `đến ${shortDate(latestAgreement.valid_until)}` : "vô thời hạn"}</small></span><i>{activeAgreement ? "Đang dùng" : "Hết hiệu lực"}</i></header>
             <div className={styles.priceTimeline}><span/><p>Rà soát lại <b>{latestAgreement.review_at ? shortDate(latestAgreement.review_at) : "chưa đặt lịch"}</b></p></div>
             <div className={styles.priceRules}>{latestAgreement.partner_price_rules.map((rule) => <div key={rule.id}><span><b>{rule.product_name?.vi || rule.product_name?.en}</b><small>Tối thiểu {Number(rule.minimum_quantity)} {rule.unit}</small></span><strong>{money(rule.price)}</strong></div>)}</div>
-            <footer><div><span>{latestAgreement.includes_vat ? "Đã gồm VAT" : "Chưa gồm VAT"}</span><span>{latestAgreement.includes_delivery ? "Đã gồm giao hàng" : "Chưa gồm giao hàng"}</span></div>{latestAgreement.payment_terms && <p>{latestAgreement.payment_terms}</p>}{activeAgreement ? <button onClick={() => setQuoteDraft(newQuote(selected, activeAgreement))}><FileText/>Tạo báo giá từ bảng giá</button> : <button onClick={() => setPriceDraft(newPriceAgreement(selected, latestAgreement))}><RefreshCw/>Gia hạn bằng phiên bản mới</button>}</footer>
+            <footer><div><span>{latestAgreement.includes_vat ? "Đã gồm VAT" : "Chưa gồm VAT"}</span><span>{latestAgreement.includes_delivery ? "Đã gồm giao hàng" : "Chưa gồm giao hàng"}</span></div>{latestAgreement.payment_terms && <p>{latestAgreement.payment_terms}</p>}{activeAgreement ? <button disabled={selected.prospect_suppressed} onClick={() => setQuoteDraft(newQuote(selected, activeAgreement))}><FileText/>Tạo báo giá từ bảng giá</button> : <button disabled={selected.prospect_suppressed} onClick={() => setPriceDraft(newPriceAgreement(selected, latestAgreement))}><RefreshCw/>Gia hạn bằng phiên bản mới</button>}</footer>
           </article>
           {selectedAgreements.length > 1 && <details className={styles.priceHistory}><summary><History/>Xem {selectedAgreements.length - 1} phiên bản trước</summary>{selectedAgreements.filter((agreement) => agreement.status !== "active").map((agreement) => <div key={agreement.id}><span><b>Phiên bản {agreement.version}</b><small>{shortDate(agreement.effective_from)} – {agreement.valid_until ? shortDate(agreement.valid_until) : "vô thời hạn"}</small></span><small>{agreement.created_by || "Nhân viên"}</small></div>)}</details>}
         </> : <div className={styles.emptyPrice}><BadgeDollarSign/><p><b>Chưa có giá thỏa thuận.</b><span>Lưu giá riêng để các báo giá sau tự điền đúng mức đã chốt với đối tác này.</span></p></div>}
       </section>
-      <section className={styles.quoteBook} id="customer-quotes"><header><div><p>Quote book</p><h3>Báo giá</h3></div><button onClick={() => setQuoteDraft(newQuote(selected, activeAgreement))}><Plus/>Tạo báo giá</button></header>{selectedQuotes.length ? selectedQuotes.map((quote) => <article key={quote.id}><header><span><b>{quote.id}</b><small>{shortDate(quote.created_at)} · {quote.valid_until ? `hiệu lực ${shortDate(quote.valid_until)}` : "vô thời hạn"}</small></span><i data-status={quote.status}>{QUOTE_STATUS[quote.status]}</i></header><div>{quote.lines.map((line, index) => <span key={index}>{line.name?.vi || line.name?.en} · {line.qty} {line.unit}</span>)}</div><footer><b>{money(quote.total)}</b><div><button onClick={() => copyQuote(quote)}><Clipboard/>Sao chép</button>{quote.status === "draft" && <button onClick={() => setQuoteStatus(quote, "sent")}><Send/>Đã gửi</button>}{quote.status === "sent" && <button onClick={() => setQuoteStatus(quote, "accepted")}><Check/>Đồng ý</button>}{quote.status === "accepted" && <button className={styles.convert} onClick={() => convertQuote(quote)} disabled={saving}>Tạo đơn<ArrowRight/></button>}{quote.converted_order_id && <Link href="/admin/orders">{quote.converted_order_id}<ArrowRight/></Link>}</div></footer></article>) : <div className={styles.emptyQuote}><FileText/><p>Chưa có báo giá. Tạo bản đầu tiên từ danh mục đang bán.</p></div>}</section>
+      <section className={styles.quoteBook} id="customer-quotes"><header><div><p>Quote book</p><h3>Báo giá</h3></div><button disabled={selected.prospect_suppressed} onClick={() => setQuoteDraft(newQuote(selected, activeAgreement))}><Plus/>Tạo báo giá</button></header>{selectedQuotes.length ? selectedQuotes.map((quote) => <article key={quote.id}><header><span><b>{quote.id}</b><small>{shortDate(quote.created_at)} · {quote.valid_until ? `hiệu lực ${shortDate(quote.valid_until)}` : "vô thời hạn"}</small></span><i data-status={quote.status}>{QUOTE_STATUS[quote.status]}</i></header><div>{quote.lines.map((line, index) => <span key={index}>{line.name?.vi || line.name?.en} · {line.qty} {line.unit}</span>)}</div><footer><b>{money(quote.total)}</b><div><button disabled={selected.prospect_suppressed} onClick={() => copyQuote(quote)}><Clipboard/>Sao chép</button>{quote.status === "draft" && <button disabled={selected.prospect_suppressed} onClick={() => setQuoteStatus(quote, "sent")}><Send/>Đã gửi</button>}{quote.status === "sent" && <button onClick={() => setQuoteStatus(quote, "accepted")}><Check/>Đồng ý</button>}{quote.status === "accepted" && <button className={styles.convert} onClick={() => convertQuote(quote)} disabled={saving}>Tạo đơn<ArrowRight/></button>}{quote.converted_order_id && <Link href="/admin/orders">{quote.converted_order_id}<ArrowRight/></Link>}</div></footer></article>) : <div className={styles.emptyQuote}><FileText/><p>Chưa có báo giá. Tạo bản đầu tiên từ danh mục đang bán.</p></div>}</section>
       {selected.notes && <section className={styles.notes}><h3>Ghi chú quan hệ</h3><p>{selected.notes}</p></section>}
     </aside></div>}
 

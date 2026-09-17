@@ -20,6 +20,6 @@ export default function DiscoveryPage() {
     })();
     return () => { active = false; };
   }, [supabase, router]);
-  if (status !== "ready") return <main className="hl-admin-state"><p role="status">{status === "checking" ? "Đang mở Tìm quán mới…" : status === "denied" ? "Tính năng này dành cho tài khoản quản lý." : "Không kết nối được. Vui lòng tải lại trang."}</p></main>;
+  if (status !== "ready") return <main className="hl-admin-state"><p role="status">{status === "checking" ? "Đang mở Tìm khách hàng…" : status === "denied" ? "Tính năng này dành cho tài khoản quản lý." : "Không kết nối được. Vui lòng tải lại trang."}</p></main>;
   return <ProspectDiscovery supabase={supabase}/>;
 }

@@ -11,6 +11,8 @@
 # env files
 .env
 .env.local
+.c2c.json
+.c2c-canary.txt
 .env.*.local
 
 # claude code local settings

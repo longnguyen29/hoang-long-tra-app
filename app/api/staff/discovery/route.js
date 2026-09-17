@@ -1,5 +1,6 @@
 import { authenticateManagerRequest } from "@/lib/staff-api-auth";
 import { discoveryQuery, searchCandidates } from "@/lib/prospect-discovery";
+import { validateDiscoverySearch } from "@/lib/prospect-types";
 
 export const maxDuration = 40;
 const reply = (body, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
@@ -14,15 +15,16 @@ export async function GET(request) {
 export async function POST(request) {
   const staff = await manager(request);
   if (!staff) return reply({ error: "Cần đăng nhập bằng tài khoản quản lý." }, 403);
-  if (!enabled()) return reply({ error: "Nguồn tìm kiếm chưa được bật. Bạn vẫn có thể thêm quán từ đường dẫn công khai." }, 503);
+  if (!enabled()) return reply({ error: "Nguồn tìm kiếm chưa được bật. Bạn vẫn có thể thêm khách hàng từ đường dẫn công khai." }, 503);
   let query, region;
   try {
     const raw = await request.text();
     if (raw.length > 2000) return reply({ error: "Nội dung tìm kiếm quá dài." }, 400);
     const body = JSON.parse(raw);
+    validateDiscoverySearch(body);
     region = String(body.region || "").slice(0, 100);
     query = discoveryQuery(region, body.segment || "all");
-  } catch { return reply({ error: "Kiểm tra khu vực và nhóm quán cần tìm." }, 400); }
+  } catch { return reply({ error: "Kiểm tra dữ liệu tìm kiếm. Tìm tự động chỉ hỗ trợ quán tại Việt Nam, không dùng nhãn lĩnh vực hoặc theo dõi làm tiêu chí. Nhóm khác có thể thêm từ đường dẫn." }, 400); }
   const limit = Math.max(1, Math.min(20, Number.parseInt(process.env.DISCOVERY_DAILY_SEARCH_LIMIT || "5", 10) || 5));
   const { data: runId, error: reserveError } = await staff.admin.rpc("reserve_discovery_search", { p_user: staff.user.id, p_query: query, p_limit: limit });
   if (reserveError || !runId) return reply({ error: reserveError?.message?.includes("daily_limit") ? "Đã hết lượt tìm hôm nay. Danh sách đã lưu vẫn dùng được." : "Chưa thể ghi nhận lượt tìm. Kiểm tra thiết lập dữ liệu trước khi thử lại." }, reserveError?.message?.includes("daily_limit") ? 429 : 503);
@@ -36,6 +38,6 @@ export async function POST(request) {
     return reply({ candidates, query, warning: error ? "Có kết quả nhưng chưa cập nhật được lịch sử lượt tìm." : "Đây là kết quả tìm trên web; cần mở nguồn để xác minh quán, khu vực và menu." });
   } catch {
     await staff.admin.from("discovery_search_runs").update({ status: "failed" }).eq("id", runId);
-    return reply({ error: "Nguồn tìm kiếm chưa trả kết quả. Lượt thử đã được tính để giới hạn chi phí; không có quán nào được lưu tự động." }, 502);
+    return reply({ error: "Nguồn tìm kiếm chưa trả kết quả. Lượt thử đã được tính để giới hạn chi phí; không có hồ sơ nào được lưu tự động." }, 502);
   }
 }
