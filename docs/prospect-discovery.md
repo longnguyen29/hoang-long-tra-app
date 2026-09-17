@@ -1,4 +1,18 @@
-# Hoàng Long — Tìm quán mới
+# Hoàng Long — Tìm khách hàng / Prospect Intelligence
+
+## Phase 1 local implementation (14 September 2026)
+
+The existing discovery workspace now supports shop, chain, distributor_wholesaler, importer, exporter_trader, horeca, manufacturer_oem, specialty_retail and other. Manual creation writes classification in the initial insert. Country codes are normalized to 2–3 uppercase letters; VN is a default, not location verification. Vertical tags use the controlled vocabulary in `lib/prospect-types.js`. Watchlist is an independent flag. Type/tag/watchlist filters combine with the existing status and work queues.
+
+Automated search remains off by default and supports only Vietnam shops with the original all/milk/fruit segments. Non-shop, international, tag-driven and watchlist searches fail before budget reservation/provider calls. Manual sourced research remains available. Generic UI and non-shop draft suggestions no longer assume a café menu or purchasing role. Shop query behavior is unchanged.
+
+`0059_prospect_account_types.sql` is an additive, transactional migration after0058. Existing prospects receive shop/VN/[]/false; identifiers, source keys, reviewed content, status, timestamps, versions, contacts and drafts remain unchanged. Table constraints protect direct inserts as well as the new manager-only `update_discovery_account_meta` RPC. Classification and review share the same compare-and-set version. Metadata saves preserve unsaved review/draft buffers; explicit record changes or list reload replace the editor. Contact and draft safeguards from0058 remain in force.
+
+Local verification:25 Prospect tests, all three isolated DB suites and production build pass. Browser preview checks cover non-shop creation/editing, combined filters, unsaved buffers, saved-draft precedence, DNC and every account label at390px. Production-build `/discovery-review` returns404. These are local browser and isolated PostgreSQL checks, not authenticated staging or production persistence verification.
+
+Release order: independently inspect the deployed migration ledger and confirm0059 is still the next free number; apply only the new migration to a configured staging environment and test authenticated manager persistence there; then deploy schema before client code. Never replay0057/0058 on a database where applied. If client rollback is needed, deploy the prior client and retain additive columns/data; do not drop columns or restore old prospect rows. No production migration or deployment was performed for Phase1. The historical setup/release notes below describe earlier café features.
+
+Run `node --test --test-isolation=none lib/prospect*.test.mjs tests/prospect*route.test.mjs`, the existing discovery/contact DB scripts and `tests/prospect-account-types-db.mjs` with PGLITE_MODULE configured, then `npm run build`. Phase2 evidence/profile/scoring and later phases remain postponed.
 
 Own application code, inspired by Explee's publicly observable discovery → research → qualification workflow. No Explee subscription or proprietary dataset is used.
 

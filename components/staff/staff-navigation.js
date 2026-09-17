@@ -5,8 +5,8 @@ import {
 
 export const STAFF_APPS = {
   discovery: {
-    key: "discovery", label: "Tìm quán mới", short: "Tìm quán", href: "/admin/discovery",
-    description: "Tìm nguồn quán mới, kiểm tra menu và lưu cơ hội phù hợp.", icon: Search,
+    key: "discovery", label: "Tìm khách hàng", short: "Tìm khách", href: "/admin/discovery",
+    description: "Đọc nguồn công khai, phân loại và theo dõi khách hàng tiềm năng.", icon: Search,
   },
   work: {
     key: "work", label: "Giao việc", short: "Giao việc", href: "/admin/work",
