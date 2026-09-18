@@ -1,4 +1,5 @@
 "use client";
+import { formatMassKg } from "@/lib/format-mass";
 
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
@@ -317,7 +318,7 @@ export default function TradePipeline({ supabase, email }) {
     {error && <p className={styles.error} role="alert">{error}</p>}{notice && <p className={styles.notice}><Check/>{notice}</p>}
     <section className={styles.summary}>
       <article data-urgent={overdue.length > 0}><CalendarClock/><span>Quá hạn</span><b>{overdue.length}</b><small>{dueToday.length} việc đến hạn hôm nay</small></article>
-      <article><Target/><span>Tiềm năng tháng</span><b>{totalPotential} kg</b><small>{opportunities.filter((item) => item.stage !== "lost").length} mối quan hệ đang mở</small></article>
+      <article><Target/><span>Tiềm năng tháng</span><b>{formatMassKg(totalPotential)}</b><small>{opportunities.filter((item) => item.stage !== "lost").length} mối quan hệ đang mở</small></article>
       <article><FileText/><span>Báo giá đang mở</span><b>{openQuotes.length}</b><small>{quotes.filter((item) => item.status === "accepted").length} đã đồng ý</small></article>
       <article><Handshake/><span>Đối tác định kỳ</span><b>{opportunities.filter((item) => item.stage === "active").length}</b><small>{opportunities.filter((item) => item.stage === "won").length} đang ở đơn đầu</small></article>
     </section>
@@ -327,7 +328,7 @@ export default function TradePipeline({ supabase, email }) {
     <section className={styles.board}>
       {TRADE_STAGES.map((stage) => <section className={styles.column} data-mobile-active={mobileStage === stage.id} key={stage.id}><header><b>{stage.short}</b><span>{searchable.filter((item) => item.stage === stage.id).length}</span></header><div>{searchable.filter((item) => item.stage === stage.id).map((item) => {
         const isOverdue = item.next_action_at && item.next_action_at.slice(0, 10) < today;
-        return <button key={item.id} onClick={() => openOpportunity(item)} data-overdue={isOverdue}><span className={styles.source}>{item.source_type}</span><h3>{item.business_name}</h3><p>{item.next_action || "Chưa có bước tiếp theo"}</p><footer><span>{item.monthly_potential_kg ? `${item.monthly_potential_kg} kg/tháng` : item.contact}</span><time>{shortDate(item.next_action_at)}</time></footer></button>;
+        return <button key={item.id} onClick={() => openOpportunity(item)} data-overdue={isOverdue}><span className={styles.source}>{item.source_type}</span><h3>{item.business_name}</h3><p>{item.next_action || "Chưa có bước tiếp theo"}</p><footer><span>{item.monthly_potential_kg ? `${formatMassKg(item.monthly_potential_kg)}/tháng` : item.contact}</span><time>{shortDate(item.next_action_at)}</time></footer></button>;
       })}<button className={styles.addCard} onClick={() => setEditing({ ...newOpportunity(), stage: stage.id })}><Plus/>Thêm tại đây</button></div></section>)}
     </section>
     {showLost && <section className={styles.lost}><header><h2>Cơ hội đang tạm dừng</h2><span>Giữ lại lịch sử; đưa về pipeline khi thời điểm phù hợp.</span></header>{searchable.filter((item) => item.stage === "lost").map((item) => <button key={item.id} onClick={() => openOpportunity(item)}><span><b>{item.business_name}</b><small>{item.lost_reason || "Chưa ghi lý do"}</small></span><ChevronRight/></button>)}</section>}
@@ -337,7 +338,7 @@ export default function TradePipeline({ supabase, email }) {
       <section className={styles.next}><span>Bước tiếp theo</span><h3>{selected.next_action || "Chưa đặt bước tiếp theo"}</h3><time>{shortDate(selected.next_action_at)}</time><p>Phụ trách: {selected.owner || "Chưa phân công"}</p><div><button onClick={() => setEditing({ ...selected, next_action_at: selected.next_action_at?.slice(0, 10) || "" })}>Sửa nhịp làm việc</button><Link className={styles.recipeBridge} href={`/admin/recipes?view=lab&opportunity=${encodeURIComponent(selected.id)}`}><FlaskConical/>Mở phòng công thức</Link></div></section>
       <CustomerJourneyPanel primaryActionTitle={selected.prospect_suppressed?"Không liên hệ · chỉ xử lý giao dịch đã có":selected.next_action} journey={selectedJourney} onCommand={runJourneyCommand}/>
       <PipelineSample key={selected.id} opportunity={selected} supabase={supabase} samples={samples} onCreated={async()=>{await load();const {data}=await supabase.from('trade_opportunities').select('*').eq('id',selected.id).single();if(data)setSelected(data);}}/>
-      <section className={styles.progress}><header><h3>Chuyển giai đoạn</h3><span>{Number(selected.monthly_potential_kg)>0?`${selected.monthly_potential_kg} kg/tháng`:'Chưa xác minh sản lượng'}</span></header><div>{TRADE_STAGES.map((stage) => <button key={stage.id} data-active={selected.stage === stage.id} disabled={selected.prospect_suppressed&&["sample_requested","sample_sent","feedback","quoted"].includes(stage.id)} onClick={() => moveStage(stage.id)}>{stage.short}</button>)}<button data-lost onClick={() => moveStage("lost")}>Tạm dừng</button></div></section>
+      <section className={styles.progress}><header><h3>Chuyển giai đoạn</h3><span>{Number(selected.monthly_potential_kg)>0?`${formatMassKg(selected.monthly_potential_kg)}/tháng`:'Chưa xác minh sản lượng'}</span></header><div>{TRADE_STAGES.map((stage) => <button key={stage.id} data-active={selected.stage === stage.id} disabled={selected.prospect_suppressed&&["sample_requested","sample_sent","feedback","quoted"].includes(stage.id)} onClick={() => moveStage(stage.id)}>{stage.short}</button>)}<button data-lost onClick={() => moveStage("lost")}>Tạm dừng</button></div></section>
       <section className={styles.priceBook}>
         <header><div><p>Partner price ledger</p><h3>Giá riêng đang áp dụng</h3></div><div className={styles.priceActions}><Link className={styles.priceCalculator} href={pricingHref(selected.id)}><Calculator/>Tính giá riêng</Link><button disabled={selected.prospect_suppressed} onClick={() => setPriceDraft(newPriceAgreement(selected, latestAgreement))}><Plus/>{latestAgreement ? "Phiên bản mới" : "Thiết lập giá"}</button></div></header>
         {latestAgreement ? <>
