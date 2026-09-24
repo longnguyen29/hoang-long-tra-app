@@ -184,6 +184,7 @@ export default function HouseHome() {
     recordPublicConversion(supabase, "home_view", { once: true, placement: "home" }).catch(() => {});
   }, [supabase]);
 
+  const catalogHref = `/catalog${entryHref.includes("?") ? entryHref.slice(entryHref.indexOf("?")) : ""}`;
   const photos = home?.featured_photos?.length ? home.featured_photos : FALLBACK_PHOTOS;
   const teas = catalog.filter((item) => item.kind === "tea" && item.line !== "sample").slice(0, 3);
   const local = (value) => value?.[lang] || value?.en || value?.vi || "";
@@ -197,7 +198,7 @@ export default function HouseHome() {
         </Link>
 
         <nav className={styles.desktopNav} aria-label="Primary navigation">
-          {t.nav.map(([label, href]) => <Link key={href} href={href === "/catalog" ? `/catalog${entryHref.includes("?") ? entryHref.slice(entryHref.indexOf("?")) : ""}` : href}>{label}</Link>)}
+          {t.nav.map(([label, href]) => <Link key={href} href={href === "/catalog" ? catalogHref : href}>{label}</Link>)}
         </nav>
 
         <div className={styles.headerActions}>
@@ -213,7 +214,7 @@ export default function HouseHome() {
 
       {menuOpen && (
         <nav id="mobile-navigation" className={styles.mobileNav} aria-label="Mobile navigation">
-          {t.nav.map(([label, href]) => <Link key={href} href={href === "/catalog" ? `/catalog${entryHref.includes("?") ? entryHref.slice(entryHref.indexOf("?")) : ""}` : href} onClick={() => setMenuOpen(false)}>{label}<ArrowRight size={18}/></Link>)}
+          {t.nav.map(([label, href]) => <Link key={href} href={href === "/catalog" ? catalogHref : href} onClick={() => setMenuOpen(false)}>{label}<ArrowRight size={18}/></Link>)}
           <Link href="/wholesale" onClick={() => setMenuOpen(false)}>{t.book}<ArrowRight size={18}/></Link>
         </nav>
       )}
@@ -228,7 +229,7 @@ export default function HouseHome() {
             </Link>
             <a href="#capacity">{t.trade}</a>
           </div>
-          <a href="/catalog" className={styles.scrollCue} aria-label="Scroll to current teas"><ArrowDown size={17}/></a>
+          <a href={catalogHref} className={styles.scrollCue} aria-label={lang === "vi" ? "Xem danh mục trà" : "View tea catalogue"}><ArrowDown size={17}/></a>
         </div>
         <figure className={styles.heroImage}>
           <img src="/landing/1.jpg" alt={lang === "vi" ? "Cây trà trong thư viện ảnh Hoàng Long" : "Tea tree from the Hoàng Long archive"} fetchPriority="high" />
@@ -249,7 +250,7 @@ export default function HouseHome() {
 
         <div className={styles.teaIndex}>
           {teas.length ? teas.map((tea, index) => (
-            <Link href={`/catalog${entryHref.includes("?") ? entryHref.slice(entryHref.indexOf("?")) : ""}#${tea.id}`} className={styles.teaRow} key={tea.id}>
+            <Link href={`${catalogHref}#${tea.id}`} className={styles.teaRow} key={tea.id}>
               <span className={styles.teaNumber}>{String(index + 1).padStart(2, "0")}</span>
               <span className={styles.teaName}>{local(tea.name)}</span>
               <span className={styles.teaNote}>{local(tea.notes) || t.viewTea}</span>
