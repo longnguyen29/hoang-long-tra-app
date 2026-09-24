@@ -1,4 +1,5 @@
 "use client";
+import { formatMassKg } from "@/lib/format-mass";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -418,7 +419,7 @@ export default function BusinessControl({ supabase, email, onLogout }) {
           <div className={styles.metrics}>
             {[
               ["Doanh thu", money(report.revenue), `${monthOrders.length} đơn`],
-              ["Đơn sỉ", `${report.wholesaleKg} kg`, `${report.wholesale} đơn`],
+              ["Đơn sỉ", formatMassKg(report.wholesaleKg), `${report.wholesale} đơn`],
               ["Tiền mặt", money(report.cash), "Đã ghi nhận"],
               ["Chuyển khoản", money(report.transfer), "QR / ngân hàng"],
             ].map(([label, value, note]) => (

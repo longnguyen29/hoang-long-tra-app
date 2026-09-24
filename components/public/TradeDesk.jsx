@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, FlaskConical, Globe2, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { notifyHouse } from "@/lib/notify";
-import { fromCatalogRow } from "@/lib/mappers";
+import { catalogText, isTradeTea, selectedTradeTea, TRADE_CATALOG_FIELDS } from "@/lib/trade-catalog";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { trackMetaLead } from "@/lib/meta-pixel";
 import { recordPublicConversion } from "@/lib/public-attribution";
@@ -88,6 +88,9 @@ const COPY = {
 export default function TradeDesk() {
   const { locale: lang, toggleLocale } = useLocale();
   const [products, setProducts] = useState([]);
+  const [selectedTea, setSelectedTea] = useState(null);
+  const [intent, setIntent] = useState("quote");
+  const [selectionStatus, setSelectionStatus] = useState("loading");
   const [form, setForm] = useState({ name: "", business: "", contact: "", need: "", consent: false });
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
@@ -98,9 +101,16 @@ export default function TradeDesk() {
 
   useEffect(() => {
     let live = true;
-    supabase.from("catalog_products").select("*").eq("available", true).order("sort_order").then(({ data, error: catalogError }) => {
-      if (live && !catalogError) setProducts((data || []).map(fromCatalogRow).filter((item) => item.kind !== "goods" && item.line === "everyday").slice(0, 6));
-    });
+    supabase.from("catalog_products").select(TRADE_CATALOG_FIELDS).eq("available", true).order("id").then(({ data, error: catalogError }) => {
+      if (live && !catalogError) {
+        const teas = (data || []).filter(isTradeTea);
+        setProducts(teas.slice(0, 6));
+        const selected = selectedTradeTea(teas, window.location.search);
+        setSelectedTea(selected);
+        setSelectionStatus(new URLSearchParams(window.location.search).has("tea") && !selected ? "unavailable" : "ready");
+        setIntent(new URLSearchParams(window.location.search).get("intent") === "sample" ? "sample" : "quote");
+      } else if (live) setSelectionStatus(new URLSearchParams(window.location.search).has("tea") ? "error" : "ready");
+    }).catch(() => { if (live) setSelectionStatus(new URLSearchParams(window.location.search).has("tea") ? "error" : "ready"); });
     return () => { live = false; };
   }, [supabase]);
 
@@ -113,6 +123,7 @@ export default function TradeDesk() {
   const submit = async (event) => {
     event.preventDefault();
     setError("");
+    if (selectionStatus !== "ready") return;
     if (!form.name.trim() || !form.contact.trim() || !form.need.trim() || !form.consent) {
       setError(t.required);
       return;
@@ -125,7 +136,7 @@ export default function TradeDesk() {
       contact: form.contact.trim(),
       business_name: form.business.trim(),
       address: "",
-      interest: `wholesale: ${form.need.trim()}`,
+      interest: `wholesale: ${selectedTea ? `[${intent}] ${catalogText(selectedTea.name, lang)} (${selectedTea.id})\n` : ""}${form.need.trim()}`,
       unread: true,
     });
     setSending(false);
@@ -171,7 +182,7 @@ export default function TradeDesk() {
         <header><h2>{t.available}</h2><p>{t.availableBody}</p></header>
         <div>
           {products.length ? products.map((product, index) => <article key={product.id}>
-            <span>{String(index + 1).padStart(2, "0")}</span><h3>{local(product.name)}</h3><p>{local(product.notes)}</p><b>{product.packSize || "Bulk / kg"}</b>
+            <span>{String(index + 1).padStart(2, "0")}</span><h3>{local(product.name)}</h3><p>{local(product.notes)}</p><b>{lang === "vi" ? "Quy cách theo thỏa thuận" : "Packing agreed on enquiry"}</b>
           </article>) : <p className={styles.empty}>{t.catalogueEmpty}</p>}
         </div>
       </section>
@@ -184,13 +195,14 @@ export default function TradeDesk() {
             briefStarted.current = true;
             recordPublicConversion(supabase, "trade_brief_started", { placement: "wholesale_brief" }).catch(() => {});
           }}>
+            <div aria-live="polite">{selectionStatus === "loading" && <p>{lang === "vi" ? "Đang tải thông tin trà…" : "Loading tea details…"}</p>}{["error", "unavailable"].includes(selectionStatus) && <p>{lang === "vi" ? "Chưa xác nhận được trà đã chọn. Bạn có thể quay lại danh mục hoặc gửi yêu cầu chung." : "The selected tea could not be confirmed. Return to the catalogue or send a general enquiry."} <Link href="/catalog">{lang === "vi" ? "Danh mục" : "Catalogue"}</Link> · <button type="button" onClick={() => setSelectionStatus("ready")}>{lang === "vi" ? "Gửi yêu cầu chung" : "Continue without a tea"}</button></p>}{selectedTea && <p>{lang === "vi" ? (intent === "sample" ? "Trao đổi mẫu trà" : "Yêu cầu báo giá") : (intent === "sample" ? "Sample enquiry" : "Quote enquiry")}: <strong>{catalogText(selectedTea.name, lang)}</strong> · <button type="button" onClick={() => setSelectedTea(null)}>{lang === "vi" ? "Bỏ chọn" : "Clear selection"}</button></p>}</div>
             <label>{t.name}<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required/></label>
             <label>{t.business}<input value={form.business} onChange={(e) => setForm({ ...form, business: e.target.value })}/></label>
             <label>{t.contact}<input value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} required/></label>
             <label>{t.need}<textarea value={form.need} onChange={(e) => setForm({ ...form, need: e.target.value })} required/></label>
             <label className={styles.consent}><input type="checkbox" checked={form.consent} onChange={(e) => setForm({ ...form, consent: e.target.checked })}/>{t.consent}</label>
             {error && <p className={styles.error} role="alert">{error}</p>}
-            <button disabled={sending || !form.name.trim() || !form.contact.trim() || !form.need.trim() || !form.consent}>{sending ? t.sending : t.send}<ArrowRight size={16}/></button>
+            <button disabled={selectionStatus !== "ready" || sending || !form.name.trim() || !form.contact.trim() || !form.need.trim() || !form.consent}>{sending ? t.sending : t.send}<ArrowRight size={16}/></button>
           </form>}
       </section>
 

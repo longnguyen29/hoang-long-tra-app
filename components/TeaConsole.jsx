@@ -1,4 +1,5 @@
 "use client";
+import { formatMassKg } from "@/lib/format-mass";
 import { safeReferrer } from "@/lib/public-attribution";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
@@ -570,7 +571,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
     return [
       `${t.summaryTitle} — House of Hoàng Long`,
       ...lines,
-      `${t.totalKg}: ${totalKg} ${t.kg}`,
+      `${t.totalKg}: ${formatMassKg(totalKg, lang)}`,
       `${t.tierApplied}: ${currentTier.range[lang]} (${currentTier.off[lang]})`,
     ].join("\n");
   }, [cartLines, totalKg, currentTier, lang, t]);
@@ -1446,7 +1447,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
     const totalLine =
       order.type === "retail"
         ? `<tr><td style="padding:10px 0;font-weight:700;">Total items</td><td style="padding:10px 0;text-align:right;font-weight:700;">${order.totalItems} pcs</td></tr>`
-        : `<tr><td style="padding:10px 0;font-weight:700;">Total volume</td><td style="padding:10px 0;text-align:right;font-weight:700;">${order.totalKg} kg</td></tr>
+        : `<tr><td style="padding:10px 0;font-weight:700;">Total volume</td><td style="padding:10px 0;text-align:right;font-weight:700;">${formatMassKg(order.totalKg, "en")}</td></tr>
            <tr><td colspan="2" style="padding:2px 0 10px;color:#AD8A4E;">${esc(order.tier.range.en)} · ${esc(order.tier.off.en)}</td></tr>`;
     const estimatedTotalLine = order.estimatedTotal
       ? `<tr><td style="padding:6px 0;font-weight:700;color:#AD8A4E;">Estimated total</td><td style="padding:6px 0;text-align:right;font-weight:700;color:#AD8A4E;">${order.estimatedTotal.toLocaleString("vi-VN")}đ</td></tr>`
@@ -1496,7 +1497,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
       o.address || "",
       o.taxNumber || "",
       o.lines.map((l) => `${l.name.en || l.name.vi}: ${l.qty}${l.unit === "kg" ? "kg" : l.unit === "pack" ? "pack" : "pcs"}${l.price ? ` @${l.price.toLocaleString("vi-VN")}đ` : ""}`).join(" | "),
-      o.type === "retail" ? `${o.totalItems} pcs` : `${o.totalKg} kg`,
+      o.type === "retail" ? `${o.totalItems} pcs` : `${formatMassKg(o.totalKg, lang)}`,
       o.type === "retail" ? `VAT ${o.vat}%` : `${o.tier?.range?.en || ""} (${o.tier?.off?.en || ""})`,
       o.estimatedTotal ? o.estimatedTotal.toLocaleString("vi-VN") + "đ" : "",
       o.promo ? `${o.promo.code} (-${o.promo.percent}%)${o.promo.ownerName ? " via " + o.promo.ownerName : ""}` : "",
@@ -1688,7 +1689,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
       "",
       ...order.lines.map((l) => `- ${l.name[lang] || l.name.en}: ${l.qty} ${l.unit === "kg" ? "kg" : l.unit === "pack" ? "pack" : "pcs"}${l.price ? ` (${l.price.toLocaleString("vi-VN")}đ each)` : ""}`),
       "",
-      order.type === "retail" ? `Items: ${order.totalItems}` : `Total: ${order.totalKg} kg`,
+      order.type === "retail" ? `Items: ${order.totalItems}` : `Total: ${formatMassKg(order.totalKg, "en")}`,
       order.estimatedTotal ? `Estimated total: ${order.estimatedTotal.toLocaleString("vi-VN")}đ` : null,
       `Payment method: ${order.paymentMethod === "cash" ? "Cash" : "QR bank transfer"}`,
       order.vat ? `VAT: ${order.vat}% (added to final invoice)` : null,
@@ -3313,7 +3314,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                       <div style={{ borderTop: `1px solid ${TOKENS.paper}33`, paddingTop: 10, display: "flex", flexDirection: "column", gap: 4, marginBottom: 14 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 600 }}>
                           <span>{t.totalKg}</span>
-                          <span>{totalKg} {t.kg}</span>
+                          <span>{formatMassKg(totalKg, lang)}</span>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: TOKENS.brassOnDark }}>
                           <span>{t.tierApplied}</span>
@@ -3519,7 +3520,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                 const stats = [
                   { label: t.statsOrders, value: weeklyOrders.length },
                   { label: t.statRevenue, value: formatVND(weeklyRevenue) },
-                  { label: t.statsWholesaleVolume, value: `${weeklyKg} kg` },
+                  { label: t.statsWholesaleVolume, value: formatMassKg(weeklyKg, lang) },
                   { label: t.statsLeads, value: weeklyLeadsCount },
                 ];
                 return (
@@ -3775,7 +3776,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                       <>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8 }}>
                           {tile(t.reportRevenue, formatVND(revenue), t.reportOrderCount(inMonth.length))}
-                          {tile(t.reportWholesaleVolume, `${wholesaleKg} kg`, t.reportOrderCount(wholesale.length))}
+                          {tile(t.reportWholesaleVolume, formatMassKg(wholesaleKg, lang), t.reportOrderCount(wholesale.length))}
                           {tile(t.reportCash, formatVND(cashTotal), t.reportOrderCount(cash.length))}
                           {tile(t.reportTransfer, formatVND(transferTotal), t.reportOrderCount(transfer.length))}
                         </div>
@@ -5115,7 +5116,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                           <span>{t.itemsTotal}: {o.totalItems} {t.pcs}</span>
                         ) : (
                           <>
-                            <span>{o.totalKg} {t.kg}</span>
+                            <span>{formatMassKg(o.totalKg, lang)}</span>
                             <span style={{ color: TOKENS.brassOnPaper }}>{o.tier.range[lang]} · {o.tier.off[lang]}</span>
                           </>
                         )}
