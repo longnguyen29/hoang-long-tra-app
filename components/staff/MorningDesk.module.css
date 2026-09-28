@@ -45,6 +45,13 @@
 @media(max-width:39.99rem){.modeTabs{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-3xs)}.modeTabs button{padding-inline:var(--space-2xs);font-size:var(--text-xs);line-height:1.2;text-align:center;white-space:normal}.brief{gap:var(--space-md);padding-block:var(--space-lg)}.briefCopy h2{font-size:var(--text-xl)}.testLinks{grid-template-columns:minmax(0,1fr)}}
 
 /* Navigation is supplied by the shared admin layout. */
+.carryOver{margin-block-start:var(--space-md);padding:var(--space-sm);border-inline-start:3px solid var(--color-warning);background:var(--color-paper)}
+.carryOver h3{display:flex;align-items:center;gap:var(--space-xs);margin:0 0 var(--space-xs);font-family:var(--font-display);font-size:var(--text-md)}
+.carryOver h3 span{min-width:1.7rem;min-height:1.7rem;display:grid;place-items:center;border-radius:50%;background:var(--color-paper-3);font-family:var(--font-body);font-size:var(--text-xs)}
+.carryOver article{display:grid;grid-template-columns:var(--control-height) minmax(0,1fr) auto;align-items:center;gap:var(--space-xs);padding-block:var(--space-xs);border-block-start:var(--rule-thin) solid var(--color-rule-2)}
+.carryOver article>button{width:var(--control-height);height:var(--control-height);display:grid;place-items:center;border:0;background:transparent;color:var(--color-accent)}
+.carryOver article svg{width:var(--text-md)}.carryOver article>div{min-width:0;display:grid;gap:var(--space-3xs)}.carryOver article b{line-height:1.4;overflow-wrap:anywhere}.carryOver article small{color:var(--color-muted)}
+.carryOver article>a{min-height:var(--control-height);display:flex;align-items:center;gap:var(--space-3xs);color:var(--color-ink);font-size:var(--text-sm);font-weight:700;text-decoration:none}
 .shell{display:block;min-height:0}
 
 .briefCopy h2{font-family:var(--font-body);font-size:var(--text-xl);line-height:1.25}.brief{padding-block:var(--space-md)}
