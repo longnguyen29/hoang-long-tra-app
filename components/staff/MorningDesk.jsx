@@ -18,14 +18,15 @@ import {
   Menu,
   PencilLine,
   Plus,
-  Pin,
   RefreshCw,
   RotateCcw,
   Scale,
 } from "lucide-react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { buildJourneyQueue, relativeDueLabel } from "@/lib/customer-journey";
+import { houseDateKey } from "@/lib/dashboard-calendar";
 import { STAFF_APPS as APPS, STAFF_APP_GROUPS, STAFF_APP_LIST as APP_LIST } from "./staff-navigation";
+import DashboardPlanner from "./DashboardPlanner";
 import styles from "./MorningDesk.module.css";
 
 const MODES = [
@@ -276,7 +277,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
     setLoading(true);
     setError("");
     try {
-    const [deskResult, budgetResult, radarResult, opportunitiesResult, samplesResult, recipesResult, versionsResult, quotesResult, ordersResult, receivablesResult, partnersResult] = await Promise.all([
+    const [deskResult, budgetResult, radarResult, opportunitiesResult, samplesResult, recipesResult, versionsResult, quotesResult, ordersResult, receivablesResult, partnersResult, carryResult] = await Promise.all([
       supabase.rpc("morning_desk_snapshot"),
       supabase.rpc("budget_morning_snapshot"),
       supabase.from("recipe_radar_concepts").select("id,name,score_total").eq("stage", "candidate").order("score_total", { ascending: false }).limit(3),
@@ -288,8 +289,9 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
       supabase.from("orders").select("*").order("ts", { ascending: false }),
       supabase.from("receivables").select("*").order("created_at", { ascending: false }),
       supabase.from("wholesale_accounts").select("id,opportunity_id,contact,business_name,reorder_cadence_days,created_at"),
+      supabase.from("morning_focus_items").select("id,title,app_key,href,status,work_date").eq("status", "planned").lt("work_date", houseDateKey()).order("work_date", { ascending: true }),
     ]);
-    const incomplete = [deskResult, budgetResult, radarResult, opportunitiesResult, samplesResult, recipesResult, versionsResult, quotesResult, ordersResult, receivablesResult, partnersResult].some(result => result.error);
+    const incomplete = [deskResult, budgetResult, radarResult, opportunitiesResult, samplesResult, recipesResult, versionsResult, quotesResult, ordersResult, receivablesResult, partnersResult, carryResult].some(result => result.error);
     setDataIncomplete(incomplete);
     if (incomplete) {
       setError("Chưa tải đủ dữ liệu hôm nay. Làm mới để kiểm tra công việc và số liệu.");
@@ -309,7 +311,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
         receivables: receivablesResult.data || [],
         partners: partnersResult.data || [],
       });
-      setSnapshot({ ...deskResult.data, budget: budgetResult.data || {}, radar: radarResult.data || [], journey_queue: journeyQueue });
+      setSnapshot({ ...deskResult.data, budget: budgetResult.data || {}, radar: radarResult.data || [], journey_queue: journeyQueue, carry_over: (carryResult.data || []).filter((item) => item.work_date < deskResult.data.today) });
       if (budgetResult.error)
         setError("Bảng điều khiển đã tải, nhưng chưa đọc được ngân sách từ migration 0037.");
     }
@@ -325,6 +327,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
 
   const mode = snapshot?.preference?.mode || "owner";
   const focus = snapshot?.focus || [];
+  const carryOver = snapshot?.carry_over || [];
   const focusMap = useMemo(
     () => Object.fromEntries(focus.map((item) => [Number(item.position), item])),
     [focus],
@@ -429,19 +432,15 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
 
   const toggleFocus = async (item) => {
     const nextStatus = item.status === "done" ? "planned" : "done";
-    setSnapshot((current) => ({
-      ...current,
-      focus: (current?.focus || []).map((focusItem) =>
-        focusItem.id === item.id ? { ...focusItem, status: nextStatus } : focusItem,
-      ),
-    }));
     const { error: saveError } = await supabase.rpc("set_morning_focus_status", {
       p_id: item.id,
       p_status: nextStatus,
     });
     if (saveError) {
       setError("Chưa cập nhật được trạng thái việc. Làm mới để đồng bộ lại.");
+      return;
     }
+    await load();
   };
 
   const saveMemory = async (event) => {
@@ -551,6 +550,14 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
                   );
                 })}
               </div>
+              {carryOver.length > 0 && <div className={styles.carryOver}>
+                <h3>Chưa xong từ hôm trước <span>{carryOver.length}</span></h3>
+                {carryOver.map((item) => <article key={item.id}>
+                  <button type="button" onClick={() => toggleFocus(item)} aria-label={`Hoàn tất ${item.title}`}><Circle /></button>
+                  <div><b>{item.title}</b><small>Ghi ngày {new Intl.DateTimeFormat("vi-VN").format(new Date(`${item.work_date}T12:00:00Z`))}</small></div>
+                  <Link href={item.href}>Mở <ArrowRight /></Link>
+                </article>)}
+              </div>}
               {editingFocus && <form className={styles.focusEditor} id="focus-editor" onSubmit={saveFocus}>
                 <label>
                   <span>Ưu tiên {editingSlot}</span>
@@ -628,13 +635,6 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
               </Link>
             </section>}
 
-            {canReview && <section className={styles.pausedWork}>
-              <div className={styles.pausedWorkMeta}><span><Pin />Việc để làm tiếp</span><small>Đã tạm dừng</small></div>
-              <h2>Thử và chốt 6 công thức V1</h2>
-              <p>Pha thử bằng trà Hoàng Long, ghi kết quả thực tế và điều chỉnh định lượng trước khi đưa vào menu mẫu.</p>
-              <Link href="/admin/recipes?view=lab" onClick={(event) => openApp(event, { ...APPS.recipes, href: "/admin/recipes?view=lab" }, { reminder: "house-recipes-v1" })}>Mở Recipe Lab<ArrowRight /></Link>
-            </section>}
-
             <section className={styles.resume}>
               <div><RotateCcw /><span>Tiếp tục từ lần trước</span></div>
               <h2>{resume.label}</h2>
@@ -691,6 +691,8 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
             </section>
           </aside>
         </div>
+
+        {canReview && <DashboardPlanner supabase={supabase} />}
 
         <section className={styles.metrics} aria-label="Sự thật vận hành">
           {metrics.map(([label, value, note]) => (
