@@ -10,6 +10,7 @@ import { ORDER_COST_CATEGORIES,ORDER_COST_STATUSES,orderCostAmount,orderEconomic
 import { MANUAL_MESSAGE_KINDS,buildManualOrderMessage,makeSmsHref,normalizeSmsPhone } from "@/lib/manual-order-message";
 import { useDialogFocus } from "./useDialogFocus";
 import TrackingSmsPreview from "./TrackingSmsPreview";
+import ProcedureOrderLink from "./ProcedureOrderLink";
 import NewOrderPanel from "./NewOrderPanel";
 import LoadFailure from "./LoadFailure";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
@@ -100,7 +101,7 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
    <section className={styles.customers} id="customers"><header><div><p>Customer memory</p><h2>Lịch sử khách hàng</h2></div><span>{customers.length} hồ sơ</span></header><div>{customers.slice(0,20).map(profile=><button key={profile.contact_key} onClick={()=>openCustomer(profile)}><span><b>{profile.customer_name}</b><small>{profile.contact}</small></span><span>{profile.order_count} đơn</span><span>{money(profile.total_spent)}</span><ChevronRight/></button>)}</div></section>
   </section>
   {selected&&<OrderDetail key={selected.id}
-   actionError={error} onDelete={["admin","manager"].includes(role)?deleteMistaken:undefined} detailError={detailError} onRetry={()=>loadEvents(selected.id)} order={selected} events={orderEvents} costs={orderCosts} receivable={orderReceivable} loadingEvents={detailLoading} saving={flowSaving}
+   actionError={error} onDelete={["admin","manager"].includes(role)?deleteMistaken:undefined} detailError={detailError} onRetry={()=>loadEvents(selected.id)} order={selected} role={role} events={orderEvents} costs={orderCosts} receivable={orderReceivable} loadingEvents={detailLoading} saving={flowSaving}
    healthDraft={healthDraft} setHealthDraft={setHealthDraft} waitingDraft={waitingDraft} setWaitingDraft={setWaitingDraft}
    healthNoteDraft={healthNoteDraft} setHealthNoteDraft={setHealthNoteDraft} trackingDraft={trackingDraft} setTrackingDraft={setTrackingDraft}
    carrierDraft={carrierDraft} setCarrierDraft={setCarrierDraft} onUpdate={updateOrderFlow} onVoidReceivable={["admin","manager"].includes(role)?voidOrderReceivable:undefined} onIssueReceivable={issueOrderReceivable} onRecordPayment={recordOrderPayment} onAddCost={addOrderCost} onSyncCosts={syncOrderCosts} onDeleteCost={deleteOrderCost} onClose={()=>setSelected(null)}
@@ -111,7 +112,7 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
  </main>
 }
 
-export function OrderDetail({onVoidReceivable,onDelete,actionError="",detailError="",onRetry,order,events,costs,receivable,loadingEvents,saving,healthDraft,setHealthDraft,waitingDraft,setWaitingDraft,healthNoteDraft,setHealthNoteDraft,trackingDraft,setTrackingDraft,carrierDraft,setCarrierDraft,onUpdate,onIssueReceivable,onRecordPayment,onAddCost,onSyncCosts,onDeleteCost,onClose}){
+export function OrderDetail({onVoidReceivable,onDelete,actionError="",detailError="",onRetry,order,role,events,costs,receivable,loadingEvents,saving,healthDraft,setHealthDraft,waitingDraft,setWaitingDraft,healthNoteDraft,setHealthNoteDraft,trackingDraft,setTrackingDraft,carrierDraft,setCarrierDraft,onUpdate,onIssueReceivable,onRecordPayment,onAddCost,onSyncCosts,onDeleteCost,onClose}){
  const [voidOpen,setVoidOpen]=useState(false);
  const [deleteOpen,setDeleteOpen]=useState(false),[deleteConfirmation,setDeleteConfirmation]=useState(""),[deleteError,setDeleteError]=useState("");
  const dialogRef=useRef(null);
@@ -152,6 +153,7 @@ export function OrderDetail({onVoidReceivable,onDelete,actionError="",detailErro
  return <aside ref={dialogRef} tabIndex={-1} className={`${styles.detail} ${styles.orderDetail}`} aria-label="Kiểm tra và điều phối đơn hàng" aria-modal="true" role="dialog">
   <header><div><p>Điều phối đơn</p><h2>{order.customerName}</h2><span className={styles.detailStage}>{stage.number} · {stage.label}</span></div><button onClick={onClose} aria-label="Đóng">×</button></header>
   <dl className={styles.orderSummary} aria-label="Tóm tắt đơn hàng"><div><dt>Mã đơn</dt><dd>{order.id}</dd></div><div><dt>Tổng đơn</dt><dd>{money(order.estimatedTotal)}</dd></div><div><dt>Còn thanh toán</dt><dd>{loadingEvents || detailError ? "Chưa xác nhận" : receivable ? money(amountDue) : "Chưa mở theo dõi"}</dd></div><div><dt>Liên hệ</dt><dd>{order.contact || "Chưa có"}</dd></div></dl>
+  <ProcedureOrderLink order={order} role={role}/>
   {actionError&&<p className={styles.error} role="alert">{actionError}</p>}
   <section className={styles.typeEditor} aria-label="Loại đơn và giá bán">
    <h3>Loại đơn & giá bán</h3>
