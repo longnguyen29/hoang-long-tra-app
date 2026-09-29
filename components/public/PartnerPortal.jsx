@@ -22,6 +22,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import styles from "./PartnerPortal.module.css";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
+import { notifyHouse } from "@/lib/notify";
 
 const money = (value) => `${Number(value || 0).toLocaleString("vi-VN")}đ`;
 const date = (value) =>
@@ -231,6 +232,7 @@ export default function PartnerPortal() {
       );
       return;
     }
+    notifyHouse("orders", data);
     setSuccess(`Đã tạo đơn ${data}`);
     setQuantities(Object.fromEntries(rules.map((rule) => [rule.id, ""])));
     setOrderNote("");
@@ -265,6 +267,7 @@ export default function PartnerPortal() {
       setError("Báo giá không còn khả dụng hoặc đã được xử lý.");
       return;
     }
+    notifyHouse("orders", data);
     setSuccess(`Đã chấp nhận báo giá và tạo đơn ${data}`);
     await load();
     setTab("orders");

@@ -4,6 +4,7 @@ import { OPS_STAGES } from "@/lib/ops-stages";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logOrderEvent } from "@/lib/ops-events";
 import { reconcileOrderStage, statusForOrderStage } from "@/lib/order-flow";
+import { notifyTelegram } from "@/lib/telegram";
 
 async function requireOpsAuth() {
   const cookie = (await cookies()).get(OPS_AUTH_COOKIE)?.value;
@@ -76,6 +77,8 @@ export async function POST(request) {
   if (error) return Response.json({ ok: false }, { status: 500 });
 
   await logOrderEvent(admin, { orderId: data.id, kind: "created", message: "Order created", actor });
+  try { await notifyTelegram("orders", data.id); }
+  catch { console.error("Order Telegram notification failed after creation"); }
 
   return Response.json({ ok: true, order: data });
 }
