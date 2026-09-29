@@ -7,6 +7,7 @@ import styles from "./NewOrderPanel.module.css";
 import {createOrderSubmission} from "@/lib/order-submission";
 import {useDialogFocus} from "./useDialogFocus";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
+import { reorderLinesFromOrder } from "@/lib/reorder-draft";
 
 const blankLine = () => ({ id: crypto.randomUUID(), productKey: "", qty: 1, unitPrice: "" });
 
@@ -41,20 +42,24 @@ function flattenProducts(products) {
   });
 }
 
-export default function NewOrderPanel({ supabase, onClose, onCreated }) {
+export default function NewOrderPanel({ supabase, onClose, onCreated, sourceOrder = null }) {
   const submissionRef=useRef(null);
   const submissionBusyRef=useRef(false);
+  const reorderLinkFailedRef=useRef(false);
   if(!submissionRef.current)submissionRef.current=createOrderSubmission();
   const [submissionState,setSubmissionState]=useState("idle");
   const [step, setStep] = useState("edit");
-  const [type, setType] = useState("retail");
-  const [customerName, setCustomerName] = useState("");
-  const [contact, setContact] = useState("");
-  const [address, setAddress] = useState("");
-  const [taxNumber, setTaxNumber] = useState("");
+  const [type, setType] = useState(sourceOrder?.type || "retail");
+  const [customerName, setCustomerName] = useState(sourceOrder?.customerName || "");
+  const [contact, setContact] = useState(sourceOrder?.contact || "");
+  const [address, setAddress] = useState(sourceOrder?.address || "");
+  const [taxNumber, setTaxNumber] = useState(sourceOrder?.taxNumber || "");
   const [note, setNote] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("qr");
-  const [lines, setLines] = useState(() => [blankLine()]);
+  const [paymentMethod, setPaymentMethod] = useState(sourceOrder?.paymentMethod || "qr");
+  const [lines, setLines] = useState(() => {
+    const copied = reorderLinesFromOrder(sourceOrder, () => crypto.randomUUID());
+    return copied.length ? copied : [blankLine()];
+  });
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -99,6 +104,9 @@ export default function NewOrderPanel({ supabase, onClose, onCreated }) {
     () => flattenProducts(products).filter((product) => product.available !== false),
     [products]
   );
+  const unavailableLines = loadingProducts || catalogFailed ? [] : lines.filter((line) => (
+    line.sourceName && !orderableProducts.some((product) => product.key === line.productKey)
+  ));
   const selectedLines = useMemo(() => lines.map((line) => {
     const product = orderableProducts.find((item) => item.key === line.productKey);
     if (!product) return null;
@@ -107,8 +115,8 @@ export default function NewOrderPanel({ supabase, onClose, onCreated }) {
     return {
       ...line,
       product,
-      qty: Math.max(1, Number(line.qty) || 1),
-      price: Number.isFinite(price) ? price : null,
+      qty: Number(line.qty),
+      price: Number.isFinite(price) && price >= 0 ? price : null,
       unit: type === "wholesale" || product.line === "everyday" ? "kg" : "pcs",
     };
   }).filter(Boolean), [lines, orderableProducts, type]);
@@ -122,6 +130,10 @@ export default function NewOrderPanel({ supabase, onClose, onCreated }) {
     && contact.trim()
     && selectedLines.length === lines.length
     && lines.length > 0
+    && selectedLines.every((line) => Number.isFinite(line.qty) && line.qty > 0 && (type === "wholesale" || Number.isInteger(line.qty)))
+    && (type !== "retail" || selectedLines.every((line) => line.price !== null))
+    && !loadingProducts
+    && !catalogFailed
     && !saving
   );
   const unitSummary = useMemo(() => {
@@ -189,11 +201,12 @@ export default function NewOrderPanel({ supabase, onClose, onCreated }) {
       promo: null,
       note: note.trim(),
       lines: serializedLines,
-      totalKg: type === "wholesale" ? selectedLines.reduce((total, line) => total + line.qty, 0) : null,
+      totalKg: type === "wholesale" ? selectedLines.reduce((total, line) => total + (line.unit === "kg" ? line.qty : 0), 0) : null,
       totalItems: type === "retail" ? selectedLines.reduce((total, line) => total + line.qty, 0) : null,
       estimatedTotal,
       tier: null,
       paymentMethod,
+      reorderOfOrderId: sourceOrder?.id || null,
       status: "pending",
       stage: "new_order",
       health: "on_track",
@@ -215,6 +228,12 @@ export default function NewOrderPanel({ supabase, onClose, onCreated }) {
               p_total_items:draft.totalItems,p_estimated_total:draft.estimatedTotal,
               p_promo:null,p_payment_method:draft.paymentMethod,
             });
+            if(!response.error && response.data?.[0]?.id && sourceOrder?.id){
+              try{
+                const linked=await supabase.from("orders").update({reorder_of_order_id:sourceOrder.id}).eq("id",response.data[0].id).select("id,reorder_of_order_id").maybeSingle();
+                if(linked.error||linked.data?.reorder_of_order_id!==sourceOrder.id)reorderLinkFailedRef.current=true;
+              }catch{reorderLinkFailedRef.current=true}
+            }
             return {id:response.data?.[0]?.id,error:response.error,status:response.status};
           }
           const response=await supabase.from("orders").insert(toOrderRow(draft));
@@ -224,7 +243,7 @@ export default function NewOrderPanel({ supabase, onClose, onCreated }) {
       });
       if(result.state==="busy"||result.state==="complete")return;
       setSubmissionState(result.state);
-      if(result.state==="created"){onCreated(fromOrderRow(result.data));return}
+      if(result.state==="created"){onCreated(fromOrderRow(result.data),{reorderLinkFailed:reorderLinkFailedRef.current});return}
       if(result.state==="read_failed")setError(`Đơn ${result.id} đã được tạo. Chưa tải lại được; bấm “Tải đơn vừa tạo” để thử lại, không tạo đơn mới.`);
       else if(result.state==="uncertain")setError("Chưa xác nhận được kết quả tạo đơn. Đóng phiếu và tải lại Order Book để kiểm tra trước khi tạo tiếp.");
       else setError(result.error?.message?.includes("out_of_stock")
@@ -248,14 +267,15 @@ export default function NewOrderPanel({ supabase, onClose, onCreated }) {
   return <div className={styles.backdrop} onMouseDown={(event) => {
     if (event.target === event.currentTarget && !saving) onClose();
   }}>
-    <aside ref={dialogRef} tabIndex={-1} className={styles.panel} aria-label="Tạo đơn hàng mới" aria-modal="true" role="dialog">
+    <aside ref={dialogRef} tabIndex={-1} className={styles.panel} aria-label={sourceOrder ? "Đặt lại đơn hàng" : "Tạo đơn hàng mới"} aria-modal="true" role="dialog">
       <header className={styles.header}>
-        <div><p>{step === "edit" ? "Order intake" : "Final check"}</p><h2>{step === "edit" ? "Tạo đơn mới" : "Kiểm tra trước khi tạo"}</h2></div>
+        <div><p>{step === "edit" ? sourceOrder ? `Đặt lại từ ${sourceOrder.id}` : "Order intake" : "Final check"}</p><h2>{step === "edit" ? sourceOrder ? "Đặt lại đơn" : "Tạo đơn mới" : "Kiểm tra trước khi tạo"}</h2></div>
         <button type="button" onClick={onClose} disabled={saving} aria-label="Đóng"><X /></button>
       </header>
       {catalogFailed&&<p role="alert" className={styles.error}>Chưa tải được danh mục sản phẩm. <button type="button" onClick={()=>setCatalogAttempt(value=>value+1)}>Thử tải danh mục lại</button></p>}
       <form onSubmit={submit}>
         {step === "edit" ? <>
+          {sourceOrder && <p className={styles.reorderHint}>Đã lấy thông tin từ đơn {sourceOrder.id}. Kiểm tra lại địa chỉ, sản phẩm, số lượng và giá trước khi tạo đơn mới. Đơn cũ vẫn giữ nguyên.</p>}
           <section className={styles.typeSwitch} aria-label="Loại đơn hàng">
             <button type="button" data-active={type === "retail"} onClick={() => changeType("retail")}>
               <ShoppingBag /><span><b>Đơn lẻ</b><small>Trừ tồn kho khi xác nhận tạo</small></span>{type === "retail" && <Check />}
@@ -276,14 +296,17 @@ export default function NewOrderPanel({ supabase, onClose, onCreated }) {
           </section>
           <section className={styles.section}>
             <div className={styles.sectionTitle}><span>02</span><h3>Sản phẩm</h3></div>
+            {type === "retail" && sourceOrder && <p className={styles.catalogHint}>Đơn lẻ dùng giá danh mục hiện tại và trừ tồn kho khi tạo. Chọn Đơn sỉ nếu cần nhập giá riêng.</p>}
+            {unavailableLines.length > 0 && <p className={styles.error} role="alert">{unavailableLines.length} sản phẩm từ đơn cũ không còn trong danh mục đang bán. Chọn sản phẩm thay thế hoặc xóa dòng trước khi tiếp tục.</p>}
             <div className={styles.lineList}>
               {lines.map((line, index) => <div className={styles.line} data-wholesale={type === "wholesale"} key={line.id}>
                 <span>{String(index + 1).padStart(2, "0")}</span>
                 <label>Sản phẩm<select required disabled={loadingProducts} value={line.productKey} onChange={(event) => selectProduct(line.id, event.target.value)}>
-                  <option value="">{loadingProducts ? "Đang tải danh mục…" : "Chọn trà / quy cách"}</option>
+                  <option value="">{loadingProducts ? "Đang tải danh mục…" : line.sourceName ? `Chọn lại: ${line.sourceName}` : "Chọn trà / quy cách"}</option>
+                  {line.productKey && !orderableProducts.some((product) => product.key === line.productKey) && <option value={line.productKey} disabled>Không còn bán: {line.sourceName}</option>}
                   {orderableProducts.map((product) => <option key={product.key} value={product.key}>{product.name.vi || product.name.en}{product.weight ? ` · ${product.weight}` : ""}{product.price !== null ? ` · ${formatMoney(product.price)}` : " · chưa có giá"}</option>)}
                 </select></label>
-                <label>Số lượng<FormattedNumberInput required min="1" step="1" value={line.qty} onChange={(event) => setLine(line.id, { qty: event.target.value })} /></label>
+                <label>Số lượng<FormattedNumberInput required min={type === "wholesale" ? "0.001" : "1"} step={type === "wholesale" ? "0.001" : "1"} value={line.qty} onChange={(event) => setLine(line.id, { qty: event.target.value })} /></label>
                 {type === "wholesale" && <label>Giá bán / kg<FormattedNumberInput min="0" step="1000" value={line.unitPrice} onChange={(event) => setLine(line.id, { unitPrice: event.target.value })} placeholder="Chưa báo giá" /></label>}
                 <button type="button" onClick={() => removeLine(line.id)} disabled={lines.length === 1} aria-label="Xóa sản phẩm"><Minus /></button>
               </div>)}
@@ -295,7 +318,7 @@ export default function NewOrderPanel({ supabase, onClose, onCreated }) {
             <label className={styles.note}>Thông tin cần nhớ<textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Yêu cầu giao hàng, đóng gói, xuất hóa đơn…" /></label>
           </section>
         </> : <section className={styles.review}>
-          <p className={styles.reviewIntro}>Sau khi xác nhận, đơn sẽ vào bước <b>Đơn mới</b>{type === "retail" ? " và tồn kho sẽ được trừ ngay" : ""}.</p>
+          <p className={styles.reviewIntro}>{sourceOrder ? `Đơn đặt lại từ ${sourceOrder.id} sẽ` : "Sau khi xác nhận, đơn sẽ"} vào bước <b>Đơn mới</b>{type === "retail" ? " và tồn kho sẽ được trừ ngay" : ""}.</p>
           <dl>
             <div><dt>Loại đơn</dt><dd>{type === "retail" ? "Đơn lẻ" : "Đơn sỉ"}</dd></div>
             <div><dt>Khách hàng</dt><dd>{customerName.trim()}</dd></div>
