@@ -117,7 +117,7 @@ export default function NewOrderPanel({ supabase, onClose, onCreated, sourceOrde
       product,
       qty: Number(line.qty),
       price: Number.isFinite(price) && price >= 0 ? price : null,
-      unit: type === "wholesale" || product.line === "everyday" ? "kg" : "pcs",
+      unit: type === "wholesale" ? line.sourceUnit || "kg" : product.line === "everyday" ? "kg" : "pcs",
     };
   }).filter(Boolean), [lines, orderableProducts, type]);
 
@@ -156,6 +156,7 @@ export default function NewOrderPanel({ supabase, onClose, onCreated, sourceOrde
     const product = orderableProducts.find((item) => item.key === productKey);
     setLine(lineId, {
       productKey,
+      sourceUnit: "",
       unitPrice: type === "wholesale" && product?.price !== null ? product.price : "",
     });
   };
@@ -307,7 +308,7 @@ export default function NewOrderPanel({ supabase, onClose, onCreated, sourceOrde
                   {orderableProducts.map((product) => <option key={product.key} value={product.key}>{product.name.vi || product.name.en}{product.weight ? ` · ${product.weight}` : ""}{product.price !== null ? ` · ${formatMoney(product.price)}` : " · chưa có giá"}</option>)}
                 </select></label>
                 <label>Số lượng<FormattedNumberInput required min={type === "wholesale" ? "0.001" : "1"} step={type === "wholesale" ? "0.001" : "1"} value={line.qty} onChange={(event) => setLine(line.id, { qty: event.target.value })} /></label>
-                {type === "wholesale" && <label>Giá bán / kg<FormattedNumberInput min="0" step="1000" value={line.unitPrice} onChange={(event) => setLine(line.id, { unitPrice: event.target.value })} placeholder="Chưa báo giá" /></label>}
+                {type === "wholesale" && <label>Giá bán / {line.sourceUnit || "kg"}<FormattedNumberInput min="0" step="1000" value={line.unitPrice} onChange={(event) => setLine(line.id, { unitPrice: event.target.value })} placeholder="Chưa báo giá" /></label>}
                 <button type="button" onClick={() => removeLine(line.id)} disabled={lines.length === 1} aria-label="Xóa sản phẩm"><Minus /></button>
               </div>)}
             </div>
