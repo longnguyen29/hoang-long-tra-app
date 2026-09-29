@@ -14,6 +14,7 @@ import ProcedureOrderLink from "./ProcedureOrderLink";
 import NewOrderPanel from "./NewOrderPanel";
 import LoadFailure from "./LoadFailure";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
+import { notifyHouse } from "@/lib/notify";
 import { STAFF_APPS, STAFF_APP_GROUPS } from "./staff-navigation";
 import styles from "./StaffWorkbench.module.css";
 
@@ -91,7 +92,7 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
   }catch{return {error:"Chưa xác nhận được kết quả xoá. Hãy tải lại danh sách trước khi thử lại."}}
   finally{setFlowSaving(false)}
  };
- const orderCreated=async(order,{reorderLinkFailed=false}={})=>{setOrders(current=>[order,...current.filter(item=>item.id!==order.id)]);setCreatingOrder(false);setReorderSource(null);try{await staffRequest(order.id,{method:"POST"})}catch{}await selectOrder(order);const refreshed=await supabase.rpc("customer_profiles_summary");if(!refreshed.error&&Array.isArray(refreshed.data))setCustomers(refreshed.data);if(reorderLinkFailed)setError("Đơn đã được tạo, nhưng chưa lưu được liên kết với đơn cũ. Kiểm tra lại hồ sơ khách hàng.");requestAnimationFrame(()=>document.querySelector("#orders")?.scrollIntoView({behavior:"smooth",block:"start"}))};
+ const orderCreated=async(order,{reorderLinkFailed=false}={})=>{setOrders(current=>[order,...current.filter(item=>item.id!==order.id)]);setCreatingOrder(false);setReorderSource(null);notifyHouse("orders",order.id);try{await staffRequest(order.id,{method:"POST"})}catch{}await selectOrder(order);const refreshed=await supabase.rpc("customer_profiles_summary");if(!refreshed.error&&Array.isArray(refreshed.data))setCustomers(refreshed.data);if(reorderLinkFailed)setError("Đơn đã được tạo, nhưng chưa lưu được liên kết với đơn cũ. Kiểm tra lại hồ sơ khách hàng.");requestAnimationFrame(()=>document.querySelector("#orders")?.scrollIntoView({behavior:"smooth",block:"start"}))};
  const cards=[{label:"Cần xử lý",value:queue.length,icon:ClipboardList},{label:"Đơn đang mở",value:openOrders.length,icon:PackageCheck},{label:"Tin chưa đọc",value:unreadThreads.length,icon:MessageSquare},{label:"Lịch trà chờ",value:pendingSessions.length,icon:Calendar}];
  if(dataFailure)return <LoadFailure onRetry={load} loading={loading} title="Chưa tải được bàn đơn hàng"/>;
  return <main className={styles.shell}>

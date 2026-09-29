@@ -12,6 +12,7 @@ import LoadFailure from "./LoadFailure";
 import styles from "./TradePipeline.module.css";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
 import CustomerJourneyPanel from "./CustomerJourneyPanel";
+import { notifyHouse } from "@/lib/notify";
 import PipelineSample from "./PipelineSample";
 
 const newOpportunity = () => ({ business_name: "", contact: "", stage: "lead", owner: "", monthly_potential_kg: "", next_action: "Liên hệ và xác nhận nhu cầu", next_action_at: dateInput(1), notes: "" });
@@ -288,6 +289,7 @@ export default function TradePipeline({ supabase, email }) {
     const { data: orderId, error: convertError } = await supabase.rpc("convert_trade_quote_to_order", { p_quote_id: quote.id, p_actor: email });
     setSaving(false);
     if (convertError) { setError("Chưa chuyển được báo giá thành đơn."); return; }
+    notifyHouse("orders", orderId);
     await load();
     const { data: refreshed } = await supabase.from("trade_opportunities").select("*").eq("id", quote.opportunity_id).maybeSingle();
     if (refreshed) setSelected(refreshed);
