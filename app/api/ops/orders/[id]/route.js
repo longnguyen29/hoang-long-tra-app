@@ -5,6 +5,7 @@ import { OPS_HEALTH_STATES, OPS_WAITING_ON } from "@/lib/ops-health";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logOrderEvent } from "@/lib/ops-events";
 import { statusForOrderStage } from "@/lib/order-flow";
+import { maybeSendShippingSms } from "@/lib/shipping-sms-server";
 
 // Persists the stage-stepper / "Mark complete" actions and the health/waiting-on control in
 // public/ops/index.html's order panel — two independent things an order can carry (stage is
@@ -73,6 +74,14 @@ export async function PATCH(request, { params }) {
     const waitingPart = update.waiting_on ? ` (waiting on ${update.waiting_on})` : "";
     const notePart = update.health_note ? `: ${update.health_note}` : "";
     await logOrderEvent(admin, { orderId: id, kind: "health_change", message: `Health set to ${health}${waitingPart}${notePart}`, actor });
+  }
+
+  if (stage !== undefined) {
+    try {
+      await maybeSendShippingSms(admin, data);
+    } catch (smsError) {
+      console.error('Shipping SMS could not be queued', { orderId: id, error: smsError.message });
+    }
   }
 
   return Response.json({ ok: true, order: data });
