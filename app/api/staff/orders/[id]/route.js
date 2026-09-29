@@ -56,13 +56,15 @@ export async function POST(request, { params }) {
   if (!staff) return Response.json({ ok: false }, { status: 401 });
 
   const { id } = await params;
-  const { data: order } = await staff.admin.from("orders").select("id").eq("id", id).maybeSingle();
+  const { data: order } = await staff.admin.from("orders").select("id,reorder_of_order_id").eq("id", id).maybeSingle();
   if (!order) return Response.json({ ok: false }, { status: 404 });
 
   await logOrderEvent(staff.admin, {
     orderId: id,
     kind: "created",
-    message: "Đơn được tạo và đưa vào bước Đơn mới.",
+    message: order.reorder_of_order_id
+      ? `Đặt lại từ đơn ${order.reorder_of_order_id}; đơn mới vào bước Đơn mới.`
+      : "Đơn được tạo và đưa vào bước Đơn mới.",
     actor: staff.user.email,
   });
   return Response.json({ ok: true });
