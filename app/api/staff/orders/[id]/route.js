@@ -11,6 +11,7 @@ import { SHIPPING_CARRIER_IDS, carrierLabel, normalizeTrackingCode } from "@/lib
 import { logOrderEvent } from "@/lib/ops-events";
 import { authenticateManagerRequest } from "@/lib/staff-api-auth";
 import { maybeSendShippingSms, readShippingSms } from "@/lib/shipping-sms-server";
+import { readOrderSmsHistory } from "@/lib/order-sms-history-server";
 
 async function readEvents(admin, orderId) {
   return admin
@@ -43,14 +44,15 @@ export async function GET(request, { params }) {
   if (!staff) return Response.json({ ok: false }, { status: 401 });
 
   const { id } = await params;
-  const [eventResult, costResult, receivableResult, trackingSms] = await Promise.all([
+  const [eventResult, costResult, receivableResult, trackingSms, smsHistory] = await Promise.all([
     readEvents(staff.admin, id),
     readCosts(staff.admin, id),
     readReceivable(staff.admin, id),
     readShippingSms(staff.admin, id),
+    readOrderSmsHistory(staff.admin, id),
   ]);
   if (eventResult.error || costResult.error || receivableResult.error) return Response.json({ ok: false }, { status: 500 });
-  return Response.json({ ok: true, events: eventResult.data || [], costs: costResult.data || [], receivable: receivableResult.data || null, trackingSms });
+  return Response.json({ ok: true, events: eventResult.data || [], costs: costResult.data || [], receivable: receivableResult.data || null, trackingSms, smsHistory });
 }
 
 export async function POST(request, { params }) {
@@ -221,8 +223,10 @@ export async function PATCH(request, { params }) {
     }
   }
 
-  const [eventResult, trackingSms] = await Promise.all([readEvents(staff.admin, id), readShippingSms(staff.admin, id)]);
-  return Response.json({ ok: true, order: data, events: eventResult.data || [], trackingSms });
+  const [eventResult, trackingSms, smsHistory] = await Promise.all([
+    readEvents(staff.admin, id), readShippingSms(staff.admin, id), readOrderSmsHistory(staff.admin, id),
+  ]);
+  return Response.json({ ok: true, order: data, events: eventResult.data || [], trackingSms, smsHistory });
 }
 
 

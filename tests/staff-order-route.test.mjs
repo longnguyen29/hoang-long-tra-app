@@ -16,7 +16,7 @@ const {PATCH}=await import('../app/api/staff/orders/[id]/route.js');
 function fixture({invoice=null,invoiceError=null,updateError=null}={}){
  const original={id:'TEST-1',type:'retail',customer_name:'Test café',contact:'test@example.test',address:'Test address',stage:'new_order',status:'pending',lines:[{productId:'tea',qty:2,unit:'pcs',price:100000},{productId:'tea-2',qty:3,unit:'kg',price:200000}],estimated_total:800000};
  const writes=[],events=[];
- const admin={from(table){let patch;const chain={select(){return chain},eq(){return chain},neq(){return chain},order(){return chain},update(value){patch=value;writes.push(value);return chain},insert(value){events.push(value);return Promise.resolve({error:null})},maybeSingle:async()=>table==='receivables'?{data:invoice,error:invoiceError}:{data:patch?{...original,...patch}:original,error:patch?updateError:null},then(resolve){return Promise.resolve({data:events,error:null}).then(resolve)}};return chain}};
+ const admin={from(table){let patch;const chain={select(){return chain},eq(){return chain},neq(){return chain},order(){return chain},limit(){return chain},update(value){patch=value;writes.push(value);return chain},insert(value){events.push(value);return Promise.resolve({error:null})},maybeSingle:async()=>table==='receivables'?{data:invoice,error:invoiceError}:{data:patch?{...original,...patch}:original,error:patch?updateError:null},then(resolve){return Promise.resolve({data:events,error:null}).then(resolve)}};return chain}};
  setStaff({admin,user:{email:'manager@example.test'},role:'manager'});
  return {original,writes,events};
 }
