@@ -204,7 +204,13 @@ export async function PATCH(request, { params }) {
     .eq("id", id)
     .select()
     .maybeSingle();
-  if (error) return Response.json({ ok: false }, { status: 500 });
+  if (error) {
+    if (`${error.message || ''} ${error.details || ''}`.includes('procedure_stop_or_preflight_incomplete')) {
+      const { data: run } = await staff.admin.from('procedure_runs').select('id').eq('order_id', id).maybeSingle();
+      return Response.json({ ok: false, error: 'procedure_preflight_incomplete', procedureRunId: run?.id || null }, { status: 409 });
+    }
+    return Response.json({ ok: false }, { status: 500 });
+  }
   if (!data) return Response.json({ ok: false }, { status: 404 });
 
   for (const event of events) {
