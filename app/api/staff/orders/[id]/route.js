@@ -86,6 +86,26 @@ export async function PATCH(request, { params }) {
     return Response.json({ ok: false, error: "invalid_body" }, { status: 400 });
   }
 
+  if (body && Object.hasOwn(body, 'forceOffReason')) {
+    if (Object.keys(body).length !== 1 || typeof body.forceOffReason !== 'string' || body.forceOffReason.trim().length < 10 || body.forceOffReason.trim().length > 1000) {
+      return Response.json({ ok: false, error: 'force_reason_required' }, { status: 400 });
+    }
+    const { error: forceError } = await staff.admin.rpc('force_off_procedure_order', {
+      p_order_id: id, p_reason: body.forceOffReason.trim(), p_actor: staff.user.id,
+    });
+    if (forceError) {
+      const known = ['manager_required', 'force_reason_required', 'order_not_found', 'order_not_ready_for_force_off', 'procedure_run_not_active'];
+      const code = known.find(value => forceError.message?.includes(value));
+      return Response.json({ ok: false, error: code || 'force_off_failed' }, { status: code === 'manager_required' ? 403 : code === 'force_reason_required' ? 400 : code === 'order_not_found' ? 404 : code ? 409 : 500 });
+    }
+    const [{ data: order, error: orderError }, eventResult, trackingSms, smsHistory] = await Promise.all([
+      staff.admin.from('orders').select('*').eq('id', id).maybeSingle(), readEvents(staff.admin, id),
+      readShippingSms(staff.admin, id), readOrderSmsHistory(staff.admin, id),
+    ]);
+    if (orderError || !order) return Response.json({ ok: false, error: 'force_off_reload_failed' }, { status: 500 });
+    return Response.json({ ok: true, order, events: eventResult.data || [], trackingSms, smsHistory });
+  }
+
   if (body && Object.hasOwn(body, 'forceShipReason')) {
     if (Object.keys(body).length !== 1 || typeof body.forceShipReason !== 'string' || body.forceShipReason.trim().length < 10 || body.forceShipReason.trim().length > 1000) {
       return Response.json({ ok: false, error: 'force_reason_required' }, { status: 400 });
