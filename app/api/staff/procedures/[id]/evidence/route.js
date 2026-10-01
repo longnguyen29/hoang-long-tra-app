@@ -9,7 +9,7 @@ export async function POST(request,{params}) {
   if (!staff) return fail('not_authorised',401);
   const {id}=await params;
   const data=await readProcedure(staff.admin,id);
-  if (!data || !mayRead(staff,data) || data.run.status==='completed') return fail('not_found',404);
+  if (!data || !mayRead(staff,data) || data.run.status!=='active') return fail('not_found',404);
   const body=await request.json().catch(()=>null);
   const item=data.items.find(row=>row.id===body?.itemId);
   if (!item) return fail('item_not_found',404);

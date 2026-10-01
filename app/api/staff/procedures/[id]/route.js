@@ -34,8 +34,24 @@ export async function PATCH(request,{params}) {
   const {admin,user}=staff;
   const now=new Date().toISOString();
   if (data.run.status==='completed' && !(body.action==='blocker' && body.operation==='spend' && manager(staff))) return fail('run_closed',409);
+  if (data.run.status==='waived' && body.action!=='resume') return fail('run_waived',409);
 
-  if (body.action==='run') {
+  if (body.action==='waive') {
+    if (!manager(staff)) return fail('manager_required',403);
+    const reason=short(body.reason,1000);
+    if (reason.length<10) return fail('waiver_reason_required');
+    if (data.blockers.some(blocker=>blocker.stop_work&&['open','resolved'].includes(blocker.status))) return fail('stop_blocker_open',409);
+    const {data:updated,error}=await admin.from('procedure_runs').update({status:'waived',waiver_reason:reason,waived_by:user.id,waived_at:now,updated_at:now}).eq('id',id).eq('status','active').select('id').maybeSingle();
+    if (error) return fail(error.message?.includes('procedure_stop_blocker_open')?'stop_blocker_open':'update_failed',error.message?.includes('procedure_stop_blocker_open')?409:500);
+    if (!updated) return fail('run_changed',409);
+    await recordEvent(admin,id,user.id,'waived',`Bỏ qua quy trình cho đơn ${data.run.order_id}: ${reason}`);
+  } else if (body.action==='resume') {
+    if (!manager(staff)) return fail('manager_required',403);
+    const {data:updated,error}=await admin.from('procedure_runs').update({status:'active',updated_at:now}).eq('id',id).eq('status','waived').select('id').maybeSingle();
+    if (error) return fail('update_failed',500);
+    if (!updated) return fail('run_changed',409);
+    await recordEvent(admin,id,user.id,'resumed',`Bật lại quy trình cho đơn ${data.run.order_id}.`);
+  } else if (body.action==='run') {
     if (!manager(staff)) return fail('manager_required',403);
     const update={updated_at:now};
     if ('assignedTo' in body) update.assigned_to=staffId(data,body.assignedTo);
