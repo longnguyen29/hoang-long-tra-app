@@ -1,50 +1,39 @@
-# Pending deployment — 2026-10-01
+# Production deployment — 2026-10-01
 
-Branch: `codex/sms-three-hour-retry`. The user approved publishing the SMS retry
-and all five public tracking improvements. Neither has been published yet.
-Publishing access was repaired on 2026-10-01: approved network access, Git
-Credential Manager login in macOS Keychain and repository-local helper setup.
-Commit `3aadb19` is now pushed. A fresh `git push` also succeeded. See
-`github-publishing.md`. Production deployment and scheduler activation are
-still pending; do not report a successful push as a live deployment.
+PR #23 was merged into main as `e7a74c0`. Vercel production deployment
+`4bfZYDpWUQaHmWJssgyaN3mAPfJC` is Ready and serves www.hoanglongtra.com.
 
-Implemented:
-- Shipping-only retries after three hours, no three-attempt cap, same provider ID
-  and atomic claims; gateway-accepted messages are not resent.
-- Compact public header, carrier/code/copy/official tracking link near the top,
-  prominent Zalo support, latest real order-event timestamp, neutral status until
-  carrier evidence exists, tea/quantity summary, collapsed prior stages and the
-  existing shorter retail flow.
-- After completion, a reorder request includes the old tea list and quantities;
-  customer copies it and sends via Zalo. This does not create or charge a new
-  order automatically. Staff can use the existing customer reorder flow to
-  confirm prices, quantities and delivery.
-- Public response still excludes customer phone, address and internal notes.
+GitHub publishing was repaired with approved network access, Git Credential
+Manager login stored in macOS Keychain, and repository-local credential helper
+configuration. A real push and a separate ordinary `git push` both succeeded.
+See `github-publishing.md`; no credentials are committed.
 
-Validation: 15 relevant tests pass; production build passes. Browser verification
-of the new page remains pending because local sockets were denied. No real order
-or customer SMS was changed by validation.
+Live changes:
+- Failed shipping SMS retries after three hours with stable provider IDs and
+  atomic claims. Gateway-accepted messages are never resubmitted.
+- Compact public tracking header, carrier/code/copy/official tracking link near
+  the top, Zalo support, latest real order-event timestamp, neutral status until
+  carrier evidence exists, tea/quantity summary and collapsed prior stages.
+- Completed orders can prepare a repeat-order request with their tea list and
+  quantities for Zalo. This does not create or charge a new order; staff confirm
+  price, quantity and delivery using the existing reorder workflow.
+- Customer phone, address and internal notes remain absent from the public page.
 
-Database migration 0072 was applied to production earlier, then the job was
-paused via `cron.alter_job`. Verified row:
-`hoang-long-shipping-sms-retry | */10 * * * * | active=false`.
-Do not reapply the old active version of the migration. The final checked-in
-migration safely creates the job paused, using the pg_cron API.
+Scheduler:
+- Migration 0072 was already applied. Do not reapply old migrations.
+- Matching random secret provisioned in Vercel production and Supabase Vault.
+  Values are not stored in Git, chat text or SQL queries.
+- Job `hoang-long-shipping-sms-retry` is active, schedule `*/10 * * * *`.
+- Unauthenticated production request returned HTTP 401.
+- Authenticated pg_net connection returned HTTP 200, no timeout or HTTP error.
+- Cron checks every ten minutes and invokes HTTP only when something has waited
+  three hours. Retry delay is roughly three hours plus up to ten minutes, or
+  longer if eligible records exceed the four-message batch.
 
-Next:
-1. Branch pushed. Inspect it against current main, create/attach a PR, check its
-   deployment, then merge (already authorized).
-2. Generate one random secret and provision it through the Vercel production
-   environment UI (`SMS_RETRY_CRON_SECRET`) and Supabase Vault UI
-   (`hoang_long_sms_retry_cron`). Never put the value into Git, chat or SQL history.
-3. Verify production endpoint is deployed and unauthenticated calls are rejected.
-4. Enable the job with `select cron.alter_job(jobid, active := true) from cron.job
-   where jobname = 'hoang-long-shipping-sms-retry';`.
-5. Check cron and HTTP status. Do not resend the currently queued customer SMS.
-6. Verify the live customer page at desktop and 390px: copy code, carrier link,
-   no premature delivery claims, correct timestamp, collapsible journey and
-   reorder request for a completed order. Do not alter real orders just to test.
-
-The cron ticks every ten minutes but only calls the website if a retry has waited
-three hours; practical retry delay is about three hours plus up to ten minutes,
-or longer if a queue exceeds the endpoint's four-message batch.
+Validation: 15 relevant tests and production build passed before deployment.
+Live desktop 1280px and mobile 390px inspected with no horizontal overflow;
+copy-code confirmation and expandable journey verified. Shipping order shows
+its two tea types, 5 kg total and actual latest event timestamp; it does not
+prematurely claim carrier receipt or delivery. Existing queued customer SMS was
+not manually resubmitted. Completed-order reorder UI was not exercised against
+real data because the inspected order is still shipping.
