@@ -29,7 +29,7 @@ export default function ProcedureOrderLink({order,role}) {
   return <section className={styles.orderCard} aria-label="Tiến độ vận hành">
     <div><small>OPERATIONAL PROGRESS</small><h3>Quy trình giao đơn</h3></div>
     {loading?<p>Đang kiểm tra…</p>:run?<>
-      {run.status==='waived'?<p><b>Đã bỏ qua cho đơn này.</b> {run.waiver_reason} · Các bước cũ và lịch sử vẫn được giữ. {run.stop&&<strong className={styles.stop}>STOP — vẫn phải xử lý trước khi xuất hàng</strong>}</p>:<>
+      {run.status==='waived'?<p><b>Đã tắt quy trình cho đơn này.</b> {run.waiver_reason} · Các bước cũ và lịch sử vẫn được giữ. {run.stop&&<strong className={styles.stop}>Có STOP chưa khép; quản lý đã cho phép ngoại lệ. Theo dõi xử lý trong hồ sơ.</strong>}</p>:<>
         <p><b>{run.progress.percent}%</b> hoàn tất · {run.next_action||'Kiểm tra việc kế tiếp'}{run.stop&&<strong className={styles.stop}>STOP — KHÔNG XẾP / XUẤT HÀNG</strong>}</p>
         <div className={styles.miniStages}>{run.stages?.map(stage=><span key={stage.key} data-done={stage.done===stage.total}>{stage.label} {stage.done===stage.total?'✓':`${stage.done}/${stage.total}`}</span>)}</div>
       </>}

@@ -13,12 +13,12 @@ registerHooks({resolve(specifier,context,next){
 }});
 const {setStaff}=await import(authUrl);
 const {PATCH}=await import('../app/api/staff/orders/[id]/route.js');
-function fixture({invoice=null,invoiceError=null,updateError=null}={}){
+function fixture({invoice=null,invoiceError=null,updateError=null,rpcError=null}={}){
  const original={id:'TEST-1',type:'retail',customer_name:'Test café',contact:'test@example.test',address:'Test address',stage:'new_order',status:'pending',lines:[{productId:'tea',qty:2,unit:'pcs',price:100000},{productId:'tea-2',qty:3,unit:'kg',price:200000}],estimated_total:800000};
- const writes=[],events=[];
- const admin={from(table){let patch;const chain={select(){return chain},eq(){return chain},neq(){return chain},order(){return chain},limit(){return chain},update(value){patch=value;writes.push(value);return chain},insert(value){events.push(value);return Promise.resolve({error:null})},maybeSingle:async()=>table==='receivables'?{data:invoice,error:invoiceError}:{data:patch?{...original,...patch}:original,error:patch?updateError:null},then(resolve){return Promise.resolve({data:events,error:null}).then(resolve)}};return chain}};
- setStaff({admin,user:{email:'manager@example.test'},role:'manager'});
- return {original,writes,events};
+ const writes=[],events=[],rpcCalls=[];
+ const admin={rpc:async(name,args)=>{rpcCalls.push({name,args});return {error:rpcError}},from(table){let patch;const chain={select(){return chain},eq(){return chain},neq(){return chain},order(){return chain},limit(){return chain},update(value){patch=value;writes.push(value);return chain},insert(value){events.push(value);return Promise.resolve({error:null})},maybeSingle:async()=>table==='receivables'?{data:invoice,error:invoiceError}:{data:patch?{...original,...patch}:rpcCalls.length&&!rpcError&&table==='orders'?{...original,type:'wholesale',stage:'shipping',status:'shipped'}:original,error:patch?updateError:null},then(resolve){return Promise.resolve({data:events,error:null}).then(resolve)}};return chain}};
+ setStaff({admin,user:{id:'STAFF-1',email:'manager@example.test'},role:'manager'});
+ return {original,writes,events,rpcCalls};
 }
 const send=body=>PATCH(new Request('http://localhost/api/staff/orders/TEST-1',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),{params:Promise.resolve({id:'TEST-1'})});
 test('unauthorized request cannot update order',async()=>{setStaff(null);assert.equal((await send({type:'wholesale'})).status,401)});
@@ -31,3 +31,6 @@ test('existing receivable blocks price edit and combined type update',async()=>{
 test('failed invoice read fails closed',async()=>{const f=fixture({invoiceError:{message:'offline'}});assert.equal((await send({linePrices:[]})).status,500);assert.equal(f.writes.length,0)});
 test('failed update does not produce a success event',async()=>{const f=fixture({updateError:{message:'offline'}});assert.equal((await send({type:'wholesale'})).status,500);assert.equal(f.events.length,0)});
 test('procedure preflight rejection explains the block and links its run',async()=>{const f=fixture({updateError:{message:'procedure_stop_or_preflight_incomplete'}});const response=await send({stage:'shipping'});assert.equal(response.status,409);assert.deepEqual(await response.json(),{ok:false,error:'procedure_preflight_incomplete',procedureRunId:'TEST-1'});assert.equal(f.events.length,0)});
+test('force shipping requires a reason and cannot mix other order edits',async()=>{const f=fixture();assert.equal((await send({forceShipReason:'too short'})).status,400);assert.equal((await send({forceShipReason:'Verified exception',stage:'completed'})).status,400);assert.equal(f.rpcCalls.length,0)});
+test('force shipping delegates atomic waiver and order transition to manager-only RPC',async()=>{const f=fixture();const response=await send({forceShipReason:'  Manager checked handover  '});assert.equal(response.status,200);assert.equal((await response.json()).order.stage,'shipping');assert.deepEqual(f.rpcCalls,[{name:'force_ship_order',args:{p_order_id:'TEST-1',p_reason:'Manager checked handover',p_actor:'STAFF-1'}}]);assert.equal(f.writes.length,0)});
+test('force shipping surfaces a database refusal without order edits',async()=>{const f=fixture({rpcError:{message:'order_not_ready_for_force_shipping'}});const response=await send({forceShipReason:'Manager checked handover'});assert.equal(response.status,409);assert.equal((await response.json()).error,'order_not_ready_for_force_shipping');assert.equal(f.writes.length,0)});
