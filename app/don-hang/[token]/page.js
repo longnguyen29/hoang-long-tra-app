@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Clock3, Info, MessageCircle, PackageCheck, RefreshCw, ScanLine, Truck, WalletCards } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock3, Info, MessageCircle, PackageCheck, RefreshCw, ExternalLink, ScanLine, Truck, WalletCards } from "lucide-react";
 import { carrierLabel } from "@/lib/carrier-tracking";
-import { ORDER_STAGES, orderStageIndex, reconcileOrderStage } from "@/lib/order-flow";
+import { ORDER_STAGES, orderStageIndex, reconcileOrderStage, orderStagesForType } from "@/lib/order-flow";
 import { withPaymentBankOverride } from "@/lib/payment-settings";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { publicDeliveryState, latestOrderUpdate, publicOrderLines, orderQuantitySummary, carrierTrackingUrl } from "@/lib/public-order-journey";
+import { CopyTrackingCode, ReorderRequest } from "./JourneyActions";
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
@@ -61,7 +63,7 @@ async function readOrder(token) {
   const admin = createAdminClient();
   const { data: order, error } = await admin
     .from("orders")
-    .select("id,ts,status,stage,tracking_code,shipping_carrier,carrier_status_code,carrier_status_name,carrier_status_at,delivered_at,payment_method,estimated_total")
+    .select("id,ts,type,lines,status,stage,tracking_code,shipping_carrier,carrier_status_code,carrier_status_name,carrier_status_at,delivered_at,payment_method,estimated_total")
     .eq("public_tracking_token", token)
     .maybeSingle();
   if (error) {
@@ -69,13 +71,15 @@ async function readOrder(token) {
     return null;
   }
   if (!order) return null;
-  const [{ data: receivable }, { data: payment }] = await Promise.all([
+  const [{ data: receivable }, { data: lastEvent }, { data: payment }] = await Promise.all([
     admin.from("receivables").select("invoice_number,issued_at,due_at,total,paid,status,payment_terms").eq("order_id", order.id).neq("status", "void").maybeSingle(),
+    admin.from("order_events").select("created_at").eq("order_id", order.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     admin.from("settings_payment").select("bin,bank_short_name,account_number,account_name").eq("id", 1).maybeSingle(),
   ]);
   return {
     order,
     receivable,
+    lastEventAt: lastEvent?.created_at,
     payment: withPaymentBankOverride(payment || { bank_short_name: "", account_number: "", account_name: "" }),
   };
 }
@@ -84,12 +88,19 @@ export default async function PublicOrderJourneyPage({ params }) {
   const { token } = await params;
   const result = await readOrder(token);
   if (!result) notFound();
-  const { order, receivable, payment } = result;
+  const { order, receivable, payment, lastEventAt } = result;
 
   const stage = reconcileOrderStage(order.stage, order.status);
   const currentIndex = orderStageIndex(stage);
-  const [headline, summary] = STATUS_COPY[stage] || STATUS_COPY.new_order;
-  const lastUpdated = order.carrier_status_at || order.delivered_at || order.ts;
+  const delivery = publicDeliveryState(order, stage);
+  const [headline, summary] = delivery ? [delivery.headline, delivery.summary] : STATUS_COPY[stage] || STATUS_COPY.new_order;
+  const lastUpdated = latestOrderUpdate(order, lastEventAt);
+  const lines = publicOrderLines(order.lines);
+  const quantities = orderQuantitySummary(lines);
+  const stages = orderStagesForType(order.type, stage);
+  const pastStages = stages.filter(item => orderStageIndex(item.id) < currentIndex);
+  const nextStages = stages.filter(item => orderStageIndex(item.id) >= currentIndex);
+  const trackingUrl = carrierTrackingUrl(order.shipping_carrier);
   const paymentTotal = Math.max(0, Number(receivable?.total || 0));
   const recordedPaid = Math.min(paymentTotal, Math.max(0, Number(receivable?.paid || 0)));
   const remaining = Math.max(0, paymentTotal - recordedPaid);
@@ -111,33 +122,64 @@ export default async function PublicOrderJourneyPage({ params }) {
           <p className={styles.eyebrow}><span>Hành trình đơn</span> {order.id}</p>
           <h1>{headline}</h1>
           <p className={styles.summary}>{summary}</p>
-          <div className={styles.updated}><Clock3 aria-hidden="true"/><span>Cập nhật</span> {dateTime(lastUpdated)}</div>
+          <div className={styles.updated}><Clock3 aria-hidden="true"/><span>Cập nhật đơn</span> {dateTime(lastUpdated)}</div>
         </div>
         <div className={styles.stageMark} data-complete={stage === "completed"}>
           {stage === "completed" ? <PackageCheck aria-hidden="true"/> : <Truck aria-hidden="true"/>}
-          <span><small>Trạng thái hiện tại</small><b>{ORDER_STAGES[currentIndex].label}</b></span>
+          <span><small>Trạng thái hiện tại</small><b>{delivery?.label || ORDER_STAGES[currentIndex].label}</b></span>
+        </div>
+      </section>
+
+      <section className={styles.shippingOverview} aria-label="Thông tin giao hàng">
+        <div className={styles.carrier}>
+          <p className={styles.label}>Vận chuyển</p>
+          {order.shipping_carrier && order.tracking_code ? <>
+            <h2>{carrierLabel(order.shipping_carrier)}</h2>
+            <code>{order.tracking_code}</code>
+            <CopyTrackingCode code={order.tracking_code}/>
+            <p>{order.carrier_status_name || "Chưa có cập nhật từ hãng. Mã vận đơn chưa xác nhận kiện đã được hãng nhận."}</p>
+            {order.carrier_status_at && <small>Cập nhật từ hãng: {dateTime(order.carrier_status_at)}</small>}
+            {trackingUrl && <a className={styles.carrierLink} href={trackingUrl} target="_blank" rel="noreferrer">Tra cứu trên {carrierLabel(order.shipping_carrier)}<ExternalLink aria-hidden="true"/></a>}
+            <small className={styles.trackingHint}>Sao chép mã rồi dán vào trang tra cứu của hãng.</small>
+          </> : <><h2>Chờ mã vận đơn</h2><p>Nhà sẽ cập nhật hãng và mã vận đơn tại đây khi có thông tin.</p></>}
+        </div>
+        <div className={styles.support}>
+          <p className={styles.label}>Nhà luôn sẵn sàng hỗ trợ</p>
+          <h2>Cần hỏi về đơn này?</h2>
+          <p>Gửi mã đơn {order.id} để Nhà kiểm tra nhanh hơn.</p>
+          <div className={styles.actions}>
+            <a href="https://zalo.me/0903333841" target="_blank" rel="noreferrer"><MessageCircle aria-hidden="true"/>Cần hỗ trợ qua Zalo</a>
+            <a href={`/don-hang/${token}`}><RefreshCw aria-hidden="true"/>Tải cập nhật mới</a>
+          </div>
         </div>
       </section>
 
       <section className={styles.body}>
         <div className={styles.journey} aria-label="Các bước của đơn hàng">
-          <header><p>Từ Nhà đến bạn</p><h2>Mẻ trà đang ở đâu</h2></header>
+          <header><p>Từ Nhà đến bạn</p><h2>Tiến độ đơn hàng</h2></header>
+          {pastStages.length > 0 && <details className={styles.pastStages}>
+            <summary>{pastStages.length} bước đã đi qua · xem chi tiết</summary>
+            <ol>{pastStages.map(item => <li key={item.id} data-state="done"><span className={styles.node}>✓</span><div><b>{item.label}</b><small>Đã đi qua</small></div></li>)}</ol>
+          </details>}
           <ol>
-            {ORDER_STAGES.map((item, index) => {
-              const state = index < currentIndex ? "done" : index === currentIndex ? "current" : "next";
-              return (
-                <li key={item.id} data-state={state} aria-current={state === "current" ? "step" : undefined}>
-                  <span className={styles.node}>{state === "done" ? "✓" : item.number}</span>
-                  <div><b>{item.label}</b><small>{state === "done" ? "Đã hoàn thành" : state === "current" ? "Đang thực hiện" : "Bước tiếp theo"}</small></div>
-                </li>
-              );
+            {nextStages.map(item => {
+              const state = item.id === stage ? "current" : "next";
+              return <li key={item.id} data-state={state} aria-current={state === "current" ? "step" : undefined}>
+                <span className={styles.node}>{item.number}</span>
+                <div><b>{item.label}</b><small>{state === "current" ? delivery?.label || "Đang thực hiện" : "Bước tiếp theo"}</small></div>
+              </li>;
             })}
           </ol>
+          {(stage === "completed" || order.delivered_at) && lines.length > 0 && <ReorderRequest reference={order.id} lines={lines}/>}
         </div>
 
         <aside className={styles.details}>
           <section>
-            <p className={styles.label}>Đơn hàng</p>
+            <p className={styles.label}>Trà trong đơn</p>
+            {lines.length > 0 && <>
+              <h2>{lines.length} loại trà{quantities ? ` · ${quantities}` : ''}</h2>
+              <ul className={styles.teaList}>{lines.map((line, index) => <li key={index}><b>{line.name}</b><span>{new Intl.NumberFormat('vi-VN').format(line.qty)} {line.unit === 'pcs' ? 'gói' : line.unit}</span></li>)}</ul>
+            </>}
             <dl>
               <div><dt>Mã đơn</dt><dd>{order.id}</dd></div>
               <div><dt>Ngày nhận đơn</dt><dd>{dateTime(order.ts)}</dd></div>
@@ -178,27 +220,7 @@ export default async function PublicOrderJourneyPage({ params }) {
             </> : <div className={styles.paid}><CheckCircle2 aria-hidden="true"/><span><b>Đã thanh toán đủ</b><small>Nhà đã ghi nhận toàn bộ khoản thanh toán của đơn.</small></span></div>}
           </section>}
 
-          {order.shipping_carrier && order.tracking_code ? (
-            <section className={styles.carrier}>
-              <p className={styles.label}>Vận chuyển</p>
-              <h2>{carrierLabel(order.shipping_carrier)}</h2>
-              <code>{order.tracking_code}</code>
-              <p>{order.carrier_status_name || "Đã kết nối · đang chờ trạng thái đầu tiên từ hãng"}</p>
-              {order.carrier_status_at && <small><span>Cập nhật từ hãng</span> {dateTime(order.carrier_status_at)}</small>}
-            </section>
-          ) : (
-            <section className={styles.waiting}>
-              <p className={styles.label}>Vận chuyển</p>
-              <h2>Chưa bàn giao cho hãng</h2>
-              <p>Mã vận đơn sẽ xuất hiện tại đây khi kiện trà rời Nhà.</p>
-            </section>
-          )}
-
-          <div className={styles.actions}>
-            <a href={`/don-hang/${token}`}><RefreshCw aria-hidden="true"/>Cập nhật trạng thái</a>
-            <a href="https://zalo.me/0903333841" target="_blank" rel="noreferrer"><MessageCircle aria-hidden="true"/>Nhắn cho Hoàng Long</a>
-          </div>
-          <p className={styles.privacy}>Link riêng này chỉ hiển thị hành trình giao hàng. Địa chỉ và thông tin liên hệ của bạn không xuất hiện trên trang.</p>
+          <p className={styles.privacy}>Link riêng này hiển thị trà đã đặt, hành trình và thanh toán nếu có. Địa chỉ và thông tin liên hệ của bạn không xuất hiện trên trang.</p>
         </aside>
       </section>
     </main>
