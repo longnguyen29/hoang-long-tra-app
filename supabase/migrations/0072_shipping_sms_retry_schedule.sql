@@ -36,4 +36,6 @@ grant execute on function public.invoke_shipping_sms_retry() to service_role;
 
 select cron.schedule('hoang-long-shipping-sms-retry', '*/10 * * * *',
   'select public.invoke_shipping_sms_retry();');
+-- Enable only after the endpoint is live and both copies of the secret exist.
+update cron.job set active = false where jobname = 'hoang-long-shipping-sms-retry';
 commit;

@@ -13,6 +13,9 @@ Shipping or changes its waybill makes the old retry ineligible.
 Deployment: apply migration 0072 and provision the same random secret as Vercel
 production `SMS_RETRY_CRON_SECRET` and Supabase Vault secret
 `hoang_long_sms_retry_cron`. Do not store its value in files, Git or query history.
+The migration creates a paused job. After the endpoint and secret are deployed,
+enable it with `update cron.job set active = true where jobname =
+'hoang-long-shipping-sms-retry';`.
 Inspect `cron.job_run_details`, `net._http_response` (status only), and the order's
 SMS history to check operation. A cron success means its SQL ran; also check the
 HTTP response. The daily payment-reminder scan remains a fallback for shipping.
