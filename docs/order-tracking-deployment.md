@@ -2,9 +2,11 @@
 
 Branch: `codex/sms-three-hour-retry`. The user approved publishing the SMS retry
 and all five public tracking improvements. Neither has been published yet.
-Browser upload was rejected again after renewed approval; terminal GitHub access
-and local server sockets are also blocked by this session's permission profile.
-Do not treat user approval as a reason to circumvent those tool restrictions.
+Publishing access was repaired on 2026-10-01: approved network access, Git
+Credential Manager login in macOS Keychain and repository-local helper setup.
+Commit `3aadb19` is now pushed. A fresh `git push` also succeeded. See
+`github-publishing.md`. Production deployment and scheduler activation are
+still pending; do not report a successful push as a live deployment.
 
 Implemented:
 - Shipping-only retries after three hours, no three-attempt cap, same provider ID
@@ -30,8 +32,8 @@ Do not reapply the old active version of the migration. The final checked-in
 migration safely creates the job paused, using the pg_cron API.
 
 Next:
-1. Push this branch using an approved mechanism. Inspect it against current main,
-   create/attach a PR, check its deployment, then merge (already authorized).
+1. Branch pushed. Inspect it against current main, create/attach a PR, check its
+   deployment, then merge (already authorized).
 2. Generate one random secret and provision it through the Vercel production
    environment UI (`SMS_RETRY_CRON_SECRET`) and Supabase Vault UI
    (`hoang_long_sms_retry_cron`). Never put the value into Git, chat or SQL history.
