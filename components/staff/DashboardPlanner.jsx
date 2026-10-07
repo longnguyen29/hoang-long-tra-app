@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Bell, CalendarDays, Check, ChevronLeft, ChevronRight, Circle, PencilLine, Plus, X } from "lucide-react";
-import { calendarCells, houseDateKey } from "@/lib/dashboard-calendar";
+import { calendarCells, houseDateKey, subtractCalendarMonth } from "@/lib/dashboard-calendar";
 import styles from "./DashboardPlanner.module.css";
+import GovernmentObligations from "./GovernmentObligations";
 
 const MONTHS = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
 const WEEKDAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-const KIND_LABEL = { feature: "Chức năng chờ thử", event: "Lịch hẹn", task: "Việc cần làm" };
+const KIND_LABEL = { feature: "Chức năng chờ thử", event: "Lịch hẹn", task: "Việc cần làm", obligation: "Nghĩa vụ nhà nước" };
 const dateLabel = (value) => value ? new Intl.DateTimeFormat("vi-VN", { day: "numeric", month: "numeric", year: "numeric" }).format(new Date(`${value}T12:00:00Z`)) : "Chưa hẹn ngày";
 const dateKey = (year, month, day) => `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 const taskDate = (dueAt) => houseDateKey(new Date(dueAt));
@@ -23,12 +24,17 @@ export default function DashboardPlanner({ supabase }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [obligationError, setObligationError] = useState("");
   const [draft, setDraft] = useState(emptyDraft);
   const [editingId, setEditingId] = useState("");
   const [showForm, setShowForm] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    try {
+      const result = await supabase.rpc("ensure_government_obligation_occurrences", { p_year: year });
+      setObligationError(result.error ? "Chưa cập nhật được các kỳ nghĩa vụ vào lịch. Hãy thử tải lại sau khi cập nhật database." : "");
+    } catch { setObligationError("Chưa cập nhật được các kỳ nghĩa vụ vào lịch."); }
     const [plansResult, tasksResult] = await Promise.all([
       supabase.from("dashboard_plans").select("*").order("created_at", { ascending: false }),
       supabase.from("work_tasks").select("id,title,due_at,status").gte("due_at", `${year - 1}-12-30T00:00:00Z`).lt("due_at", `${year + 1}-01-03T00:00:00Z`),
@@ -50,6 +56,7 @@ export default function DashboardPlanner({ supabase }) {
     if (!b.event_on) return 1;
     return a.event_on.localeCompare(b.event_on);
   }), [plans]);
+  const visiblePending = pending.filter(item => item.kind !== "obligation" || item.event_on <= today || subtractCalendarMonth(item.event_on) <= today);
   const done = plans.filter((item) => item.status === "done");
   const dated = useMemo(() => {
     const byDate = new Map();
@@ -69,6 +76,7 @@ export default function DashboardPlanner({ supabase }) {
     setShowForm(true);
   };
   const startEdit = (item) => {
+    if (item.kind === "obligation") return;
     setDraft({ title: item.title, kind: item.kind, notes: item.notes, event_on: item.event_on || "", remind_days: item.remind_days, notify_telegram: item.notify_telegram });
     setEditingId(item.id);
     setShowForm(true);
@@ -109,28 +117,30 @@ export default function DashboardPlanner({ supabase }) {
       <button type="button" className={styles.primaryButton} onClick={() => startNew()}><Plus /> Thêm mục</button>
     </div>
     {error && <p className={styles.error} role="alert">{error}</p>}
+    <div id="government-obligations" className={styles.obligationAnchor}><GovernmentObligations supabase={supabase} plans={plans} onChanged={load}/></div>
+    {obligationError && <p className={styles.error} role="alert">{obligationError}</p>}
     <div className={styles.columns}>
       <div className={styles.pending}>
-        <div className={styles.subhead}><h3>Đang chờ</h3><span>{pending.length}</span></div>
-        {loading ? <p className={styles.quiet}>Đang tải…</p> : pending.length === 0 ? <p className={styles.quiet}>Không có mục nào đang chờ.</p> : pending.map((item) => <article className={styles.plan} key={item.id}>
-          <button type="button" className={styles.complete} onClick={() => setStatus(item, "done")} disabled={saving} aria-label={`Hoàn tất ${item.title}`}><Circle /></button>
+        <div className={styles.subhead}><h3>Đang chờ</h3><span>{visiblePending.length}</span></div>
+        {loading ? <p className={styles.quiet}>Đang tải…</p> : visiblePending.length === 0 ? <p className={styles.quiet}>Không có mục nào đang chờ.</p> : visiblePending.map((item) => <article className={styles.plan} key={item.id}>
+          <button type="button" className={styles.complete} onClick={() => setStatus(item, "done")} disabled={saving} aria-label={`Hoàn tất ${item.title}${item.kind === "obligation" && item.event_on ? `, kỳ ${dateLabel(item.event_on)}` : ""}`}><Circle /></button>
           <div className={styles.planBody}>
             <div className={styles.meta}><span>{KIND_LABEL[item.kind]}</span>{item.event_on && <time dateTime={item.event_on}>{dateLabel(item.event_on)}</time>}</div>
             <b>{item.title}</b>
             {item.notes && <p>{item.notes}</p>}
-            {item.notify_telegram && item.event_on && <small className={styles.telegram}><Bell /> Telegram trước {item.remind_days === 0 ? "đúng ngày" : `${item.remind_days} ngày`}{item.notified_event_on === item.event_on ? " · Đã gửi" : ""}</small>}
+            {item.notify_telegram && item.event_on && <small className={styles.telegram}><Bell /> Telegram trước {item.reminder_unit === "month" ? "1 tháng theo lịch" : item.remind_days === 0 ? "đúng ngày" : `${item.remind_days} ngày`}{item.notified_event_on === item.event_on ? " · Đã gửi" : ""}</small>}
             {item.notification_last_error && <small className={styles.sendError}>Telegram chưa gửi được; hệ thống sẽ thử lại.</small>}
-            <div className={styles.planActions}>{item.href && <Link href={item.href}>Mở công việc <ChevronRight /></Link>}<button type="button" onClick={() => startEdit(item)}><PencilLine /> Sửa</button></div>
+            <div className={styles.planActions}>{item.href && <Link href={item.kind === "obligation" ? "/admin#government-obligations" : item.href}>Mở công việc <ChevronRight /></Link>}{item.kind !== "obligation" && <button type="button" onClick={() => startEdit(item)}><PencilLine /> Sửa</button>}</div>
           </div>
         </article>)}
-        {done.length > 0 && <details className={styles.done}><summary>Đã xong ({done.length})</summary>{done.map((item) => <div key={item.id}><Check /><span>{item.title}</span><button type="button" disabled={saving} onClick={() => setStatus(item, "pending")}>Mở lại</button></div>)}</details>}
+        {done.length > 0 && <details className={styles.done}><summary>Đã xong ({done.length})</summary>{done.map((item) => <div key={item.id}><Check /><span>{item.title}{item.kind === "obligation" && item.event_on ? ` · ${dateLabel(item.event_on)}` : ""}</span><button type="button" disabled={saving} onClick={() => setStatus(item, "pending")}>Mở lại</button></div>)}</details>}
       </div>
       <div className={styles.calendar}>
         <div className={styles.yearHead}><div><CalendarDays /><h3>Lịch năm {year}</h3></div><div><button type="button" onClick={() => { setYear(year - 1); setSelectedDate(`${year - 1}-01-01`); }} aria-label="Năm trước"><ChevronLeft /></button><button type="button" onClick={() => { setYear(Number(today.slice(0, 4))); setSelectedDate(today); }}>Hôm nay</button><button type="button" onClick={() => { setYear(year + 1); setSelectedDate(`${year + 1}-01-01`); }} aria-label="Năm sau"><ChevronRight /></button></div></div>
         <div className={styles.months}>{MONTHS.map((month, monthIndex) => <div className={styles.month} key={month}>
           <h4>{month}</h4><div className={styles.days}>{WEEKDAYS.map((day) => <span className={styles.weekday} key={day}>{day}</span>)}{calendarCells(year, monthIndex).map((day, index) => day ? <button type="button" key={index} className={styles.day} data-today={dateKey(year, monthIndex, day) === today} data-selected={dateKey(year, monthIndex, day) === selectedDate} data-has-items={dated.has(dateKey(year, monthIndex, day))} aria-label={`${day} ${month} ${year}${dated.has(dateKey(year, monthIndex, day)) ? `, ${dated.get(dateKey(year, monthIndex, day)).length} việc` : ""}`} onClick={() => setSelectedDate(dateKey(year, monthIndex, day))}>{day}</button> : <i key={index} />)}</div>
         </div>)}</div>
-        <div className={styles.agenda}><div className={styles.subhead}><h4>{dateLabel(selectedDate)}</h4><button type="button" onClick={() => startNew(selectedDate)}><Plus /> Thêm lịch</button></div>{selectedItems.length ? selectedItems.map((item) => <div className={styles.agendaItem} key={`${item.source}-${item.id}`}><span>{item.source === "work" ? "Sổ việc" : KIND_LABEL[item.kind]}</span><b>{item.title}</b>{item.source === "work" ? <Link href={`/admin/work#task-${item.id}`}>Mở <ChevronRight /></Link> : <button type="button" onClick={() => startEdit(item)}>Sửa <ChevronRight /></button>}</div>) : <p className={styles.quiet}>Chưa có mục nào trong ngày này.</p>}</div>
+        <div className={styles.agenda}><div className={styles.subhead}><h4>{dateLabel(selectedDate)}</h4><button type="button" onClick={() => startNew(selectedDate)}><Plus /> Thêm lịch</button></div>{selectedItems.length ? selectedItems.map((item) => <div className={styles.agendaItem} key={`${item.source}-${item.id}`}><span>{item.source === "work" ? "Sổ việc" : KIND_LABEL[item.kind]}</span><b>{item.title}</b>{item.source === "work" ? <Link href={`/admin/work#task-${item.id}`}>Mở <ChevronRight /></Link> : item.kind === "obligation" ? <Link href="#government-obligations">Mở nghĩa vụ <ChevronRight /></Link> : <button type="button" onClick={() => startEdit(item)}>Sửa <ChevronRight /></button>}</div>) : <p className={styles.quiet}>Chưa có mục nào trong ngày này.</p>}</div>
       </div>
     </div>
     {showForm && <div className={styles.dialogBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowForm(false); }}><form className={styles.form} onSubmit={save} aria-label={editingId ? "Sửa mục đang chờ" : "Thêm mục đang chờ"}>
