@@ -38,7 +38,7 @@ export const STAFF_APPS = {
   },
   control: {
     key: "control", label: "Báo cáo & thiết lập", short: "Thiết lập", href: "/admin/control",
-    description: "Báo cáo tháng, ưu đãi, đánh giá, tài khoản nhận tiền và khôi phục dữ liệu.", icon: Settings2,
+    description: "Chỉ số kinh doanh, EBITDA, báo cáo tháng, ưu đãi và thiết lập thanh toán.", icon: Settings2,
   },
   growth: {
     key: "growth", label: "Công cụ nội dung", short: "Công cụ", href: "/admin/growth",
