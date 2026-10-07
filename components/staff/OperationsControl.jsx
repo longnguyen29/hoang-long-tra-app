@@ -29,6 +29,7 @@ import LoadFailure from "./LoadFailure";
 import styles from "./OperationsControl.module.css";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
 import MaterialPlanningPanel from "./MaterialPlanningPanel";
+import BatchQualityReviews from "./BatchQualityReviews";
 
 const money = (value) => `${Number(value || 0).toLocaleString("vi-VN")}đ`;
 const shortDate = (value) =>
@@ -97,6 +98,10 @@ export default function OperationsControl({ supabase, email, role, onLogout }) {
     [batch, setBatch] = useState(null),
     [allocation, setAllocation] = useState(null);
   const [dataFailure, setDataFailure] = useState(false);
+  const [qualityBatchId, setQualityBatchId] = useState("");
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "batches") setTab("batches");
+  }, []);
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -670,10 +675,12 @@ export default function OperationsControl({ supabase, email, role, onLogout }) {
                     Xem passport
                   </Link>
                   <button onClick={() => editBatch(item)}>Sửa</button>
+                  <button onClick={() => { setQualityBatchId(item.id); requestAnimationFrame(() => document.getElementById("batch-quality-reviews")?.scrollIntoView({ block: "start", behavior: "smooth" })); }} aria-pressed={(qualityBatchId || batches[0]?.id) === item.id}>Đánh giá lô</button>
                 </footer>
               </article>
             ))}
           </div>
+          {batches.length > 0 && <div id="batch-quality-reviews"><BatchQualityReviews key={qualityBatchId || batches[0].id} supabase={supabase} batch={batches.find(item => item.id === qualityBatchId) || batches[0]} userEmail={email} role={role}/></div>}
         </section>
       )}
       {tab === "planning" && (
