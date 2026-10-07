@@ -15,6 +15,7 @@ import {
   Download,
   Clock3,
   Handshake,
+  History,
   MessageSquareQuote,
   Percent,
   PauseCircle,
@@ -22,6 +23,7 @@ import {
   RefreshCw,
   RotateCcw,
   Save,
+  Trophy,
 } from "lucide-react";
 import {
   fromOrderRow,
@@ -34,6 +36,8 @@ import {
 } from "@/lib/mappers";
 import LoadFailure from "./LoadFailure";
 import BusinessMetrics from "./BusinessMetrics";
+import BusinessRankings from "./BusinessRankings";
+import AppUpdates from "./AppUpdates";
 import styles from "./BusinessControl.module.css";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
 
@@ -67,6 +71,21 @@ const when = (value) =>
     timeStyle: "short",
   }).format(new Date(value));
 
+// Supabase caps a single response. Rankings must include the full accessible
+// history rather than silently treating the most recent 1,000 as all orders.
+async function loadReportOrders(supabase) {
+  const rows = [];
+  const pageSize = 500;
+  for (let start = 0; ; start += pageSize) {
+    const result = await supabase.from("orders").select("*")
+      .order("ts", { ascending: false }).order("id", { ascending: false })
+      .range(start, start + pageSize - 1);
+    if (result.error) return result;
+    rows.push(...(result.data || []));
+    if ((result.data || []).length < pageSize) return { data: rows, error: null };
+  }
+}
+
 export default function BusinessControl({ supabase, email, role, onLogout }) {
   const [tab, setTab] = useState("reports"),
     [orders, setOrders] = useState([]),
@@ -91,7 +110,7 @@ export default function BusinessControl({ supabase, email, role, onLogout }) {
     setError("");
     try {
     const [o, p, t, r, w, pay, b] = await Promise.all([
-      supabase.from("orders").select("*").order("ts", { ascending: false }),
+      loadReportOrders(supabase),
       supabase.from("promos").select("*").order("code"),
       supabase.from("testimonials").select("*"),
       supabase
@@ -128,7 +147,8 @@ export default function BusinessControl({ supabase, email, role, onLogout }) {
     load();
   }, [load]);
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("tab") === "metrics") setTab("metrics");
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    if (["reports", "metrics", "rankings", "updates", "partners", "offers", "reviews", "payment", "connections", "bin"].includes(requested)) setTab(requested);
   }, []);
   const loadHealth = useCallback(async () => {
     setHealthLoading(true);
@@ -353,6 +373,8 @@ export default function BusinessControl({ supabase, email, role, onLogout }) {
   const tabs = [
     ["reports", "Báo cáo", BarChart3],
     ["metrics", "Chỉ số kinh doanh", Calculator],
+    ["rankings", "Xếp hạng", Trophy],
+    ["updates", "Cập nhật app", History],
     ["partners", "Khách hàng", Handshake],
     ["offers", "Ưu đãi", Percent],
     ["reviews", "Đánh giá", MessageSquareQuote],
@@ -360,7 +382,7 @@ export default function BusinessControl({ supabase, email, role, onLogout }) {
     ["connections", "Kết nối", Activity],
     ["bin", "Khôi phục", RotateCcw],
   ];
-  if(dataFailure && tab !== "metrics") return <LoadFailure onRetry={load} loading={loading}/>;
+  if(dataFailure && !["metrics", "updates"].includes(tab)) return <LoadFailure onRetry={load} loading={loading}/>;
 
   return (
     <main className={styles.page}>
@@ -410,6 +432,8 @@ export default function BusinessControl({ supabase, email, role, onLogout }) {
         </p>
       )}
       {tab === "metrics" && <BusinessMetrics supabase={supabase} orders={orders} role={role} email={email} ordersLoading={loading} ordersError={dataFailure}/> }
+      {tab === "rankings" && <BusinessRankings orders={orders} loading={loading}/>}
+      {tab === "updates" && <AppUpdates/>}
       {tab === "reports" && (
         <section className={styles.panel}>
           <header>

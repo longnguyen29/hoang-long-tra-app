@@ -367,6 +367,7 @@
   display: block;
 }
 .batchGrid footer {
+  flex-wrap: wrap;
   display: flex;
   justify-content: space-between;
   margin-block-start: var(--space-md);

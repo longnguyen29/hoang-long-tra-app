@@ -108,6 +108,12 @@ claim_dashboard_reminder(p_id uuid, p_today date) -> SETOF dashboard_plans
 
 ## Để sau
 
+Dashboard có thêm nút **Gửi nhắc đến hạn**, dùng cùng bộ xử lý với cron và chỉ
+cho quản lý gọi. Nếu Telegram đã nhận tin nhưng database không lưu được dấu đã
+gửi, giao diện báo riêng tình trạng đó và giữ lease hiện tại; kiểm tra Telegram
+trước khi thử lại. Đây không phải bảo đảm gửi đúng một lần khi hệ thống lỗi.
+Chi tiết và kiểm tra mới xem `operations-insights-updates.md`.
+
 Lịch nhắc không tự nộp báo cáo, chuyển tiền hay gửi nội dung tới cơ quan nhà nước. Chưa tự đọc công văn, đồng bộ cổng dịch vụ công, chứng nhận một hạn pháp luật hoặc tạo lịch theo mọi trường hợp ngoại lệ. Hạn điều chỉnh thực tế có thể ghi bằng một nghĩa vụ một lần hoặc cập nhật cấu hình sau khi xác nhận nguồn.
 
 

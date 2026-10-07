@@ -6,6 +6,7 @@ import { Bell, CalendarDays, Check, ChevronLeft, ChevronRight, Circle, PencilLin
 import { calendarCells, houseDateKey, subtractCalendarMonth } from "@/lib/dashboard-calendar";
 import styles from "./DashboardPlanner.module.css";
 import GovernmentObligations from "./GovernmentObligations";
+import ReminderDispatch from "./ReminderDispatch";
 
 const MONTHS = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
 const WEEKDAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
@@ -111,12 +112,14 @@ export default function DashboardPlanner({ supabase }) {
     await load();
   };
 
-  return <section className={styles.planner} aria-label="Việc đang chờ và lịch năm">
+  return <section id="dashboard-planner" className={styles.planner} aria-label="Việc đang chờ và lịch năm">
     <div className={styles.header}>
       <div><span className={styles.eyebrow}>Ghi nhớ & sắp tới</span><h2>Đang chờ · Lịch năm</h2><p>Mục chưa xong vẫn ở đây cho đến khi bạn đánh dấu hoàn tất.</p></div>
       <button type="button" className={styles.primaryButton} onClick={() => startNew()}><Plus /> Thêm mục</button>
     </div>
     {error && <p className={styles.error} role="alert">{error}</p>}
+    <ReminderDispatch supabase={supabase} onDispatched={load}/>
+    <Link href="/admin/control?tab=updates">Xem cập nhật tính năng app <ChevronRight size={16}/></Link>
     <div id="government-obligations" className={styles.obligationAnchor}><GovernmentObligations supabase={supabase} plans={plans} onChanged={load}/></div>
     {obligationError && <p className={styles.error} role="alert">{obligationError}</p>}
     <div className={styles.columns}>
