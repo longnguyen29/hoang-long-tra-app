@@ -75,13 +75,22 @@ existing allocation or shipment.
 
 ## Validation and deployment status
 
-Migration 0075 is new and is not claimed to be applied to production in this
-document. Apply only this migration when deploying the feature.
+Migration 0075 was applied to the production database on 2026-10-07 through
+the Supabase SQL editor, together with 0073 and 0074. All 18 read-only catalog,
+RLS and role-privilege checks passed. [PR #25](https://github.com/longnguyen29/hoang-long-tra-app/pull/25)
+was merged as `8eefec0ce7f6559132d40ac404b61be3e82ca231`; deployment
+`dpl_EMKxJYXg9AZPCowRxaYPMZPWmmQX` is READY at `www.hoanglongtra.com`.
+Do not replay migrations that have already been applied.
 
 The six focused helper tests passed, covering invalid/missing sensory scores,
 mandatory pass scores, hold/reject explanations, size bounds, partial data
 summaries and empty history. The new component also passed a JSX syntax check.
-Database checks still required at deployment: staff can create/read, anonymous
+Actual live behavior checks remain unconfirmed: staff can create/read, anonymous
 and non-staff callers cannot, direct authenticated writes fail, saved identities
 and timestamps come from the server, and reviews leave the batch unchanged.
-Verify new review/history and pagination on desktop and at 390 px.
+Configured RLS and role grants were verified by catalog checks; actual review
+save/reload, reviewer identity/time and unchanged batch data have not yet been
+confirmed. The authenticated live **Lô & chất lượng** page loaded without
+errors, but no existing batch cards were available, so the review form was not
+opened and no assessment was saved. Verify review/history and pagination on
+desktop and at 390 px when a real batch is available.
