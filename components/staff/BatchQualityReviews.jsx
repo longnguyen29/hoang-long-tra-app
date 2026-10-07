@@ -34,7 +34,7 @@ export default function BatchQualityReviews({ supabase, batch, userEmail = "", r
   const busy = loading || (history.batchId !== batchId && !error);
   const summaryUnknown = busy || Boolean(error && !rows.length);
   const summary = useMemo(() => batchReviewSummary(rows), [rows]);
-  const canReview = !role || ["admin", "manager", "employee"].includes(role);
+  const canReview = ["admin", "manager"].includes(role);
 
   useEffect(() => {
     if (!batchId) return;

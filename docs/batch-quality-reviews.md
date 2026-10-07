@@ -23,8 +23,9 @@ History loads 20 at a time with a button for earlier reviews.
   no batch data is duplicated.
 - `userEmail`: the signed-in user's email, used only to scope temporary draft
   storage in this browser session. It never determines saved authorship.
-- `role` (optional): existing `admin`, `manager` or `employee` role for UI actions;
-  the database independently authorizes staff access.
+- `role`: existing `admin` or `manager` role for UI actions. The database
+  independently checks the existing `is_staff()` helper, which restricts batch
+  access to these two roles after migration 0053.
 
 Render it for the selected batch in Operations → Lô & chất lượng. A missing batch
 shows a selection prompt. Unsaved drafts are retained per batch in component
