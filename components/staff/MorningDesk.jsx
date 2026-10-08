@@ -647,6 +647,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
                 <div><h2>Điều công ty cần nhớ</h2><p>Ghi nhận trước, duyệt sau. Không tự biến chat thành quy tắc.</p></div>
                 <span>{memory.inbox_count || 0} chờ duyệt</span>
               </header>
+              <Link className={styles.testMeasure} href="/admin/knowledge">Mở trung tâm kiến thức <ArrowRight/></Link>
               <form onSubmit={saveMemory}>
                 <label>
                   <span>Loại ghi nhận</span>

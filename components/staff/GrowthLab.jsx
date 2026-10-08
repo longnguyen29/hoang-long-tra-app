@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, ArrowRight, BarChart3, Beaker, Check, ChevronRight, Clipboard,
@@ -10,6 +10,7 @@ import {
 import {
   DEFAULT_GROWTH_RUBRIC, buildGrowthPrompt, judgeThreadsDraft, starterVariants, trackingUrl,
 } from "@/lib/growth-judge";
+import { buildKnowledgeBrief, knowledgeMetric, normalizeKnowledgeSnapshot, safeKnowledgeUrl } from "@/lib/knowledge-centre";
 import LoadFailure from "./LoadFailure";
 import styles from "./GrowthLab.module.css";
 
@@ -23,7 +24,7 @@ const EMPTY_BRIEF = {
   hypothesis: "Thông điệp thử tại quầy tạo nhiều yêu cầu mẫu đủ điều kiện hơn nội dung chỉ kể về nguồn gốc",
 };
 
-const STATUS_LABEL = { draft: "Đang soạn", running: "Đang chạy", review: "Chờ đọc kết quả", complete: "Đã kết luận" };
+const STATUS_LABEL = { draft: "Đang soạn", running: "Đang chạy", review: "Chờ đọc kết quả", complete: "Đã kết luận", archived: "Đã lưu kho" };
 const VARIANT_STATUS = { draft: "Bản nháp", ready: "Sẵn sàng đăng", published: "Đã đăng", paused: "Tạm dừng", reviewed: "Đã đọc kết quả" };
 const METRIC_FIELDS = [
   ["views", "Lượt xem Threads"], ["likes", "Thích"], ["replies", "Phản hồi"],
@@ -36,20 +37,20 @@ const briefFromRow = (row) => ({
 });
 
 const compactNumber = (value) => new Intl.NumberFormat("vi-VN", { notation: Number(value) > 9999 ? "compact" : "standard" }).format(Number(value || 0));
-const percent = (part, whole) => whole ? `${Math.round((Number(part) / Number(whole)) * 100)}%` : "—";
+const percent = (part, whole) => part != null && whole != null && Number(whole) > 0 ? `${Math.round((Number(part) / Number(whole)) * 100)}%` : "—";
 
 function Funnel({ variant }) {
   const manual = variant.manual_metrics || {};
   const outcomes = variant.outcomes || {};
   const stages = [
-    ["Threads", manual.views || 0], ["Vào trang mẫu", outcomes.visitors || 0],
-    ["Yêu cầu mẫu", outcomes.qualified_requests || 0], ["Đã gửi mẫu", outcomes.samples_sent || 0],
-    ["Đơn đầu tiên", outcomes.first_orders || 0],
+    ["Threads", knowledgeMetric(manual.views)], ["Vào trang mẫu", knowledgeMetric(outcomes.visitors)],
+    ["Yêu cầu mẫu", knowledgeMetric(outcomes.qualified_requests)], ["Đã gửi mẫu", knowledgeMetric(outcomes.samples_sent)],
+    ["Yêu cầu có đơn về sau", knowledgeMetric(outcomes.first_orders)],
   ];
   const max = Math.max(1, ...stages.map(([, value]) => Number(value || 0)));
   return <div className={styles.funnel} aria-label="Đường chuyển đổi từ bài Threads tới đơn sỉ">
     {stages.map(([label, value], index) => <div key={label}>
-      <span><b>{label}</b><strong>{compactNumber(value)}</strong></span>
+      <span><b>{label}</b><strong>{value === null ? "Chưa có" : compactNumber(value)}</strong></span>
       <i style={{ "--fill": `${Math.max(value ? 8 : 0, (Number(value || 0) / max) * 100)}%` }}/>
       {index < stages.length - 1 && <small>{percent(stages[index + 1][1], value)}</small>}
     </div>)}
@@ -112,6 +113,18 @@ export default function GrowthLab({ supabase, email, role }) {
   const [editingVariant, setEditingVariant] = useState("");
   const [draftText, setDraftText] = useState("");
   const [generationStage, setGenerationStage] = useState("");
+  const [navigation, setNavigation] = useState(null);
+  const [knowledgeOrigin, setKnowledgeOrigin] = useState(null);
+  const briefEdits = useRef(0);
+  const knowledgeContext = useRef(null);
+  const openedExperiment = useRef("");
+  const focusedVariant = useRef("");
+  const historicalExperimentId = useRef("");
+
+  const updateBrief = (field, value) => {
+    briefEdits.current += 1;
+    setBrief((current) => ({ ...current, [field]: value }));
+  };
 
   const [dataFailure,setDataFailure] = useState(false);
   const load = useCallback(async () => {
@@ -125,8 +138,15 @@ export default function GrowthLab({ supabase, email, role }) {
     if(loadError || funnelError)return;
     if (loadError) setError("Phòng tăng trưởng chưa đọc được dữ liệu. Cần áp dụng migration 0045_growth_content_lab rồi làm mới.");
     else {
-      setSnapshot(data || { active_prompt: {}, experiments: [] });
-      setSelectedId((current) => current || data?.experiments?.[0]?.id || "");
+      const nextSnapshot = data || { active_prompt: {}, experiments: [] };
+      if (historicalExperimentId.current) {
+        const { data: history, error: historyError } = await supabase.rpc("knowledge_centre_snapshot");
+        if (historyError) { setDataFailure(true); return; }
+        const historical = normalizeKnowledgeSnapshot(history).growth.experiments?.find((item) => item.id === historicalExperimentId.current);
+        if (historical && !nextSnapshot.experiments.some((item) => item.id === historical.id)) nextSnapshot.experiments = [...nextSnapshot.experiments, historical];
+      }
+      setSnapshot(nextSnapshot);
+      setSelectedId((current) => current || nextSnapshot.experiments[0]?.id || "");
     }
     if (funnelData) setWebsiteFunnel(funnelData);
     setLoading(false);
@@ -134,6 +154,89 @@ export default function GrowthLab({ supabase, email, role }) {
   }, [supabase]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const validId = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value || "");
+    const requested = { experimentId: params.get("experiment"), variantId: params.get("variant"), topicId: params.get("topic"), angleId: params.get("angle") };
+    if (Object.values(requested).some((value) => value && !validId(value))) {
+      setError("Liên kết Growth Lab không có mã chủ đề, góc nội dung hoặc thử nghiệm hợp lệ.");
+      return;
+    }
+    setNavigation(requested);
+  }, []);
+  useEffect(() => {
+    const key = navigation?.variantId || navigation?.experimentId;
+    if (!key || loading || openedExperiment.current === key) return undefined;
+    let cancelled = false;
+    const matches = (item) => (!navigation.experimentId || item.id === navigation.experimentId) && (!navigation.variantId || item.variants?.some((variant) => variant.id === navigation.variantId));
+    const showExperiment = (experiment) => {
+      openedExperiment.current = key;
+      setSelectedId(experiment.id);
+      setTab("experiments");
+    };
+    const experiment = snapshot.experiments?.find(matches);
+    if (experiment) {
+      showExperiment(experiment);
+    } else {
+      // Knowledge retains referenced archived experiments for publication history.
+      const findHistoricalExperiment = async () => {
+        try {
+          const { data, error: historyError } = await supabase.rpc("knowledge_centre_snapshot");
+          if (cancelled) return;
+          const historical = !historyError && normalizeKnowledgeSnapshot(data).growth.experiments?.find(matches);
+          if (!historical) { setError("Không tìm thấy thử nghiệm trong liên kết này. Hãy mở lại từ sổ thử nghiệm."); return; }
+          historicalExperimentId.current = historical.id;
+          showExperiment(historical);
+          setSnapshot((current) => ({ ...current, experiments: [...(current.experiments || []).filter((item) => item.id !== historical.id), historical] }));
+        } catch {
+          if (!cancelled) setError("Chưa đọc được thử nghiệm trong liên kết này. Làm mới để thử lại.");
+        }
+      };
+      findHistoricalExperiment();
+    }
+    return () => { cancelled = true; };
+  }, [navigation, loading, snapshot, supabase]);
+  useEffect(() => {
+    const variantId = navigation?.variantId;
+    if (!variantId || focusedVariant.current === variantId || tab !== "experiments" || !snapshot.experiments?.some((item) => item.id === selectedId && item.variants?.some((variant) => variant.id === variantId))) return undefined;
+    const timer = window.setTimeout(() => {
+      const card = document.getElementById(`growth-variant-${variantId}`);
+      if (card) { card.scrollIntoView({ block: "start" }); focusedVariant.current = variantId; }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [navigation, selectedId, snapshot, tab]);
+  useEffect(() => {
+    if (!navigation || navigation.experimentId || navigation.variantId || (!navigation.topicId && !navigation.angleId)) return undefined;
+    let cancelled = false;
+    const editsAtStart = briefEdits.current;
+    const prefill = async () => {
+      try {
+        const { data, error: knowledgeError } = await supabase.rpc("knowledge_centre_snapshot");
+        if (cancelled) return;
+        if (knowledgeError) { setError("Chưa đọc được chủ đề từ Trung tâm kiến thức. Bạn có thể tiếp tục nhập brief."); return; }
+        const knowledge = normalizeKnowledgeSnapshot(data);
+        const angle = knowledge.angles.find((item) => item.id === navigation.angleId);
+        const topic = knowledge.topics.find((item) => item.id === (navigation.topicId || angle?.topic_id));
+        if (!topic || (navigation.angleId && (!angle || angle.topic_id !== topic.id))) {
+          setError("Chủ đề hoặc góc nội dung trong liên kết không còn phù hợp. Hãy mở lại từ Trung tâm kiến thức.");
+          return;
+        }
+        if (briefEdits.current !== editsAtStart || editsAtStart > 0) {
+          setNotice("Đã giữ brief bạn đang nhập. Mở lại góc nội dung để dùng kiến thức cho một phép thử mới.");
+          return;
+        }
+        const prefilled = buildKnowledgeBrief(topic, angle || {}, knowledge);
+        knowledgeContext.current = { topic_id: topic.id, angle_id: angle?.id || null };
+        setKnowledgeOrigin({ title: topic.title, warnings: prefilled.knowledgeWarnings, context: prefilled.researchContext });
+        setBrief(prefilled);
+        setTab("new");
+      } catch {
+        if (!cancelled) setError("Chưa đọc được Trung tâm kiến thức. Brief đang nhập vẫn được giữ.");
+      }
+    };
+    prefill();
+    return () => { cancelled = true; };
+  }, [navigation, supabase]);
   useEffect(() => {
     if (!notice) return undefined;
     const timer = window.setTimeout(() => setNotice(""), 3200);
@@ -181,26 +284,44 @@ export default function GrowthLab({ supabase, email, role }) {
         ai_rationale: variant.rationale || "", generation_model: generationModel,
       };
     });
-    const { error: variantsError } = await supabase.from("growth_variants").insert(rows);
+    const { data: createdVariants, error: variantsError } = await supabase.from("growth_variants").insert(rows).select("id");
     if (variantsError) throw new Error("variants_failed");
-    return experiment;
+    let linkFailures = 0;
+    const context = knowledgeContext.current;
+    if (context) {
+      setGenerationStage("Đang nối các bản nháp với chủ đề kiến thức…");
+      const linked = await Promise.allSettled((createdVariants || []).map(async (variant) => supabase.rpc("save_knowledge_post", {
+        p_id: null, p_expected_version: null,
+        p_fields: { ...context, growth_variant_id: variant.id },
+      })));
+      linkFailures = linked.filter((result) => result.status === "rejected" || result.value?.error).length;
+      if (!createdVariants?.length) linkFailures = rows.length;
+    }
+    return { experiment, linkFailures };
   };
 
   const createExperiment = async (event, useAi = true) => {
     event?.preventDefault();
     if (!brief.title.trim()) { setError("Đặt tên thử nghiệm theo điều bạn muốn học, không theo tên bài đăng."); return; }
+    if (![brief.audience, brief.customerProblem, brief.offer, brief.cta].every((value) => value.trim()) || (knowledgeContext.current && !brief.proof.trim())) {
+      setError("Điền người đọc, vấn đề thực tế, bằng chứng được phép dùng, đề nghị và hành động mong muốn trước khi tạo nội dung.");
+      return;
+    }
     setSaving(true); setError("");
     const generatedPrompt = buildGrowthPrompt(brief);
     try {
       const generated = useAi
         ? await requestAiVariants(generatedPrompt)
         : { model: "Mẫu có sẵn v1", variants: starterVariants(brief).map((variant) => ({ ...variant, rationale: "Mẫu dự phòng theo brief; chưa qua OpenAI." })) };
-      const experiment = await persistExperiment({
+      const { experiment, linkFailures } = await persistExperiment({
         generatedPrompt, generatedVariants: generated.variants, generationModel: generated.model,
       });
+      knowledgeContext.current = null;
+      setKnowledgeOrigin(null);
       setBrief(EMPTY_BRIEF); setSelectedId(experiment.id); setTab("experiments");
       setNotice(useAi ? `Đã tạo 3 bản bằng ${generated.model}; bộ chấm quy tắc đã kiểm tra lại.` : "Đã tạo 3 bản từ mẫu có sẵn.");
       await load();
+      if (linkFailures) setError(`Thử nghiệm đã tạo thành công, nhưng ${linkFailures} bản chưa nối được với Trung tâm kiến thức. Không cần tạo lại thử nghiệm; mở chủ đề để nối các bản đã có.`);
     } catch (createError) {
       const messages = {
         openai_not_configured: "Chưa cấu hình OpenAI API cho production. Bạn vẫn có thể dùng mẫu có sẵn bên dưới.",
@@ -208,6 +329,7 @@ export default function GrowthLab({ supabase, email, role }) {
         openai_unreachable: "Chưa kết nối được OpenAI. Thử lại hoặc dùng mẫu có sẵn.",
         openai_failed: "OpenAI chưa tạo được nội dung. Kiểm tra API key hoặc hạn mức thanh toán rồi thử lại.",
         invalid_ai_response: "Kết quả AI không đạt cấu trúc an toàn để lưu. Hãy thử tạo lại.",
+        invalid_brief: "Brief còn thiếu người đọc, vấn đề, đề nghị hoặc hành động mong muốn. Bổ sung rồi tạo lại.",
         experiment_failed: "Chưa lưu được phép thử. Cần áp dụng migration Growth AI rồi làm mới.",
         variants_failed: "Đã tạo brief nhưng chưa lưu được ba bản nháp.",
         not_authenticated: "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.",
@@ -265,7 +387,7 @@ export default function GrowthLab({ supabase, email, role }) {
   if(dataFailure)return <LoadFailure onRetry={load} loading={loading}/>;
   return <main className={styles.shell}>
     <header className={styles.topbar}>
-      <div><Link href="/admin"><ArrowLeft/>Bảng điều khiển</Link><span>Growth lab · prompt v{activePrompt.version || "—"}</span></div>
+      <div><Link href="/admin"><ArrowLeft/>Bảng điều khiển</Link><Link href="/admin/knowledge"><Lightbulb/>Trung tâm kiến thức</Link><span>Growth lab · prompt v{activePrompt.version || "—"}</span></div>
       <div><span><b>{email}</b><small>{role}</small></span><button onClick={load} disabled={loading} title="Đọc lại kết quả mới nhất từ sample và đơn hàng"><RefreshCw className={loading ? styles.spin : ""}/></button></div>
     </header>
 
@@ -282,7 +404,7 @@ export default function GrowthLab({ supabase, email, role }) {
     <section className={styles.metrics} aria-label="Kết quả phòng tăng trưởng">
       <article><span>Thử nghiệm</span><b>{experiments.length}</b><small>{published} bài đang đo</small></article>
       <article><span>Yêu cầu đúng đối tượng</span><b>{requests}</b><small>từ link thử nghiệm</small></article>
-      <article><span>Đơn đầu tiên</span><b>{orders}</b><small>đối chiếu theo số điện thoại</small></article>
+      <article><span>Yêu cầu có đơn về sau</span><b>{orders}</b><small>khớp số điện thoại · chưa phải số đơn</small></article>
       <article><span>Nguyên tắc</span><b>Người duyệt</b><small>máy chỉ đề xuất thay đổi</small></article>
     </section>
 
@@ -296,15 +418,16 @@ export default function GrowthLab({ supabase, email, role }) {
 
     {tab === "new" && <section className={styles.newExperiment}>
       <header><div><p>Brief có kiểm soát</p><h2>Chỉ thay một điều mỗi lần.</h2></div><span>Đầu ra: 3 cách mở bài · cùng offer · cùng CTA</span></header>
+      {knowledgeOrigin && <aside><Lightbulb/><div><b>Từ chủ đề: {knowledgeOrigin.title}</b><p>{knowledgeOrigin.warnings.length ? "Kiến thức đang là nháp. Chọn bằng chứng đã kiểm tra trước khi tạo bài." : "Chọn chi tiết đã kiểm tra để dùng làm bằng chứng trong bài."}</p><details><summary>Đọc kiến thức và nguồn trước khi viết</summary><p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{knowledgeOrigin.context}</p></details></div></aside>}
       <form onSubmit={(event) => createExperiment(event, true)}>
-        <label className={styles.wide}><span>Tên điều muốn học</span><input required maxLength={180} value={brief.title} onChange={(event) => setBrief({ ...brief, title: event.target.value })} placeholder="Ví dụ: Mở bằng nỗi khó công thức hay lời mời thử?"/></label>
-        <label><span>Người đọc</span><textarea rows="3" value={brief.audience} onChange={(event) => setBrief({ ...brief, audience: event.target.value })}/></label>
-        <label><span>Vấn đề đang gặp</span><textarea rows="3" value={brief.customerProblem} onChange={(event) => setBrief({ ...brief, customerProblem: event.target.value })}/></label>
-        <label><span>Góc tiếp cận</span><textarea rows="3" value={brief.angle} onChange={(event) => setBrief({ ...brief, angle: event.target.value })}/></label>
-        <label><span>Bằng chứng được phép dùng</span><textarea rows="3" value={brief.proof} onChange={(event) => setBrief({ ...brief, proof: event.target.value })}/></label>
-        <label><span>Đề nghị</span><textarea rows="3" value={brief.offer} onChange={(event) => setBrief({ ...brief, offer: event.target.value })}/></label>
-        <label><span>Hành động mong muốn</span><textarea rows="3" value={brief.cta} onChange={(event) => setBrief({ ...brief, cta: event.target.value })}/></label>
-        <label className={styles.wide}><span>Giả thuyết</span><textarea rows="3" value={brief.hypothesis} onChange={(event) => setBrief({ ...brief, hypothesis: event.target.value })}/></label>
+        <label className={styles.wide}><span>Tên điều muốn học</span><input required maxLength={180} value={brief.title} onChange={(event) => updateBrief("title", event.target.value)} placeholder="Ví dụ: Mở bằng nỗi khó công thức hay lời mời thử?"/></label>
+        <label><span>Người đọc</span><textarea rows="3" value={brief.audience} onChange={(event) => updateBrief("audience", event.target.value)}/></label>
+        <label><span>Vấn đề đang gặp</span><textarea rows="3" value={brief.customerProblem} onChange={(event) => updateBrief("customerProblem", event.target.value)}/></label>
+        <label><span>Góc tiếp cận</span><textarea rows="3" value={brief.angle} onChange={(event) => updateBrief("angle", event.target.value)}/></label>
+        <label><span>Bằng chứng được phép dùng</span><textarea rows="3" value={brief.proof} onChange={(event) => updateBrief("proof", event.target.value)}/></label>
+        <label><span>Đề nghị</span><textarea rows="3" value={brief.offer} onChange={(event) => updateBrief("offer", event.target.value)}/></label>
+        <label><span>Hành động mong muốn</span><textarea rows="3" value={brief.cta} onChange={(event) => updateBrief("cta", event.target.value)}/></label>
+        <label className={styles.wide}><span>Giả thuyết</span><textarea rows="3" value={brief.hypothesis} onChange={(event) => updateBrief("hypothesis", event.target.value)}/></label>
         <aside><Target/><div><b>OpenAI viết, Hoàng Long kiểm soát</b><p>AI tạo 3 cách mở bài. Sau đó bộ chấm độc lập kiểm tra: {DEFAULT_GROWTH_RUBRIC.map((item) => item.label).join(" · ")}.</p></div></aside>
         <div className={styles.generationActions}>
           <span>{generationStage || "API key chỉ nằm trên máy chủ; nội dung chưa tự đăng."}</span>
@@ -336,7 +459,7 @@ export default function GrowthLab({ supabase, email, role }) {
         <div className={styles.variantStack}>{variants.map((variant) => {
           const result = judgeThreadsDraft(editingVariant === variant.id ? draftText : variant.post_text, briefFromRow(selected));
           const link = trackingUrl(variant.tracking_code);
-          return <article className={styles.variant} key={variant.id}>
+          return <article className={styles.variant} key={variant.id} id={`growth-variant-${variant.id}`}>
             <header><div><small>{VARIANT_STATUS[variant.status]}</small><h3>{variant.label}</h3></div><code>{variant.tracking_code}</code></header>
             <ScoreStrip result={result}/>
             {editingVariant === variant.id ? <div className={styles.draftEditor}><textarea rows="9" value={draftText} onChange={(event) => setDraftText(event.target.value)}/><div><span>{result.characterCount} ký tự</span><button onClick={() => setEditingVariant("")}>Hủy</button><button onClick={() => saveDraft(variant)} disabled={saving}><Save/>Lưu & chấm lại</button></div></div> : <div className={styles.postText}>{variant.post_text.split("\n").map((line, index) => <p key={index}>{line || " "}</p>)}</div>}
@@ -351,14 +474,23 @@ export default function GrowthLab({ supabase, email, role }) {
             <details className={styles.publishPanel} open={variant.status === "published"}>
               <summary><span><Send/><b>{variant.status === "published" ? "Bài đang được đo" : "Sau khi đăng Threads"}</b></span><ChevronRight/></summary>
               <label>URL bài Threads<input defaultValue={variant.threads_post_url} placeholder="https://www.threads.net/@.../post/..." onBlur={(event) => {
-                const url = event.target.value.trim(); if (url !== variant.threads_post_url) patchVariant(variant, { threads_post_url: url, status: url ? "published" : variant.status, published_at: url && !variant.published_at ? new Date().toISOString() : variant.published_at }, url ? "Đã nối bài Threads với đường chuyển đổi." : "Đã lưu.");
+                const url = event.target.value.trim();
+                if (url && !safeKnowledgeUrl(url).startsWith("https://")) { setError("Đường dẫn bài đăng cần bắt đầu bằng HTTPS và không chứa thông tin đăng nhập."); return; }
+                if (url !== variant.threads_post_url) patchVariant(variant, { threads_post_url: url, status: url ? "published" : variant.status, published_at: url && !variant.published_at ? new Date().toISOString() : variant.published_at }, url ? "Đã nối bài Threads với đường chuyển đổi." : "Đã lưu.");
               }}/></label>
-              <div className={styles.manualMetrics}>{METRIC_FIELDS.map(([key, label]) => <label key={key}><span>{label}</span><input type="number" min="0" defaultValue={variant.manual_metrics?.[key] || ""} onBlur={(event) => {
-                const value = Math.max(0, Number(event.target.value) || 0); if (value !== Number(variant.manual_metrics?.[key] || 0)) patchVariant(variant, { manual_metrics: { ...(variant.manual_metrics || {}), [key]: value } }, "Đã cập nhật insight từ Threads.");
+              <div className={styles.manualMetrics}>{METRIC_FIELDS.map(([key, label]) => <label key={key}><span>{label}</span><input type="number" min="0" max="1000000000000000" step="1" defaultValue={variant.manual_metrics?.[key] ?? ""} onBlur={(event) => {
+                const raw = event.target.value.trim();
+                const value = raw ? knowledgeMetric(raw) : null;
+                if (raw && (value === null || !Number.isInteger(value))) { setError("Số liệu Threads cần là số nguyên không âm, tối đa 10¹⁵."); return; }
+                if (value !== knowledgeMetric(variant.manual_metrics?.[key])) {
+                  const metrics = { ...(variant.manual_metrics || {}) };
+                  if (value === null) delete metrics[key]; else metrics[key] = value;
+                  patchVariant(variant, { manual_metrics: metrics }, "Đã cập nhật insight từ Threads.");
+                }
               }}/></label>)}</div>
             </details>
             <Funnel variant={variant}/>
-            {variant.threads_post_url && <a className={styles.external} href={variant.threads_post_url} target="_blank" rel="noreferrer">Mở bài trên Threads<ExternalLink/></a>}
+            {safeKnowledgeUrl(variant.threads_post_url) && <a className={styles.external} href={safeKnowledgeUrl(variant.threads_post_url)} target="_blank" rel="noreferrer">Mở bài trên Threads<ExternalLink/></a>}
           </article>;
         })}</div>
       </section>}
