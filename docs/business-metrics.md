@@ -88,13 +88,20 @@ browser.
 
 ## Validation and deployment status
 
-At creation of this document, migration 0073 has **not been applied** to the live
-database and production deployment is not yet verified. Apply only the new
-migration; do not replay previously applied migrations.
+Migration 0073 was applied to the live database on 2026-10-07 through the
+Supabase SQL editor, together with 0074 and 0075. All 18 read-only catalog,
+RLS and role-privilege checks passed. [PR #25](https://github.com/longnguyen29/hoang-long-tra-app/pull/25)
+was merged as `8eefec0ce7f6559132d40ac404b61be3e82ca231`; production deployment
+`dpl_EMKxJYXg9AZPCowRxaYPMZPWmmQX` is READY at `www.hoanglongtra.com`.
+The authenticated admin page completed database loading, showed **Tháng này
+chưa có số liệu đã lưu**, and enabled the form without errors. At 390 px the
+page had no horizontal overflow. Actual business-data save/reload is not yet
+confirmed. Do not replay previously applied migrations.
 
 Completed local checks: **9 focused calculation/order-indicator tests passed**; production build passed; `git diff --check` passed. Calculator cases cover unknown/zero inputs, losses, incomplete inputs, other income/expenses, limits, Vietnam month boundaries and raw/mapped order fields. Unsaved drafts persist in sessionStorage scoped by authenticated email and month; saved figures remain database records, and stale draft versions are rejected by the RPC. Drafts are not a backup across browsers/devices.
 
-Remaining deployment checks (not yet verified):
+Remaining live behavior checks (not yet verified; configured RLS and grants
+were checked separately):
 
 - Managers can save/reload a month; ordinary employees and anonymous callers
   cannot read or save it. Direct authenticated writes are denied.
@@ -102,7 +109,9 @@ Remaining deployment checks (not yet verified):
   month and oversized notes are rejected by the server.
 - Two callers saving the same expected version produce one success and one
   conflict; the losing draft is not silently discarded.
-- The financial form remains usable on desktop and at 390 px.
+- Complete financial entry/save/conflict flows remain to be checked on desktop
+  and at 390 px; the empty live form and mobile page bounds were verified.
 
-The remaining checks are planned, not claims that live permissions or database behavior
-have already been tested. Update this status after actual validation/deployment.
+The remaining checks are planned, not claims that actual financial writes or
+identity-specific access behavior have been tested. Catalog/RLS/grants,
+deployment and the live empty-month read have been verified.

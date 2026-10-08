@@ -1,6 +1,6 @@
 import {
   BarChart3, Beaker, ClipboardCheck, ClipboardList, FlaskConical,
-  Handshake, Settings2, Sprout, Search, ListChecks,
+  Handshake, Settings2, Sprout, Search, ListChecks, Network,
 } from "lucide-react";
 
 export const STAFF_APPS = {
@@ -44,12 +44,16 @@ export const STAFF_APPS = {
     key: "growth", label: "Công cụ nội dung", short: "Công cụ", href: "/admin/growth",
     description: "Tạo, chấm và đo nội dung dẫn khách tới bộ mẫu cho quán.", icon: FlaskConical,
   },
+  knowledge: {
+    key: "knowledge", label: "Trung tâm kiến thức", short: "Kiến thức", href: "/admin/knowledge",
+    description: "Kiến thức trà và kinh doanh, góc nội dung, bài đã làm và kết quả theo chủ đề.", icon: Network,
+  },
 };
 
 export const STAFF_APP_GROUPS = [
   { label: "Hằng ngày", keys: ["work", "orders", "procedures", "pipeline"] },
   { label: "Doanh nghiệp", keys: ["discovery", "operations", "house"] },
-  { label: "Phòng chuyên môn", keys: ["recipes", "control", "growth"] },
+  { label: "Phòng chuyên môn", keys: ["recipes", "knowledge", "control", "growth"] },
 ];
 
 export const STAFF_APP_LIST = STAFF_APP_GROUPS.flatMap((group) => group.keys.map((key) => STAFF_APPS[key]));

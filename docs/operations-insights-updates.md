@@ -1,7 +1,10 @@
 # Rankings, batch assessments and internal reminders
 
-Implemented locally on 2026-10-07. This document does not confirm a production
-deployment or any real Telegram delivery.
+Deployed on 2026-10-07 through [PR #25](https://github.com/longnguyen29/hoang-long-tra-app/pull/25),
+merge commit `8eefec0ce7f6559132d40ac404b61be3e82ca231`. Production deployment
+`dpl_EMKxJYXg9AZPCowRxaYPMZPWmmQX` is READY at `www.hoanglongtra.com`.
+Authenticated admin live pages and mobile layout were checked as recorded
+below. Real Telegram delivery and business-data saves are not yet confirmed.
 
 ## App locations
 
@@ -62,18 +65,18 @@ history and a staff-authorized creation RPC. Reviewer identity and time are
 assigned server-side. Reviews never change stock, batch release or public
 passport data. See `batch-quality-reviews.md` for fields and access rules.
 
-This local branch also includes the previous **unapplied** migrations 0073
-(monthly business metrics) and 0074 (government obligations). Before publishing:
+Migrations 0073 (monthly business metrics), 0074 (government obligations) and
+0075 (batch review history) were applied to the production database through
+the Supabase SQL editor before deploying the code. All 18 read-only catalog,
+RLS and role-privilege checks passed. These checks confirm table/function
+presence and configured permissions; they do not replace actual save/reload
+or identity-specific access checks.
 
-1. Fetch and reconcile remote changes while preserving local work.
-2. Check migration history; apply only missing migrations 0073–0075 in order.
-   Do not rerun old migrations or assume this document is the live database state.
-3. Push/merge the reviewed code and verify the production deployment.
-4. Verify the existing bot/chat configuration and scheduled reminder job.
-
-Current session cannot resolve GitHub and has no approved browser/computer
-control. Database migrations, publishing and real Telegram sends are therefore
-not claimed complete.
+The production reminder schedule for `/api/cron/dashboard-reminders` is
+confirmed as `30 0 * * *` (07:30 Vietnam time daily). Clicking **Gửi nhắc đến hạn**
+on live returned **Không có nhắc mới đủ điều kiện gửi**, with zero messages sent.
+An actual automated job run and Telegram receipt are not yet confirmed. Do not
+rerun previously applied migrations during later deployments.
 
 ## Validation and manual checks
 
@@ -82,14 +85,30 @@ not claimed complete.
 passed. A final display-only correction prevents failed history loads from
 showing an apparent zero review count; included in the final build.
 
-After deployment, manually check:
+Live checks completed with an authenticated administrator:
+
+- Metrics finished loading an empty month, showed **Tháng này chưa có số liệu
+  đã lưu**, and enabled the form without errors.
+- Rankings loaded four completed orders and the product/buyer lists.
+- Government obligations showed five undated, unconfirmed drafts. Two pending
+  feature notes and five older unchecked Today tasks remained visible.
+- Metrics, rankings and government pages had no horizontal overflow at 390 px;
+  the rankings layout was visually usable. The updates page showed the new
+  version headings.
+- The batches page loaded without errors, but no existing batch cards were
+  available to open the actual review form. No batch or assessment was created.
+
+Remaining manual behavior checks:
 
 - All history vs month/year, both rank sorts, one product in multiple lines,
   same phone in different formats, missing prices and mixed quantity units.
-- A batch assessment with all three scores, an issue with notes, saved reviewer
+- A batch assessment when a real batch is available: all three scores, an issue with notes, saved reviewer
   identity/time, another batch, page reload, history pagination and a draft.
 - One real internal due reminder and a second click, plus a future reminder
-  that should not send. Confirm the bot receives the real message.
-- Feature links and pending notes; desktop and 390 px mobile layouts.
+  that should not send. Confirm the bot receives the real message and the
+  scheduled job executes. The zero-send manual check does not verify delivery.
+- Metrics save/reload and version conflict; detailed forms/history on desktop
+  and 390 px once real data is available.
 - Staff access permitted, non-staff/anonymous review writes denied, direct
-  authenticated table writes denied. Migration runtime remains unverified here.
+  authenticated table writes denied. Catalog/RLS/grants and migration execution
+  are verified; identity-specific calls and real writes remain untested.

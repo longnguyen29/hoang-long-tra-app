@@ -6,7 +6,7 @@ Các nghĩa vụ được quản lý như cấu hình riêng của tài khoản 
 
 Mở **Dashboard → Nghĩa vụ với cơ quan nhà nước**, tại `/admin/#government-obligations`. Mốc lịch và nhắc Telegram dẫn về phần này.
 
-Migration `supabase/migrations/0074_government_obligations.sql` **chưa được áp dụng vào database production**. Cần triển khai migration trước khi dùng phần này trên live. Migration chạy trong một transaction và có thể chạy lại; không chứa khóa bí mật.
+Migration `supabase/migrations/0074_government_obligations.sql` **đã áp dụng vào database production ngày 07/10/2026**, cùng 0073 và 0075 qua Supabase SQL editor. Cả 18 kiểm tra catalog/RLS/quyền đều đạt. Code đã lên production qua [PR #25](https://github.com/longnguyen29/hoang-long-tra-app/pull/25), commit `8eefec0ce7f6559132d40ac404b61be3e82ca231`; deployment `dpl_EMKxJYXg9AZPCowRxaYPMZPWmmQX` READY tại `www.hoanglongtra.com`. Đã kiểm tra giao diện live bằng tài khoản quản lý; chưa xác nhận lưu nghĩa vụ thực tế hoặc Telegram đã nhận tin.
 
 ## Danh mục gợi ý và xác nhận hạn
 
@@ -123,8 +123,8 @@ Lịch nhắc không tự nộp báo cáo, chuyển tiền hay gửi nội dung 
 - Production build và `git diff --check` đã đạt. Đã sửa link mốc lịch để thỏa CHECK có sẵn của `dashboard_plans`.
 - Nghĩa vụ một lần, theo tháng/quý/6 tháng/năm; ngày cố định hoặc cuối tháng. Nhắc một lần trong cửa sổ bắt đầu trước một tháng lịch; nếu tạo muộn thì gửi vào lần quét tiếp theo trước hạn.
 - Danh mục chưa xác nhận/ngày trống không tạo mốc hay gửi nhắc. Các mục sắp tới trong vòng một tháng và quá hạn chưa xong hiện ở Đang chờ; các kỳ xa hơn vẫn có trong lịch.
-- Chưa chạy migration 0074 trên live, chưa kiểm tra lưu/khôi phục thực tế, desktop/mobile hay cron production. Phiên hiện tại chặn mạng và không cho điều khiển trình duyệt. Nhánh này cũng có migration 0073 cho chỉ số kinh doanh, chưa áp dụng.
-- Khi triển khai: đồng bộ remote trước; áp dụng chỉ các migration mới 0073 và 0074 rồi mới đưa code lên production; kiểm tra bot/cron hiện có. Không chạy lại migration cũ.
+- Đã áp dụng 0073–0075 trên live, kiểm tra đủ bảng/RPC/RLS/quyền (18 kết quả đều đạt) và xác nhận production READY. Giao diện quản lý live hiện đủ 5 bản nháp chưa có ngày/chưa xác nhận; 2 ghi chú tính năng đang chờ và 5 việc Today cũ chưa đánh dấu vẫn được giữ. Trang nghĩa vụ không tràn ngang ở 390 px. Chưa thử lưu/khôi phục một nghĩa vụ thực tế.
+- Đã xác nhận lịch production `/api/cron/dashboard-reminders` là `30 0 * * *`, tức 07:30 hằng ngày tại Việt Nam. Bấm **Gửi nhắc đến hạn** trên live trả **Không có nhắc mới đủ điều kiện gửi**, số tin gửi là 0. Chưa xác nhận một lượt cron tự động thực tế hay Telegram đã nhận tin. Khi triển khai sau này, chỉ áp dụng migration còn thiếu; không chạy lại migration cũ.
 - Ngày nghỉ/lễ và ngoại lệ từng kỳ chưa được tự điều chỉnh. Xác nhận hạn bằng hồ sơ thực tế; nếu một kỳ có hạn riêng, ghi một nghĩa vụ một lần hoặc cập nhật lịch lặp phù hợp. Không tự nộp hồ sơ/chuyển tiền.
 
 ## Nguồn tham khảo cho danh mục gợi ý
