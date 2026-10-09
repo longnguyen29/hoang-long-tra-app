@@ -14,6 +14,7 @@ import FormattedNumberInput from "@/components/FormattedNumberInput";
 import CustomerJourneyPanel from "./CustomerJourneyPanel";
 import { notifyHouse } from "@/lib/notify";
 import PipelineSample from "./PipelineSample";
+import EventEnquiryInbox from "./EventEnquiryInbox";
 
 const newOpportunity = () => ({ business_name: "", contact: "", stage: "lead", owner: "", monthly_potential_kg: "", next_action: "Liên hệ và xác nhận nhu cầu", next_action_at: dateInput(1), notes: "" });
 const blankQuoteLine = () => ({ id: crypto.randomUUID(), productKey: "", qty: 1, price: "" });
@@ -109,6 +110,18 @@ export default function TradePipeline({ supabase, email }) {
   }, []);
 
   useDialogFocus(dialogRef, Boolean(selected) && !editing && !quoteDraft && !priceDraft, closeSelected);
+
+  const openEventOpportunity = async (id) => {
+    const { data, error: readError } = await supabase.from("trade_opportunities").select("*").eq("id", id).maybeSingle();
+    if (readError || !data) { setError("Chưa mở được khách hàng của yêu cầu này. Thử làm mới Pipeline."); return; }
+    let suppressed = false;
+    if (data.discovery_prospect_id) {
+      const result = await supabase.rpc("pipeline_prospect_suppressed", { p_opportunity_id: data.id });
+      suppressed = result.error ? true : Boolean(result.data);
+    }
+    setSelected({ ...data, prospect_suppressed: suppressed });
+    setEditing(null); setQuoteDraft(null); setPriceDraft(null);
+  };
 
   const [dataFailure, setDataFailure] = useState(false);
   const load = useCallback(async () => {
@@ -324,6 +337,7 @@ export default function TradePipeline({ supabase, email }) {
       <article><FileText/><span>Báo giá đang mở</span><b>{openQuotes.length}</b><small>{quotes.filter((item) => item.status === "accepted").length} đã đồng ý</small></article>
       <article><Handshake/><span>Đối tác định kỳ</span><b>{opportunities.filter((item) => item.stage === "active").length}</b><small>{opportunities.filter((item) => item.stage === "won").length} đang ở đơn đầu</small></article>
     </section>
+    <EventEnquiryInbox supabase={supabase} refreshKey={opportunities} onOpenOpportunity={openEventOpportunity}/>
     <section className={styles.tools}><label><Search/><input aria-label="Tìm khách hàng" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm doanh nghiệp, liên hệ, người phụ trách"/></label><button data-active={showLost} onClick={() => setShowLost(!showLost)}>Tạm dừng · {opportunities.filter((item) => item.stage === "lost").length}</button></section>
     <label className={styles.mobileStagePicker}><span>Giai đoạn đang xem</span><select value={mobileStage} onChange={(event) => setMobileStage(event.target.value)}>{TRADE_STAGES.map((stage) => <option key={stage.id} value={stage.id}>{stage.label} · {searchable.filter((item) => item.stage === stage.id).length}</option>)}</select></label>
     <section className={styles.stageRail} aria-label="Hành trình đối tác">{TRADE_STAGES.map((stage, index) => <div key={stage.id}><span>{String(index + 1).padStart(2, "0")}</span><b>{stage.label}</b><small>{searchable.filter((item) => item.stage === stage.id).length}</small></div>)}</section>
@@ -339,6 +353,7 @@ export default function TradePipeline({ supabase, email }) {
       <header><div><p>{stageLabel(selected.stage)}</p><h2>{selected.business_name}</h2><span>{selected.contact}</span></div><button type="button" onClick={closeSelected} aria-label="Đóng"><X/></button></header>
       <section className={styles.next}><span>Bước tiếp theo</span><h3>{selected.next_action || "Chưa đặt bước tiếp theo"}</h3><time>{shortDate(selected.next_action_at)}</time><p>Phụ trách: {selected.owner || "Chưa phân công"}</p><div><button onClick={() => setEditing({ ...selected, next_action_at: selected.next_action_at?.slice(0, 10) || "" })}>Sửa nhịp làm việc</button><Link className={styles.recipeBridge} href={`/admin/recipes?view=lab&opportunity=${encodeURIComponent(selected.id)}`}><FlaskConical/>Mở phòng công thức</Link></div></section>
       <CustomerJourneyPanel primaryActionTitle={selected.prospect_suppressed?"Không liên hệ · chỉ xử lý giao dịch đã có":selected.next_action} journey={selectedJourney} onCommand={runJourneyCommand}/>
+      <EventEnquiryInbox key={selected.id} supabase={supabase} opportunityId={selected.id} refreshKey={opportunities}/>
       <PipelineSample key={selected.id} opportunity={selected} supabase={supabase} samples={samples} onCreated={async()=>{await load();const {data}=await supabase.from('trade_opportunities').select('*').eq('id',selected.id).single();if(data)setSelected(data);}}/>
       <section className={styles.progress}><header><h3>Chuyển giai đoạn</h3><span>{Number(selected.monthly_potential_kg)>0?`${formatMassKg(selected.monthly_potential_kg)}/tháng`:'Chưa xác minh sản lượng'}</span></header><div>{TRADE_STAGES.map((stage) => <button key={stage.id} data-active={selected.stage === stage.id} disabled={selected.prospect_suppressed&&["sample_requested","sample_sent","feedback","quoted"].includes(stage.id)} onClick={() => moveStage(stage.id)}>{stage.short}</button>)}<button data-lost onClick={() => moveStage("lost")}>Tạm dừng</button></div></section>
       <section className={styles.priceBook}>
