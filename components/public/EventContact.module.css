@@ -17,6 +17,7 @@
 .zalo { background: var(--color-paper); color: var(--color-ink); }
 .save { border: 1px solid var(--color-rule); color: var(--color-paper); }
 .vcardHint { color: var(--color-rule); font-size: 12px; line-height: 1.6; max-width: 40ch; margin: 14px 0 0; }
+.heroCatalogue { display: inline-flex; align-items: center; gap: var(--space-2xs); min-height: var(--control-height); margin-top: var(--space-sm); color: var(--color-paper); font-size: var(--text-sm); font-weight: 700; text-underline-offset: 4px; }
 .jump { display: none; }
 .contactDetails { border-top: 1px solid color-mix(in oklch,var(--color-rule) 45%,transparent); margin-top: 40px; padding-top: 24px; }
 .contactDetails h2 { margin: 0 0 16px; color: var(--color-rule); text-transform: uppercase; letter-spacing: .09em; font: 700 11px var(--font-body); }
@@ -32,6 +33,13 @@
 .formIntro, .draft>p { color: var(--color-ink-2); font-size: 14px; line-height: 1.6; margin: 14px 0 24px; }
 .message form, .draft { display: grid; gap: 18px; }
 .honeypot { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.selectedTeas, .selectionState { padding: var(--space-sm); border: 1px solid var(--color-rule); background: var(--color-paper-2); }
+.selectedTeas h3 { margin: 0 0 var(--space-2xs); font: 600 18px var(--font-display); }
+.selectedTeas ul { margin: 0; padding-left: var(--space-sm); color: var(--color-ink); font-size: var(--text-sm); line-height: 1.6; }
+.selectedTeas p, .selectionState p { margin: var(--space-2xs) 0 0; color: var(--color-muted); font-size: var(--text-xs); line-height: 1.6; }
+.selectedTeas>div, .selectionState>div { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-top: var(--space-2xs); }
+.selectedTeas a, .selectedTeas button, .selectionState button { display: inline-flex; align-items: center; min-height: var(--control-height); padding: 0; border: 0; background: transparent; color: var(--color-ink); font-size: var(--text-xs); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.selectedTeas button:disabled { cursor: default; opacity: .6; }
 .intents { margin: 0; padding: 0; border: 0; min-width: 0; }
 .intents legend { margin-bottom: 10px; font-size: 13px; font-weight: 600; }
 .intents>div { display: flex; gap: 8px; flex-wrap: wrap; }

@@ -2,6 +2,12 @@
 
 Public `/meet` is the reusable contact page for tea shows and partner meetings. `/meet/qr` supplies the unchanged printable A5 website QR and PNG/SVG assets. Reuses Vietnamese/English locale, brand tokens/typefaces, existing Zalo 0903 333 841, phone, office/warehouse address, catalogue, qualified sample flow and company vCard.
 
+## Compact event catalogue
+
+`/meet/catalog` is the mobile-friendly event catalogue. It reads the same available trade teas and actual product photos as `/catalog`; it does not duplicate products or invent prices. Visitors can select up to three teas and continue to `/meet` for samples or a quote. Only bounded product IDs, intent and approved attribution travel in the URL. The contact page resolves those IDs against available catalogue rows before showing or including product names in the enquiry/Zalo note. Typed requirements stay separate and are not silently overwritten or truncated. Loading failures provide retry and a way to continue without a selection.
+
+The original booth QR continues to open `/meet`, which links to this compact catalogue. Existing printed QR cards remain usable.
+
 ## Direct enquiry
 
 The main action sends name, contact, optional business/notes and sample/pricing/partnership intent to `/api/event-enquiries` after explicit save/respond consent. Success and a reference appear only after the server confirms a committed save. Fields and the request UUID remain after a timeout/API error; retries use the same UUID and cannot duplicate a saved enquiry or note. Editing fields starts an intentional new request. The form has a honeypot, server validation, bounded JSON body, origin checks and database-backed throttling; no raw form data or credentials are logged or placed into URLs.

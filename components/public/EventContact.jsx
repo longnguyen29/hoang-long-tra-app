@@ -5,6 +5,9 @@ import Link from "next/link";
 import { ArrowDown, ArrowRight, Check, Copy, Download, MapPin, MessageCircle, Phone, QrCode } from "lucide-react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { composeEventMessage, EVENT_CONTACT, eventAttribution, eventLink } from "@/lib/event-contact";
+import { createClient } from "@/lib/supabase/client";
+import { catalogText, TRADE_CATALOG_FIELDS } from "@/lib/trade-catalog";
+import { eventCatalogueHref, eventSelectionNote, eventTeaIds, selectedEventTeas } from "@/lib/event-catalog";
 import styles from "./EventContact.module.css";
 
 const COPY = {
@@ -15,6 +18,7 @@ const COPY = {
     visit: "Bạn có thể ghé uống trà và trao đổi nhu cầu. Vui lòng gọi trước để sắp xếp.", directions: "Chỉ đường",
     next: "Từ cuộc gặp đến lần thử tiếp theo", catalogue: "Xem danh mục trà", sample: "Đăng ký bộ mẫu cho quán",
     catalogueBody: "Chọn dòng trà phù hợp với sản phẩm của bạn.", sampleBody: "Pha thử trong công thức thực tế trước khi nhập sỉ.",
+    selection: "Trà bạn đã chọn", selectionLoading: "Đang tải lựa chọn trà…", selectionFailed: "Chưa xác nhận được các trà bạn đã chọn. Thử lại hoặc bỏ lựa chọn để tiếp tục trao đổi nhu cầu chung.", selectionMissing: "Một số trà đã chọn không còn trong danh mục. Bạn có thể tiếp tục với các trà hiển thị hoặc chọn lại.", selectionRetry: "Thử lại", selectionClear: "Bỏ lựa chọn", selectionChange: "Đổi lựa chọn", noteTooLong: "Ghi chú vẫn được giữ nguyên. Vui lòng rút gọn theo giới hạn bên trên hoặc bỏ lựa chọn trà để có thêm chỗ.",
     formTitle: "Tiếp tục trao đổi", formBody: "Chọn nhu cầu và để lại thông tin để Hoàng Long liên hệ, cùng bạn trao đổi bước tiếp theo.",
     intent: "Bạn muốn trao đổi về", intents: { sample: "Thử mẫu", quote: "Báo giá", cooperation: "Hợp tác" },
     name: "Tên của bạn", business: "Quán / doanh nghiệp", contact: "Số điện thoại hoặc email", note: "Nhu cầu của bạn",
@@ -37,6 +41,7 @@ const COPY = {
     visit: "Visit for tea and a conversation about your requirements. Please call ahead to arrange your visit.", directions: "Directions",
     next: "From our meeting to your next tea trial", catalogue: "Browse the tea catalogue", sample: "Request a café sample set",
     catalogueBody: "Find a tea suited to the products you make.", sampleBody: "Test in your actual recipe before ordering wholesale.",
+    selection: "Your selected teas", selectionLoading: "Loading your tea selection…", selectionFailed: "We could not confirm your selected teas. Retry or remove the selection to continue with a general enquiry.", selectionMissing: "Some selected teas are no longer listed. Continue with the teas shown or choose again.", selectionRetry: "Retry", selectionClear: "Remove selection", selectionChange: "Change selection", noteTooLong: "Your note has been kept intact. Shorten it to the limit shown above, or remove the tea selection for more space.",
     formTitle: "Continue the conversation", formBody: "Tell us what you need and leave your details so Hoàng Long can contact you about the next step.",
     intent: "What would you like to discuss?", intents: { sample: "Samples", quote: "Pricing", cooperation: "Partnership" },
     name: "Your name", business: "Café / company", contact: "Phone or email", note: "Your requirements",
@@ -69,13 +74,48 @@ export default function EventContact() {
   const [consent, setConsent] = useState(false);
   const [sending, setSending] = useState(false);
   const [saved, setSaved] = useState(null);
+  const [teaIds, setTeaIds] = useState(null);
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [selectionStatus, setSelectionStatus] = useState("loading");
+  const [selectionMissing, setSelectionMissing] = useState(false);
+  const [selectionAttempt, setSelectionAttempt] = useState(0);
   const requestId = useRef("");
   const inFlight = useRef(false);
   const formElement = useRef(null);
   const draftHeading = useRef(null);
   const savedHeading = useRef(null);
   const wasPrepared = useRef(false);
-  useEffect(() => { setSearch(window.location.search); }, []);
+  useEffect(() => {
+    const incoming = window.location.search;
+    const ids = eventTeaIds(incoming);
+    setSearch(incoming);
+    setTeaIds(ids);
+    setSelectionMissing(new URLSearchParams(incoming).has("tea") && !ids.length);
+    setForm((current) => ({ ...current, intent: new URLSearchParams(incoming).get("intent") === "quote" ? "quote" : "sample" }));
+  }, []);
+  useEffect(() => {
+    if (teaIds === null) return;
+    if (!teaIds.length) { setSelectedProducts([]); setSelectionStatus("ready"); return; }
+    let live = true;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => { controller.abort(); if (live) setSelectionStatus("error"); }, 15000);
+    setSelectionStatus("loading");
+    const load = async () => {
+      try {
+        const { data, error: catalogueError } = await createClient().from("catalog_products").select(TRADE_CATALOG_FIELDS)
+          .eq("available", true).in("id", teaIds).abortSignal(controller.signal);
+        if (!live || controller.signal.aborted) return;
+        if (catalogueError) { setSelectionStatus("error"); return; }
+        const teas = selectedEventTeas(data || [], teaIds);
+        setSelectedProducts(teas);
+        setSelectionMissing(teas.length < teaIds.length);
+        setSelectionStatus("ready");
+      } catch { if (live && !controller.signal.aborted) setSelectionStatus("error"); }
+      finally { window.clearTimeout(timeout); }
+    };
+    load();
+    return () => { live = false; window.clearTimeout(timeout); };
+  }, [teaIds, selectionAttempt]);
   useEffect(() => {
     if (prepared || wasPrepared.current) {
       draftHeading.current?.focus({ preventScroll: true });
@@ -96,15 +136,28 @@ export default function EventContact() {
     if (field) formElement.current?.elements.namedItem(field)?.focus();
   }, [error, form.name, form.contact]);
 
+  // The saved note stays in Vietnamese so a locale-only change cannot alter a
+  // retry payload. Both languages reserve space before the visitor types.
+  const savedNote = eventSelectionNote(selectedProducts, form.note, "vi");
+  const englishNote = eventSelectionNote(selectedProducts, form.note, "en");
+  const noteLimit = Math.min(savedNote.maxNoteLength, englishNote.maxNoteLength);
+  const noteTooLong = form.note.length > noteLimit;
+  const selectionReady = selectionStatus === "ready";
+  const catalogueHref = eventCatalogueHref(selectedProducts, selectedProducts.map((product) => product.id), search);
+
   const resetSubmission = () => { requestId.current = ""; setError(""); setSaved(null); };
   const update = (field, value) => {
     if (inFlight.current) return;
     setForm((current) => ({ ...current, [field]: value }));
     resetSubmission();
   };
+  const clearSelection = () => {
+    if (inFlight.current) return;
+    setTeaIds([]); setSelectedProducts([]); setSelectionMissing(false); setSelectionStatus("ready"); resetSubmission();
+  };
   const submit = async (event) => {
     event.preventDefault();
-    if (inFlight.current || saved) return;
+    if (inFlight.current || saved || !selectionReady || noteTooLong) return;
     if (!form.name.trim() || !form.contact.trim()) { setError("required"); return; }
     if (!consent) { setError("consent_required"); return; }
     inFlight.current = true;
@@ -118,7 +171,7 @@ export default function EventContact() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({ ...form, requestId: requestId.current, consent: true, website: form.website, attribution: eventAttribution(search) }),
+        body: JSON.stringify({ ...form, note: savedNote.note, requestId: requestId.current, consent: true, website: form.website, attribution: eventAttribution(search) }),
       });
       const result = await response.json();
       if (response.ok && result.ok === true && result.requestId === requestId.current && /^HL-E-[a-f0-9]{8}$/i.test(result.reference || "")) {
@@ -132,10 +185,10 @@ export default function EventContact() {
   };
   const prepare = (event) => {
     event.preventDefault();
-    if (inFlight.current) return;
+    if (inFlight.current || !selectionReady || noteTooLong) return;
     if (!form.name.trim() || !form.contact.trim()) { setError("required"); return; }
     setError("");
-    setDraft(composeEventMessage(form, locale));
+    setDraft(composeEventMessage({ ...form, note: eventSelectionNote(selectedProducts, form.note, locale).note }, locale));
     setPrepared(true);
     setCopyStatus("");
   };
@@ -162,6 +215,7 @@ export default function EventContact() {
           <a className={styles.save} href="/events/hoang-long.vcf" download="hoang-long.vcf"><Download aria-hidden="true"/>{t.save}</a>
         </div>
         <p className={styles.vcardHint}>{t.vcardHelp}</p>
+        <Link href={catalogueHref} className={styles.heroCatalogue}>{t.catalogue}<ArrowRight size={17} aria-hidden="true"/></Link>
         <a href="#message" className={styles.jump}>{t.jump}<ArrowDown size={16} aria-hidden="true"/></a>
         <div className={styles.contactDetails}>
           <h2>{t.details}</h2>
@@ -181,17 +235,25 @@ export default function EventContact() {
           <h2 id="message-title" tabIndex={-1} ref={draftHeading}>{t.formTitle}</h2><p className={styles.formIntro}>{t.formBody}</p>
           <form ref={formElement} onSubmit={submit} noValidate aria-busy={sending}>
             <label className={styles.honeypot} aria-hidden="true">Website<input type="text" name="website" tabIndex={-1} autoComplete="off" disabled={sending} value={form.website} onChange={(event) => update("website", event.target.value)}/></label>
+            {selectionStatus === "loading" && <p className={styles.pending} role="status">{t.selectionLoading}</p>}
+            {selectionStatus === "error" && <div className={styles.selectionState} role="alert"><p>{t.selectionFailed}</p><div><button type="button" onClick={() => setSelectionAttempt((value) => value + 1)}>{t.selectionRetry}</button><button type="button" onClick={clearSelection}>{t.selectionClear}</button></div></div>}
+            {selectionReady && (selectedProducts.length > 0 || selectionMissing) && <div className={styles.selectedTeas}>
+              {selectedProducts.length > 0 && <><h3>{t.selection}</h3><ul>{selectedProducts.map((product) => <li key={product.id}>{catalogText(product.name, locale) || product.id}</li>)}</ul></>}
+              {selectionMissing && <p role="status">{t.selectionMissing}</p>}
+              <div><Link href={catalogueHref}>{t.selectionChange}</Link><button type="button" disabled={sending} onClick={clearSelection}>{t.selectionClear}</button></div>
+            </div>}
             <fieldset className={styles.intents} disabled={sending}><legend>{t.intent}</legend><div>{Object.entries(t.intents).map(([key, label]) => <label key={key} data-selected={form.intent === key}><input type="radio" name="event-intent" value={key} checked={form.intent === key} onChange={() => update("intent", key)}/><span>{label}</span></label>)}</div></fieldset>
             <label className={styles.field}><span>{t.name}</span><input name="name" required autoComplete="name" maxLength={80} disabled={sending} aria-invalid={error === "required" && !form.name.trim()} aria-describedby={error === "required" ? "enquiry-error" : undefined} value={form.name} onChange={(e) => update("name", e.target.value)}/></label>
             <label className={styles.field}><span>{t.business}<small>{t.optional}</small></span><input name="organization" autoComplete="organization" maxLength={120} disabled={sending} value={form.business} onChange={(e) => update("business", e.target.value)}/></label>
             <label className={styles.field}><span>{t.contact}</span><input name="contact" required maxLength={120} disabled={sending} aria-invalid={error === "invalid_contact" || (error === "required" && !form.contact.trim())} aria-describedby={error === "invalid_contact" || error === "required" ? "enquiry-error" : undefined} value={form.contact} onChange={(e) => update("contact", e.target.value)}/></label>
-            <label className={styles.field}><span>{t.note}<small>{t.optional}</small></span><textarea name="note" maxLength={700} rows={3} placeholder={t.noteHint} disabled={sending} value={form.note} onChange={(e) => update("note", e.target.value)}/></label>
+            <label className={styles.field}><span>{t.note}<small>{t.optional} · {form.note.length}/{noteLimit}</small></span><textarea name="note" maxLength={noteLimit} rows={3} placeholder={t.noteHint} disabled={sending} aria-invalid={noteTooLong} aria-describedby={noteTooLong ? "note-length-error" : undefined} value={form.note} onChange={(e) => update("note", e.target.value)}/></label>
+            {noteTooLong && <p className={styles.error} id="note-length-error" role="alert">{t.noteTooLong}</p>}
             <label className={styles.consent}><input type="checkbox" name="consent" required checked={consent} disabled={sending} aria-invalid={error === "consent_required"} aria-describedby={error === "consent_required" ? "enquiry-error" : undefined} onChange={(event) => { if (inFlight.current) return; setConsent(event.target.checked); resetSubmission(); }}/><span>{t.consent}</span></label>
-            <button className={styles.primary} type="submit" disabled={sending || Boolean(saved)}>{sending ? t.sending : saved ? t.sent : t.submit}{saved ? <Check size={18} aria-hidden="true"/> : !sending && <ArrowRight size={18} aria-hidden="true"/>}</button>
+            <button className={styles.primary} type="submit" disabled={sending || Boolean(saved) || !selectionReady || noteTooLong}>{sending ? t.sending : saved ? t.sent : t.submit}{saved ? <Check size={18} aria-hidden="true"/> : !sending && <ArrowRight size={18} aria-hidden="true"/>}</button>
             {sending && <p className={styles.pending} role="status">{t.sending}</p>}
             {error && <p className={styles.error} id="enquiry-error" role="alert">{error === "required" ? t.required : t.errors[error]}</p>}
             <p className={styles.privacy}>{t.privacy} <Link href="/privacy">{t.privacyLink}</Link></p>
-            <button className={styles.optionalZalo} type="button" disabled={sending} onClick={prepare}><MessageCircle size={17} aria-hidden="true"/>{t.prepare}</button>
+            <button className={styles.optionalZalo} type="button" disabled={sending || !selectionReady || noteTooLong} onClick={prepare}><MessageCircle size={17} aria-hidden="true"/>{t.prepare}</button>
           </form>
         </> : <div className={styles.draft}>
           <h2 id="message-title" tabIndex={-1} ref={draftHeading}>{t.draftTitle}</h2><p>{saved ? t.savedDraftHelp : t.draftHelp}</p>
@@ -205,7 +267,7 @@ export default function EventContact() {
     </div>
 
     <section className={styles.next} aria-labelledby="next-title"><h2 id="next-title">{t.next}</h2><div>
-      <Link href={eventLink("/catalog", search)}><span>{t.catalogue}<ArrowRight size={19} aria-hidden="true"/></span><p>{t.catalogueBody}</p></Link>
+      <Link href={catalogueHref}><span>{t.catalogue}<ArrowRight size={19} aria-hidden="true"/></span><p>{t.catalogueBody}</p></Link>
       <Link href={eventLink("/sample", search)}><span>{t.sample}<ArrowRight size={19} aria-hidden="true"/></span><p>{t.sampleBody}</p></Link>
     </div></section>
     <footer className={styles.footer}><div><QrCode aria-hidden="true"/><div><strong>{t.qr}</strong><p>{t.qrBody}</p></div></div><Link href="/meet/qr">{t.qrOpen}<ArrowRight size={16} aria-hidden="true"/></Link></footer>
