@@ -11,7 +11,7 @@ import { useLocale } from "@/components/i18n/LocaleProvider";
 // Publicly indexable on purpose: advertising platforms fetch it, and a policy nobody can
 // read is not a policy.
 
-const UPDATED = { vi: "8 tháng 9, 2026", en: "September 8, 2026" };
+const UPDATED = { vi: "9 tháng 10, 2026", en: "October 9, 2026" };
 
 const S = {
   vi: {
@@ -26,6 +26,7 @@ const S = {
         list: [
           "**Khi đặt hàng:** tên, số điện thoại hoặc email, địa chỉ giao hàng, mã số thuế (nếu bạn nhập), ghi chú đơn, các sản phẩm và số lượng bạn đặt.",
           "**Khi xin mẫu thử hoặc để lại thông tin từ quảng cáo:** tên, tên quán hoặc doanh nghiệp, số điện thoại, địa chỉ nhận mẫu, và câu trả lời cho các câu hỏi sàng lọc.",
+          "**Khi gửi nhu cầu qua trang liên hệ hội chợ:** tên, số điện thoại hoặc email, doanh nghiệp và ghi chú nếu bạn nhập, loại nhu cầu, nguồn truy cập, thời điểm gửi và xác nhận đồng ý để lưu thông tin, phản hồi yêu cầu. Hệ thống dùng mã băm từ địa chỉ IP để giới hạn gửi lặp và chống spam; không lưu IP gốc trong bản ghi yêu cầu này. Chọn chỉ soạn tin Zalo không gửi các trường biểu mẫu vào cơ sở dữ liệu; bạn tự dán và gửi trong Zalo.",
           "**Khi đặt lịch buổi trà:** tên, số điện thoại hoặc email, ngày giờ bạn chọn và ghi chú.",
           "**Khi viết đánh giá sản phẩm:** tên hiển thị, đánh giá sao, nội dung, và số điện thoại/email bạn đã dùng để mua — dùng để xác minh bạn thực sự đã mua. Số điện thoại/email này không bao giờ hiển thị công khai.",
           "**Khi nhắn tin cho chúng tôi:** tên và nội dung tin nhắn.",
@@ -121,6 +122,7 @@ const S = {
         list: [
           "**When you order:** name, phone or email, delivery address, tax number if you enter one, order notes, and the products and quantities you ordered.",
           "**When you request a sample or leave your details from an advert:** name, shop or business name, phone number, delivery address, and your answers to the qualifying questions.",
+          "**When you submit an event contact enquiry:** name, phone or email, optional business and notes, enquiry type, visit source, submission time and confirmation of consent to store the details and respond. An IP-derived hash limits repeated submissions and spam; the original IP is not stored in this enquiry record. Choosing only to prepare a Zalo message does not send form fields to our database; you paste and send it in Zalo yourself.",
           "**When you book a tea session:** name, phone or email, the date and time you chose, and any note.",
           "**When you review a product:** display name, star rating, the review itself, and the phone or email you ordered with — used to check you actually bought it. That contact is never shown publicly.",
           "**When you message us:** your name and the messages.",

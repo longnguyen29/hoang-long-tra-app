@@ -17,6 +17,7 @@
 .zalo { background: var(--color-paper); color: var(--color-ink); }
 .save { border: 1px solid var(--color-rule); color: var(--color-paper); }
 .vcardHint { color: var(--color-rule); font-size: 12px; line-height: 1.6; max-width: 40ch; margin: 14px 0 0; }
+.heroCatalogue { display: inline-flex; align-items: center; gap: var(--space-2xs); min-height: var(--control-height); margin-top: var(--space-sm); color: var(--color-paper); font-size: var(--text-sm); font-weight: 700; text-underline-offset: 4px; }
 .jump { display: none; }
 .contactDetails { border-top: 1px solid color-mix(in oklch,var(--color-rule) 45%,transparent); margin-top: 40px; padding-top: 24px; }
 .contactDetails h2 { margin: 0 0 16px; color: var(--color-rule); text-transform: uppercase; letter-spacing: .09em; font: 700 11px var(--font-body); }
@@ -31,6 +32,14 @@
 .message h2 { margin: 0; font: 500 32px/1.1 var(--font-display); letter-spacing: -.015em; }
 .formIntro, .draft>p { color: var(--color-ink-2); font-size: 14px; line-height: 1.6; margin: 14px 0 24px; }
 .message form, .draft { display: grid; gap: 18px; }
+.honeypot { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.selectedTeas, .selectionState { padding: var(--space-sm); border: 1px solid var(--color-rule); background: var(--color-paper-2); }
+.selectedTeas h3 { margin: 0 0 var(--space-2xs); font: 600 18px var(--font-display); }
+.selectedTeas ul { margin: 0; padding-left: var(--space-sm); color: var(--color-ink); font-size: var(--text-sm); line-height: 1.6; }
+.selectedTeas p, .selectionState p { margin: var(--space-2xs) 0 0; color: var(--color-muted); font-size: var(--text-xs); line-height: 1.6; }
+.selectedTeas>div, .selectionState>div { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-top: var(--space-2xs); }
+.selectedTeas a, .selectedTeas button, .selectionState button { display: inline-flex; align-items: center; min-height: var(--control-height); padding: 0; border: 0; background: transparent; color: var(--color-ink); font-size: var(--text-xs); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.selectedTeas button:disabled { cursor: default; opacity: .6; }
 .intents { margin: 0; padding: 0; border: 0; min-width: 0; }
 .intents legend { margin-bottom: 10px; font-size: 13px; font-weight: 600; }
 .intents>div { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -43,6 +52,19 @@
 .field input, .field textarea { min-width: 0; width: 100%; min-height: 46px; padding: 12px; border: 1px solid var(--color-rule); border-radius: 5px; color: inherit; background: color-mix(in oklch,var(--color-paper) 50%,white); font-size: 16px; line-height: 1.5; }
 .field textarea { resize: vertical; }
 .primary { width: 100%; border: 0; background: var(--color-ink); color: var(--color-paper); cursor: pointer; }
+.primary:disabled { cursor: default; opacity: .7; }
+.field input:disabled, .field textarea:disabled, .intents:disabled { opacity: .7; }
+.consent { display: flex; align-items: flex-start; gap: 10px; padding: 4px 0; color: var(--color-ink-2); font-size: 12px; line-height: 1.65; cursor: pointer; }
+.consent input { flex-shrink: 0; width: 17px; height: 17px; margin: 2px 0 0; accent-color: var(--color-ink); }
+.optionalZalo { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 12px; border: 1px solid var(--color-rule); border-radius: 6px; background: transparent; color: var(--color-ink-2); font-size: 13px; font-weight: 600; cursor: pointer; }
+.optionalZalo:disabled { opacity: .6; cursor: default; }
+.pending { margin: 0; color: var(--color-muted); font-size: 13px; line-height: 1.6; }
+.saved { margin: 0 0 24px; padding: 18px; border: 1px solid var(--color-rule); border-left: 3px solid var(--color-ink); background: var(--color-paper-2); }
+.saved h3 { display: flex; align-items: flex-start; gap: 8px; margin: 0; font: 600 18px/1.35 var(--font-display); }
+.saved h3 svg { flex-shrink: 0; margin-top: 2px; }
+.saved p { margin: 10px 0 0; color: var(--color-ink-2); font-size: 13px; line-height: 1.65; }
+.saved .reference { color: var(--color-ink); }
+.reference strong { overflow-wrap: anywhere; }
 .privacy { margin: 0; color: var(--color-muted); font-size: 12px; line-height: 1.65; }
 .privacy a { color: inherit; text-underline-offset: 3px; }
 .error { margin: 0; color: var(--color-danger); font-size: 13px; line-height: 1.6; }
