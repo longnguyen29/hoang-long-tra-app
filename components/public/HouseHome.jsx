@@ -296,6 +296,7 @@ export default function HouseHome() {
         <div>
           <span>House of Hoang Long · Hà Giang / Hà Nội</span>
           <a href="https://zalo.me/0903333841" target="_blank" rel="noreferrer">{t.contact} · 0903 333 841</a>
+          <Link href="/meet">{lang === "vi" ? "Trang liên hệ" : "Contact card"}</Link>
           <Link href="/privacy">{lang === "vi" ? "Quyền riêng tư & cookie" : "Privacy & cookies"}</Link>
         </div>
         <Link href="/cho-quan">{lang === "vi" ? "Trà dành cho quán" : "Tea for cafés"}</Link>
