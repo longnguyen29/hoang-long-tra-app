@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Archive, ArrowRight, BookOpen, Check, ChevronDown, ChevronRight, ExternalLink, GitBranch, Leaf, Lightbulb, Link2, List, PencilLine, Plus, RefreshCw, Search, X } from "lucide-react";
 import { knowledgePostNodes, normalizeKnowledgeSnapshot, safeKnowledgeUrl, summarizeKnowledge, topicDescendantIds } from "@/lib/knowledge-centre";
 import { useDialogFocus } from "./useDialogFocus";
+import KnowledgeSocialInbox from "./KnowledgeSocialInbox";
 import styles from "./KnowledgeCentre.module.css";
 
 const STATUS = { draft: "Bản nháp", reviewed: "Đã rà soát", archived: "Đã lưu kho", idea: "Ý tưởng", research: "Đang tìm hiểu", drafting: "Đang viết", ready: "Sẵn sàng", active: "Đang theo dõi", published: "Đã đăng", paused: "Tạm dừng" };
@@ -85,7 +86,7 @@ function KnowledgeDialog({ modal, setModal, saving, error, snapshot, variants, o
         <details className={styles.metricsEditor}><summary>Ghi số liệu đã có <ChevronDown/></summary><MetricFields draft={draft} change={change}/></details>
         <label>Cách đo / phạm vi<textarea rows={3} maxLength={3000} value={draft.measurement_note} onChange={event => change("measurement_note", event.target.value)} placeholder="Ngày chụp số liệu, nguồn, cách đối chiếu lead hoặc đơn…"/></label>
       </>}
-      {kind === "metrics" && <><p className={styles.hint}>Để trống nếu chưa biết; nhập 0 khi đã kiểm tra và kết quả bằng 0.</p><MetricFields draft={draft} change={change}/><label>Cách đo / phạm vi<textarea rows={3} maxLength={3000} value={draft.measurement_note} onChange={event => change("measurement_note", event.target.value)}/></label></>}
+      {kind === "metrics" && <><p className={styles.hint}>{modal.record?.social_post_id ? "Số liệu nền tảng lấy từ Buffer. Chỉ nhập kết quả đối chiếu riêng ở đây, kèm cách đo." : "Để trống nếu chưa biết; nhập 0 khi đã kiểm tra và kết quả bằng 0."}</p><MetricFields draft={draft} change={change} fields={modal.record?.social_post_id ? METRICS.slice(5) : METRICS}/><label>Cách đo / phạm vi<textarea rows={3} maxLength={3000} value={draft.measurement_note} onChange={event => change("measurement_note", event.target.value)}/></label></>}
       {kind === "link" && <>
         <p className={styles.hint}>Dùng bài gốc trong Growth Lab. Liên kết giữ nguyên nội dung, ngày đăng và số liệu của bài; không tạo bản sao.</p>
         <label>Bài trong Growth Lab<select required value={draft.growth_variant_id} onChange={event => change("growth_variant_id", event.target.value)}><option value="">Chọn bài…</option>{variants.map(item => <option key={item.id} value={item.id}>{item.experiment_title} · {item.label || item.post_text?.slice(0, 45) || "Bản nội dung"} · {STATUS[item.status] || item.status}</option>)}</select></label>
@@ -107,8 +108,8 @@ function KnowledgeDialog({ modal, setModal, saving, error, snapshot, variants, o
   </section></div>;
 }
 
-function MetricFields({ draft, change }) {
-  return <div className={styles.metricFields}>{METRICS.map(([key, label]) => <label key={key}>{label}<input type="number" min="0" max="1000000000000000" step={key === "revenue" || key === "spend" ? "any" : "1"} inputMode="decimal" value={draft.metrics[key]} placeholder="Chưa biết" onChange={event => change("metrics", { ...draft.metrics, [key]: event.target.value })}/></label>)}</div>;
+function MetricFields({ draft, change, fields = METRICS }) {
+  return <div className={styles.metricFields}>{fields.map(([key, label]) => <label key={key}>{label}<input type="number" min="0" max="1000000000000000" step={key === "revenue" || key === "spend" ? "any" : "1"} inputMode="decimal" value={draft.metrics[key]} placeholder="Chưa biết" onChange={event => change("metrics", { ...draft.metrics, [key]: event.target.value })}/></label>)}</div>;
 }
 
 export default function KnowledgeCentre({ supabase, email, role }) {
@@ -122,6 +123,8 @@ export default function KnowledgeCentre({ supabase, email, role }) {
   const detailRef = useRef(null);
   const explorerRef = useRef(null);
   const requestRef = useRef(0);
+  const socialPostsRef = useRef([]);
+  const [socialFocus, setSocialFocus] = useState(null);
   const [query, setQuery] = useState("");
   const [domain, setDomain] = useState("all");
   const [status, setStatus] = useState("active");
@@ -146,7 +149,7 @@ export default function KnowledgeCentre({ supabase, email, role }) {
       const { data, error: failure } = await supabase.rpc("knowledge_centre_snapshot");
       if (request !== requestRef.current) return;
       if (failure) throw failure;
-      const next = normalizeKnowledgeSnapshot(data || EMPTY);
+      const next = normalizeKnowledgeSnapshot({ ...(data || EMPTY), social_posts: socialPostsRef.current });
       setSnapshot(next); setLoaded(true);
       if (!selectionRef.current && next.topics.length) select({ type: "topic", id: next.topics.find(item => item.status !== "archived")?.id || next.topics[0].id });
     } catch (failure) {
@@ -155,6 +158,11 @@ export default function KnowledgeCentre({ supabase, email, role }) {
       setError(/function|schema cache|relation|does not exist/i.test(message) ? "Sổ tri thức chưa sẵn sàng trong database. Cần áp dụng migration Knowledge Centre rồi thử tải lại." : "Chưa đọc được sổ tri thức. Kiểm tra kết nối và thử tải lại; nội dung đang nhập vẫn được giữ.");
     } finally { if (request === requestRef.current) setLoading(false); }
   }, [supabase, select]);
+  const socialChanged = useCallback(async ({ social_posts, linked }) => {
+    socialPostsRef.current = social_posts;
+    setSnapshot(current => normalizeKnowledgeSnapshot({ ...current, social_posts }));
+    if (linked) await load();
+  }, [load]);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const type = ["post", "angle", "topic"].find(key => params.get(key));
@@ -238,7 +246,8 @@ export default function KnowledgeCentre({ supabase, email, role }) {
           fields = { topic_id: modal.topicId, angle_id: draft.angle_id || null, growth_variant_id: draft.growth_variant_id };
         } else {
           entity = "post";
-          const metrics = Object.fromEntries(METRICS.map(([key]) => [key, draft.metrics[key] === "" ? null : Number(draft.metrics[key])]));
+          const metricFields = kind === "metrics" && record?.social_post_id ? METRICS.slice(5) : METRICS;
+          const metrics = { ...(kind === "metrics" && record?.social_post_id ? record.metrics : {}), ...Object.fromEntries(metricFields.map(([key]) => [key, draft.metrics[key] === "" ? null : Number(draft.metrics[key])])) };
           if (Object.values(metrics).some(value => value !== null && (!Number.isFinite(value) || value < 0 || value > 1e15))) throw new Error("invalid_metrics");
           if (draft.url.trim() && !https(draft.url)) throw new Error("invalid_url");
           fields = kind === "metrics" ? { metrics, measurement_note: draft.measurement_note.trim() } : { topic_id: modal.topicId, angle_id: draft.angle_id || null, growth_variant_id: null, channel: draft.channel, title: draft.title.trim(), url: https(draft.url), published_at: draft.published_at ? new Date(`${draft.published_at}T12:00:00+07:00`).toISOString() : null, metrics, measurement_note: draft.measurement_note.trim() };
@@ -299,6 +308,7 @@ export default function KnowledgeCentre({ supabase, email, role }) {
     <header className={styles.pageHeader}><div><span className={styles.eyebrow}>Tri thức công việc</span><h1>Trà & kinh doanh</h1><p>Nối điều đã biết với góc khai thác, bài đăng và điều học được.</p></div><div className={styles.headerActions}><button type="button" className={styles.iconButton} onClick={load} disabled={loading || saving} aria-label="Tải lại sổ tri thức"><RefreshCw className={loading ? styles.spin : ""}/></button>{canEdit && <button type="button" className={styles.primaryButton} disabled={!loaded || saving} onClick={() => open("topic", null, { topicId: "" })}><Plus/>Thêm chủ đề</button>}</div></header>
     {error && <div className={styles.failure} role="alert"><p>{error}</p><button type="button" className={styles.secondaryButton} disabled={loading} onClick={load}>Thử tải lại</button></div>}
     {notice && <p className={styles.notice} role="status">{notice} {notice.includes("Hôm nay") && <Link href="/admin#dashboard-planner">Mở Hôm nay <ArrowRight size={14}/></Link>}<button type="button" className={styles.iconButton} aria-label="Đóng thông báo" onClick={() => setNotice("")}><X/></button></p>}
+    <KnowledgeSocialInbox supabase={supabase} canEdit={canEdit} snapshot={snapshot} onChanged={socialChanged} focusRequest={socialFocus}/>
     <section className={styles.overview} aria-label="Tổng quan sổ tri thức"><article><BookOpen/><span>Chủ đề</span><b>{!loaded ? "—" : snapshot.topics.filter(item => item.status !== "archived").length}</b><small>Trà & kinh doanh đang dùng</small></article><article><Lightbulb/><span>Góc khai thác</span><b>{!loaded ? "—" : snapshot.angles.filter(item => item.status !== "archived").length}</b><small>Ý tưởng, nghiên cứu & bản viết</small></article><article><Link2/><span>Lịch sử đã đăng</span><b>{!loaded ? "—" : total.counts.publishedPosts}</b><small>Bài riêng biệt · {total.counts.archivedPosts} bài lưu kho</small></article><article><GitBranch/><span>Chủ đề đã có bài</span><b>{!loaded ? "—" : snapshot.topics.filter(item => summarizeKnowledge(snapshot, { topicId: item.id, includeDescendants: false }).counts.publishedPosts > 0).length}</b><small>Tính bài gắn trực tiếp vào chủ đề</small></article></section>
     <div className={styles.workbench}>
       <section ref={explorerRef} tabIndex={-1} className={styles.explorer} aria-label="Duyệt chủ đề và bài đăng">
@@ -314,7 +324,8 @@ export default function KnowledgeCentre({ supabase, email, role }) {
             {selection.type === "topic" && <><button type="button" onClick={() => open("topic", null, { parent_id: topic.id })}><GitBranch/>Thêm nhánh con</button><button type="button" onClick={() => open("topic", topic)}><PencilLine/>Sửa kiến thức & nguồn</button><button type="button" onClick={() => open("angle")}><Lightbulb/>Thêm góc khai thác</button></>}
             {selection.type === "angle" && <button type="button" onClick={() => open("angle", angle)}><PencilLine/>Sửa góc khai thác</button>}
             {selection.type !== "post" && <><Link href={briefHref}><ArrowRight/>Tạo brief trong Growth Lab</Link><button type="button" onClick={() => open("link")}><Link2/>Liên kết bài Growth Lab</button><button type="button" onClick={() => open("post")}><Plus/>Ghi bài đã đăng</button><button type="button" onClick={() => open("task")}><Check/>Đưa bước tiếp vào Hôm nay</button></>}
-            {selection.type === "post" && post.source === "external" && rawPost && <><button type="button" onClick={() => open("post", rawPost)}><PencilLine/>Sửa thông tin bài</button><button type="button" onClick={() => open("metrics", rawPost)}><List/>Cập nhật số liệu</button></>}
+            {selection.type === "post" && post.source === "external" && rawPost && <>{!post.social_post_id && <button type="button" onClick={() => open("post", rawPost)}><PencilLine/>Sửa thông tin bài</button>}<button type="button" onClick={() => open("metrics", { ...rawPost, social_post_id: post.social_post_id || rawPost.social_post_id })}><List/>{post.social_post_id ? "Ghi kết quả đối chiếu riêng" : "Cập nhật số liệu"}</button></>}
+            {selection.type === "post" && post.social_post_id && <button type="button" onClick={() => setSocialFocus({ id: post.social_post_id, key: Date.now() })}><Link2/>Phân loại bài từ Buffer</button>}
             {selection.type === "post" && post.source === "growth" && <Link href={`/admin/growth?experiment=${encodeURIComponent(post.experiment_id || "")}&variant=${encodeURIComponent(post.growth_variant_id)}`}><PencilLine/>Cập nhật bài & số liệu trong Growth Lab</Link>}
           </div></section>}
           {selection.type === "topic" && <>
@@ -329,7 +340,7 @@ export default function KnowledgeCentre({ supabase, email, role }) {
             <details className={styles.resultDetails}><summary>Kết quả {selection.type === "topic" ? "chủ đề + nhánh con" : "góc khai thác"} <ChevronDown/></summary><Results summary={selection.type === "topic" ? branchSummary : ownSummary}/></details>
           </>}
           {selection.type === "post" && <>
-            <section className={styles.contentSection}><dl className={styles.angleFacts}><div><dt>Kênh</dt><dd>{CHANNELS[post.channel] || post.channel || "Chưa ghi kênh"}</dd></div><div><dt>Ngày đăng</dt><dd>{post.published ? date(post.published_at) : "Chưa xác nhận đăng"}</dd></div><div><dt>Nguồn bài</dt><dd>{post.source === "growth" ? "Bài gốc trong Growth Lab" : "Bài được ghi từ kênh bên ngoài"}</dd></div></dl>{https(post.url) && <a className={styles.externalPost} href={https(post.url)} target="_blank" rel="noreferrer">Mở bài đã đăng <ExternalLink/></a>}{!post.published && <p className={styles.draftNote}>Bài này chưa có đủ căn cứ xuất bản nên chưa được cộng vào số bài đã đăng.</p>}{post.body && <><h3 className={styles.postBodyHeading}>Nội dung bài gốc</h3><p className={styles.plainText}>{post.body}</p></>}{post.duplicate_note && <p className={styles.draftNote}>{post.duplicate_note}</p>}{post.measurement_note && <><h3 className={styles.postBodyHeading}>Cách đo / phạm vi</h3><p className={styles.plainText}>{post.measurement_note}</p></>}</section>
+            <section className={styles.contentSection}><dl className={styles.angleFacts}><div><dt>Kênh</dt><dd>{CHANNELS[post.channel] || post.channel || "Chưa ghi kênh"}</dd></div><div><dt>Ngày đăng</dt><dd>{post.published ? date(post.published_at) : "Chưa xác nhận đăng"}</dd></div><div><dt>Nguồn bài</dt><dd>{post.social_post_id ? `Buffer${post.account_name ? ` · ${post.account_name}` : ""}${post.source === "growth" ? " · Có liên kết Growth Lab" : ""}` : post.source === "growth" ? "Bài gốc trong Growth Lab" : "Bài được ghi từ kênh bên ngoài"}</dd></div>{post.social_post_id && <div><dt>Số liệu Buffer</dt><dd>{post.metrics_updated_at ? `Cập nhật ${date(post.metrics_updated_at)}` : "Chưa có số liệu nền tảng"}</dd></div>}</dl>{https(post.url) && <a className={styles.externalPost} href={https(post.url)} target="_blank" rel="noreferrer">Mở bài đã đăng <ExternalLink/></a>}{!post.published && <p className={styles.draftNote}>Bài này chưa có đủ căn cứ xuất bản nên chưa được cộng vào số bài đã đăng.</p>}{post.body && <><h3 className={styles.postBodyHeading}>Nội dung bài gốc</h3><p className={styles.plainText}>{post.body}</p></>}{post.duplicate_note && <p className={styles.draftNote}>{post.duplicate_note}</p>}{post.measurement_note && <><h3 className={styles.postBodyHeading}>Cách đo / phạm vi</h3><p className={styles.plainText}>{post.measurement_note}</p></>}</section>
             <section className={styles.postMetrics}><h3>Số liệu nền tảng & nhập tay</h3><dl>{METRICS.map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{number(post.metrics?.[key])}</dd></div>)}</dl><p className={styles.hint}>“Chưa có” khác 0. Lead, đơn, doanh thu và chi phí nhập tay cần có cách đo để kiểm tra.</p></section>
             {post.source === "growth" && <section className={styles.postMetrics}><h3>Theo dõi từ Growth Lab</h3><dl>{[["visitors", "Vào trang mẫu"], ["qualified_requests", "Yêu cầu đủ điều kiện"], ["samples_sent", "Đã gửi mẫu"], ["sample_requests_with_order", "Yêu cầu có đơn về sau"]].map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{number(post.tracked_metrics?.[key])}</dd></div>)}</dl><p className={styles.hint}>Đối chiếu đơn về sau theo liên hệ là tín hiệu nghiên cứu, chưa phải số đơn được quy cho bài này.</p></section>}
           </>}
