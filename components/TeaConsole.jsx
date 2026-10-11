@@ -1,5 +1,6 @@
 "use client";
 import { formatMassKg } from "@/lib/format-mass";
+import { catalogSellingUnit, sellingUnitLabel, formatLineQuantities } from "@/lib/selling-units";
 import { safeReferrer } from "@/lib/public-attribution";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
@@ -99,6 +100,8 @@ function flattenOrderable(products) {
         productId: p.id,
         weight: v.weight,
         line: p.line,
+        kind: p.kind,
+        packSize: p.packSize,
         available: p.available,
         name: p.name,
         notes: p.notes,
@@ -115,6 +118,8 @@ function flattenOrderable(products) {
       productId: p.id,
       weight: null,
       line: p.line,
+      kind: p.kind,
+      packSize: p.packSize,
       available: p.available,
       name: p.name,
       notes: p.notes,
@@ -552,7 +557,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
   // check out through the same basket, so this has to stay the whole catalog — narrowing it
   // to tea would let a customer add a jar of honey and watch it disappear at checkout.
   const retailOrderableItems = flattenOrderable(catalog);
-  const retailCartLines = retailOrderableItems.map((item) => ({ ...item, qty: Number(retailCart[item.cartKey]) || 0 })).filter((item) => item.qty > 0);
+  const retailCartLines = retailOrderableItems.map((item) => ({ ...item, unit: catalogSellingUnit(item), qty: Number(retailCart[item.cartKey]) || 0 })).filter((item) => item.qty > 0);
   const retailTotalItems = retailCartLines.reduce((sum, p) => sum + p.qty, 0);
 
   const setQty = (id, val) => {
@@ -1442,11 +1447,11 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
     const itemRows = order.lines
-      .map((l) => `<tr><td style="padding:8px 0;">${esc(l.name.en || l.name.vi)}${l.price ? ` <span style="color:#AD8A4E;">(${l.price.toLocaleString("vi-VN")}đ)</span>` : ""}</td><td style="padding:8px 0;text-align:right;">${l.qty} ${l.unit === "kg" ? "kg" : l.unit === "pack" ? "pack" : "pcs"}${l.price ? ` = ${(l.price * l.qty).toLocaleString("vi-VN")}đ` : ""}</td></tr>`)
+      .map((l) => `<tr><td style="padding:8px 0;">${esc(l.name.en || l.name.vi)}${l.price ? ` <span style="color:#AD8A4E;">(${l.price.toLocaleString("vi-VN")}đ)</span>` : ""}</td><td style="padding:8px 0;text-align:right;">${l.qty} ${esc(sellingUnitLabel(l.unit, "en"))}${l.price ? ` = ${(l.price * l.qty).toLocaleString("vi-VN")}đ` : ""}</td></tr>`)
       .join("");
     const totalLine =
       order.type === "retail"
-        ? `<tr><td style="padding:10px 0;font-weight:700;">Total items</td><td style="padding:10px 0;text-align:right;font-weight:700;">${order.totalItems} pcs</td></tr>`
+        ? `<tr><td style="padding:10px 0;font-weight:700;">Total items</td><td style="padding:10px 0;text-align:right;font-weight:700;">${esc(formatLineQuantities(order.lines, "en"))}</td></tr>`
         : `<tr><td style="padding:10px 0;font-weight:700;">Total volume</td><td style="padding:10px 0;text-align:right;font-weight:700;">${formatMassKg(order.totalKg, "en")}</td></tr>
            <tr><td colspan="2" style="padding:2px 0 10px;color:#AD8A4E;">${esc(order.tier.range.en)} · ${esc(order.tier.off.en)}</td></tr>`;
     const estimatedTotalLine = order.estimatedTotal
@@ -1496,8 +1501,8 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
       o.contact,
       o.address || "",
       o.taxNumber || "",
-      o.lines.map((l) => `${l.name.en || l.name.vi}: ${l.qty}${l.unit === "kg" ? "kg" : l.unit === "pack" ? "pack" : "pcs"}${l.price ? ` @${l.price.toLocaleString("vi-VN")}đ` : ""}`).join(" | "),
-      o.type === "retail" ? `${o.totalItems} pcs` : `${formatMassKg(o.totalKg, lang)}`,
+      o.lines.map((l) => `${l.name.en || l.name.vi}: ${l.qty} ${sellingUnitLabel(l.unit, "en")}${l.price ? ` @${l.price.toLocaleString("vi-VN")}đ` : ""}`).join(" | "),
+      o.type === "retail" ? formatLineQuantities(o.lines, lang) : `${formatMassKg(o.totalKg, lang)}`,
       o.type === "retail" ? `VAT ${o.vat}%` : `${o.tier?.range?.en || ""} (${o.tier?.off?.en || ""})`,
       o.estimatedTotal ? o.estimatedTotal.toLocaleString("vi-VN") + "đ" : "",
       o.promo ? `${o.promo.code} (-${o.promo.percent}%)${o.promo.ownerName ? " via " + o.promo.ownerName : ""}` : "",
@@ -1585,7 +1590,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
     const lines = isRetail
       ? retailCartLines.map((p) => ({
           name: p.weight ? { en: `${p.name.en} (${p.weight})`, vi: `${p.name.vi} (${p.weight})` } : p.name,
-          qty: p.qty, unit: p.line === "everyday" ? "kg" : "pcs", price: p.price || null,
+          qty: p.qty, unit: p.unit, price: p.price || null,
           productId: p.productId, weight: p.weight || null,
         }))
       : cartLines.map((p) => ({ name: p.name, qty: p.qty, unit: "kg", price: p.price || null }));
@@ -1687,9 +1692,9 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
       order.taxNumber ? `Tax number: ${order.taxNumber}` : null,
       order.note ? `Note: ${order.note}` : null,
       "",
-      ...order.lines.map((l) => `- ${l.name[lang] || l.name.en}: ${l.qty} ${l.unit === "kg" ? "kg" : l.unit === "pack" ? "pack" : "pcs"}${l.price ? ` (${l.price.toLocaleString("vi-VN")}đ each)` : ""}`),
+      ...order.lines.map((l) => `- ${l.name[lang] || l.name.en}: ${l.qty} ${sellingUnitLabel(l.unit, "en")}${l.price ? ` (${l.price.toLocaleString("vi-VN")}đ each)` : ""}`),
       "",
-      order.type === "retail" ? `Items: ${order.totalItems}` : `Total: ${formatMassKg(order.totalKg, "en")}`,
+      order.type === "retail" ? `Items: ${formatLineQuantities(order.lines, "en")}` : `Total: ${formatMassKg(order.totalKg, "en")}`,
       order.estimatedTotal ? `Estimated total: ${order.estimatedTotal.toLocaleString("vi-VN")}đ` : null,
       `Payment method: ${order.paymentMethod === "cash" ? "Cash" : "QR bank transfer"}`,
       order.vat ? `VAT: ${order.vat}% (added to final invoice)` : null,
@@ -2659,7 +2664,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                                 {lang === "en" && p.name.vi && (
                                   <div style={{ fontSize: 11.5, color: TOKENS.jadeSoft, marginTop: 1 }}>{p.name.vi}</div>
                                 )}
-                                {p.price ? <div style={{ fontSize: 13.5, fontWeight: 700, color: TOKENS.brassOnPaper, marginTop: 2 }}>{formatVND(p.price)}{p.line === "everyday" ? ` / ${t.kg}` : ""}</div> : null}
+                                {p.price ? <div style={{ fontSize: 13.5, fontWeight: 700, color: TOKENS.brassOnPaper, marginTop: 2 }}>{formatVND(p.price)} / {sellingUnitLabel(p.unit || catalogSellingUnit(p), lang)}</div> : null}
                                 {!p.price && getVariantMinPrice(p) !== undefined && (
                                   <div style={{ fontSize: 13.5, fontWeight: 700, color: TOKENS.brassOnPaper, marginTop: 2 }}>{t.fromPrice(formatVND(getVariantMinPrice(p)))}</div>
                                 )}
@@ -5107,13 +5112,13 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                         {o.lines.map((l, i) => (
                           <div key={i} style={{ display: "flex", justifyContent: "space-between" }}>
                             <span>{l.name[lang] || l.name.en}</span>
-                            <span>{l.qty} {l.unit === "kg" ? t.kg : l.unit === "pack" ? "pack" : t.pcs}</span>
+                            <span>{l.qty} {sellingUnitLabel(l.unit, lang)}</span>
                           </div>
                         ))}
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 600, borderTop: `1px solid ${TOKENS.brassDeep}33`, paddingTop: 8 }}>
                         {o.type === "retail" ? (
-                          <span>{t.itemsTotal}: {o.totalItems} {t.pcs}</span>
+                          <span>{t.itemsTotal}: {formatLineQuantities(o.lines, lang)}</span>
                         ) : (
                           <>
                             <span>{formatMassKg(o.totalKg, lang)}</span>
@@ -5503,6 +5508,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                               const variant = hasVariants ? (p.variants.find((v) => v.weight === selectedWeight) || p.variants[0]) : null;
                               const cartKey = hasVariants ? `${p.id}__${variant.weight}` : p.id;
                               const price = hasVariants ? variant.price : p.price;
+                              const sellingUnit = catalogSellingUnit(p, variant?.weight);
                               const stockTotal = hasVariants ? getStockTotal(variant) : getStockTotal(p);
                               const soldOut = p.available === false || stockTotal === 0;
                               return (
@@ -5541,7 +5547,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                                       {lang === "en" && p.name.vi && (
                                         <div style={{ fontSize: 10.5, color: TOKENS.jadeSoft, marginTop: 1 }}>{p.name.vi}</div>
                                       )}
-                                      {price ? <div style={{ fontSize: 12.5, color: TOKENS.brassOnPaper, fontWeight: 700, marginTop: 3 }}>{formatVND(price)}{p.line === "everyday" ? ` / ${t.kg}` : ""}</div> : null}
+                                      {price ? <div style={{ fontSize: 12.5, color: TOKENS.brassOnPaper, fontWeight: 700, marginTop: 3 }}>{formatVND(price)} / {sellingUnitLabel(sellingUnit, lang)}</div> : null}
                                       {productBadges(p)}
                                       {flavorChips(p)}
                                       {typeof stockTotal === "number" && p.available !== false && (
@@ -5592,7 +5598,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                                             background: TOKENS.paper, color: TOKENS.jade, fontSize: 13, textAlign: "center",
                                           }}
                                         />
-                                        <span style={{ fontSize: 11.5, color: TOKENS.jadeSoft, flexShrink: 0 }}>{p.line === "everyday" ? t.kg : t.pcs}</span>
+                                        <span style={{ fontSize: 11.5, color: TOKENS.jadeSoft, flexShrink: 0 }}>{sellingUnitLabel(sellingUnit, lang)}</span>
                                       </div>
                                     )}
                                   </div>
@@ -5666,13 +5672,13 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                         {retailCartLines.map((p) => (
                           <div key={p.cartKey} style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5 }}>
                             <span style={{ opacity: 0.9 }}>{p.name[lang]}{p.weight ? ` — ${p.weight}` : ""}{p.price ? ` (${formatVND(p.price)})` : ""}</span>
-                            <span>{p.qty} {p.line === "everyday" ? t.kg : t.pcs}{p.price ? ` = ${formatVND(p.price * p.qty)}` : ""}</span>
+                            <span>{p.qty} {sellingUnitLabel(p.unit || catalogSellingUnit(p), lang)}{p.price ? ` = ${formatVND(p.price * p.qty)}` : ""}</span>
                           </div>
                         ))}
                       </div>
                       <div style={{ borderTop: `1px solid ${TOKENS.paper}33`, paddingTop: 10, display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 600 }}>
                         <span>{t.itemsTotal}</span>
-                        <span>{retailTotalItems} {t.pcs}</span>
+                        <span>{formatLineQuantities(retailCartLines, lang)}</span>
                       </div>
                       {retailCartLines.some((p) => p.price) && (
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, color: TOKENS.brassOnDark, marginTop: 4 }}>
@@ -6014,7 +6020,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                           <div style={{ fontSize: 13.5, fontWeight: 600, overflowWrap: "anywhere" }}>
                             {p.name[lang]}{p.weight ? ` — ${p.weight}` : ""}
                           </div>
-                          {p.price ? <div style={{ fontSize: 12, color: TOKENS.brassOnPaper, fontWeight: 600, marginTop: 2 }}>{formatVND(p.price)}{p.line === "everyday" ? ` / ${t.kg}` : ""}</div> : null}
+                          {p.price ? <div style={{ fontSize: 12, color: TOKENS.brassOnPaper, fontWeight: 600, marginTop: 2 }}>{formatVND(p.price)} / {sellingUnitLabel(p.unit || catalogSellingUnit(p), lang)}</div> : null}
                           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
                             <button
                               onClick={() => setRetailQty(p.cartKey, p.qty - 1, stockTotal)}
@@ -6023,7 +6029,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                               <Minus size={12} color={TOKENS.jade} />
                             </button>
                             <span style={{ fontSize: 13, fontWeight: 600, minWidth: 18, textAlign: "center" }}>{p.qty}</span>
-                            <span style={{ fontSize: 10.5, color: TOKENS.jadeSoft }}>{p.line === "everyday" ? t.kg : t.pcs}</span>
+                            <span style={{ fontSize: 10.5, color: TOKENS.jadeSoft }}>{sellingUnitLabel(p.unit || catalogSellingUnit(p), lang)}</span>
                             <button
                               onClick={() => setRetailQty(p.cartKey, p.qty + 1, stockTotal)}
                               disabled={typeof stockTotal === "number" && p.qty >= stockTotal}
@@ -6053,7 +6059,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
               <div style={{ padding: "16px 18px", borderTop: `1px solid ${TOKENS.brassDeep}33` }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, color: TOKENS.jadeSoft, marginBottom: 4 }}>
                   <span>{t.itemsTotal}</span>
-                  <span>{retailTotalItems} {t.pcs}</span>
+                  <span>{formatLineQuantities(retailCartLines, lang)}</span>
                 </div>
                 {retailCartLines.some((p) => p.price) && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16, fontWeight: 700, color: TOKENS.brassOnPaper, marginBottom: 10 }}>
@@ -6081,7 +6087,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
       {detailProduct && (
         <TeaDetailModal
           product={detailProduct.product}
-          unit={detailProduct.product.line === "everyday" ? t.kg : t.pcs}
+          unit={sellingUnitLabel(detailProduct.cartType === "wholesale" ? "kg" : catalogSellingUnit(detailProduct.product, detailProduct.product.variants?.[0]?.weight), lang)}
           showYield={detailProduct.cartType === "wholesale"}
           lang={lang}
           t={t}
