@@ -7,8 +7,9 @@ import { CalendarDays, ExternalLink, LogOut, Menu } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { STAFF_APPS, STAFF_APP_GROUPS } from "./staff-navigation";
 import styles from "./StaffShell.module.css";
+import { StaffFeaturesContext } from "./StaffFeatures";
 
-export default function StaffShell({ children }) {
+export default function StaffShell({ children, partnerNetworkEnabled = false }) {
   const pathname = usePathname();
   const router = useRouter();
   const menu = useRef(null);
@@ -22,7 +23,7 @@ export default function StaffShell({ children }) {
     <Link href="/admin" aria-current={active("/admin") ? "page" : undefined}><CalendarDays/><span>Hôm nay</span></Link>
     {STAFF_APP_GROUPS.map(group => <section key={group.label}>
       <h2>{group.label}</h2>
-      {group.keys.map(key => { const app = STAFF_APPS[key]; const Icon = app.icon;
+      {group.keys.filter(key => key !== "partnerNetwork" || partnerNetworkEnabled).map(key => { const app = STAFF_APPS[key]; const Icon = app.icon;
         return <Link key={key} href={app.href} aria-current={active(app.href) ? "page" : undefined}><Icon/><span>{app.label}</span></Link>;
       })}
     </section>)}
@@ -36,7 +37,7 @@ export default function StaffShell({ children }) {
       router.replace("/admin/login"); router.refresh();
     } catch { setError("Chưa đăng xuất được. Hãy thử lại."); setLeaving(false); }
   }
-  return <div className={styles.shell}>
+  return <StaffFeaturesContext.Provider value={{ partnerNetworkEnabled }}><div className={styles.shell}>
     <a href="#staff-content" className={styles.skip}>Đến nội dung công việc</a>
     <aside className={styles.sidebar}>
       <Link href="/admin" className={styles.brand}><span aria-hidden="true">皇龍</span><b>Hoàng Long<small>Bàn làm việc</small></b></Link>
@@ -48,5 +49,5 @@ export default function StaffShell({ children }) {
       <div className={styles.account}><button onClick={logout} disabled={leaving} aria-label="Đăng xuất"><LogOut/><span>{leaving ? "Đang đăng xuất…" : "Đăng xuất"}</span></button>{error && <p role="alert">{error}</p>}</div>
     </aside>
     <div id="staff-content" tabIndex={-1} className={styles.content}>{children}</div>
-  </div>;
+  </div></StaffFeaturesContext.Provider>;
 }

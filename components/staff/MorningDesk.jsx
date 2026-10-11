@@ -29,6 +29,7 @@ import { STAFF_APPS as APPS, STAFF_APP_GROUPS, STAFF_APP_LIST as APP_LIST } from
 import DashboardPlanner from "./DashboardPlanner";
 import SampleFollowups from "./SampleFollowups";
 import styles from "./MorningDesk.module.css";
+import { useStaffFeatures } from "./StaffFeatures";
 
 const MODES = [
   ["owner", "Chủ doanh nghiệp"],
@@ -261,6 +262,7 @@ function buildMetrics(snapshot, mode) {
 }
 
 export default function MorningDesk({ supabase, email, role, onLogout }) {
+  const { partnerNetworkEnabled } = useStaffFeatures();
   const router = useRouter();
   const { locale } = useLocale();
   const [snapshot, setSnapshot] = useState(null);
@@ -567,7 +569,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
                 <label>
                   <span>App tiếp tục</span>
                   <select value={focusDraft.appKey} onChange={(event) => setFocusDraft({ ...focusDraft, appKey: event.target.value })}>
-                    {APP_LIST.map((app) => <option key={app.key} value={app.key}>{app.label}</option>)}
+                    {APP_LIST.filter(app => app.key !== "partnerNetwork" || partnerNetworkEnabled).map((app) => <option key={app.key} value={app.key}>{app.label}</option>)}
                   </select>
                 </label>
                 <button disabled={saving || !focusDraft.title.trim()}>{saving ? "Đang lưu" : "Chốt ưu tiên"}</button>

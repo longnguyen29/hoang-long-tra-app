@@ -15,6 +15,7 @@ import CustomerJourneyPanel from "./CustomerJourneyPanel";
 import { notifyHouse } from "@/lib/notify";
 import PipelineSample from "./PipelineSample";
 import EventEnquiryInbox from "./EventEnquiryInbox";
+import PartnerReferralLink from "./PartnerReferralLink";
 
 const newOpportunity = () => ({ business_name: "", contact: "", stage: "lead", owner: "", monthly_potential_kg: "", next_action: "Liên hệ và xác nhận nhu cầu", next_action_at: dateInput(1), notes: "" });
 const blankQuoteLine = () => ({ id: crypto.randomUUID(), productKey: "", qty: 1, price: "" });
@@ -344,13 +345,14 @@ export default function TradePipeline({ supabase, email }) {
     <section className={styles.board}>
       {TRADE_STAGES.map((stage) => <section className={styles.column} data-mobile-active={mobileStage === stage.id} key={stage.id}><header><b>{stage.short}</b><span>{searchable.filter((item) => item.stage === stage.id).length}</span></header><div>{searchable.filter((item) => item.stage === stage.id).map((item) => {
         const isOverdue = item.next_action_at && item.next_action_at.slice(0, 10) < today;
-        return <button key={item.id} onClick={() => openOpportunity(item)} data-overdue={isOverdue}><span className={styles.source}>{item.source_type}</span><h3>{item.business_name}</h3><p>{item.next_action || "Chưa có bước tiếp theo"}</p><footer><span>{item.monthly_potential_kg ? `${formatMassKg(item.monthly_potential_kg)}/tháng` : item.contact}</span><time>{shortDate(item.next_action_at)}</time></footer></button>;
+        return <button key={item.id} onClick={() => openOpportunity(item)} data-overdue={isOverdue}><span className={styles.source}>{item.source_type === "partner_referral" ? "Đối tác giới thiệu" : item.source_type}</span><h3>{item.business_name}</h3><p>{item.next_action || "Chưa có bước tiếp theo"}</p><footer><span>{item.monthly_potential_kg ? `${formatMassKg(item.monthly_potential_kg)}/tháng` : item.contact}</span><time>{shortDate(item.next_action_at)}</time></footer></button>;
       })}<button className={styles.addCard} onClick={() => setEditing({ ...newOpportunity(), stage: stage.id })}><Plus/>Thêm tại đây</button></div></section>)}
     </section>
     {showLost && <section className={styles.lost}><header><h2>Cơ hội đang tạm dừng</h2><span>Giữ lại lịch sử; đưa về pipeline khi thời điểm phù hợp.</span></header>{searchable.filter((item) => item.stage === "lost").map((item) => <button key={item.id} onClick={() => openOpportunity(item)}><span><b>{item.business_name}</b><small>{item.lost_reason || "Chưa ghi lý do"}</small></span><ChevronRight/></button>)}</section>}
 
     {selected && <div className={styles.overlay} onPointerDown={(event) => { if (event.target === event.currentTarget) closeSelected(); }}><aside ref={dialogRef} tabIndex={-1} className={styles.drawer} aria-label="Chi tiết cơ hội" role="dialog" aria-modal="true">
       <header><div><p>{stageLabel(selected.stage)}</p><h2>{selected.business_name}</h2><span>{selected.contact}</span></div><button type="button" onClick={closeSelected} aria-label="Đóng"><X/></button></header>
+      <PartnerReferralLink key={selected.id} opportunityId={selected.id}/>
       <section className={styles.next}><span>Bước tiếp theo</span><h3>{selected.next_action || "Chưa đặt bước tiếp theo"}</h3><time>{shortDate(selected.next_action_at)}</time><p>Phụ trách: {selected.owner || "Chưa phân công"}</p><div><button onClick={() => setEditing({ ...selected, next_action_at: selected.next_action_at?.slice(0, 10) || "" })}>Sửa nhịp làm việc</button><Link className={styles.recipeBridge} href={`/admin/recipes?view=lab&opportunity=${encodeURIComponent(selected.id)}`}><FlaskConical/>Mở phòng công thức</Link></div></section>
       <CustomerJourneyPanel primaryActionTitle={selected.prospect_suppressed?"Không liên hệ · chỉ xử lý giao dịch đã có":selected.next_action} journey={selectedJourney} onCommand={runJourneyCommand}/>
       <EventEnquiryInbox key={selected.id} supabase={supabase} opportunityId={selected.id} refreshKey={opportunities}/>

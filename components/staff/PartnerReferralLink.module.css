@@ -1,0 +1,7 @@
+.source { margin: 1rem 0; padding: 1rem; border: 1px solid var(--color-rule); background: var(--color-paper-2, #eae6dc); color: var(--color-ink); }
+.source > div { display: grid; gap: .3rem; overflow-wrap: anywhere; }
+.source small { color: var(--color-accent); font-size: .75rem; font-weight: 700; }
+.source strong { font: 600 1.25rem/1.2 var(--font-display); }
+.source span { font-size: .75rem; overflow-wrap: anywhere; }
+.source a { display: inline-flex; align-items: center; min-height: 44px; margin-top: .5rem; font-size: .85rem; color: inherit; text-underline-offset: .2em; }
+.source a:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }

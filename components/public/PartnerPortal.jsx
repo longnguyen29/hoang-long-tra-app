@@ -134,7 +134,7 @@ export default function PartnerPortal() {
     const { error: authError } = await supabase.auth.signInWithOtp({
       email: auth.email.trim(),
       options: {
-        emailRedirectTo: `${window.location.origin}/partners`,
+        emailRedirectTo: `${window.location.origin}/partners/account`,
         shouldCreateUser: true,
       },
     });
