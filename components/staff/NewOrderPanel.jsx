@@ -8,6 +8,7 @@ import {createOrderSubmission} from "@/lib/order-submission";
 import {useDialogFocus} from "./useDialogFocus";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
 import { reorderLinesFromOrder } from "@/lib/reorder-draft";
+import { catalogSellingUnit, formatLineQuantities, orderLineSellingUnit, ORDER_UNIT_CHOICES, sellingUnitLabel, validSaleQuantity } from "@/lib/selling-units";
 
 const blankLine = () => ({ id: crypto.randomUUID(), productKey: "", qty: 1, unitPrice: "" });
 
@@ -25,6 +26,8 @@ function flattenProducts(products) {
         productId: product.id,
         weight: variant.weight,
         line: product.line,
+        kind: product.kind,
+        packSize: product.packSize,
         name: product.name,
         price: variant.price ?? null,
         available: product.available,
@@ -35,6 +38,8 @@ function flattenProducts(products) {
       productId: product.id,
       weight: null,
       line: product.line,
+      kind: product.kind,
+      packSize: product.packSize,
       name: product.name,
       price: product.price ?? null,
       available: product.available,
@@ -117,7 +122,7 @@ export default function NewOrderPanel({ supabase, onClose, onCreated, sourceOrde
       product,
       qty: Number(line.qty),
       price: Number.isFinite(price) && price >= 0 ? price : null,
-      unit: type === "wholesale" ? line.sourceUnit || "kg" : product.line === "everyday" ? "kg" : "pcs",
+      unit: orderLineSellingUnit(line, product, type),
     };
   }).filter(Boolean), [lines, orderableProducts, type]);
 
@@ -130,21 +135,13 @@ export default function NewOrderPanel({ supabase, onClose, onCreated, sourceOrde
     && contact.trim()
     && selectedLines.length === lines.length
     && lines.length > 0
-    && selectedLines.every((line) => Number.isFinite(line.qty) && line.qty > 0 && (type === "wholesale" || Number.isInteger(line.qty)))
+    && selectedLines.every((line) => validSaleQuantity(line.qty, line.unit, type))
     && (type !== "retail" || selectedLines.every((line) => line.price !== null))
     && !loadingProducts
     && !catalogFailed
     && !saving
   );
-  const unitSummary = useMemo(() => {
-    const totals = selectedLines.reduce((result, line) => {
-      result[line.unit] = (result[line.unit] || 0) + line.qty;
-      return result;
-    }, {});
-    return [totals.kg ? `${totals.kg} kg` : "", totals.pcs ? `${totals.pcs} gói` : ""]
-      .filter(Boolean)
-      .join(" · ") || "Chưa chọn sản phẩm";
-  }, [selectedLines]);
+  const unitSummary = useMemo(() => formatLineQuantities(selectedLines) || "Chưa chọn sản phẩm", [selectedLines]);
 
   const setLine = (id, patch) => setLines((current) => current.map((line) => (
     line.id === id ? { ...line, ...patch } : line
@@ -300,17 +297,24 @@ export default function NewOrderPanel({ supabase, onClose, onCreated, sourceOrde
             {type === "retail" && sourceOrder && <p className={styles.catalogHint}>Đơn lẻ dùng giá danh mục hiện tại và trừ tồn kho khi tạo. Chọn Đơn sỉ nếu cần nhập giá riêng.</p>}
             {unavailableLines.length > 0 && <p className={styles.error} role="alert">{unavailableLines.length} sản phẩm từ đơn cũ không còn trong danh mục đang bán. Chọn sản phẩm thay thế hoặc xóa dòng trước khi tiếp tục.</p>}
             <div className={styles.lineList}>
-              {lines.map((line, index) => <div className={styles.line} data-wholesale={type === "wholesale"} key={line.id}>
+              {lines.map((line, index) => {
+                const product = orderableProducts.find((item) => item.key === line.productKey);
+                const unit = orderLineSellingUnit(line, product, type);
+                const fractional = type === "wholesale" && ["kg", "g", "t", "ton", "tons"].includes(unit);
+                const unitChoices = ORDER_UNIT_CHOICES.includes(unit) ? ORDER_UNIT_CHOICES : [...ORDER_UNIT_CHOICES, unit];
+                return <div className={styles.line} data-wholesale={type === "wholesale"} key={line.id}>
                 <span>{String(index + 1).padStart(2, "0")}</span>
                 <label>Sản phẩm<select required disabled={loadingProducts} value={line.productKey} onChange={(event) => selectProduct(line.id, event.target.value)}>
                   <option value="">{loadingProducts ? "Đang tải danh mục…" : line.sourceName ? `Chọn lại: ${line.sourceName}` : "Chọn trà / quy cách"}</option>
                   {line.productKey && !orderableProducts.some((product) => product.key === line.productKey) && <option value={line.productKey} disabled>Không còn bán: {line.sourceName}</option>}
-                  {orderableProducts.map((product) => <option key={product.key} value={product.key}>{product.name.vi || product.name.en}{product.weight ? ` · ${product.weight}` : ""}{product.price !== null ? ` · ${formatMoney(product.price)}` : " · chưa có giá"}</option>)}
+                  {orderableProducts.map((product) => <option key={product.key} value={product.key}>{product.name.vi || product.name.en}{product.weight || product.packSize ? ` · ${product.weight || product.packSize}` : ""}{product.price !== null ? ` · ${formatMoney(product.price)} / ${sellingUnitLabel(catalogSellingUnit(product))}` : " · chưa có giá"}</option>)}
                 </select></label>
-                <label>Số lượng<FormattedNumberInput required min={type === "wholesale" ? "0.001" : "1"} step={type === "wholesale" ? "0.001" : "1"} value={line.qty} onChange={(event) => setLine(line.id, { qty: event.target.value })} /></label>
-                {type === "wholesale" && <label>Giá bán / {line.sourceUnit || "kg"}<FormattedNumberInput min="0" step="1000" value={line.unitPrice} onChange={(event) => setLine(line.id, { unitPrice: event.target.value })} placeholder="Chưa báo giá" /></label>}
+                <label>Số lượng{product ? ` (${sellingUnitLabel(unit)})` : ""}<FormattedNumberInput required min={fractional ? "0.001" : "1"} step={fractional ? "0.001" : "1"} value={line.qty} onChange={(event) => setLine(line.id, { qty: event.target.value })} /></label>
+                {type === "wholesale" && <label className={styles.unitField}>Đơn vị<select disabled={!product} value={unit} onChange={(event) => setLine(line.id, { sourceUnit: event.target.value })}>{unitChoices.map((choice) => <option key={choice} value={choice}>{sellingUnitLabel(choice)}</option>)}</select></label>}
+                {type === "wholesale" && <label>Giá bán / {sellingUnitLabel(unit)}<FormattedNumberInput min="0" step="1000" value={line.unitPrice} onChange={(event) => setLine(line.id, { unitPrice: event.target.value })} placeholder="Chưa báo giá" /></label>}
                 <button type="button" onClick={() => removeLine(line.id)} disabled={lines.length === 1} aria-label="Xóa sản phẩm"><Minus /></button>
-              </div>)}
+                {type === "wholesale" && product && unit !== catalogSellingUnit(product) && <p className={styles.unitHint}>Đơn dùng {sellingUnitLabel(unit)}; danh mục bán theo {sellingUnitLabel(catalogSellingUnit(product))}. Kiểm tra số lượng và giá theo đơn vị đã chọn.</p>}
+              </div>})}
             </div>
             <button className={styles.addLine} type="button" onClick={() => setLines((current) => [...current, blankLine()])}><Plus /> Thêm sản phẩm</button>
           </section>
@@ -329,7 +333,7 @@ export default function NewOrderPanel({ supabase, onClose, onCreated, sourceOrde
           </dl>
           <div className={styles.reviewLines}>
             {selectedLines.map((line) => <article key={line.id}>
-              <span><b>{line.product.name.vi || line.product.name.en}{line.product.weight ? ` · ${line.product.weight}` : ""}</b><small>{line.qty} {line.unit} × {line.price === null ? "chưa báo giá" : formatMoney(line.price)}</small></span>
+              <span><b>{line.product.name.vi || line.product.name.en}{line.product.weight ? ` · ${line.product.weight}` : ""}</b><small>{line.qty} {sellingUnitLabel(line.unit)} × {line.price === null ? "chưa báo giá" : formatMoney(line.price)}</small></span>
               <b>{line.price === null ? "—" : formatMoney(line.price * line.qty)}</b>
             </article>)}
           </div>

@@ -18,12 +18,13 @@ import SampleFollowups from "./SampleFollowups";
 import LoadFailure from "./LoadFailure";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
 import { notifyHouse } from "@/lib/notify";
+import { formatLineQuantities, sellingUnitLabel } from "@/lib/selling-units";
 import { STAFF_APPS, STAFF_APP_GROUPS } from "./staff-navigation";
 import styles from "./StaffWorkbench.module.css";
 
 const dateTime=(value)=>{const date=new Date(value);return !value||Number.isNaN(date.getTime())?"—":new Intl.DateTimeFormat("vi-VN",{dateStyle:"short",timeStyle:"short"}).format(date)};
 const money=(value)=>value===null||value===undefined?"Chưa báo giá":new Intl.NumberFormat("vi-VN",{style:"currency",currency:"VND",maximumFractionDigits:0}).format(value);
-const quantity=(order)=>{const totals=(order.lines||[]).reduce((result,line)=>{result[line.unit]=(result[line.unit]||0)+(Number(line.qty)||0);return result},{});return [totals.kg?`${totals.kg} kg`:"",totals.pcs?`${totals.pcs} gói`:""].filter(Boolean).join(" · ")||"Chưa có sản phẩm"};
+const quantity=(order)=>formatLineQuantities(order.lines)||"Chưa có sản phẩm";
 const lineName=(line)=>typeof line?.name==="string"?line.name:line?.name?.vi||line?.name?.en||"Sản phẩm";
 const orderEventMessage=(event)=>{
  if(event.kind!=="line_removed")return event.message;
@@ -31,7 +32,7 @@ const orderEventMessage=(event)=>{
   const detail=typeof event.message==="string"?JSON.parse(event.message):event.message;
   const line=detail?.removed_line;
   if(!line)return "Đã xoá một dòng sản phẩm khỏi đơn.";
-  return `Đã xoá ${lineName(line)} · ${line.qty} ${line.unit}. Tổng đơn: ${money(detail.before?.estimated_total)} → ${money(detail.after?.estimated_total)}. Lý do: ${detail.reason||"—"}.`;
+  return `Đã xoá ${lineName(line)} · ${line.qty} ${sellingUnitLabel(line.unit)}. Tổng đơn: ${money(detail.before?.estimated_total)} → ${money(detail.after?.estimated_total)}. Lý do: ${detail.reason||"—"}.`;
  }catch{return event.message||"Đã xoá một dòng sản phẩm khỏi đơn."}
 };
 
@@ -311,12 +312,12 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
    <dl><div><dt>Mã đơn</dt><dd>{order.id}</dd></div><div><dt>Liên hệ</dt><dd>{order.contact}</dd></div><div><dt>Địa chỉ</dt><dd>{order.address||"—"}</dd></div><div><dt>Thanh toán</dt><dd>{order.paymentMethod==="cash"?"Tiền mặt":"Chuyển khoản QR"}</dd></div>{order.note&&<div><dt>Ghi chú</dt><dd>{order.note}</dd></div>}</dl>
    <div className={styles.lines}>{(order.lines||[]).map((line,index)=><div key={index} className={styles.lineItem}>
     <div className={styles.lineContent}>
-     <span><b>{lineName(line)}</b><small>{line.qty} {line.unit}{line.price!==null&&line.price!==undefined?` × ${money(line.price)}`:" · chưa báo giá"}</small></span>
-     {editingPrices?<label className={styles.linePriceEditor}><span>Giá / {line.unit}</span><FormattedNumberInput disabled={saving} min="0" step="1000" value={priceDrafts[index]} onChange={event=>setPriceDrafts(current=>current.map((value,itemIndex)=>itemIndex===index?event.target.value:value))} placeholder="Chưa báo giá"/></label>:<div className={styles.lineActions}><span>{line.price!==null&&line.price!==undefined?money(line.price*line.qty):"—"}</span>{canRemoveLines&&<button type="button" disabled={saving||loadingEvents||!!detailError||(order.lines||[]).length<2||removingLineIndex!==null} aria-label={`Xoá dòng ${lineName(line)} · ${line.qty} ${line.unit}`} aria-expanded={removingLineIndex===index} aria-controls={`order-line-removal-${index}`} title={(order.lines||[]).length<2?"Đơn phải còn ít nhất một dòng sản phẩm.":"Xoá dòng nhập nhầm và tính lại tổng đơn, giữ nguyên bước xử lý."} onClick={()=>startLineRemoval(index)}><Trash2/>Xoá dòng</button>}</div>}
+     <span><b>{lineName(line)}</b><small>{line.qty} {sellingUnitLabel(line.unit)}{line.price!==null&&line.price!==undefined?` × ${money(line.price)}`:" · chưa báo giá"}</small></span>
+     {editingPrices?<label className={styles.linePriceEditor}><span>Giá / {sellingUnitLabel(line.unit)}</span><FormattedNumberInput disabled={saving} min="0" step="1000" value={priceDrafts[index]} onChange={event=>setPriceDrafts(current=>current.map((value,itemIndex)=>itemIndex===index?event.target.value:value))} placeholder="Chưa báo giá"/></label>:<div className={styles.lineActions}><span>{line.price!==null&&line.price!==undefined?money(line.price*line.qty):"—"}</span>{canRemoveLines&&<button type="button" disabled={saving||loadingEvents||!!detailError||(order.lines||[]).length<2||removingLineIndex!==null} aria-label={`Xoá dòng ${lineName(line)} · ${line.qty} ${sellingUnitLabel(line.unit)}`} aria-expanded={removingLineIndex===index} aria-controls={`order-line-removal-${index}`} title={(order.lines||[]).length<2?"Đơn phải còn ít nhất một dòng sản phẩm.":"Xoá dòng nhập nhầm và tính lại tổng đơn, giữ nguyên bước xử lý."} onClick={()=>startLineRemoval(index)}><Trash2/>Xoá dòng</button>}</div>}
     </div>
     {removingLineIndex===index&&<form id={`order-line-removal-${index}`} className={styles.lineRemoval} onSubmit={saveLineRemoval}>
      <h3>Xoá dòng {lineName(line)}?</h3>
-     <p><b>{line.qty} {line.unit}</b> sẽ rời đơn. Tổng đơn được tính lại từ các dòng còn lại; yêu cầu thanh toán của khách (nếu có) cập nhật theo tổng mới. Đơn giữ nguyên bước <b>{stage.label}</b>.</p>
+     <p><b>{line.qty} {sellingUnitLabel(line.unit)}</b> sẽ rời đơn. Tổng đơn được tính lại từ các dòng còn lại; yêu cầu thanh toán của khách (nếu có) cập nhật theo tổng mới. Đơn giữ nguyên bước <b>{stage.label}</b>.</p>
      <div className={styles.lineRemovalPreview}><span><small>{remainingTotalPreview!==null?"Tổng còn lại dự kiến":"Tiền hàng còn lại"} · {remainingLines.length} dòng</small><b>{money(remainingTotalPreview??remainingSubtotal)}</b></span><small>{remainingTotalPreview!==null?"Tính theo giá và chiết khấu đã ghi nhận.":remainingSubtotal===null?"Một dòng còn lại chưa có giá; tổng sẽ chờ báo giá.":recordedTotal===null?"Tổng đơn hiện chưa báo giá và vẫn chờ chốt giá sau khi xoá.":"Đây là tiền hàng trước chiết khấu. Tổng đơn sẽ tính lại theo khoản điều chỉnh đã ghi nhận."}</small></div>
      {receivable&&Number(receivable.paid)>0&&<p className={styles.lineRemovalPayment}>Đã thu {money(receivable.paid)}. Tổng mới không được thấp hơn tiền đã thu. Hệ thống kiểm tra đối soát trước khi cập nhật yêu cầu thanh toán.</p>}
      <label>Lý do xoá dòng (bắt buộc)<textarea autoFocus required minLength={5} maxLength={1000} disabled={saving} value={lineRemovalReason} onChange={event=>setLineRemovalReason(event.target.value)} placeholder="Ví dụ: nhập nhầm sản phẩm, khách chỉ chốt các dòng còn lại" aria-describedby={`order-line-reason-help-${index}`}/></label>

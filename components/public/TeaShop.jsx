@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, Globe2, Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { fromCatalogRow, fromVariantRow } from "@/lib/mappers";
+import { catalogSellingUnit, sellingUnitLabel } from "@/lib/selling-units";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import styles from "./TeaShop.module.css";
 
@@ -177,7 +178,7 @@ export default function TeaShop({ mode = "tea" }) {
     setSending(true); setError("");
     const orderLines = lines.map(({ product, weight, price, qty }) => ({
       name: weight ? { en: `${product.name.en} (${weight})`, vi: `${product.name.vi} (${weight})` } : product.name,
-      qty, unit: product.kind === "goods" ? "pcs" : product.line === "everyday" ? "kg" : "pcs", price: price || null, productId: product.id, weight,
+      qty, unit: catalogSellingUnit(product, weight), price: price || null, productId: product.id, weight,
     }));
     const { data, error: submitError } = await supabase.rpc("submit_retail_order", {
       p_customer_name: customer.name.trim(), p_contact: customer.contact.trim(), p_address: customer.address.trim(),
@@ -237,7 +238,7 @@ export default function TeaShop({ mode = "tea" }) {
               <div className={styles.variants}>{choices.map((choice) => {
                 const key = product.variants.length ? `${product.id}__${choice.weight}` : product.id;
                 const n = cart[key] || 0;
-                return <div className={styles.variant} key={key}><span><b>{choice.weight}</b><small>{choice.price ? money.format(choice.price) : t.priceOnRequest}</small></span><div><button onClick={() => quantity(key,-1)} disabled={!n} aria-label={t.remove(productName)}><Minus size={14}/></button><output>{n}</output><button onClick={() => quantity(key,1)} aria-label={t.add(productName)}><Plus size={14}/></button></div></div>;
+                return <div className={styles.variant} key={key}><span><b>{choice.weight}</b><small>{choice.price ? `${money.format(choice.price)} / ${sellingUnitLabel(catalogSellingUnit(product, product.variants.length ? choice.weight : null), locale)}` : t.priceOnRequest}</small></span><div><button onClick={() => quantity(key,-1)} disabled={!n} aria-label={t.remove(productName)}><Minus size={14}/></button><output>{n}</output><button onClick={() => quantity(key,1)} aria-label={t.add(productName)}><Plus size={14}/></button></div></div>;
               })}</div>
             </article>;
           })}
@@ -251,7 +252,7 @@ export default function TeaShop({ mode = "tea" }) {
         <aside ref={cartRef} tabIndex={-1} className={styles.drawer} role="dialog" aria-modal="true" aria-labelledby="cart-title">
           <header><div><p>{t.yourOrder}</p><h2 id="cart-title">{t.cart}</h2></div><button onClick={() => setCartOpen(false)} aria-label={t.closeCart}><X size={19}/></button></header>
           {!lines.length ? <div className={styles.empty}><ShoppingBag size={22}/><p>{t.emptyCart}</p><button onClick={() => setCartOpen(false)}>{t.continueTea}</button></div> : <>
-            <div className={styles.lines}>{lines.map((line) => <div key={line.key}><span><b>{line.product.name?.[locale] || line.product.name?.vi || line.product.name?.en}</b><small>{line.weight || line.product.packSize}</small></span><span>{line.qty} × {line.price ? money.format(line.price) : "—"}</span></div>)}</div>
+            <div className={styles.lines}>{lines.map((line) => <div key={line.key}><span><b>{line.product.name?.[locale] || line.product.name?.vi || line.product.name?.en}</b><small>{line.weight || line.product.packSize}</small></span><span>{line.qty} {sellingUnitLabel(catalogSellingUnit(line.product, line.weight), locale)} × {line.price ? money.format(line.price) : "—"}</span></div>)}</div>
             <form className={styles.checkout} onSubmit={submit}>
               <div className={styles.total}><span>{t.estimatedTotal}</span><b>{money.format(total)}</b></div>
               <label>{t.name}<input required value={customer.name} onChange={(e)=>setCustomer({...customer,name:e.target.value})}/></label>

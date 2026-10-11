@@ -3,6 +3,7 @@
 import { useState, useRef, useId } from "react";
 import { X, Check, Plus, Sparkles, Star } from "lucide-react";
 import { getStockTotal, YIELD_GUIDE } from "@/lib/constants";
+import { catalogSellingUnit, sellingUnitLabel } from "@/lib/selling-units";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
 
 import { useDialogFocus } from "@/components/hooks/useDialogFocus";
@@ -46,6 +47,7 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
   const hasVariants = product.variants && product.variants.length > 0;
   const [selectedWeight, setSelectedWeight] = useState(hasVariants ? product.variants[0].weight : null);
   const variant = hasVariants ? (product.variants.find((v) => v.weight === selectedWeight) || product.variants[0]) : null;
+  const effectiveUnit = showYield ? unit : sellingUnitLabel(catalogSellingUnit(product, variant?.weight), lang);
   const effectivePrice = hasVariants ? variant.price : product.price;
   const effectiveStock = hasVariants ? getStockTotal(variant) : getStockTotal(product);
   const soldOut = product.available === false || effectiveStock === 0;
@@ -208,7 +210,7 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
 
           {effectivePrice ? (
             <div style={{ fontSize: 17, fontWeight: 700, color: TOKENS.brassOnPaper, marginTop: 4 }}>
-              {effectivePrice.toLocaleString("vi-VN")}đ <span style={{ fontSize: 11, fontWeight: 600, color: TOKENS.jadeSoft }}>/ {unit}</span>
+              {effectivePrice.toLocaleString("vi-VN")}đ <span style={{ fontSize: 11, fontWeight: 600, color: TOKENS.jadeSoft }}>/ {effectiveUnit}</span>
             </div>
           ) : null}
           {showYield && effectivePrice ? (
@@ -259,7 +261,7 @@ export default function TeaDetailModal({ product, unit, showYield, lang, t, TOKE
                   style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", borderRadius: 8, border: `1px solid ${TOKENS.brassDeep}55`, fontSize: 14 }}
                 />
               </div>
-              <span style={{ fontSize: 13, color: TOKENS.jadeSoft, flexShrink: 0, marginTop: 16 }}>{unit}</span>
+              <span style={{ fontSize: 13, color: TOKENS.jadeSoft, flexShrink: 0, marginTop: 16 }}>{effectiveUnit}</span>
             </div>
           )}
 
