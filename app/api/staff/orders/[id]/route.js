@@ -86,6 +86,39 @@ export async function PATCH(request, { params }) {
     return Response.json({ ok: false, error: "invalid_body" }, { status: 400 });
   }
 
+  if (body && Object.hasOwn(body, 'removeLine')) {
+    const removal = body.removeLine;
+    if (Object.keys(body).length !== 1 || !removal || Array.isArray(removal) || typeof removal !== 'object'
+      || Object.keys(removal).some(key => !['index', 'expectedLines', 'reason'].includes(key))
+      || !Number.isInteger(removal.index) || removal.index < 0
+      || !Array.isArray(removal.expectedLines) || removal.expectedLines.length < 2
+      || removal.expectedLines.length > 500 || removal.index >= removal.expectedLines.length
+      || removal.expectedLines.some(line => !line || typeof line !== 'object' || Array.isArray(line))) {
+      return Response.json({ ok: false, error: 'invalid_line_removal' }, { status: 400 });
+    }
+    if (typeof removal.reason !== 'string' || removal.reason.trim().length < 5 || removal.reason.trim().length > 1000) {
+      return Response.json({ ok: false, error: 'line_removal_reason_required' }, { status: 400 });
+    }
+    const { data: result, error } = await staff.admin.rpc('remove_order_line', {
+      p_order_id: id, p_line_index: removal.index, p_expected_lines: removal.expectedLines,
+      p_reason: removal.reason.trim(), p_actor: staff.user.id,
+    });
+    if (error) {
+      const known = ['manager_required', 'line_removal_reason_required', 'order_not_found', 'invalid_line_index',
+        'order_lines_changed', 'last_order_line', 'invalid_order_lines', 'line_removal_payment_conflict'];
+      const code = known.find(value => error.message?.includes(value));
+      const status = code === 'manager_required' ? 403 : code === 'order_not_found' ? 404
+        : ['line_removal_reason_required', 'invalid_line_index', 'invalid_order_lines'].includes(code) ? 400 : code ? 409 : 500;
+      return Response.json({ ok: false, error: code || 'line_removal_failed' }, { status });
+    }
+    if (!result?.order) return Response.json({ ok: false, error: 'line_removal_reload_failed' }, { status: 500 });
+    const [eventResult, costResult] = await Promise.all([readEvents(staff.admin, id), readCosts(staff.admin, id)]);
+    // The RPC commits the correction, amount, reservations and audit together.
+    // Removing an entered line does not dispatch shipping/customer messages.
+    return Response.json({ ok: true, order: result.order, receivable: result.receivable || null,
+      events: eventResult.data || [], costs: costResult.data || [] });
+  }
+
   if (body && Object.hasOwn(body, 'forceOffReason')) {
     if (Object.keys(body).length !== 1 || typeof body.forceOffReason !== 'string' || body.forceOffReason.trim().length < 10 || body.forceOffReason.trim().length > 1000) {
       return Response.json({ ok: false, error: 'force_reason_required' }, { status: 400 });

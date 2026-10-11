@@ -13,7 +13,7 @@ declare
   sample_lines jsonb;
   mixed_lines jsonb;
   request_id text:='test-followup-request-'||suffix;
-  order_id text:='test-followup-order-'||suffix;
+  fixture_order_id text:='test-followup-order-'||suffix;
   linked_request text:='test-followup-linked-request-'||suffix;
   linked_order text:='test-followup-linked-order-'||suffix;
   opportunity_id text:='test-followup-opp-'||suffix;
@@ -98,7 +98,7 @@ begin
   insert into public.orders(id,type,customer_name,contact,lines,sample_request_id,stage,status)
     values(linked_order,'retail','TEST LINKED','+84 90 000 1002',sample_lines,linked_request,'packing','confirmed');
   update public.orders set stage='shipping',status='shipped' where id=linked_order;
-  select id into linked_followup_id from public.sample_followups where source_kind='sample_request' and source_id=linked_request and order_id=linked_order;
+  select q.id into linked_followup_id from public.sample_followups q where q.source_kind='sample_request' and q.source_id=linked_request and q.order_id=linked_order;
   if linked_followup_id is null or (select status from public.sample_requests where id=linked_request)<>'sent'
     or exists(select 1 from public.sample_followups where source_kind='order' and source_id=linked_order)
     then raise exception 'Linked shipment has duplicate ownership or did not mark the request sent'; end if;
@@ -116,9 +116,9 @@ begin
 
   -- New unlinked pure samples enroll; mixed commercial/sample orders do not.
   insert into public.orders(id,type,customer_name,contact,lines,stage,status)
-    values(order_id,'retail','TEST SAMPLE ORDER','0900001004',sample_lines,'packing','confirmed');
-  update public.orders set stage='shipping',status='shipped' where id=order_id;
-  if not exists(select 1 from public.sample_followups where source_kind='order' and source_id=order_id and status='pending') then raise exception 'Sample order was not enrolled'; end if;
+    values(fixture_order_id,'retail','TEST SAMPLE ORDER','0900001004',sample_lines,'packing','confirmed');
+  update public.orders set stage='shipping',status='shipped' where id=fixture_order_id;
+  if not exists(select 1 from public.sample_followups where source_kind='order' and source_id=fixture_order_id and status='pending') then raise exception 'Sample order was not enrolled'; end if;
   insert into public.orders(id,type,customer_name,contact,lines,stage,status)
     values('test-followup-mixed-'||suffix,'retail','TEST MIXED','0900001005',mixed_lines,'packing','confirmed');
   update public.orders set stage='shipping',status='shipped' where id='test-followup-mixed-'||suffix;
@@ -190,7 +190,7 @@ begin
     values(prospect_id,'TEST DNC','https://fixture.invalid','test-followup-'||suffix,'page_review','qualified',manager_id);
   insert into public.discovery_contacts(prospect_id,kind,value,normalized,source_url,observed_at)
     values(prospect_id,'phone','+84 90 000 1004','+84900001004','https://fixture.invalid',now());
-  select id into followup_id from public.sample_followups where source_kind='order' and source_id=order_id;
+  select id into followup_id from public.sample_followups where source_kind='order' and source_id=fixture_order_id;
   update public.sample_followups set sent_at=now()-interval '8 days',due_at=now()-interval '1 day' where id=followup_id;
   select * into claim from public.claim_sample_followup(followup_id,now());
   update public.discovery_prospects set status='do_not_contact' where id=prospect_id;
