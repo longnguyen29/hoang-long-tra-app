@@ -78,6 +78,7 @@ function PartnerLeadForm({ onSubmitted }) {
 export default function PartnerNetworkPortal() {
   const supabase = useMemo(() => createClient(), []);
   const identity = useRef("");
+  const authVersion = useRef(0);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -94,19 +95,27 @@ export default function PartnerNetworkPortal() {
     let active = true;
     if (new URLSearchParams(window.location.search).get("auth_error") === "1") setError("Liên kết đăng nhập đã hết hạn hoặc được mở ở trình duyệt khác. Gửi liên kết mới và mở trên thiết bị này.");
     const sync = async () => {
+      const version = ++authVersion.current;
       try {
         const { data, error: authError } = await supabase.auth.getUser();
-        if (!active) return;
+        if (!active || version !== authVersion.current) return;
         const nextUser = data.user || null;
         if (identity.current !== (nextUser?.id || "")) setSnapshot(null);
         identity.current = nextUser?.id || "";
         setUser(nextUser);
         if (authError && data.user) setError(partnerErrorMessage(authError));
-      } catch { if (active) setError("Chưa kiểm tra được đăng nhập. Kiểm tra mạng rồi tải lại trang."); }
-      finally { if (active) setAuthLoading(false); }
+      } catch { if (active && version === authVersion.current) setError("Chưa kiểm tra được đăng nhập. Kiểm tra mạng rồi tải lại trang."); }
+      finally { if (active && version === authVersion.current) setAuthLoading(false); }
     };
     sync();
-    const { data } = supabase.auth.onAuthStateChange(() => { setTimeout(sync, 0); });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if ((session?.user?.id || "") !== identity.current) {
+        authVersion.current += 1;
+        identity.current = "";
+        setSnapshot(null); setUser(null); setAuthLoading(true); setSearch("");
+      }
+      setTimeout(sync, 0);
+    });
     return () => { active = false; data.subscription.unsubscribe(); };
   }, [supabase]);
 

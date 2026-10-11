@@ -47,6 +47,8 @@ select set_config('test.saved_code',(select code from public.partner_network_par
 select public.partner_network_manage_partner(current_setting('test.partner_a')::uuid,'approve','{}');
 select public.test_assert((select code=current_setting('test.saved_code') from public.partner_network_partners where id=current_setting('test.partner_a')::uuid),'reapproval preserves code');
 reset role;
+
+
 -- Fixture orders below represent purchases AFTER referral submission.
 update public.partner_network_referrals set created_at='2025-12-01' where id='00000000-0000-4000-8000-000000000101';
 insert into public.trade_quotes values('test-q1','opp-referral-00000000-0000-4000-8000-000000000101','test-o1');
@@ -158,4 +160,16 @@ select public.test_error($q$select public.partner_network_snapshot()$q$,'authent
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',false);
 select public.test_error(format('select public.partner_network_manage_partner(%L,''update'',''{"default_rate_percent":101}'')',current_setting('test.partner_a')),'invalid_commission_rate');
 select public.test_error(format('select public.partner_network_manage_partner(%L,''update'',''{"repeat_order_limit":31}'')',current_setting('test.partner_a')),'invalid_commission_terms');
+reset role;
+
+-- An irregular VND invoice still settles in whole dong, suitable for a real transfer.
+insert into public.orders(id,ts,type,status,customer_name,contact,address,partner_account_id)
+values('test-vnd-round','2026-10-12','wholesale','confirmed','Cafe A','0902000001','Hà Nội','test-client');
+insert into public.receivables values('test-vnd-recv','test-vnd-round',987654,987654,'paid');
+insert into public.receivable_payments(id,receivable_id,amount) values('test-vnd-cash','test-vnd-recv',987654);
+set role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',false);
+select public.partner_network_reconcile('test-vnd-round','{"vat_amount":0,"billed_shipping_amount":0,"refunded_amount":0,"internal_cost_total":500000,"minimum_retained_profit":100000,"rate_percent":3,"adjustment_reason":"Separately confirmed example order rate","review_note":"Whole VND rounding for an irregular invoice"}');
+select public.test_assert((select calculated_amount=29630 from public.partner_network_commissions where order_id='test-vnd-round'),'commission settles whole VND');
+select public.test_error(format('select public.partner_network_commission_action(%L,''adjust'',''{"adjustment_amount":0.5,"reason":"Invalid fractional VND adjustment"}'')',(select id from public.partner_network_commissions where order_id='test-vnd-round')),'whole_vnd_adjustment_required');
 reset role;

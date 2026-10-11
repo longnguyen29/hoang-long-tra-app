@@ -41,8 +41,8 @@ The financial source is `receivable_payments` joined to the existing order's `re
 
 ```text
 eligible base = max(0, actual collected cash − reviewed VAT − billed shipping − actual refunds)
-calculated commission = round(eligible base × negotiated percentage / 100, 2)
-reviewed commission = calculated commission + signed, reasoned adjustment
+calculated commission = round(eligible base × negotiated percentage / 100) in whole VND, capped at floor(eligible base)
+reviewed commission = calculated commission + signed, reasoned whole-VND adjustment
 profit budget = max(0, eligible base − reviewed internal costs − minimum retained profit)
 ```
 

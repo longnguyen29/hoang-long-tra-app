@@ -4,8 +4,8 @@ Internal release checklist, 12 October 2026. Review before any public deployment
 
 ## Automated and layout checks
 
-- 344 existing/new unit and route tests passed, including 18 focused Partner Network checks. The old payment-reversal SQL test initially lacked its optional PGlite dependency; rerunning with the existing isolated PGlite installation resolved that setup issue and the complete suite passed.
-- New SQL migration and assertions execute in a disposable PostgreSQL-compatible PGlite database with fabricated auth identities, staff roles and representative existing schemas. 66 SQL assertions passed; the result log is recorded in the handoff. No live Supabase database writes were made.
+- 345 existing/new unit and route tests passed, including 19 focused Partner Network checks. The old payment-reversal SQL test initially lacked its optional PGlite dependency; rerunning with the existing isolated PGlite installation resolved that setup issue and the complete suite passed.
+- New SQL migration and assertions execute in a disposable PostgreSQL-compatible PGlite database with fabricated auth identities, staff roles and representative existing schemas. 68 SQL assertions passed; the result log is recorded in the handoff. No live Supabase database writes were made.
 - Production build is run with the feature enabled so all new code compiles. Next's build type-generation/check step runs, but this JavaScript project has no separately configured TypeScript/check-JS script.
 - `npm run lint` could not run: the existing script invokes `next lint`, which is unavailable in the installed Next version. No ESLint configuration/runtime dependency was added just for this feature.
 - Desktop and 390px checks cover the real landing/registration and login screens plus read-only management cards using the actual components and simulated records. Verify no horizontal overflow, labelled inputs, expandable sections and disabled save actions in the fixture.

@@ -422,7 +422,7 @@ begin
   base:=case when coalesce(v.cancelled,c.cancelled) or coalesce((f->>'cancelled')::boolean,true) or not link_valid then 0
     else greatest(0,(f->>'collected')::numeric-coalesce(v.vat_amount,c.vat_amount)-coalesce(v.billed_shipping_amount,c.billed_shipping_amount)-coalesce(v.refunded_amount,c.refunded_amount)) end;
   -- Adjustments cannot create eligible revenue or exceed that eligible revenue.
-  amount_value:=case when base=0 then 0 else greatest(0,least(base,round(base*c.rate_percent/100,2)+c.adjustment_amount)) end;
+  amount_value:=case when base=0 then 0 else greatest(0,least(floor(base),least(floor(base),round(base*c.rate_percent/100,0))+c.adjustment_amount)) end;
   cap_value:=case when v.internal_cost_total is null or v.minimum_retained_profit is null then null else greatest(0,base-v.internal_cost_total-v.minimum_retained_profit) end;
   stale_value:=c.fingerprint is distinct from public.partner_network_fingerprint(c.order_id,c.referral_id);
   return to_jsonb(c)||jsonb_build_object('current_collected',(f->>'collected')::numeric,'current_eligible_base',base,'current_amount',amount_value,
@@ -481,14 +481,14 @@ begin
   base:=case when cancel_value then 0 else greatest(0,(f->>'collected')::numeric-vat_value-shipping_value-refund_value) end;
   if exists_value then
     update public.partner_network_commissions set status='review',rate_percent=rate_value,collected_amount=(f->>'collected')::numeric,vat_amount=vat_value,billed_shipping_amount=shipping_value,
-      refunded_amount=refund_value,cancelled=cancel_value,eligible_base=base,calculated_amount=round(base*rate_value/100,2),
+      refunded_amount=refund_value,cancelled=cancel_value,eligible_base=base,calculated_amount=least(floor(base),round(base*rate_value/100,0)),
       review_note=note_value,adjustment_amount=0,adjustment_reason=reason_value,order_index=order_index_value,internal_cost_total=cost_value,minimum_retained_profit=profit_value,
       exception_reason='',exception_by=null,fingerprint=public.partner_network_fingerprint(p_order_id,r.id),reviewed_by=auth.uid(),reviewed_at=now(),
       approved_amount=null,approved_by=null,approved_at=null,void_reason='',updated_at=now() where id=c.id returning * into c;
   else
     insert into public.partner_network_commissions(order_id,referral_id,partner_id,rate_percent,collected_amount,vat_amount,billed_shipping_amount,refunded_amount,cancelled,eligible_base,calculated_amount,
       review_note,adjustment_reason,order_index,internal_cost_total,minimum_retained_profit,fingerprint,reviewed_by)
-    values(p_order_id,r.id,p.id,rate_value,(f->>'collected')::numeric,vat_value,shipping_value,refund_value,cancel_value,base,round(base*rate_value/100,2),note_value,reason_value,order_index_value,cost_value,profit_value,public.partner_network_fingerprint(p_order_id,r.id),auth.uid()) returning * into c;
+    values(p_order_id,r.id,p.id,rate_value,(f->>'collected')::numeric,vat_value,shipping_value,refund_value,cancel_value,base,least(floor(base),round(base*rate_value/100,0)),note_value,reason_value,order_index_value,cost_value,profit_value,public.partner_network_fingerprint(p_order_id,r.id),auth.uid()) returning * into c;
   end if;
   return public.partner_network_commission_view(c.id);
 end $$;
@@ -528,9 +528,10 @@ begin
   elsif p_action='adjust' then
     amount_value:=(p_input->>'adjustment_amount')::numeric;
     if amount_value is null or abs(amount_value)>999999999999 or amount_value::text in ('NaN','Infinity','-Infinity') or length(reason_value) not between 1 and 1000 then raise exception 'adjustment_reason_required'; end if;
+    if amount_value<>trunc(amount_value) then raise exception 'whole_vnd_adjustment_required'; end if;
     if c.status='void' then raise exception 'commission_void'; end if;
     if (view_value->>'current_eligible_base')::numeric=0 and amount_value<>0 then raise exception 'no_eligible_revenue'; end if;
-    if round(c.eligible_base*c.rate_percent/100,2)+amount_value<0 or round(c.eligible_base*c.rate_percent/100,2)+amount_value>c.eligible_base then raise exception 'adjustment_outside_eligible_revenue'; end if;
+    if least(floor(c.eligible_base),round(c.eligible_base*c.rate_percent/100,0))+amount_value<0 or least(floor(c.eligible_base),round(c.eligible_base*c.rate_percent/100,0))+amount_value>c.eligible_base then raise exception 'adjustment_outside_eligible_revenue'; end if;
     update public.partner_network_commissions set adjustment_amount=amount_value,adjustment_reason=reason_value,status='review',approved_amount=null,approved_at=null,approved_by=null,exception_reason='',exception_by=null,updated_at=now() where id=c.id;
   elsif p_action='pay' then
     amount_value:=(p_input->>'amount')::numeric; reference_value:=public.partner_network_text(p_input->>'reference'); paid_date:=(p_input->>'paid_at')::timestamptz;

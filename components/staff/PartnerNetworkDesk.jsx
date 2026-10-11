@@ -227,6 +227,8 @@ export function CommissionCard({ commission, partner, referral, role, busy, read
 export default function PartnerNetworkDesk() {
   const supabase = useMemo(() => createClient(), []);
   const request = useRef(0);
+  const identity = useRef("");
+  const authVersion = useRef(0);
   const [access, setAccess] = useState("checking");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
@@ -267,23 +269,31 @@ export default function PartnerNetworkDesk() {
 
   useEffect(() => {
     let active = true;
-    (async () => {
+    const checkAccess = async () => {
+      const version = ++authVersion.current;
       try {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError) throw authError;
-        if (!active) return;
+        if (!active || version !== authVersion.current) return;
         if (!user) { setAccess("signed_out"); return; }
         const result = await supabase.from("staff_roles").select("role").eq("user_id", user.id).maybeSingle();
         if (result.error) throw result.error;
-        if (!active) return;
+        if (!active || version !== authVersion.current) return;
+        identity.current = user.id;
         setEmail(user.email || "");
         setRole(result.data?.role || "");
         if (!["manager", "admin"].includes(result.data?.role) || !user.email_confirmed_at) { setAccess("denied"); return; }
         setAccess("allowed"); await load();
-      } catch (failure) { if (active) { setAccess("error"); setError(partnerErrorMessage(failure)); } }
-    })();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") { request.current += 1; setSnapshot({ partners: [], referrals: [], commissions: [], orders: [], audit: [] }); setReady(false); setAccess("signed_out"); }
+      } catch (failure) { if (active && version === authVersion.current) { setAccess("error"); setError(partnerErrorMessage(failure)); } }
+    };
+    checkAccess();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if ((session?.user?.id || "") !== identity.current) {
+        authVersion.current += 1; request.current += 1; identity.current = "";
+        setSnapshot({ partners: [], referrals: [], commissions: [], orders: [], audit: [] });
+        setReview(null); setEmail(""); setRole(""); setReady(false); setAccess("checking");
+        setTimeout(checkAccess, 0);
+      }
     });
     return () => { active = false; request.current += 1; subscription.unsubscribe(); };
   }, [supabase, load]);
