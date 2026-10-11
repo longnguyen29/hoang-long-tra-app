@@ -27,6 +27,7 @@ import { buildJourneyQueue, relativeDueLabel } from "@/lib/customer-journey";
 import { houseDateKey } from "@/lib/dashboard-calendar";
 import { STAFF_APPS as APPS, STAFF_APP_GROUPS, STAFF_APP_LIST as APP_LIST } from "./staff-navigation";
 import DashboardPlanner from "./DashboardPlanner";
+import SampleFollowups from "./SampleFollowups";
 import styles from "./MorningDesk.module.css";
 
 const MODES = [
@@ -694,6 +695,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
         </div>
 
         {canReview && <DashboardPlanner supabase={supabase} />}
+        <SampleFollowups supabase={supabase} role={role}/>
 
         <section className={styles.metrics} aria-label="Sự thật vận hành">
           {metrics.map(([label, value, note]) => (

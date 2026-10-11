@@ -13,10 +13,10 @@ registerHooks({resolve(specifier,context,next){
 }});
 const {setStaff}=await import(authUrl);
 const {PATCH}=await import('../app/api/staff/orders/[id]/route.js');
-function fixture({invoice=null,invoiceError=null,updateError=null,rpcError=null}={}){
+function fixture({invoice=null,invoiceError=null,updateError=null,rpcError=null,rpcData=null}={}){
  const original={id:'TEST-1',type:'retail',customer_name:'Test café',contact:'test@example.test',address:'Test address',stage:'new_order',status:'pending',lines:[{productId:'tea',qty:2,unit:'pcs',price:100000},{productId:'tea-2',qty:3,unit:'kg',price:200000}],estimated_total:800000};
  const writes=[],events=[],rpcCalls=[];
- const admin={rpc:async(name,args)=>{rpcCalls.push({name,args});return {error:rpcError}},from(table){let patch;const chain={select(){return chain},eq(){return chain},neq(){return chain},order(){return chain},limit(){return chain},update(value){patch=value;writes.push(value);return chain},insert(value){events.push(value);return Promise.resolve({error:null})},maybeSingle:async()=>table==='receivables'?{data:invoice,error:invoiceError}:{data:patch?{...original,...patch}:rpcCalls.length&&!rpcError&&table==='orders'?{...original,type:'wholesale',stage:rpcCalls.at(-1)?.name==='force_ship_order'?'shipping':'production',status:rpcCalls.at(-1)?.name==='force_ship_order'?'shipped':'confirmed'}:original,error:patch?updateError:null},then(resolve){return Promise.resolve({data:events,error:null}).then(resolve)}};return chain}};
+ const admin={rpc:async(name,args)=>{rpcCalls.push({name,args});return {data:rpcData,error:rpcError}},from(table){let patch;const chain={select(){return chain},eq(){return chain},neq(){return chain},order(){return chain},limit(){return chain},update(value){patch=value;writes.push(value);return chain},insert(value){events.push(value);return Promise.resolve({error:null})},maybeSingle:async()=>table==='receivables'?{data:invoice,error:invoiceError}:{data:patch?{...original,...patch}:rpcCalls.length&&!rpcError&&table==='orders'?{...original,type:'wholesale',stage:rpcCalls.at(-1)?.name==='force_ship_order'?'shipping':'production',status:rpcCalls.at(-1)?.name==='force_ship_order'?'shipped':'confirmed'}:original,error:patch?updateError:null},then(resolve){return Promise.resolve({data:events,error:null}).then(resolve)}};return chain}};
  setStaff({admin,user:{id:'STAFF-1',email:'manager@example.test'},role:'manager'});
  return {original,writes,events,rpcCalls};
 }
@@ -37,3 +37,43 @@ test('force shipping surfaces a database refusal without order edits',async()=>{
 test('force off requires a reason and cannot mix order edits',async()=>{const f=fixture();assert.equal((await send({forceOffReason:'short'})).status,400);assert.equal((await send({forceOffReason:'Manager approved exception',stage:'shipping'})).status,400);assert.equal(f.rpcCalls.length,0)});
 test('force off waives the whole Run but keeps an unfinished order at its current stage',async()=>{const f=fixture();const response=await send({forceOffReason:'  Manager approved exception  '});assert.equal(response.status,200);assert.equal((await response.json()).order.stage,'production');assert.deepEqual(f.rpcCalls,[{name:'force_off_procedure_order',args:{p_order_id:'TEST-1',p_reason:'Manager approved exception',p_actor:'STAFF-1'}}]);assert.equal(f.writes.length,0)});
 test('force off rejects a completed or non-wholesale order without edits',async()=>{const f=fixture({rpcError:{message:'order_not_ready_for_force_off'}});const response=await send({forceOffReason:'Manager approved exception'});assert.equal(response.status,409);assert.equal((await response.json()).error,'order_not_ready_for_force_off');assert.equal(f.writes.length,0)});
+
+test('line removal delegates snapshot, actor and reason atomically without stage or message edits',async()=>{
+ const order={id:'TEST-1',stage:'shipping',status:'shipped',lines:[{productId:'tea-2',qty:3,unit:'kg',price:200000}],estimated_total:600000};
+ const receivable={id:'invoice',total:600000,paid:100000,status:'partial'};
+ const f=fixture({rpcData:{order,receivable}});
+ const response=await send({removeLine:{index:0,expectedLines:f.original.lines,reason:'  Nhập nhầm sản phẩm  '}});
+ assert.equal(response.status,200);
+ const result=await response.json();assert.deepEqual(result.order,order);assert.deepEqual(result.receivable,receivable);
+ assert.deepEqual(f.rpcCalls,[{name:'remove_order_line',args:{p_order_id:'TEST-1',p_line_index:0,p_expected_lines:f.original.lines,p_reason:'Nhập nhầm sản phẩm',p_actor:'STAFF-1'}}]);
+ assert.equal(f.writes.length,0);assert.equal(f.events.length,0);assert.equal(Object.hasOwn(result,'trackingSms'),false);
+});
+test('line removal cannot mix stage/price changes or supply an incomplete snapshot',async()=>{
+ const f=fixture();const removeLine={index:0,expectedLines:f.original.lines,reason:'Nhập nhầm sản phẩm'};
+ for(const body of [{removeLine,stage:'completed'},{removeLine,linePrices:[]},{removeLine:{...removeLine,index:-1}},{removeLine:{...removeLine,index:2}},{removeLine:{...removeLine,expectedLines:[null,{}]}},{removeLine:{...removeLine,extra:true}},{removeLine:null}]){
+  assert.equal((await send(body)).status,400);
+ }
+ assert.equal(f.rpcCalls.length,0);assert.equal(f.writes.length,0);
+});
+test('line removal requires a meaningful reason',async()=>{
+ const f=fixture();
+ for(const reason of ['', '   ', 'abcd', 'x'.repeat(1001), null]){
+  const response=await send({removeLine:{index:0,expectedLines:f.original.lines,reason}});
+  assert.equal(response.status,400);assert.equal((await response.json()).error,'line_removal_reason_required');
+ }
+ assert.equal(f.rpcCalls.length,0);
+});
+test('line removal surfaces stale, last-line and paid-amount conflicts without changes',async()=>{
+ for(const code of ['order_lines_changed','last_order_line','line_removal_payment_conflict']){
+  const f=fixture({rpcError:{message:code}});
+  const response=await send({removeLine:{index:0,expectedLines:f.original.lines,reason:'Nhập nhầm sản phẩm'}});
+  assert.equal(response.status,409);assert.equal((await response.json()).error,code);assert.equal(f.writes.length,0);
+ }
+});
+test('line removal restricts manager permissions and hides unknown backend details',async()=>{
+ for(const [code,status,expected] of [['manager_required',403,'manager_required'],['order_not_found',404,'order_not_found'],['private database detail',500,'line_removal_failed']]){
+  const f=fixture({rpcError:{message:code}});
+  const response=await send({removeLine:{index:0,expectedLines:f.original.lines,reason:'Nhập nhầm sản phẩm'}});
+  assert.equal(response.status,status);assert.equal((await response.json()).error,expected);assert.equal(f.writes.length,0);
+ }
+});
