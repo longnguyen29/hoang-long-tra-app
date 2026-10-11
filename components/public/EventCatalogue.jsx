@@ -102,7 +102,7 @@ export default function EventCatalogue() {
         </article>;
       })}
     </section>
-    <footer className={styles.footer}><p>{t.confirmed}</p><a href={`tel:${EVENT_CONTACT.phone}`}><Phone size={16} aria-hidden="true"/>{EVENT_CONTACT.phoneLabel}</a></footer>
+    <footer className={styles.footer}><p>{t.confirmed}</p><Link href={`/company?lang=${locale}`}>{locale === "vi" ? "Hồ sơ công ty & catalog PDF" : "Company profile & catalogue PDF"}</Link><a href={`tel:${EVENT_CONTACT.phone}`}><Phone size={16} aria-hidden="true"/>{EVENT_CONTACT.phoneLabel}</a></footer>
     <aside className={styles.selection} aria-label={t.teas}>
       <div className={styles.selectionCopy}><strong>{selectedProducts.length} / 3 <span>{t.count}</span></strong><p role="status">{selectedProducts.length === 3 ? t.limit : t.hint}</p></div>
       <div className={styles.selectionActions}><Link href={enquiry("sample")}>{t.sample}<ArrowRight size={17} aria-hidden="true"/></Link><Link href={enquiry("quote")}>{t.quote}<ArrowRight size={17} aria-hidden="true"/></Link></div>

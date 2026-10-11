@@ -6,7 +6,9 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, FlaskConical, Globe2, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { notifyHouse } from "@/lib/notify";
-import { catalogText, isTradeTea, selectedTradeTea, TRADE_CATALOG_FIELDS } from "@/lib/trade-catalog";
+import { isTradeTea, selectedTradeTea, TRADE_CATALOG_FIELDS } from "@/lib/trade-catalog";
+import { tradeProductFacts } from "@/lib/trade-product-details";
+import { COMPANY_PROFILE, PROFILE_PDF } from "@/lib/company-profile";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { trackMetaLead } from "@/lib/meta-pixel";
 import { recordPublicConversion } from "@/lib/public-attribution";
@@ -136,7 +138,7 @@ export default function TradeDesk() {
       contact: form.contact.trim(),
       business_name: form.business.trim(),
       address: "",
-      interest: `wholesale: ${selectedTea ? `[${intent}] ${catalogText(selectedTea.name, lang)} (${selectedTea.id})\n` : ""}${form.need.trim()}`,
+      interest: `wholesale: ${selectedTea ? `[${intent}] ${tradeProductFacts(selectedTea, lang).name} (${selectedTea.id})\n` : ""}${form.need.trim()}`,
       unread: true,
     });
     setSending(false);
@@ -179,10 +181,10 @@ export default function TradeDesk() {
       </section>
 
       <section className={styles.catalogue}>
-        <header><h2>{t.available}</h2><p>{t.availableBody}</p></header>
+        <header><h2>{t.available}</h2><p>{t.availableBody}</p><Link href={`/catalog?lang=${lang}`}>{lang === "vi" ? "Xem toàn bộ danh mục trà" : "Explore the full tea range"}<ArrowRight size={16}/></Link></header>
         <div>
           {products.length ? products.map((product, index) => <article key={product.id}>
-            <span>{String(index + 1).padStart(2, "0")}</span><h3>{local(product.name)}</h3><p>{local(product.notes)}</p><b>{lang === "vi" ? "Quy cách theo thỏa thuận" : "Packing agreed on enquiry"}</b>
+            <span>{String(index + 1).padStart(2, "0")}</span><h3>{tradeProductFacts(product, lang).name}</h3><p>{local(product.notes)}</p><b>{lang === "vi" ? "Quy cách theo thỏa thuận" : "Packing agreed on enquiry"}</b>
           </article>) : <p className={styles.empty}>{t.catalogueEmpty}</p>}
         </div>
       </section>
@@ -195,7 +197,7 @@ export default function TradeDesk() {
             briefStarted.current = true;
             recordPublicConversion(supabase, "trade_brief_started", { placement: "wholesale_brief" }).catch(() => {});
           }}>
-            <div aria-live="polite">{selectionStatus === "loading" && <p>{lang === "vi" ? "Đang tải thông tin trà…" : "Loading tea details…"}</p>}{["error", "unavailable"].includes(selectionStatus) && <p>{lang === "vi" ? "Chưa xác nhận được trà đã chọn. Bạn có thể quay lại danh mục hoặc gửi yêu cầu chung." : "The selected tea could not be confirmed. Return to the catalogue or send a general enquiry."} <Link href="/catalog">{lang === "vi" ? "Danh mục" : "Catalogue"}</Link> · <button type="button" onClick={() => setSelectionStatus("ready")}>{lang === "vi" ? "Gửi yêu cầu chung" : "Continue without a tea"}</button></p>}{selectedTea && <p>{lang === "vi" ? (intent === "sample" ? "Trao đổi mẫu trà" : "Yêu cầu báo giá") : (intent === "sample" ? "Sample enquiry" : "Quote enquiry")}: <strong>{catalogText(selectedTea.name, lang)}</strong> · <button type="button" onClick={() => setSelectedTea(null)}>{lang === "vi" ? "Bỏ chọn" : "Clear selection"}</button></p>}</div>
+            <div aria-live="polite">{selectionStatus === "loading" && <p>{lang === "vi" ? "Đang tải thông tin trà…" : "Loading tea details…"}</p>}{["error", "unavailable"].includes(selectionStatus) && <p>{lang === "vi" ? "Chưa xác nhận được trà đã chọn. Bạn có thể quay lại danh mục hoặc gửi yêu cầu chung." : "The selected tea could not be confirmed. Return to the catalogue or send a general enquiry."} <Link href="/catalog">{lang === "vi" ? "Danh mục" : "Catalogue"}</Link> · <button type="button" onClick={() => setSelectionStatus("ready")}>{lang === "vi" ? "Gửi yêu cầu chung" : "Continue without a tea"}</button></p>}{selectedTea && <p>{lang === "vi" ? (intent === "sample" ? "Trao đổi mẫu trà" : "Yêu cầu báo giá") : (intent === "sample" ? "Sample enquiry" : "Quote enquiry")}: <strong>{tradeProductFacts(selectedTea, lang).name}</strong> · <button type="button" onClick={() => setSelectedTea(null)}>{lang === "vi" ? "Bỏ chọn" : "Clear selection"}</button></p>}</div>
             <label>{t.name}<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required/></label>
             <label>{t.business}<input value={form.business} onChange={(e) => setForm({ ...form, business: e.target.value })}/></label>
             <label>{t.contact}<input value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} required/></label>
@@ -206,7 +208,7 @@ export default function TradeDesk() {
           </form>}
       </section>
 
-      <footer className={styles.footer}><p>{t.footer}</p><span>House of Hoàng Long · Since 1995</span><PolicyLinks/></footer>
+      <footer className={styles.footer}><p>{t.footer}</p><span>House of Hoàng Long · Since 1995</span><Link href={`/company?lang=${lang}`}>{lang === "vi" ? "Hồ sơ công ty" : "Company profile"}</Link><a href={PROFILE_PDF[lang]} download>{COMPANY_PROFILE[lang].actions.pdf}</a><PolicyLinks/></footer>
     </main>
   );
 }

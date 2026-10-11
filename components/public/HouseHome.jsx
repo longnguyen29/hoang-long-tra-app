@@ -13,8 +13,8 @@ const COPY = {
   "vi": {
     "nav": [
       [
-        "Năng lực",
-        "#capacity"
+        "Hồ sơ công ty",
+        "/company"
       ],
       [
         "Danh mục trà",
@@ -81,8 +81,8 @@ const COPY = {
   "en": {
     "nav": [
       [
-        "Capabilities",
-        "#capacity"
+        "Company profile",
+        "/company"
       ],
       [
         "Tea range",
