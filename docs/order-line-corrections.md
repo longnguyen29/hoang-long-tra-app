@@ -25,3 +25,26 @@ set `PGLITE_MODULE` to an installed PGlite entry point and run
 `node tests/order-line-db.mjs`. The SQL fixtures use synthetic data and roll back;
 delivery schedulers/external messaging are not invoked. Migration 0080 must be
 applied before enabling the UI in production.
+
+## Correct the selling unit on an existing order
+
+Admin/manager opens any order, including paid/shipping/completed orders, then
+**Sửa đơn vị sản phẩm** → **Thông tin đã đặt** → **Sửa đơn vị** for the line.
+Choose the correct unit and save the recorded reason. At least one line may
+remain; unlike removal, a single-line order can be corrected.
+
+This is an entry-label correction, not a kg-to-package conversion. Quantity,
+agreed price, total, stage, payments, inventory history and Procedure Run are
+preserved. Wholesale total_kg is recalculated from actual kg lines. The unit
+before/after and actor are recorded atomically. Whole package quantities are
+required for viên/bánh/gói. Concurrent edits fail on the full line snapshot.
+
+Apply migration 0081 before publishing the unit editor. The BOM order trigger
+skips changes consisting solely of unit labels, so a correction also preserves
+recorded planned costs. Product/quantity/price/removal changes retain the existing
+BOM synchronization. This migration itself does not modify historical orders.
+
+Validation: 26 staff API tests and production build passed; the focused
+correct-order-line-unit.sql in-memory PostgreSQL fixture passed with all 87
+tables restored after rollback. Production application and old-data correction
+still require a connected session.

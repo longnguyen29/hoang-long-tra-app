@@ -77,3 +77,61 @@ test('line removal restricts manager permissions and hides unknown backend detai
   assert.equal(response.status,status);assert.equal((await response.json()).error,expected);assert.equal(f.writes.length,0);
  }
 });
+
+test('existing-order unit correction preserves financial and fulfilment fields and sends no message',async()=>{
+ const order={id:'TEST-1',type:'wholesale',stage:'completed',status:'completed',
+  lines:[{productId:'tea',qty:12,unit:'viên',price:50000,weight:'1 viên'}],
+  total_kg:0,total_items:null,estimated_total:600000};
+ const invoice={id:'invoice',total:600000,paid:600000,status:'paid'};
+ const f=fixture({rpcData:{order},invoice});
+ const expectedLines=[{...order.lines[0],unit:'kg'}];
+ const response=await send({correctLineUnit:{index:0,expectedLines,unit:'viên',reason:'  Quy cách nhập nhầm kg  '}});
+ assert.equal(response.status,200);const result=await response.json();
+ assert.deepEqual(result.order,order);assert.deepEqual(result.receivable,invoice);
+ assert.deepEqual(f.rpcCalls,[{name:'correct_order_line_unit',args:{p_order_id:'TEST-1',p_line_index:0,
+  p_expected_lines:expectedLines,p_unit:'viên',p_reason:'Quy cách nhập nhầm kg',p_actor:'STAFF-1'}}]);
+ assert.equal(f.writes.length,0);assert.equal(f.events.length,0);
+ assert.equal(Object.hasOwn(result,'trackingSms'),false);assert.equal(Object.hasOwn(result,'smsHistory'),false);
+});
+test('unit correction cannot combine another edit or omit the complete line snapshot',async()=>{
+ const f=fixture();const correctLineUnit={index:0,expectedLines:f.original.lines,unit:'viên',reason:'Sửa quy cách nhập nhầm'};
+ for(const body of [{correctLineUnit,stage:'shipping'},{correctLineUnit,removeLine:{}},{correctLineUnit,linePrices:[]},
+  {correctLineUnit:{...correctLineUnit,index:-1}},{correctLineUnit:{...correctLineUnit,index:2}},
+  {correctLineUnit:{...correctLineUnit,expectedLines:[]}},{correctLineUnit:{...correctLineUnit,expectedLines:[null,{}]}},
+  {correctLineUnit:{...correctLineUnit,extra:true}},{correctLineUnit:null}]){
+  assert.equal((await send(body)).status,400);
+ }
+ assert.equal(f.rpcCalls.length,0);assert.equal(f.writes.length,0);
+});
+test('unit correction validates unit and reason before reaching the database',async()=>{
+ const f=fixture();const correction={index:0,expectedLines:f.original.lines,unit:'viên',reason:'Sửa quy cách nhập nhầm'};
+ for(const unit of ['',null,'ml','kg per box']){
+  const response=await send({correctLineUnit:{...correction,unit}});
+  assert.equal(response.status,400);assert.equal((await response.json()).error,'invalid_line_unit');
+ }
+ for(const reason of ['', '   ', 'abcd', 'x'.repeat(1001), null]){
+  const response=await send({correctLineUnit:{...correction,reason}});
+  assert.equal(response.status,400);assert.equal((await response.json()).error,'line_unit_reason_required');
+ }
+ assert.equal(f.rpcCalls.length,0);assert.equal(f.writes.length,0);
+});
+test('unit correction maps stale snapshots, invalid quantities and manager refusals safely',async()=>{
+ for(const [code,status,expected] of [
+  ['order_lines_changed',409,'order_lines_changed'],['line_unit_unchanged',409,'line_unit_unchanged'],
+  ['invalid_line_quantity',400,'invalid_line_quantity'],['invalid_line_unit',400,'invalid_line_unit'],
+  ['invalid_line_index',400,'invalid_line_index'],['invalid_order_lines',400,'invalid_order_lines'],
+  ['manager_required',403,'manager_required'],['order_not_found',404,'order_not_found'],
+  ['private database detail',500,'line_unit_correction_failed']]){
+  const f=fixture({rpcError:{message:code}});
+  const response=await send({correctLineUnit:{index:0,expectedLines:f.original.lines,unit:'viên',reason:'Sửa quy cách nhập nhầm'}});
+  assert.equal(response.status,status);assert.equal((await response.json()).error,expected);
+  assert.equal(f.writes.length,0);assert.equal(f.events.length,0);
+ }
+});
+test('unit correction requires authenticated manager and a committed order result',async()=>{
+ setStaff(null);
+ assert.equal((await send({correctLineUnit:{index:0,expectedLines:[{qty:1,unit:'kg'}],unit:'viên',reason:'Sửa quy cách nhập nhầm'}})).status,401);
+ const f=fixture();
+ const response=await send({correctLineUnit:{index:0,expectedLines:f.original.lines,unit:'viên',reason:'Sửa quy cách nhập nhầm'}});
+ assert.equal(response.status,500);assert.equal((await response.json()).error,'line_unit_correction_reload_failed');
+});

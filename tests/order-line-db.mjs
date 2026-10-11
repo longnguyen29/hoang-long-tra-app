@@ -9,7 +9,7 @@ const db = new PGlite();
 const migrationsUrl = new URL('../supabase/migrations/', import.meta.url);
 const omittedSchedules = new Set(['0072_shipping_sms_retry_schedule.sql', '0079_sample_followup_schedule.sql']);
 const fixtures = process.argv.slice(2);
-if (!fixtures.length) fixtures.push('sample-followups.sql', 'remove-order-line.sql');
+if (!fixtures.length) fixtures.push('sample-followups.sql', 'remove-order-line.sql', 'correct-order-line-unit.sql');
 
 async function snapshot() {
   const { rows: tables } = await db.query(`select schemaname,tablename from pg_tables
@@ -56,7 +56,7 @@ try {
   const names = (await fs.readdir(migrationsUrl)).filter(name => /^\d+.*\.sql$/.test(name)).sort();
   let applied = 0;
   for (const name of names) {
-    if (Number(name.slice(0, 4)) > 80 || omittedSchedules.has(name)) continue;
+    if (Number(name.slice(0, 4)) > 81 || omittedSchedules.has(name)) continue;
     let sql = await fs.readFile(new URL(name, migrationsUrl), 'utf8');
     // PGlite provides PostgreSQL's built-in gen_random_uuid; pgcrypto is only
     // requested by 0003 and is not called by either fixture.
