@@ -46,11 +46,15 @@ const errorMessages={
  sms_not_configured:'Thiết bị Android gửi SMS chưa được cấu hình. Cần kiểm tra dịch vụ gửi SMS.',
  sms_order_read_failed:'Chưa tải được đơn để kiểm tra SMS. Tải lại đơn rồi kiểm tra trạng thái.',
  sms_action_failed:'Chưa xác nhận được kết quả thao tác. Kiểm tra trạng thái trước khi gửi thêm.',
+ provider_reported_failed:'Cổng SMS báo gửi thất bại. Kiểm tra điện thoại Android gửi SMS trước khi thử lại.',
  failed:'Cổng gửi báo lỗi. Kiểm tra trạng thái và dịch vụ Android trước khi thử lại.',
  provider_failed:'Cổng gửi báo lỗi. Kiểm tra trạng thái và dịch vụ Android trước khi thử lại.',
  provider_cancelled:'Cổng gửi đã hủy yêu cầu SMS. Kiểm tra trạng thái trước khi gửi tiếp.',
 };
-const readableError=(error)=>errorMessages[typeof error==='string'?error:error?.code||error?.message]||'Chưa hoàn tất thao tác SMS. Kiểm tra trạng thái hiện tại rồi thử lại.';
+const readableError=(error)=>{
+ const code=typeof error==='string'?error:error?.code||error?.message;
+ return errorMessages[code]||(String(code||'').startsWith('provider_reported_failed:')?errorMessages.provider_reported_failed:null)||'Chưa hoàn tất thao tác SMS. Kiểm tra trạng thái hiện tại rồi thử lại.';
+};
 const actionLabels={send:'Gửi SMS',retry:'Thử gửi lại',resend:'Gửi lại SMS'};
 
 export default function TrackingSmsPreview({order,trackingSms,role,onSmsAction,disabled=false}) {
