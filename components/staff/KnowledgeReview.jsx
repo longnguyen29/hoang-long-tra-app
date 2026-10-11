@@ -28,6 +28,10 @@ function fixture() {
       { id: "60000000-0000-4000-8000-000000000002", topic_id: IDS.brew, angle_id: IDS.angle, growth_variant_id: null, status: "active", channel: "facebook", title: "Bài minh họa: so sánh nền trà", url: "https://example.test/posts/tea-demo", published_at: "2026-10-01T09:00:00+07:00", metrics: { views: null, likes: 12, comments: null, shares: 3, clicks: null, leads: null, orders: null, revenue: null, spend: 0 }, measurement_note: "Số liệu hoàn toàn minh họa, chưa nhập lượt xem.", version: 1 },
     ],
     memory_items: [{ id: IDS.memory, kind: "policy", title: "Nguyên tắc minh họa: ghi nguồn của kết quả", body: "Không dùng số liệu chưa được ghi nhận làm bằng chứng bán hàng.", status: "approved", approved_at: "2026-10-01T09:00:00+07:00" }],
+    social_posts: [
+      { id: "80000000-0000-4000-8000-000000000001", provider: "buffer", account_name: "Tài khoản minh họa", channel: "threads", title: "Bài minh họa: nền trà khi pha trái cây", body: "Nguồn xã hội minh họa chưa được rà soát; gắn vào chủ đề để theo dõi phạm vi đã khai thác.", url: "https://example.test/posts/social-demo", published_at: "2026-10-01T09:00:00+07:00", metrics: { views: 120, likes: 0, comments: 4 }, raw_metrics: [], media: [], metrics_updated_at: "2026-10-02T09:00:00+07:00", fetched_at: "2026-10-03T09:00:00+07:00", import_method: "connector", version: 1 },
+      { id: "80000000-0000-4000-8000-000000000002", provider: "buffer", account_name: "Tài khoản minh họa", channel: "tiktok", title: "Bài minh họa: thử công thức tại quầy", body: "Chưa có số liệu nền tảng cho bản minh họa này.", url: "https://example.test/posts/video-demo", published_at: "2026-10-01T09:00:00+07:00", metrics: {}, raw_metrics: [], media: [], metrics_updated_at: null, fetched_at: "2026-10-03T09:00:00+07:00", import_method: "connector", version: 1 },
+    ],
     growth: { active_prompt: { id: "70000000-0000-4000-8000-000000000001", version: 1, name: "Prompt minh họa" }, experiments: [{ id: IDS.experiment, title: "Phép thử minh họa: nền trà", status: "review", angle: "So sánh công thức", variants: [{ id: IDS.variant, experiment_id: IDS.experiment, label: "Bản minh họa A", tracking_code: "hl-review-a", post_text: "Bản nháp minh họa; không đăng lên mạng xã hội. [LINK_SAMPLE]", status: "published", threads_post_url: "https://example.test/posts/threads-demo", published_at: "2026-10-01T09:00:00+07:00", manual_metrics: { views: 1200, likes: 40, replies: 8, reposts: 2 }, outcomes: { visitors: 30, qualified_requests: 4, samples_sent: 2, first_orders: 1 } }] }] },
     dashboard_plans: [],
   };
@@ -51,6 +55,16 @@ export default function KnowledgeReview() {
       rpc: async (name, args = {}) => {
         if (offlineRef.current) return denied();
         if (name === "knowledge_centre_snapshot") return { data: clone(state.current), error: null };
+        if (name === "knowledge_social_inbox_snapshot") return { data: { posts: clone(state.current.social_posts || []), links: clone(state.current.posts.filter(item => item.social_post_id)), last_import_at: "2026-10-03T09:00:00+07:00" }, error: null };
+        if (name === "link_knowledge_social_post") {
+          const source = state.current.social_posts?.find(item => item.id === args.p_social_post_id);
+          const current = state.current.posts.find(item => item.social_post_id === args.p_social_post_id);
+          if (!source) return { error: { message: "knowledge_social_post_not_found" } };
+          if (current && current.version !== args.p_expected_version) return { error: { message: "knowledge_post_conflict" } };
+          const saved = { ...(current || { id: crypto.randomUUID(), metrics: {}, measurement_note: "", status: "active" }), social_post_id: source.id, topic_id: args.p_topic_id, angle_id: args.p_angle_id, channel: source.channel, title: source.title, url: source.url, published_at: source.published_at, version: (current?.version || 0) + 1 };
+          if (current) state.current.posts[state.current.posts.indexOf(current)] = saved; else state.current.posts.push(saved);
+          return { data: { post: clone(saved), existing: Boolean(current), preserved_assignment: false }, error: null };
+        }
         if (name === "growth_lab_snapshot") return { data: clone(state.current.growth), error: null };
         if (name === "b2b_conversion_snapshot") return { data: { days: 30, by_source: [] }, error: null };
         const kind = { save_knowledge_topic: "topics", save_knowledge_angle: "angles", save_knowledge_post: "posts" }[name];
