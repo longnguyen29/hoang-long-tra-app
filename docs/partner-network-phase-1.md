@@ -81,7 +81,7 @@ Unreconciled mistaken orders remain deletable through the existing order flow: t
 
 Use existing `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`, pointing to the isolated project for mutation testing. The new feature itself needs **no service-role credential**, extra paid infrastructure or new runtime dependency.
 
-Enable email-link sign-in in that Supabase project and allow the exact test-origin partner callback redirect, including the `next=/partners/network` destination. Test on the same browser/device used to request the link, because PKCE requires that browser's verifier. Confirm email delivery and existing customer login in staging. Assign pilot managers through the existing staff-role administration, not by modifying partner input.
+Enable email-link sign-in and a working email sender in that Supabase project. Allow the exact test-origin partner callback redirect, including the `next=/partners/network` destination. Also allow `/partners/account` for new buyer email links and retain `/partners` for links already sent; verify the corresponding production origins before any eventual release. Test on the same browser/device used to request the link, because PKCE requires that browser's verifier. Confirm email delivery and existing customer login in staging. Assign pilot managers through the existing staff-role administration, not by modifying partner input.
 
 Local read-only review:
 
