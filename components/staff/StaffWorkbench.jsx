@@ -12,6 +12,7 @@ import { customerOrderStats,daysSinceOrder,formatQuantities } from "@/lib/custom
 import { useDialogFocus } from "./useDialogFocus";
 import TrackingSmsPreview from "./TrackingSmsPreview";
 import OrderSmsHistory from "./OrderSmsHistory";
+import { smsStatus } from "@/lib/sms-status";
 import ProcedureOrderLink from "./ProcedureOrderLink";
 import NewOrderPanel from "./NewOrderPanel";
 import SampleFollowups from "./SampleFollowups";
@@ -27,6 +28,9 @@ const money=(value)=>value===null||value===undefined?"Chưa báo giá":new Intl.
 const quantity=(order)=>formatLineQuantities(order.lines)||"Chưa có sản phẩm";
 const lineName=(line)=>typeof line?.name==="string"?line.name:line?.name?.vi||line?.name?.en||"Sản phẩm";
 const orderEventMessage=(event)=>{
+ if(event.kind==="sms_manual_action"){
+  try{const detail=typeof event.message==="string"?JSON.parse(event.message):event.message;return `Yêu cầu ${detail.action==="resend"?"gửi lại":detail.action==="retry"?"thử gửi lại":detail.action==="automatic_retry"?"tự thử lại":"gửi ngay"} SMS vận đơn ${detail.tracking_code||""} qua Android. Lý do: ${detail.reason||"—"}. Xem lịch sử SMS để xác nhận kết quả.`}catch{return "Yêu cầu gửi SMS qua Android; xem lịch sử SMS để xác nhận kết quả."}
+ }
  if(event.kind==="line_unit_corrected"){
   try{
    const detail=typeof event.message==="string"?JSON.parse(event.message):event.message;
@@ -51,6 +55,9 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
  const [detailError,setDetailError]=useState("");
  const [orderView,setOrderView]=useState("active");
  const [flowBlock,setFlowBlock]=useState(null);
+ const [smsSaving,setSmsSaving]=useState(false);
+ const smsBusy=useRef(false),selectedOrderId=useRef(null);
+ useEffect(()=>{selectedOrderId.current=selected?.id||null},[selected?.id]);
  const [dataFailure,setDataFailure]=useState(false);
  const [orderEvents,setOrderEvents]=useState([]),[orderCosts,setOrderCosts]=useState([]),[orderReceivable,setOrderReceivable]=useState(null),[trackingSms,setTrackingSms]=useState(null),[smsHistory,setSmsHistory]=useState({items:[],unavailable:false}),[detailLoading,setDetailLoading]=useState(false),[flowSaving,setFlowSaving]=useState(false),[healthDraft,setHealthDraft]=useState("on_track"),[waitingDraft,setWaitingDraft]=useState("us"),[healthNoteDraft,setHealthNoteDraft]=useState(""),[trackingDraft,setTrackingDraft]=useState(""),[carrierDraft,setCarrierDraft]=useState("");
  const load=useCallback(async()=>{setLoading(true);setError("");try{const [o,l,s,t,h,c]=await Promise.all([supabase.from("orders").select("*").order("ts",{ascending:false}),supabase.from("leads").select("*").order("ts",{ascending:false}),supabase.from("sample_requests").select("*").order("ts",{ascending:false}),supabase.from("tea_sessions").select("*").order("date",{ascending:true}),supabase.from("support_threads").select("*").order("created_at",{ascending:false}),supabase.rpc("customer_profiles_summary")]);const failed=[o,l,s,t,h,c].find(r=>r.error);if(failed)throw new Error("incomplete_load");setDataFailure(false);if(!o.error)setOrders((o.data||[]).map(fromOrderRow));if(!l.error)setLeads(l.data||[]);if(!s.error)setSamples(s.data||[]);if(!t.error)setSessions(t.data||[]);if(!h.error)setThreads((h.data||[]).map(fromThreadRow));if(!c.error)setCustomers(Array.isArray(c.data)?c.data:[]); }catch{setDataFailure(true)}finally{setLoading(false)}},[supabase]);
@@ -70,6 +77,26 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
  const staffRequest=useCallback(async(orderId,{method="GET",body}={})=>{const {data:{session}}=await supabase.auth.getSession();if(!session?.access_token)throw new Error("not_authenticated");const response=await fetch(`/api/staff/orders/${encodeURIComponent(orderId)}`,{method,headers:{Authorization:`Bearer ${session.access_token}`,...(body?{"Content-Type":"application/json"}:{})},body:body?JSON.stringify(body):undefined});const result=await response.json();if(!response.ok){const error=new Error(result.error||`order_request_${response.status}`);error.procedureRunId=result.procedureRunId;throw error}return result},[supabase]);
  const costRequest=useCallback(async(orderId,{method="POST",body}={})=>{const {data:{session}}=await supabase.auth.getSession();if(!session?.access_token)throw new Error("not_authenticated");const response=await fetch(`/api/staff/orders/${encodeURIComponent(orderId)}/costs`,{method,headers:{Authorization:`Bearer ${session.access_token}`,"Content-Type":"application/json"},body:JSON.stringify(body||{})});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.error||`cost_request_${response.status}`);return result},[supabase]);
  const loadEvents=useCallback(async(orderId)=>{setDetailLoading(true);setDetailError("");try{const result=await staffRequest(orderId);setOrderEvents(result.events||[]);setOrderCosts(result.costs||[]);setOrderReceivable(result.receivable||null);setTrackingSms(result.trackingSms||null);setSmsHistory(result.smsHistory||{items:[],unavailable:true})}catch{setOrderEvents([]);setOrderCosts([]);setOrderReceivable(null);setTrackingSms(null);setSmsHistory({items:[],unavailable:true});setDetailError("Chưa tải được lịch sử, chi phí và thanh toán của đơn.")}finally{setDetailLoading(false)}},[staffRequest]);
+ const orderSmsAction=async(body)=>{
+  if(!selected||smsBusy.current||flowSaving)throw new Error("already_processing");
+  const orderId=selected.id;smsBusy.current=true;setSmsSaving(true);
+  try{
+   const {data:{session}}=await supabase.auth.getSession();
+   if(!session?.access_token)throw new Error("not_authenticated");
+   const response=await fetch(`/api/staff/orders/${encodeURIComponent(orderId)}/sms`,{method:"POST",headers:{Authorization:`Bearer ${session.access_token}`,"Content-Type":"application/json"},body:JSON.stringify(body)});
+   const result=await response.json().catch(()=>({}));
+   if(selectedOrderId.current===orderId){
+    if(Object.hasOwn(result,"trackingSms"))setTrackingSms(result.trackingSms||null);
+    if(Object.hasOwn(result,"smsHistory"))setSmsHistory(result.smsHistory||{items:[],unavailable:true});
+    if(Array.isArray(result.events))setOrderEvents(result.events);
+   }
+   if(!response.ok)throw new Error(result.error||"sms_request_failed");
+   return result;
+  }catch(error){
+   if(error instanceof TypeError)throw new Error("sms_result_uncertain");
+   throw error;
+  }finally{smsBusy.current=false;setSmsSaving(false)}
+ };
  const selectOrder=async(order)=>{setTask(null);setActiveThread(null);setCustomer(null);setFlowBlock(null);const next=order.unread?{...order,unread:false}:order;setSelected(next);setHealthDraft(next.health||"on_track");setWaitingDraft(next.waitingOn||"us");setHealthNoteDraft(next.healthNote||"");setTrackingDraft(next.trackingCode||"");setCarrierDraft(next.shippingCarrier||"");setOrderEvents([]);setTrackingSms(null);setSmsHistory({items:[],unavailable:false});loadEvents(next.id);if(order.unread){await supabase.from("orders").update({unread:false}).eq("id",order.id);setOrders(current=>current.map(o=>o.id===order.id?next:o))}};
  const openThread=async(thread)=>{setSelected(null);setTask(null);setCustomer(null);setActiveThread(thread);if(thread.unreadForAdmin){await supabase.from("support_threads").update({unread_for_admin:false}).eq("id",thread.id);const next={...thread,unreadForAdmin:false};setThreads(current=>current.map(item=>item.id===thread.id?next:item));setActiveThread(next)}};
  const openTask=(item)=>{if(item.kind==="order"){selectOrder(item.record);return}if(item.kind==="message"){openThread(item.record);return}setActiveThread(null);setCustomer(null);setSelected(null);setTask(item)};
@@ -200,7 +227,7 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
    <section className={styles.customers} id="customers"><header><div><p>Customer memory</p><h2>Lịch sử khách hàng</h2></div><span>{customers.length} hồ sơ</span></header><div>{customers.slice(0,20).map(profile=><button key={profile.contact_key} onClick={()=>openCustomer(profile)}><span><b>{profile.customer_name}</b><small>{profile.contact}</small><small>Đơn cuối: {ageLabel(daysSinceOrder(profile.last_order))}</small></span><span>{profile.order_count} đơn</span><span>{money(profile.total_spent)}</span><ChevronRight/></button>)}</div></section>
   </section>
   {selected&&<OrderDetail key={selected.id}
-   actionError={error} onDelete={["admin","manager"].includes(role)?deleteMistaken:undefined} detailError={detailError} onRetry={()=>loadEvents(selected.id)} order={selected} role={role} events={orderEvents} costs={orderCosts} receivable={orderReceivable} loadingEvents={detailLoading} saving={flowSaving}
+   actionError={error} onDelete={["admin","manager"].includes(role)?deleteMistaken:undefined} detailError={detailError} onRetry={()=>loadEvents(selected.id)} order={selected} role={role} events={orderEvents} costs={orderCosts} receivable={orderReceivable} loadingEvents={detailLoading} saving={flowSaving||smsSaving} onSmsAction={["admin","manager"].includes(role)?orderSmsAction:undefined}
    healthDraft={healthDraft} setHealthDraft={setHealthDraft} waitingDraft={waitingDraft} setWaitingDraft={setWaitingDraft}
    healthNoteDraft={healthNoteDraft} setHealthNoteDraft={setHealthNoteDraft} trackingDraft={trackingDraft} setTrackingDraft={setTrackingDraft}
    carrierDraft={carrierDraft} setCarrierDraft={setCarrierDraft} trackingSms={trackingSms} smsHistory={smsHistory} flowBlock={flowBlock} onUpdate={updateOrderFlow} onReorder={()=>startReorder(selected.id)} onVoidReceivable={["admin","manager"].includes(role)?voidOrderReceivable:undefined} onIssueReceivable={issueOrderReceivable} onRecordPayment={recordOrderPayment} onAddCost={addOrderCost} onSyncCosts={syncOrderCosts} onDeleteCost={deleteOrderCost} onClose={()=>setSelected(null)}
@@ -211,7 +238,7 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
  </main>
 }
 
-export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",detailError="",onRetry,order,role,events,costs,receivable,trackingSms,smsHistory={items:[],unavailable:false},flowBlock=null,loadingEvents,saving,healthDraft,setHealthDraft,waitingDraft,setWaitingDraft,healthNoteDraft,setHealthNoteDraft,trackingDraft,setTrackingDraft,carrierDraft,setCarrierDraft,onUpdate,onIssueReceivable,onRecordPayment,onAddCost,onSyncCosts,onDeleteCost,onClose}){
+export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",detailError="",onRetry,order,role,events,costs,receivable,trackingSms,smsHistory={items:[],unavailable:false},onSmsAction,flowBlock=null,loadingEvents,saving,healthDraft,setHealthDraft,waitingDraft,setWaitingDraft,healthNoteDraft,setHealthNoteDraft,trackingDraft,setTrackingDraft,carrierDraft,setCarrierDraft,onUpdate,onIssueReceivable,onRecordPayment,onAddCost,onSyncCosts,onDeleteCost,onClose}){
  const [voidOpen,setVoidOpen]=useState(false);
  const [forceShipReason,setForceShipReason]=useState('');
  const [deleteOpen,setDeleteOpen]=useState(false),[deleteConfirmation,setDeleteConfirmation]=useState(""),[deleteError,setDeleteError]=useState("");
@@ -283,12 +310,15 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
  const suggestedMessage=buildManualOrderMessage({order,kind:messageKind,amountDue}),customerMessage=messageDraft;
  useEffect(()=>{if(messageKind==="tracking"){setMessageDraft(buildManualOrderMessage({order,kind:"tracking"}));setMessageCopied(false)}},[order.trackingCode,order.shippingCarrier,order.publicTrackingToken]);
  const smsHref=makeSmsHref(smsPhone,customerMessage,smsPlatform);
+ const currentSms=trackingSms?.shipping_carrier===order.shippingCarrier&&trackingSms?.tracking_code===order.trackingCode?trackingSms:null;
+ const smsQuickStatus=loadingEvents?"Đang tải":smsHistory.unavailable?"Chưa tải được":currentSms?smsStatus(currentSms).label:"Chưa có bản ghi vận đơn";
  const copyCustomerMessage=async()=>{try{await navigator.clipboard.writeText(customerMessage);setMessageCopied(true);window.setTimeout(()=>setMessageCopied(false),1800)}catch{setMessageCopied(false)}};
  const chooseMessageKind=(kind)=>{setMessageKind(kind);setMessageDraft(buildManualOrderMessage({order,kind,amountDue}));setMessageCopied(false)};
 
  return <aside ref={dialogRef} tabIndex={-1} className={`${styles.detail} ${styles.orderDetail}`} aria-label="Kiểm tra và điều phối đơn hàng" aria-modal="true" role="dialog">
   <header><div><p>Điều phối đơn</p><h2>{order.customerName}</h2><span className={styles.detailStage}>{stage.number} · {stage.label}</span></div><button onClick={onClose} aria-label="Đóng">×</button></header>
   <dl className={styles.orderSummary} aria-label="Tóm tắt đơn hàng"><div><dt>Mã đơn</dt><dd>{order.id}</dd></div><div><dt>Tổng đơn</dt><dd>{money(order.estimatedTotal)}</dd></div><div><dt>Còn thanh toán</dt><dd>{loadingEvents || detailError ? "Chưa xác nhận" : receivable ? money(amountDue) : "Chưa mở theo dõi"}</dd></div><div><dt>Liên hệ</dt><dd>{order.contact || "Chưa có"}</dd></div></dl>
+  <button type="button" className={styles.smsQuickStatus} onClick={()=>document.getElementById("tracking-sms-preview")?.scrollIntoView({behavior:"smooth",block:"start"})}><MessageCircle/><span><small>SMS vận đơn</small><b>{smsQuickStatus}</b></span><ChevronRight/></button>
   {order.reorderOfOrderId&&<p className={styles.reorderOrigin}>Đặt lại từ đơn {order.reorderOfOrderId}. Đơn này có lịch sử và trạng thái xử lý riêng.</p>}
   <button type="button" className={styles.reorderAction} onClick={onReorder} disabled={saving}><RotateCcw/> Đặt lại đơn này</button>
   <ProcedureOrderLink order={order} role={role}/>
@@ -329,8 +359,8 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
     {amountDue>0?<form className={styles.paymentRecord} onSubmit={savePayment}><label><span>Khoản vừa nhận</span><FormattedNumberInput required min="1" max={amountDue} step="1000" value={paymentAmount} onChange={event=>setPaymentAmount(event.target.value)} placeholder="Nhập số tiền"/></label><button disabled={saving||Number(paymentAmount)<=0||Number(paymentAmount)>amountDue}>{saving?"Đang lưu…":"Ghi nhận đã nhận tiền"}</button><small>{order.paymentMethod==="cash"?"Sẽ ghi là tiền mặt.":"Sẽ ghi là chuyển khoản."} Trang khách cập nhật ngay sau khi lưu.</small></form>:<p className={styles.paymentComplete}><CheckCircle2/>Đơn đã được ghi nhận thanh toán đủ.</p>}
    </>}
   </section>
-  <TrackingSmsPreview order={order} trackingSms={trackingSms}/><OrderSmsHistory history={smsHistory.items} unavailable={smsHistory.unavailable} loading={loadingEvents}/>
-  <section id="order-sms-composer" className={styles.messageSection}><div className={styles.detailSectionTitle}><MessageCircle/><span><b>Nhắn khách qua SMS</b><small>Xem trước, rồi mở ứng dụng Tin nhắn trên điện thoại để tự bấm gửi.</small></span></div>
+  <TrackingSmsPreview order={order} trackingSms={trackingSms} role={role} onSmsAction={onSmsAction} disabled={saving||loadingEvents}/><OrderSmsHistory history={smsHistory.items} unavailable={smsHistory.unavailable} loading={loadingEvents}/>
+  <section id="order-sms-composer" className={styles.messageSection}><div className={styles.detailSectionTitle}><MessageCircle/><span><b>Tin nhắn thủ công trên điện thoại</b><small>Cách dự phòng: mở ứng dụng Tin nhắn trên máy đang dùng, rồi tự bấm gửi. Tin gửi theo cách này không được cổng Android theo dõi.</small></span></div>
    <div className={styles.messageKinds}>{MANUAL_MESSAGE_KINDS.map(item=><button type="button" key={item.id} data-active={messageKind===item.id} disabled={(item.id==="delivered_due"&&amountDue<=0)||(item.id==="tracking"&&(!order.trackingCode||!order.shippingCarrier))} onClick={()=>chooseMessageKind(item.id)} title={item.id==="delivered_due"&&amountDue<=0?"Đơn chưa có khoản phải thu đang mở.":`Dùng mẫu ${item.label.toLowerCase()}.`}>{item.label}</button>)}</div>
    <div className={styles.recipient}><Smartphone/><span><small>Số sẽ nhận tin</small><b>{smsPhone||order.contact||"Chưa có số điện thoại hợp lệ"}</b></span></div>
    <article className={styles.messagePreview}><header><span>Hoàng Long</span><small>Tin nhắn khách sẽ nhận · có thể sửa</small></header><textarea aria-label="Sửa nội dung SMS" value={messageDraft} onChange={event=>{setMessageDraft(event.target.value);setMessageCopied(false)}}/><footer><span>{customerMessage.length} ký tự</span><div><button type="button" disabled={messageDraft===suggestedMessage} onClick={()=>setMessageDraft(suggestedMessage)} title="Bỏ phần đã sửa và khôi phục đúng mẫu đang chọn."><RotateCcw/>Khôi phục mẫu</button><button type="button" onClick={copyCustomerMessage} title="Sao chép đúng nội dung đang xem để dán thủ công nếu điện thoại không điền sẵn."><Copy/>{messageCopied?"Đã sao chép":"Sao chép"}</button></div></footer></article>
