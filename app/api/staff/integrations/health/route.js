@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authenticateManagerRequest } from "@/lib/staff-api-auth";
 import { readSmsGatewayConfig } from "@/lib/sms-gateway";
+import { smsStatus } from "@/lib/sms-status";
 
 const ready = (value) => Boolean(String(value || "").trim());
 const latestFor = (rows, carrier) => (rows || []).find((item) => item.shipping_carrier === carrier) || null;
@@ -9,21 +10,30 @@ export async function GET(request) {
   const staff = await authenticateManagerRequest(request);
   if (!staff) return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
 
-  const [carrierResult, smsResult, notificationResult] = await Promise.all([
+  const smsFields = 'status,updated_at,last_error,provider_state,provider_checked_at,provider_sent_at,provider_delivered_at,provider_states,provider_check_error';
+  const [carrierResult, smsResult, notificationResult, shippingSmsResult, sampleSmsResult] = await Promise.all([
     staff.admin.from("orders").select("shipping_carrier,carrier_status_name,carrier_status_at")
       .not("carrier_status_at", "is", null).order("carrier_status_at", { ascending: false }).limit(50),
-    staff.admin.from("sms_payment_reminders").select("status,updated_at,last_error")
+    staff.admin.from("sms_payment_reminders").select(smsFields)
       .order("updated_at", { ascending: false }).limit(25),
     staff.admin.from("customer_notifications").select("channel,status,updated_at,last_error")
       .order("updated_at", { ascending: false }).limit(25),
+    staff.admin.from("sms_tracking_updates").select(smsFields)
+      .order("updated_at", { ascending: false }).limit(25),
+    staff.admin.from("sample_followups").select(`${smsFields},sms_queued_at`)
+      .eq('channel', 'sms').order("updated_at", { ascending: false }).limit(25),
   ]);
 
   const carrierRows = carrierResult.data || [];
-  const smsRows = smsResult.data || [];
+  const smsRows = [...(smsResult.data || []), ...(shippingSmsResult.data || []), ...(sampleSmsResult.data || [])]
+    .sort((a,b)=>new Date(b.provider_checked_at||b.updated_at)-new Date(a.provider_checked_at||a.updated_at));
   const notificationRows = notificationResult.data || [];
   const smsConfig = readSmsGatewayConfig();
   const smsLatest = smsRows[0] || null;
-  const smsFailures = smsRows.filter((item) => item.status === "failed").length;
+  const smsCounts = smsRows.reduce((counts,item)=>{const key=smsStatus(item).key;counts[key]=(counts[key]||0)+1;return counts},{});
+  const smsFailures = smsCounts.failed || 0;
+  const smsUnknown = smsCounts.uncertain || 0;
+  const smsUnavailable = Boolean(smsResult.error || shippingSmsResult.error || sampleSmsResult.error);
   const viettelLatest = latestFor(carrierRows, "viettel_post");
   const vnpostLatest = latestFor(carrierRows, "vietnam_post");
   const zaloLatest = notificationRows.find((item) => item.channel === "zalo_zbs") || null;
@@ -33,8 +43,8 @@ export async function GET(request) {
 
   const services = [
     {
-      id: "database", label: "Cơ sở dữ liệu", state: carrierResult.error || smsResult.error || notificationResult.error ? "action" : "healthy",
-      detail: carrierResult.error || smsResult.error || notificationResult.error ? "Một phần dữ liệu vận hành chưa đọc được." : "Đã kết nối và đọc được dữ liệu vận hành.",
+      id: "database", label: "Cơ sở dữ liệu", state: carrierResult.error || smsUnavailable || notificationResult.error ? "action" : "healthy",
+      detail: carrierResult.error || smsUnavailable || notificationResult.error ? "Một phần dữ liệu vận hành chưa đọc được." : "Đã kết nối và đọc được dữ liệu vận hành.",
       lastAt: new Date().toISOString(),
     },
     {
@@ -48,9 +58,11 @@ export async function GET(request) {
       lastAt: vnpostLatest?.carrier_status_at || null,
     },
     {
-      id: "sms", label: "SMS qua điện thoại Android", state: !smsConfig.ready ? "action" : smsFailures ? "action" : smsLatest ? "healthy" : "waiting",
-      detail: !smsConfig.ready ? "Máy chủ chưa đủ thông tin để gửi qua điện thoại." : smsFailures ? `${smsFailures} lần gửi gần đây cần kiểm tra.` : smsLatest ? `Trạng thái gần nhất: ${smsLatest.status}.` : "Đã cấu hình; đang chờ tin nhắn đầu tiên.",
-      lastAt: smsLatest?.updated_at || null,
+      id: "sms", label: "SMS qua điện thoại Android", state: !smsConfig.ready || smsUnavailable || smsFailures || smsUnknown ? "action" : (smsCounts.sent||smsCounts.delivered) ? "healthy" : "waiting",
+      detail: !smsConfig.ready ? "Máy chủ chưa đủ thông tin để gửi qua điện thoại." : smsUnavailable ? "Chưa đọc đủ lịch sử SMS; không thể xác nhận kết quả gửi." : smsLatest
+        ? `Trong ${smsRows.length} bản ghi gần nhất: ${smsCounts.delivered||0} đã nhận, ${smsCounts.sent||0} đã gửi, ${smsFailures} lỗi, ${smsUnknown} chưa xác định, ${(smsCounts.pending||0)+(smsCounts.queued||0)+(smsCounts.processing||0)} chờ/xử lý. Kiểm tra từng đơn để lấy trạng thái mới từ cổng SMS.`
+        : "Đã cấu hình; chưa có bản ghi SMS.",
+      lastAt: smsLatest?.provider_checked_at || smsLatest?.updated_at || null,
     },
     {
       id: "scheduler", label: "Lịch tự động", state: cronConfigured ? "healthy" : "action",
