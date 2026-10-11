@@ -12,6 +12,7 @@ import { logOrderEvent } from "@/lib/ops-events";
 import { authenticateManagerRequest } from "@/lib/staff-api-auth";
 import { maybeSendShippingSms, readShippingSms } from "@/lib/shipping-sms-server";
 import { readOrderSmsHistory } from "@/lib/order-sms-history-server";
+import { SUPPORTED_SELLING_UNITS } from "@/lib/selling-units";
 
 async function readEvents(admin, orderId) {
   return admin
@@ -84,6 +85,46 @@ export async function PATCH(request, { params }) {
     body = await request.json();
   } catch {
     return Response.json({ ok: false, error: "invalid_body" }, { status: 400 });
+  }
+
+  if (body && Object.hasOwn(body, 'correctLineUnit')) {
+    const correction = body.correctLineUnit;
+    if (Object.keys(body).length !== 1 || !correction || Array.isArray(correction) || typeof correction !== 'object'
+      || Object.keys(correction).some(key => !['index', 'expectedLines', 'unit', 'reason'].includes(key))
+      || !Number.isInteger(correction.index) || correction.index < 0
+      || !Array.isArray(correction.expectedLines) || correction.expectedLines.length < 1
+      || correction.expectedLines.length > 500 || correction.index >= correction.expectedLines.length
+      || correction.expectedLines.some(line => !line || typeof line !== 'object' || Array.isArray(line))) {
+      return Response.json({ ok: false, error: 'invalid_line_unit_correction' }, { status: 400 });
+    }
+    const unit = typeof correction.unit === 'string' ? correction.unit.trim() : '';
+    if (!SUPPORTED_SELLING_UNITS.includes(unit)) {
+      return Response.json({ ok: false, error: 'invalid_line_unit' }, { status: 400 });
+    }
+    if (typeof correction.reason !== 'string' || correction.reason.trim().length < 5 || correction.reason.trim().length > 1000) {
+      return Response.json({ ok: false, error: 'line_unit_reason_required' }, { status: 400 });
+    }
+    const { data: result, error } = await staff.admin.rpc('correct_order_line_unit', {
+      p_order_id: id, p_line_index: correction.index, p_expected_lines: correction.expectedLines,
+      p_unit: unit, p_reason: correction.reason.trim(), p_actor: staff.user.id,
+    });
+    if (error) {
+      const known = ['manager_required', 'line_unit_reason_required', 'order_not_found', 'invalid_line_index',
+        'order_lines_changed', 'invalid_order_lines', 'invalid_line_unit', 'invalid_line_quantity', 'line_unit_unchanged'];
+      const code = known.find(value => error.message?.includes(value));
+      const status = code === 'manager_required' ? 403 : code === 'order_not_found' ? 404
+        : ['line_unit_reason_required', 'invalid_line_index', 'invalid_order_lines', 'invalid_line_unit', 'invalid_line_quantity'].includes(code) ? 400
+          : code ? 409 : 500;
+      return Response.json({ ok: false, error: code || 'line_unit_correction_failed' }, { status });
+    }
+    if (!result?.order) return Response.json({ ok: false, error: 'line_unit_correction_reload_failed' }, { status: 500 });
+    const [eventResult, costResult, receivableResult] = await Promise.all([
+      readEvents(staff.admin, id), readCosts(staff.admin, id), readReceivable(staff.admin, id),
+    ]);
+    // Correcting the recorded selling unit keeps quantity, price, payments and
+    // fulfilment intact; it must not trigger a shipping/customer notification.
+    return Response.json({ ok: true, order: result.order, receivable: receivableResult.data || null,
+      events: eventResult.data || [], costs: costResult.data || [] });
   }
 
   if (body && Object.hasOwn(body, 'removeLine')) {
