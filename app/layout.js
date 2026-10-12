@@ -1,6 +1,7 @@
 import "./globals.css";
 import MetaPixel from "@/components/analytics/MetaPixel";
 import LocaleProvider from "@/components/i18n/LocaleProvider";
+import RetailCartProvider from "@/components/public/RetailCartProvider";
 
 export const metadata = {
   title: "House of Hoàng Long — Trà Cổ Hà Giang",
@@ -41,7 +42,7 @@ export default function RootLayout({ children }) {
           }
         `}</style>
       </head>
-      <body><LocaleProvider>{children}<MetaPixel /></LocaleProvider></body>
+      <body><LocaleProvider><RetailCartProvider>{children}</RetailCartProvider><MetaPixel /></LocaleProvider></body>
     </html>
   );
 }

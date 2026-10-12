@@ -24,7 +24,8 @@
     "seed:v2": "node --env-file=.env.local scripts/seed-v2.mjs",
     "test:staff-orders": "node --test tests/staff-order-route.test.mjs",
     "test:partners": "node --test lib/partner-network.test.mjs lib/partner-network-draft.test.mjs tests/partner-network-routes.test.mjs",
-    "test:partners:db": "node tests/partner-network-db.mjs"
+    "test:partners:db": "node tests/partner-network-db.mjs",
+    "test:retail": "node --test lib/retail-cart.test.mjs lib/retail-catalog.test.mjs lib/retail-checkout.test.mjs tests/retail-order-route.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

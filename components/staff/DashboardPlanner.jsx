@@ -26,12 +26,26 @@ export default function DashboardPlanner({ supabase }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [obligationError, setObligationError] = useState("");
+  const [reminderError, setReminderError] = useState("");
   const [draft, setDraft] = useState(emptyDraft);
   const [editingId, setEditingId] = useState("");
   const [showForm, setShowForm] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    try {
+      // Per-person pending reminder. An existing note/completion is never replaced.
+      const { data: identity } = await supabase.auth?.getUser?.() || {};
+    if (identity?.user?.id) {
+      const reminder = await supabase.from("dashboard_plans").upsert({
+        user_id: identity.user.id, kind: "feature", seed_key: "partner-network-internal-review",
+        title: "Quay lại duyệt Partner Network sau catalog mua lẻ",
+        notes: "Partner Network Phase 1 đã có code trên nhánh codex/b2b-partner-network-phase-1, chưa lên live. Sau catalog B2C: thử đăng nhập và phân quyền ở môi trường riêng, chốt chính sách hoa hồng theo giá vốn thật, rồi pilot 5–10 đối tác. Không bật công khai trước khi duyệt.",
+        href: "/admin/control?tab=updates", status: "pending", notify_telegram: false,
+      }, { onConflict: "user_id,seed_key", ignoreDuplicates: true });
+      setReminderError(reminder.error ? "Chưa lưu được lời nhắc Partner Network. Bạn vẫn có thể thêm mục chờ thủ công." : "");
+    }
+    } catch { setReminderError("Chưa lưu được lời nhắc Partner Network. Bạn vẫn có thể thêm mục chờ thủ công."); }
     try {
       const result = await supabase.rpc("ensure_government_obligation_occurrences", { p_year: year });
       setObligationError(result.error ? "Chưa cập nhật được các kỳ nghĩa vụ vào lịch. Hãy thử tải lại sau khi cập nhật database." : "");
@@ -118,6 +132,7 @@ export default function DashboardPlanner({ supabase }) {
       <button type="button" className={styles.primaryButton} onClick={() => startNew()}><Plus /> Thêm mục</button>
     </div>
     {error && <p className={styles.error} role="alert">{error}</p>}
+    {reminderError && <p className={styles.error} role="alert">{reminderError}</p>}
     <ReminderDispatch supabase={supabase} onDispatched={load}/>
     <Link href="/admin/control?tab=updates">Xem cập nhật tính năng app <ChevronRight size={16}/></Link>
     <div id="government-obligations" className={styles.obligationAnchor}><GovernmentObligations supabase={supabase} plans={plans} onChanged={load}/></div>
