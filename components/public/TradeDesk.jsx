@@ -156,7 +156,7 @@ export default function TradeDesk() {
     <main className={styles.page}>
       <header className={styles.header}>
         <Link href="/" className={styles.back}><ArrowLeft size={17}/>{t.back}</Link>
-        <div className={styles.headerActions}><Link href="/partners">{t.portal}<ArrowRight size={15}/></Link><button onClick={toggleLocale}><Globe2 size={15}/>{t.switcher}</button></div>
+        <div className={styles.headerActions}><Link href="/partners/account">{t.portal}<ArrowRight size={15}/></Link><button onClick={toggleLocale}><Globe2 size={15}/>{t.switcher}</button></div>
       </header>
 
       <section className={styles.hero}>

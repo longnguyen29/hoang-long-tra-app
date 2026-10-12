@@ -47,6 +47,7 @@ export default async function proxy(request) {
 export const config = {
   matcher: [
     "/admin/:path*",
+    "/partners/:path*",
     "/",
     "/ops/:path*",
   ],

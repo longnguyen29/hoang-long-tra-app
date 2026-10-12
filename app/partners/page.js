@@ -1,10 +1,10 @@
 import PartnerPortal from "@/components/public/PartnerPortal";
 import PartnerNetworkLanding from "@/components/public/PartnerNetworkLanding";
-import { partnerNetworkEnabled } from "@/lib/partner-network-server";
+import { partnerNetworkEnabled, partnerNetworkPublicRegistrationEnabled, partnerRegistrationAccess } from "@/lib/partner-network-server";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
-export const metadata={title:partnerNetworkEnabled() ? "Chương trình đối tác B2B — Hoàng Long" : "Bàn đối tác — House of Hoàng Long",robots:{index:false,follow:false}};
+export const metadata={title:partnerNetworkPublicRegistrationEnabled() ? "Chương trình đối tác B2B — Hoàng Long" : "Bàn đối tác — House of Hoàng Long",robots:{index:false,follow:false}};
 
 export default async function PartnersPage({ searchParams }) {
   if (!partnerNetworkEnabled()) return <PartnerPortal/>;
@@ -14,9 +14,12 @@ export default async function PartnersPage({ searchParams }) {
   // Existing signed-in wholesale buyers keep their original private ordering workflow.
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const registration = await partnerRegistrationAccess(user, supabase);
+  if (registration.allowRegistration && !registration.publicRegistration) return <PartnerNetworkLanding {...registration}/>;
   if (user) {
     const { data: account } = await supabase.from("wholesale_accounts").select("id").eq("user_id", user.id).maybeSingle();
     if (account) return <PartnerPortal/>;
   }
-  return <PartnerNetworkLanding/>;
+  if (!registration.allowRegistration) return <PartnerPortal/>;
+  return <PartnerNetworkLanding {...registration}/>;
 }

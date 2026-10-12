@@ -264,7 +264,9 @@ export default function PartnerPortal() {
     );
     setSubmitting(false);
     if (quoteError) {
-      setError("Báo giá không còn khả dụng hoặc đã được xử lý.");
+      setError(quoteError.message?.includes("quote_stock_unit_mismatch")
+        ? "Đơn vị trong báo giá khác với quy cách tồn kho. Liên hệ Hoàng Long để xác nhận lại số lượng, đơn vị và giá trước khi đặt đơn."
+        : "Báo giá không còn khả dụng hoặc đã được xử lý.");
       return;
     }
     notifyHouse("orders", data);

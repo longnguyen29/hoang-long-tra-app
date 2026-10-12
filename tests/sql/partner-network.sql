@@ -173,3 +173,34 @@ select public.partner_network_reconcile('test-vnd-round','{"vat_amount":0,"bille
 select public.test_assert((select calculated_amount=29630 from public.partner_network_commissions where order_id='test-vnd-round'),'commission settles whole VND');
 select public.test_error(format('select public.partner_network_commission_action(%L,''adjust'',''{"adjustment_amount":0.5,"reason":"Invalid fractional VND adjustment"}'')',(select id from public.partner_network_commissions where order_id='test-vnd-round')),'whole_vnd_adjustment_required');
 reset role;
+
+-- A late collection on an older order changes a paid first-order entitlement.
+-- Do not silently rewrite the payout or claim a verified zero recovery balance.
+set role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000003',false);
+select public.partner_network_submit_lead('{"request_id":"00000000-0000-4000-8000-000000000188","business_name":"Late Collection Cafe","contact_name":"Owner","contact":"0902000088","location":"Hà Nội","product_interest":"Hồng trà","contact_authorized":true}');
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',false);
+select public.partner_network_resolve_lead('00000000-0000-4000-8000-000000000188','accept','{"reason":"Separate test customer for late collection review"}');
+reset role;
+update public.partner_network_referrals set created_at='2025-12-01' where id='00000000-0000-4000-8000-000000000188';
+insert into public.wholesale_accounts values('test-late-client','0902000088','Late Collection Cafe','Hà Nội','opp-referral-00000000-0000-4000-8000-000000000188');
+insert into public.orders(id,ts,type,status,customer_name,contact,address,partner_account_id) values
+ ('test-late-older','2026-01-01','wholesale','confirmed','Late Collection Cafe','0902000088','Hà Nội','test-late-client'),
+ ('test-late-settled','2026-02-01','wholesale','confirmed','Late Collection Cafe','0902000088','Hà Nội','test-late-client');
+insert into public.receivables values('test-late-older-recv','test-late-older',1000000,0,'open'),('test-late-settled-recv','test-late-settled',1000000,1000000,'paid');
+insert into public.receivable_payments(id,receivable_id,amount) values('test-late-settled-cash','test-late-settled-recv',1000000);
+set role authenticated;
+select public.partner_network_reconcile('test-late-settled','{"vat_amount":0,"billed_shipping_amount":0,"refunded_amount":0,"internal_cost_total":500000,"minimum_retained_profit":100000,"review_note":"First cash-collected order; older order has not yet collected"}');
+select public.partner_network_commission_action((select id from public.partner_network_commissions where order_id='test-late-settled'),'approve','{}');
+select public.partner_network_commission_action((select id from public.partner_network_commissions where order_id='test-late-settled'),'pay','{"amount":120000,"reference":"test-late-original-payout","paid_at":"2026-02-10"}');
+select set_config('test.paid_before_ordinal_change',(select to_jsonb(c)::text from public.partner_network_commissions c where order_id='test-late-settled'),false);
+reset role;
+insert into public.receivable_payments(id,receivable_id,amount) values('test-late-older-cash','test-late-older-recv',1000000);
+update public.receivables set paid=1000000,status='paid' where id='test-late-older-recv';
+set role authenticated;
+select public.test_assert((select (c->>'entitlement_review_required')::boolean and (c->>'current_order_index')::integer=2 and c->'overpaid_amount'='null'::jsonb
+  and (c->>'stale')::boolean and c->>'status'='paid' and (c->>'paid_amount')::numeric=120000
+  and (select to_jsonb(paid) from public.partner_network_commissions paid where paid.order_id='test-late-settled')=current_setting('test.paid_before_ordinal_change')::jsonb
+  from jsonb_array_elements(public.partner_network_admin_snapshot()->'commissions') c where c->>'order_id'='test-late-settled'),
+  'late payment changes paid first-repeat entitlement to manual review with unknown recovery while preserving immutable payout');
+reset role;

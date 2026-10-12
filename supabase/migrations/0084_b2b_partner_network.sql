@@ -349,10 +349,12 @@ declare r public.partner_network_referrals; o public.orders; existing public.par
 begin
   if not public.is_staff_manager() then raise exception 'manager_required'; end if;
   if length(public.partner_network_text(p_reason)) not between 1 and 1000 then raise exception 'reason_required'; end if;
-  select * into r from public.partner_network_referrals where id=p_referral_id for update;
-  if not found or r.status<>'accepted' then raise exception 'accepted_referral_required'; end if;
+  -- Match reconciliation/payment lock order: order before referral.
+  -- Even an idempotent link retry must not deadlock a concurrent commission action.
   select * into o from public.orders where id=p_order_id for update;
   if not found or o.type<>'wholesale' then raise exception 'wholesale_order_required'; end if;
+  select * into r from public.partner_network_referrals where id=p_referral_id for update;
+  if not found or r.status<>'accepted' then raise exception 'accepted_referral_required'; end if;
   select * into existing from public.partner_network_order_links where order_id=o.id;
   if found then
     if existing.referral_id<>r.id then raise exception 'order_already_attributed'; end if;
@@ -412,6 +414,7 @@ $$;
 create function public.partner_network_commission_view(p_id uuid) returns jsonb
 language plpgsql stable security definer set search_path=pg_catalog,public as $$
 declare c public.partner_network_commissions; v public.partner_network_order_reviews; f jsonb; base numeric; amount_value numeric; cap_value numeric; link_valid boolean; stale_value boolean;
+  current_index_value integer; entitlement_review_value boolean;
 begin
   select * into c from public.partner_network_commissions where id=p_id;
   if not found then return null; end if;
@@ -425,12 +428,17 @@ begin
   amount_value:=case when base=0 then 0 else greatest(0,least(floor(base),least(floor(base),round(base*c.rate_percent/100,0))+c.adjustment_amount)) end;
   cap_value:=case when v.internal_cost_total is null or v.minimum_retained_profit is null then null else greatest(0,base-v.internal_cost_total-v.minimum_retained_profit) end;
   stale_value:=c.fingerprint is distinct from public.partner_network_fingerprint(c.order_id,c.referral_id);
+  current_index_value:=public.partner_network_order_index(c.order_id,c.referral_id);
+  -- A late collection or an earlier cancellation can change first/repeat entitlement.
+  -- Retain the paid agreement/history; a frozen historical rate cannot establish
+  -- the recovery balance for a changed entitlement without manager review.
+  entitlement_review_value:=c.status='paid' and current_index_value is distinct from c.order_index;
   return to_jsonb(c)||jsonb_build_object('current_collected',(f->>'collected')::numeric,'current_eligible_base',base,'current_amount',amount_value,
-    'current_order_index',public.partner_network_order_index(c.order_id,c.referral_id),
+    'current_order_index',current_index_value,'entitlement_review_required',entitlement_review_value,
     'collection_complete',coalesce((f->>'collection_complete')::boolean,false),
     'current_vat_amount',v.vat_amount,'current_billed_shipping_amount',v.billed_shipping_amount,'current_refunded_amount',v.refunded_amount,'current_cancelled',v.cancelled,
     'cost_total',v.internal_cost_total,'minimum_profit',v.minimum_retained_profit,'commission_cap',cap_value,'current_commission_cap',cap_value,
-    'stale',stale_value,'overpaid_amount',case when c.status='paid' then greatest(0,coalesce(c.paid_amount,0)-amount_value) else 0 end);
+    'stale',stale_value,'overpaid_amount',case when entitlement_review_value then null when c.status='paid' then greatest(0,coalesce(c.paid_amount,0)-amount_value) else 0 end);
 end $$;
 
 create function public.partner_network_reconcile(p_order_id text,p_input jsonb) returns jsonb

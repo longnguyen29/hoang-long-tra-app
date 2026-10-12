@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, Loader2, Mail, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { PARTNER_TYPES, normalizePartnerApplication, partnerErrorMessage } from "@/lib/partner-network";
+import { PARTNER_TYPES, normalizePartnerApplication, partnerErrorMessage, partnerRegistrationAllowed } from "@/lib/partner-network";
 import { clearPartnerDraft, readPartnerDraft, savePartnerDraft } from "@/lib/partner-network-draft";
 import styles from "./PartnerNetworkLanding.module.css";
 
@@ -14,7 +14,7 @@ export function clearPartnerApplicationDraft() {
   try { clearPartnerDraft(localStorage); } catch { /* A successful application remains saved on the server. */ }
 }
 
-export function PartnerNetworkApplicationForm({ user, onApplied }) {
+export function PartnerNetworkApplicationForm({ user, onApplied, allowRegistration = false, publicRegistration = false }) {
   const supabase = useMemo(() => createClient(), []);
   const [input, setInput] = useState(EMPTY_APPLICATION);
   const [email, setEmail] = useState("");
@@ -41,7 +41,7 @@ export function PartnerNetworkApplicationForm({ user, onApplied }) {
 
   const submit = async (event) => {
     event.preventDefault();
-    if (busy) return;
+    if (busy || !allowRegistration) return;
     setError("");
     setSuccess("");
     const result = normalizePartnerApplication(input);
@@ -53,13 +53,14 @@ export function PartnerNetworkApplicationForm({ user, onApplied }) {
     setBusy(true);
     try {
       if (!verified) {
+        if (!publicRegistration) { setError("Đăng nhập bằng tài khoản quản lý đã xác minh để thử hồ sơ nội bộ. Chương trình chưa mở đăng ký mới."); return; }
         try { savePartnerDraft(localStorage, result.data, email); } catch {
           setError("Trình duyệt không lưu được bản nháp. Hãy cho phép lưu dữ liệu trang rồi thử lại.");
           return;
         }
         const { error: authError } = await supabase.auth.signInWithOtp({
           email: email.trim(),
-          options: { shouldCreateUser: true, emailRedirectTo: `${window.location.origin}/partners/auth/callback?next=/partners/network` },
+          options: { shouldCreateUser: publicRegistration, emailRedirectTo: `${window.location.origin}/partners/auth/callback?next=/partners/network` },
         });
         if (authError) { setError(partnerErrorMessage(authError)); return; }
         setCheckEmail(true);
@@ -76,6 +77,8 @@ export function PartnerNetworkApplicationForm({ user, onApplied }) {
 
   const fieldError = (name) => errors[name] ? <span className={styles.fieldError} id={`partner-${name}-error`}>{errors[name]}</span> : null;
   const fieldProps = (name) => ({ name, value: input[name], onChange: change, "aria-invalid": Boolean(errors[name]), "aria-describedby": errors[name] ? `partner-${name}-error` : undefined });
+
+  if (!allowRegistration) return <div className={styles.applicationExists}><h3>Chưa mở đăng ký đối tác mới.</h3><p>Hồ sơ đã có vẫn được theo dõi tại bàn đối tác. Liên hệ Hoàng Long để trao đổi về chương trình thử nghiệm.</p><Link href="/partners/network" className={`${styles.button} ${styles.primary}`}>Mở bàn đối tác<ArrowRight size={18} aria-hidden="true" /></Link></div>;
 
   return <form className={styles.form} onSubmit={submit}>
     <div className={styles.formIntro}>
@@ -100,26 +103,53 @@ export function PartnerNetworkApplicationForm({ user, onApplied }) {
   </form>;
 }
 
-export default function PartnerNetworkLanding() {
+export default function PartnerNetworkLanding({ allowRegistration = false, publicRegistration = false, registrationUserId = null }) {
   const supabase = useMemo(() => createClient(), []);
+  const identity = useRef("");
+  const authVersion = useRef(0);
   const [user, setUser] = useState(null);
   const [existingPartner, setExistingPartner] = useState(false);
   const [applied, setApplied] = useState(false);
+  const registrationAllowed = partnerRegistrationAllowed(allowRegistration, registrationUserId, user);
   useEffect(() => {
     let active = true;
     const sync = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (!active) return;
-      setUser(data.user || null);
-      setExistingPartner(false);
-      if (data.user?.email_confirmed_at) {
-        const { data: snapshot } = await supabase.rpc("partner_network_snapshot");
-        if (active) setExistingPartner(Boolean(snapshot?.partner));
-      } else setExistingPartner(false);
+      const version = ++authVersion.current;
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (!active || version !== authVersion.current) return;
+        const nextUser = error ? null : data.user || null;
+        const nextIdentity = nextUser?.id || "";
+        if (identity.current !== nextIdentity) {
+          if (identity.current) clearPartnerApplicationDraft();
+          setApplied(false);
+        }
+        identity.current = nextIdentity;
+        setUser(nextUser);
+        setExistingPartner(false);
+        if (nextUser?.email_confirmed_at) {
+          const { data: snapshot, error: snapshotError } = await supabase.rpc("partner_network_snapshot");
+          if (active && version === authVersion.current && identity.current === nextIdentity) setExistingPartner(!snapshotError && Boolean(snapshot?.partner));
+        }
+      } catch {
+        if (active && version === authVersion.current) {
+          identity.current = "";
+          setUser(null); setExistingPartner(false); setApplied(false);
+        }
+      }
     };
     sync();
-    const { data } = supabase.auth.onAuthStateChange(() => { setTimeout(sync, 0); });
-    return () => { active = false; data.subscription.unsubscribe(); };
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const nextIdentity = session?.user?.id || "";
+      if (nextIdentity !== identity.current) {
+        authVersion.current += 1;
+        if (identity.current) clearPartnerApplicationDraft();
+        identity.current = nextIdentity;
+        setUser(null); setExistingPartner(false); setApplied(false);
+      }
+      setTimeout(sync, 0);
+    });
+    return () => { active = false; authVersion.current += 1; data.subscription.unsubscribe(); };
   }, [supabase]);
 
   return <main className={styles.page} data-no-translate lang="vi">
@@ -133,7 +163,7 @@ export default function PartnerNetworkLanding() {
     </section>
     <section className={styles.section} aria-labelledby="who-title"><div className={styles.sectionHead}><h2 id="who-title">Dành cho người kết nối ngành đồ uống.</h2><p>Chúng tôi tìm đối tác có quan hệ kinh doanh thực tế và hiểu nhóm khách hàng mình giới thiệu.</p></div><ul className={styles.partnerTypes}>{PARTNER_TYPES.map((type) => <li key={type.id}>{type.label}</li>)}</ul></section>
     <section className={styles.section} aria-labelledby="process-title"><div className={styles.sectionHead}><h2 id="process-title">Hợp tác như thế nào?</h2><p>Đăng ký và xét duyệt là hai bước riêng. Chỉ đối tác đã được duyệt mới có thể đăng ký khách giới thiệu.</p></div><ol className={styles.steps}><li><span aria-hidden="true">01</span><div><h3>Thống nhất hợp tác</h3><p>Gửi hồ sơ, trao đổi với Hoàng Long và thống nhất phạm vi, tỷ lệ cùng điều kiện hoa hồng. Sau khi được duyệt, bạn nhận mã đối tác riêng.</p></div></li><li><span aria-hidden="true">02</span><div><h3>Đăng ký khách có nhu cầu</h3><p>Gửi thông tin doanh nghiệp và người liên hệ đã cho phép chia sẻ. Hoàng Long kiểm tra khách trùng hoặc khách đã có, rồi xác nhận xử lý hồ sơ.</p></div></li><li><span aria-hidden="true">03</span><div><h3>Theo dõi và đối soát</h3><p>Khách đi qua quy trình chọn trà, mẫu, báo giá và đơn hàng hiện có. Hoa hồng tính trên doanh thu thực thu đủ điều kiện, được xét duyệt và ghi nhận thanh toán.</p></div></li></ol><p className={styles.finePrint}>Doanh thu tính hoa hồng không gồm VAT, phí vận chuyển, khoản hoàn tiền và đơn hủy. Quyền hưởng trên đơn đầu hoặc số đơn mua lại có giới hạn phải được thỏa thuận; không mặc định hoa hồng lâu dài. Hoàng Long đối soát trước khi duyệt, không cam kết thu nhập và hệ thống không tự chi trả.</p><p className={styles.finePrint}>Nhà phân phối mua để bán lại áp dụng điều kiện giá sỉ riêng, không tự cộng thêm hoa hồng giới thiệu.</p></section>
-    <section className={styles.registration} id="register" aria-labelledby="register-title"><div className={styles.registrationHead}><p className={styles.eyebrow}>Bắt đầu hợp tác</p><h2 id="register-title">Gửi hồ sơ đối tác.</h2><p>Cho chúng tôi biết bạn đang hoạt động ở đâu và phục vụ nhóm khách nào. Không cần thông tin ngân hàng ở bước này.</p><div className={styles.resourceLinks}><Link href="/catalog">Xem catalog trà<ArrowRight size={16} aria-hidden="true" /></Link><Link href="/company">Hồ sơ Hoàng Long<ArrowRight size={16} aria-hidden="true" /></Link></div></div><div>{existingPartner || applied ? <div className={styles.applicationExists}><Check size={24} aria-hidden="true" /><h3>{applied ? "Đã nhận hồ sơ đăng ký" : "Bạn đã có hồ sơ đối tác"}</h3><p>Xem trạng thái xét duyệt và tiếp tục làm việc tại bàn đối tác.</p><Link href="/partners/network" className={`${styles.button} ${styles.primary}`}>Mở bàn đối tác<ArrowRight size={18} aria-hidden="true" /></Link></div> : <PartnerNetworkApplicationForm key={user?.id || "unverified"} user={user} onApplied={() => setApplied(true)} />}</div></section>
+    <section className={styles.registration} id="register" aria-labelledby="register-title"><div className={styles.registrationHead}><p className={styles.eyebrow}>Bắt đầu hợp tác</p><h2 id="register-title">Gửi hồ sơ đối tác.</h2><p>Cho chúng tôi biết bạn đang hoạt động ở đâu và phục vụ nhóm khách nào. Không cần thông tin ngân hàng ở bước này.</p><div className={styles.resourceLinks}><Link href="/catalog">Xem catalog trà<ArrowRight size={16} aria-hidden="true" /></Link><Link href="/company">Hồ sơ Hoàng Long<ArrowRight size={16} aria-hidden="true" /></Link></div></div><div>{existingPartner || applied ? <div className={styles.applicationExists}><Check size={24} aria-hidden="true" /><h3>{applied ? "Đã nhận hồ sơ đăng ký" : "Bạn đã có hồ sơ đối tác"}</h3><p>Xem trạng thái xét duyệt và tiếp tục làm việc tại bàn đối tác.</p><Link href="/partners/network" className={`${styles.button} ${styles.primary}`}>Mở bàn đối tác<ArrowRight size={18} aria-hidden="true" /></Link></div> : <PartnerNetworkApplicationForm key={user?.id || "unverified"} user={user} allowRegistration={registrationAllowed} publicRegistration={publicRegistration} onApplied={() => { if (identity.current === user?.id) setApplied(true); }} />}</div></section>
     <footer className={styles.footer}><p>House of Hoàng Long · Trà cho kinh doanh đồ uống</p><nav aria-label="Liên kết cuối trang"><Link href="/partners/account">Đặt hàng dành cho khách sỉ</Link><Link href="/company">Hồ sơ công ty</Link><Link href="/catalog">Catalog B2B</Link><Link href="/privacy">Bảo mật thông tin</Link></nav></footer>
   </main>;
 }
