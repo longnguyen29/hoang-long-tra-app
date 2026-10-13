@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Build the public, Vietnamese three-page B2B sales kit.
 
-Usage: python3 scripts/build-b2b-sales-kit.py [--font-dir /path/to/noto/fonts]
+Usage: python3 scripts/build-b2b-sales-kit.py [--profile house|anh-long]
+       [--font-dir /path/to/noto/fonts] [--output /path/to/output.pdf]
 
 Requires Node, ReportLab and Pillow. Uses the repository's export-teas.js prices,
 public contact details and published photographs; no network or credentials.
@@ -36,7 +37,6 @@ from reportlab.platypus import Paragraph
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "public/downloads/hoang-long-b2b-sales-kit-vi.pdf"
 RUNTIME = Path.home() / ".cache/codex-runtimes/codex-primary-runtime/dependencies"
 FONT_DIR = RUNTIME / "native/libreoffice-headless/libreoffice/LibreOfficeDev.app/Contents/Resources/fonts/truetype"
 W, H = A4
@@ -59,7 +59,10 @@ def public_data():
     code = """
       import {EXPORT_TEAS, EXPORT_PRICE_REVISION} from './lib/export-teas.js';
       import {EVENT_CONTACT} from './lib/event-contact.js';
-      console.log(JSON.stringify({teas: EXPORT_TEAS, revision: EXPORT_PRICE_REVISION, contact: EVENT_CONTACT}));
+      import {EXPORT_SALES_PROFILES, EXPORT_DELIVERY_WINDOW} from './lib/export-sales-profiles.js';
+      import {TAIWAN_EXPORT_COPY} from './lib/export-taiwan-copy.js';
+      console.log(JSON.stringify({teas: EXPORT_TEAS, revision: EXPORT_PRICE_REVISION, contact: EVENT_CONTACT,
+        profiles: EXPORT_SALES_PROFILES, delivery: EXPORT_DELIVERY_WINDOW, copy: TAIWAN_EXPORT_COPY.vi}));
     """
     result = subprocess.run([node, "--input-type=module", "-e", code], cwd=ROOT,
                             capture_output=True, check=True, text=True)
@@ -88,13 +91,16 @@ def clean(text):
 
 
 class SalesKit:
-    def __init__(self, path, data):
+    def __init__(self, path, data, profile):
         self.data = data
+        self.profile = profile
         self.contact = data["contact"]
         self.revision = date.fromisoformat(data["revision"]).strftime("%d.%m.%Y")
         self.url = self.contact["website"].rstrip("/") + "/export/taiwan"
+        if self.profile["id"] != "house":
+            self.url += "?profile=" + self.profile["id"]
         self.c = canvas.Canvas(str(path), pagesize=A4, pageCompression=1)
-        self.c.setTitle("Hoàng Long - Bộ chào hàng B2B")
+        self.c.setTitle("Hoàng Long - Bộ chào hàng B2B" + (" - " + profile["label"] if profile["contact"] else ""))
         self.c.setAuthor("Nhà làm Trà Hoàng Long")
         self.c.setSubject("Bốn dòng trà, giá EXW VND/kg, quy trình và liên hệ. Bản " + self.revision)
         self.c.setCreator("Hoàng Long B2B sales kit builder")
@@ -166,17 +172,17 @@ class SalesKit:
     def cover(self):
         self.start("01 / SẢN PHẨM & ĐIỀU KIỆN CUNG ỨNG")
         self.para("Trà Việt cho\nhợp tác dài hạn.", M, 751, CW, 30.5, 38, "DisplayBold", JADE)
-        self.para("Bộ thông tin để connector giới thiệu Hoàng Long, tìm hiểu nhu cầu\nkhách mua và phối hợp thử mẫu. Giao dịch được chốt với bên mua.",
+        self.para("Nguồn trà tại nhà máy cho đối tác thương mại, nhà phân phối và quán\nđồ uống. Chọn trà, thử mẫu và cùng xây kế hoạch cung ứng.",
                   M, 659, CW, 10.4, 15.6, max_height=33)
         facts = [("NĂNG LỰC CÔNG BỐ", "50-100 tấn/tháng"),
-                 ("CHUẨN BỊ XUẤT HÀNG", "2-6 tuần"),
+                 ("THỜI GIAN GIAO HÀNG", clean(self.data["delivery"]["value"])),
                  ("ĐIỀU KIỆN GIÁ", "EXW · VND/kg")]
         cell = CW / 3
         for idx, (label, value) in enumerate(facts):
             x = M + idx * cell
             self.label(label, x, 609, MUTED, 7.2)
             self.para(value, x, 592, cell - 12, 14.1, 19, "DisplayBold", JADE, max_height=21)
-        self.para("Lịch sẵn hàng phụ thuộc khối lượng, quy cách và yêu cầu đã xác nhận cho từng đơn.",
+        self.para(self.data["delivery"]["note"],
                   M, 562, CW, 8.7, 13, color=MUTED, max_height=14)
         photo_gap = 12
         photo_w = (CW - photo_gap * 2) / 3
@@ -213,57 +219,37 @@ class SalesKit:
         self.c.showPage()
 
     def workflow(self):
-        self.start("02 / QUY TRÌNH & VAI TRÒ BA BÊN")
-        self.para("Ba bên rõ vai trò.\nCùng một lộ trình.", M, 751, CW, 28.5, 36, "DisplayBold", JADE)
-        self.para("Connector là người kết nối, hỗ trợ trao đổi và theo dõi việc tiếp theo.\nHoàng Long cùng khách mua xác nhận giá, đơn hàng và thanh toán.",
+        self.start("02 / LÀM VIỆC CÙNG HOÀNG LONG")
+        self.para("Bốn bước để\nbắt đầu hợp tác.", M, 751, CW, 28.5, 36, "DisplayBold", JADE)
+        self.para("Chọn đúng trà, chốt rõ điều kiện và cùng theo dõi kế hoạch giao hàng.\nHoàng Long hoặc đối tác giới thiệu hỗ trợ bạn trao đổi nhu cầu.",
                   M, 666, CW, 10.2, 15.5, max_height=33)
-        gap = 18
-        col_w = (CW - gap * 2) / 3
-        cols = [M, M + col_w + gap, M + (col_w + gap) * 2]
-        self.label("HOÀNG LONG · CUNG CẤP", cols[0], 613, MUTED, 7.5)
-        self.label("CONNECTOR · KẾT NỐI", cols[1], 613, MUTED, 7.5)
-        self.label("KHÁCH HÀNG · BÊN MUA", cols[2], 613, MUTED, 7.5)
-        self.rule(597)
-        steps = [
-            ("Trao đổi nhu cầu", "Đề xuất trà, mẫu và thông tin cần làm rõ.",
-             "Tổng hợp nhu cầu; chuyển liên hệ khi khách đồng ý.", "Gửi ứng dụng, lượng, thị trường và lịch cần hàng."),
-            ("Mẫu & kiểm nghiệm", "Sắp xếp mẫu; xác nhận quy cách và khả năng cung cấp hồ sơ.",
-             "Phối hợp gửi mẫu, thu phản hồi và hẹn trao đổi.", "Thử, duyệt mẫu; chốt chỉ tiêu kiểm nghiệm cần thiết."),
-            ("Báo giá, PO & thanh toán", "Chốt bằng văn bản giá, bao bì, hồ sơ và lịch sẵn hàng.",
-             "Chuyển yêu cầu và theo dõi; không tự cam kết giá.", "Duyệt báo giá, ký PO/hợp đồng và thanh toán theo thỏa thuận."),
-            ("Khảo sát, chuẩn bị & QC", "Hẹn kiểm tra xưởng; chuẩn bị hàng, mã lô và QC đã chốt.",
-             "Phối hợp lịch kiểm tra; cập nhật tiến độ hai bên.", "Chốt nội dung khảo sát, nhãn và tiêu chí nghiệm thu."),
-            ("Bàn giao EXW", "Thông báo hàng sẵn tại nhà máy; chuẩn bị chứng từ đã chốt.",
-             "Theo dõi lịch nhận; chuyển thông tin giữa hai bên.", "Tổ chức bốc hàng, vận tải và thủ tục xuất/nhập khẩu."),
-            ("Phản hồi & đặt lại", "Xử lý vấn đề theo thỏa thuận; trao đổi nguồn cung tiếp.",
-             "Thu phản hồi; theo dõi vấn đề và cuộc trao đổi tiếp.", "Xác nhận lượng nhận, chất lượng và kế hoạch mua tiếp."),
-        ]
-        for idx, (title, seller, connector, buyer) in enumerate(steps):
-            top = 585 - idx * 60
-            self.label(f"0{idx + 1}", M, top, BRASS, 9)
-            self.para(title, M + 28, top + 1, CW - 28, 9.7, 14, "BodyBold", max_height=15)
-            for x, text in zip(cols, [seller, connector, buyer]):
-                self.para(text, x, top - 20, col_w, 8.55, 12.3, max_height=37)
-            self.rule(top - 57)
-        self.label("THĂM XƯỞNG & NGUỒN TRÀ", M, 207, BRASS, 7.8)
-        right = M + CW / 2 + 12
-        self.label("THỬ MẪU & KIỂM NGHIỆM", right, 207, BRASS, 7.8)
-        half = CW / 2 - 12
-        self.para("Xác nhận vùng nguyên liệu theo dòng trà và lô. Hẹn trước khi thăm nhà máy tại Tân Lập, Hà Giang; gửi nội dung khảo sát, số người và ngày mong muốn.",
-                  M, 185, half, 9.1, 13.8, max_height=70)
-        self.para("Chốt cảm quan, độ ẩm, dư lượng, vi sinh hoặc hồ sơ thị trường yêu cầu. Xác nhận chỉ tiêu, phòng lab, chi phí và thời gian trước khi làm; không mặc định đã có chứng nhận/kết quả.",
-                  right, 185, half, 9.1, 13.8, max_height=70)
-        self.para("Connector hỗ trợ kết nối; không thay bên mua ký đơn, trả tiền hoặc chịu vận tải nếu chưa có thỏa thuận riêng.",
-                  M, 100, CW, 8.2, 12.1, color=MUTED, max_height=25)
+        for idx, step in enumerate(self.data["copy"]["process"]["steps"]):
+            top = 607 - idx * 67
+            self.label(f"0{idx + 1}", M, top, BRASS, 10)
+            self.para(step["title"], M + 37, top + 1, CW - 37, 12, 17, "BodyBold", max_height=18)
+            self.para(step["body"], M + 37, top - 26, CW - 37, 10, 15.4, max_height=32)
+            self.rule(top - 58)
+        self.image("landing/1.jpg", M, 311, 135, 186, crop=(0.5, 0.5))
+        x = M + 154
+        self.label("VÙNG TRÀ · NHÀ MÁY · KIỂM NGHIỆM", x, 311, BRASS, 7.8)
+        self.para("Hiểu nguồn trà.\nXác nhận đúng mẫu.", x, 290, CW - 154, 16, 23, "DisplayBold", JADE)
+        self.para("Trao đổi vùng nguyên liệu theo từng trà và lô. Hẹn trước khi thăm nhà máy tại Tân Lập, Hà Giang; gửi nội dung khảo sát và ngày mong muốn.",
+                  x, 232, CW - 154, 9.1, 13.8, max_height=43)
+        self.para("Chỉ tiêu kiểm nghiệm, phòng lab, chi phí, chứng từ và thời gian được xác nhận cho đơn cụ thể. Không mặc định có sẵn chứng nhận hay kết quả xét nghiệm.",
+                  x, 179, CW - 154, 9.1, 13.8, max_height=43)
+        self.para("Cây trà trong vùng nguyên liệu; ảnh Hoàng Long đang công bố.", M, 115, 135, 7.4, 11, color=MUTED, max_height=34)
+        self.para("Thời gian giao hàng " + clean(self.data["delivery"]["value"]) + ". " + self.data["delivery"]["note"] +
+                  " Giá EXW chưa gồm cước vận chuyển; phương án và chi phí được chốt riêng.",
+                  x, 119, CW - 154, 8.1, 12.1, color=MUTED, max_height=37)
         self.c.showPage()
 
     def contact_page(self):
         self.start("03 / THÔNG TIN TRAO ĐỔI & LIÊN HỆ")
         self.para("Chuẩn bị thông tin.\nBắt đầu bằng mẫu.", M, 751, CW, 28.5, 36, "DisplayBold", JADE)
-        self.para("Connector thu thập sáu thông tin về bên mua để chọn mẫu và báo giá.\nBàn giao riêng người kết nối và liên hệ khách đã cho phép chia sẻ.",
+        self.para("Sáu thông tin giúp chọn mẫu, tính báo giá và xây lịch cung ứng.\nChưa rõ mục nào, cứ ghi nhu cầu dự kiến để cùng trao đổi.",
                   M, 666, CW, 10.3, 15.5, max_height=33)
         briefs = [
-            ("Khách mua & liên hệ", "Tên doanh nghiệp/quán của bên mua; người được phép trao đổi và liên hệ khách đồng ý chia sẻ."),
+            ("Đơn vị & người liên hệ", "Tên doanh nghiệp/quán, người trao đổi, điện thoại/email và kênh liên hệ phù hợp."),
             ("Dòng trà & ứng dụng", "Trà muốn thử, phẩm cấp nếu có; dùng pha đồ uống, phân phối hay đóng gói lại."),
             ("Khối lượng & lịch mua", "Lượng dự kiến mỗi đơn/tháng, ngày cần hàng; ghi bằng kg hoặc tấn."),
             ("Bao bì & nhãn", "Chọn bao bì tiêu chuẩn hoặc yêu cầu riêng; quy cách, ngôn ngữ nhãn và thông tin lô."),
@@ -285,18 +271,34 @@ class SalesKit:
         left = M + 21
         self.label("TRAO ĐỔI TRỰC TIẾP VỚI HOÀNG LONG", left, 312, HexColor("#C7B481"), 7.8)
         self.para("Chọn trà. Hẹn thử mẫu.", left, 292, 310, 17.5, 24, "DisplayBold", PAPER)
-        self.para(self.contact["phoneLabel"] + " · Điện thoại / Zalo", left, 257, 305, 10.6, 16, "BodyBold", PAPER)
-        self.c.linkURL("tel:" + self.contact["phone"], (left, 241, left + 263, 258), relative=0, thickness=0)
-        self.para(EMAIL, left, 232, 305, 9.5, 15, color=PAPER)
-        self.c.linkURL("mailto:" + EMAIL, (left, 217, left + 275, 234), relative=0, thickness=0)
-        self.para("Văn phòng / kho: " + self.contact["address"], left, 206, 294, 8.8, 13.1, color=PAPER, max_height=27)
-        self.para("Đây không phải địa chỉ nhà máy. Vui lòng gọi trước nếu ghé trao đổi hoặc uống trà.",
-                  left, 173, 294, 8.2, 12.2, color=HexColor("#D4DDD4"), max_height=26)
+        if self.profile["contact"]:
+            person = self.profile["contact"]
+            self.para(person["name"] + " · " + person["phoneLabel"], left, 257, 294, 10.6, 16, "BodyBold", PAPER)
+            self.c.linkURL("tel:" + person["phone"], (left, 241, left + 275, 258), relative=0, thickness=0)
+            self.para(person["role"], left, 232, 294, 8.5, 13, color=HexColor("#D4DDD4"))
+            house_phone = "Hoàng Long · " + self.contact["phoneLabel"]
+            self.para(house_phone + " · Zalo", left, 210, 294, 10.2, 15, "BodyBold", PAPER)
+            self.c.linkURL("tel:" + self.contact["phone"], (left, 194, left + 275, 212), relative=0, thickness=0)
+            zalo_x = left + pdfmetrics.stringWidth(house_phone + " · ", "BodyBold", 10.2)
+            self.c.linkURL(self.contact["zaloUrl"], (zalo_x, 194, zalo_x + 29, 212), relative=0, thickness=0)
+            self.para(EMAIL, left, 185, 294, 9.2, 14, color=PAPER)
+            self.c.linkURL("mailto:" + EMAIL, (left, 170, left + 275, 187), relative=0, thickness=0)
+            self.para("Văn phòng/kho (không phải xưởng): " + self.contact["address"], left, 158, 294, 8.1, 11.5, color=PAPER, max_height=24)
+        else:
+            self.para(self.contact["phoneLabel"] + " · Điện thoại / Zalo", left, 257, 305, 10.6, 16, "BodyBold", PAPER)
+            self.c.linkURL("tel:" + self.contact["phone"], (left, 241, left + 263, 258), relative=0, thickness=0)
+            zalo_x = left + pdfmetrics.stringWidth(self.contact["phoneLabel"] + " · Điện thoại / ", "BodyBold", 10.6)
+            self.c.linkURL(self.contact["zaloUrl"], (zalo_x, 241, zalo_x + 29, 258), relative=0, thickness=0)
+            self.para(EMAIL, left, 232, 305, 9.5, 15, color=PAPER)
+            self.c.linkURL("mailto:" + EMAIL, (left, 217, left + 275, 234), relative=0, thickness=0)
+            self.para("Văn phòng / kho: " + self.contact["address"], left, 206, 294, 8.8, 13.1, color=PAPER, max_height=27)
+            self.para("Đây không phải địa chỉ nhà máy. Vui lòng gọi trước nếu ghé trao đổi hoặc uống trà.",
+                      left, 173, 294, 8.2, 12.2, color=HexColor("#D4DDD4"), max_height=26)
         qr_x = W - M - 111
         self.qr(qr_x, 212, 84)
         self.para("Quét để xem tỷ giá,\ngửi nhu cầu và hỏi mẫu.", qr_x - 7, 193, 106, 8.1, 12.1, color=PAPER, max_height=37)
-        self.para("hoanglongtra.com/export/taiwan", left, 138, CW - 42, 8.3, 12.2, "BodyBold", PAPER)
-        self.c.linkURL(self.url, (left, 122, W - M - 21, 140), relative=0, thickness=0)
+        self.para("hoanglongtra.com/export/taiwan", left, 132 if self.profile["contact"] else 138, CW - 42, 8.3, 12.2, "BodyBold", PAPER)
+        self.c.linkURL(self.url, (left, 119, W - M - 21, 140), relative=0, thickness=0)
         self.para("PDF là bản tham khảo ngày " + self.revision + ", gồm đầy đủ 4 dòng trà. Giá quy đổi trên website chỉ mang tính tham khảo; giá, quy cách, điều khoản thanh toán và lịch sẵn hàng có hiệu lực theo báo giá/PO/hợp đồng đã xác nhận.",
                   M, 97, CW, 8.3, 12.2, color=MUTED, max_height=37)
         self.c.showPage()
@@ -313,13 +315,18 @@ class SalesKit:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--font-dir", default=os.environ.get("HOANG_LONG_PDF_FONT_DIR", str(FONT_DIR)))
-    parser.add_argument("--output", type=Path, default=OUTPUT)
+    parser.add_argument("--profile", default="house", help="Public presentation profile from lib/export-sales-profiles.js")
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     register_fonts(args.font_dir)
     data = public_data()
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    SalesKit(args.output, data).build()
-    print(f"Built {args.output} (3 pages; revision {data['revision']}; complete four-product range)")
+    profile = next((item for item in data["profiles"] if item["id"] == args.profile), None)
+    if not profile:
+        parser.error("Unknown profile; select an owner-approved public sales profile")
+    output = args.output or ROOT / "public" / profile["pdf"].lstrip("/")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    SalesKit(output, data, profile).build()
+    print(f"Built {output} (3 pages; profile {profile['id']}; revision {data['revision']}; complete four-product range)")
 
 
 if __name__ == "__main__":
