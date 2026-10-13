@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ArrowUpRight, Check, Copy, Download, FileText } from "lucide-react";
 import { EXPORT_TEAS } from "@/lib/export-teas";
 import { buildExportSalesKitHref } from "@/lib/export-sales-kit";
+import { EXPORT_SALES_PROFILES, getExportSalesProfile } from "@/lib/export-sales-profiles";
 import styles from "./PartnerSalesKit.module.css";
 
 const money = (value) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value);
@@ -13,14 +14,16 @@ export default function PartnerSalesKit({ mode = "partner", partners = [], partn
   const locale = "vi";
   const [currency, setCurrency] = useState("VND");
   const [partnerId, setPartnerId] = useState("");
+  const [profileId, setProfileId] = useState("house");
   const [copyStatus, setCopyStatus] = useState("");
   const isManager = mode === "manager";
   const approved = useMemo(() => (Array.isArray(partners) ? partners : []).filter((row) => row.status === "approved" && typeof row.code === "string" && row.code), [partners]);
   const selectedPartner = isManager ? approved.find((row) => row.id === partnerId) : partner;
+  const profile = getExportSalesProfile(isManager ? profileId : "house");
   const authorized = isManager || Boolean(partner?.status === "approved" && partner.code);
   let href = "";
   if (authorized && teaIds.length) {
-    try { href = buildExportSalesKitHref({ teaIds, locale, currency, partnerCode: selectedPartner?.status === "approved" ? selectedPartner.code : undefined }); }
+    try { href = buildExportSalesKitHref({ teaIds, locale, currency, profileId: profile?.id, partnerCode: selectedPartner?.status === "approved" ? selectedPartner.code : undefined }); }
     catch { /* Keep sharing unavailable when a selection cannot be validated. */ }
   }
   const canShare = Boolean(href) && !disabled;
@@ -37,23 +40,24 @@ export default function PartnerSalesKit({ mode = "partner", partners = [], partn
   if (!authorized) return <section className={styles.panel}><h2>Bộ chào hàng</h2><p>Hoàng Long cần duyệt hồ sơ trước khi bạn tạo bộ chào hàng mang mã đối tác. Quyền gửi khách mới vẫn theo trạng thái hồ sơ.</p></section>;
 
   return <section className={styles.panel} aria-labelledby="partner-sales-kit-title" lang="vi" data-no-translate>
-    <header className={styles.header}><p className={styles.eyebrow}>Partner Network · Người kết nối</p><h2 id="partner-sales-kit-title">Bộ chào hàng</h2><p>Chuẩn bị tài liệu để connector giới thiệu Hoàng Long với khách mua. Connector phụ trách kết nối và trao đổi; khách là bên chọn trà, xác nhận đơn và thanh toán.</p></header>
+    <header className={styles.header}><p className={styles.eyebrow}>Hoàng Long · Đối tác B2B</p><h2 id="partner-sales-kit-title">Bộ chào hàng</h2><p>Chọn dòng trà, tiền tệ và liên hệ trên tài liệu, rồi gửi link hoặc PDF để trao đổi với khách.</p></header>
     <div className={styles.workspace}>
       <div className={styles.controls}>
-        {isManager ? <label className={styles.field}><span>Connector phụ trách kết nối <small>Tuỳ chọn</small></span><select value={approved.some((row) => row.id === partnerId) ? partnerId : ""} disabled={disabled} onChange={(e) => update(setPartnerId, e.target.value)}><option value="">Bản chung · chưa chọn connector</option>{approved.map((row) => <option key={row.id} value={row.id}>{row.business_name} · {row.code}</option>)}</select><small>Có thể giao bản chung cho người kết nối của bạn. Chọn đối tác đã duyệt khi cần kèm mã giới thiệu; tên và liên hệ cá nhân không hiện trên tài liệu.</small></label> : <div className={styles.owner}><span>Mã đối tác kết nối của bạn</span><strong>{partner.code}</strong></div>}
+        {isManager ? <><label className={styles.field}><span>Liên hệ trên tài liệu</span><select value={profileId} disabled={disabled} onChange={(e) => update(setProfileId, e.target.value)}>{EXPORT_SALES_PROFILES.map(row => <option key={row.id} value={row.id}>{row.contact ? `${row.contact.name} · ${row.contact.phoneLabel}` : "Hoàng Long · bản chung"}</option>)}</select><small>Chỉ gồm liên hệ đã được cho phép công khai. Chọn liên hệ không tự tạo tài khoản hoặc duyệt đối tác.</small></label><label className={styles.field}><span>Mã đối tác giới thiệu <small>Tuỳ chọn</small></span><select value={approved.some((row) => row.id === partnerId) ? partnerId : ""} disabled={disabled} onChange={(e) => update(setPartnerId, e.target.value)}><option value="">Chưa kèm mã đối tác</option>{approved.map((row) => <option key={row.id} value={row.id}>{row.business_name} · {row.code}</option>)}</select><small>Chọn hồ sơ đã duyệt khi cần đối chiếu nguồn giới thiệu.</small></label></> : <div className={styles.owner}><span>Mã đối tác của bạn</span><strong>{partner.code}</strong></div>}
         <fieldset className={styles.teas} disabled={disabled}><legend>Dòng trà trong bộ chào hàng</legend>{EXPORT_TEAS.map((tea) => <label key={tea.id}><input type="checkbox" checked={teaIds.includes(tea.id)} onChange={(e) => toggleTea(tea.id, e.target.checked)}/><span><strong>{tea.name.vi}</strong><small>{money(tea.priceVndPerKg)} / kg · EXW</small></span></label>)}</fieldset>
         {!teaIds.length && <p className={styles.warning} role="status">Chọn ít nhất một dòng trà để tạo bộ chào hàng.</p>}
         <label className={styles.field}><span>Tiền tệ hiển thị</span><select value={currency} disabled={disabled} onChange={(e) => update(setCurrency, e.target.value)}><option value="TWD">TWD · Đài tệ (NT$)</option><option value="USD">USD · Đô la Mỹ</option><option value="CNY">CNY · Nhân dân tệ</option><option value="VND">VND · Việt Nam đồng</option></select></label>
       </div>
       <aside className={styles.preview}>
-        <h3>Tài liệu để connector chào khách</h3><ul>{selectedTeas.map((tea) => <li key={tea.id}>{tea.name[locale]}</li>)}</ul>
+        <h3>Tài liệu gửi khách</h3><ul>{selectedTeas.map((tea) => <li key={tea.id}>{tea.name[locale]}</li>)}</ul>
+        {profile?.contact && <p>Liên hệ: <strong>{profile.contact.name} · {profile.contact.phoneLabel}</strong>, cạnh Hoàng Long.</p>}
         <p>{selectedPartner ? <>Mã nguồn giới thiệu: <strong>{selectedPartner.code}</strong></> : "Bản chung để xem trước, chưa kèm mã đối tác."}</p>
         <div className={styles.actions}>{canShare ? <a className={styles.primary} href={href} target="_blank" rel="noopener noreferrer">Mở bộ chào hàng<ArrowUpRight size={17} aria-hidden="true"/></a> : <button className={styles.primary} type="button" disabled>Mở bộ chào hàng<ArrowUpRight size={17} aria-hidden="true"/></button>}<button type="button" disabled={!canShare} onClick={copy}>{copyStatus === "copied" ? <Check size={17} aria-hidden="true"/> : <Copy size={17} aria-hidden="true"/>}{copyStatus === "copied" ? "Đã sao chép link" : "Sao chép link gửi khách"}</button></div>
-        {copyStatus === "copied" && <p className={styles.feedback} role="status">Đã sao chép. Giao link cho connector để giới thiệu và trao đổi với khách qua kênh phù hợp.</p>}
+        {copyStatus === "copied" && <p className={styles.feedback} role="status">Đã sao chép link để gửi khách.</p>}
         {copyStatus === "manual" && <label className={styles.field}><span>Chọn và sao chép link thủ công</span><textarea rows={4} readOnly value={shareUrl} onFocus={(e) => e.target.select()}/></label>}
-        <div className={styles.print}><FileText size={18} aria-hidden="true"/><div><strong>PDF để gửi ngay</strong><p>Tải hồ sơ tổng quan tiếng Việt gồm cả 4 dòng trà, giá gốc VND và quy trình hợp tác.</p><a className={styles.pdf} href="/downloads/hoang-long-b2b-sales-kit-vi.pdf" download><Download size={17} aria-hidden="true"/>PDF tổng quan · 4 dòng trà</a><p>Muốn PDF chỉ gồm dòng trà đã chọn: mở bộ chào hàng, bấm “In / lưu PDF” rồi chọn Lưu thành PDF. Bản in dùng đúng lựa chọn trà và tiền tệ trên trang.</p></div></div>
+        <div className={styles.print}><FileText size={18} aria-hidden="true"/><div><strong>PDF để gửi ngay</strong><p>Tổng quan 4 dòng trà, giá gốc VND và quy trình hợp tác{profile?.contact ? `, kèm liên hệ ${profile.contact.name}` : ""}.</p><a className={styles.pdf} href={profile?.pdf || EXPORT_SALES_PROFILES[0].pdf} download><Download size={17} aria-hidden="true"/>PDF tổng quan · 4 dòng trà</a><p>Để lưu các dòng trà và tiền tệ đang chọn: mở bộ chào hàng, bấm “In / lưu PDF” rồi chọn Lưu thành PDF.</p></div></div>
       </aside>
     </div>
-    <footer className={styles.notice}><strong>Khi connector có khách quan tâm</strong><p>Connector tập hợp nhu cầu và chuyển thông tin khách đã cho phép liên hệ. Khách và người kết nối có mục thông tin riêng; Hoàng Long tiếp tục mẫu → báo giá → đơn hàng theo hồ sơ bên mua.</p><p>Đối tác đã duyệt đăng ký khách tại “Khách giới thiệu”. Mã trong link giúp đối chiếu nguồn; điều kiện hoa hồng được xác nhận riêng trước khi đối soát.</p></footer>
+    <footer className={styles.notice}><strong>Khi khách quan tâm</strong><p>Gửi nhu cầu qua biểu mẫu trên trang, hoặc đăng ký tại “Khách giới thiệu” nếu hồ sơ đối tác đã được duyệt. Chỉ chuyển thông tin khách đã cho phép liên hệ.</p><p>Mẫu → báo giá → đơn hàng tiếp tục trong luồng hiện có. Mã giới thiệu và điều kiện hoa hồng được đối chiếu riêng.</p></footer>
   </section>;
 }
