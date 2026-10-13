@@ -1,11 +1,11 @@
 import TaiwanExportDesk from "@/components/public/TaiwanExportDesk";
-import { exportLocale, EXPORT_CURRENCIES } from "@/lib/export-teas";
+import { notFound } from "next/navigation";
+import { EXPORT_CURRENCIES } from "@/lib/export-teas";
+import { parseExportTeaIds } from "@/lib/export-sales-kit";
 import { TAIWAN_EXPORT_COPY } from "@/lib/export-taiwan-copy";
 
 export async function generateMetadata({ searchParams }) {
-  const params = await searchParams;
-  const language = exportLocale(params?.lang);
-  const t = TAIWAN_EXPORT_COPY[language];
+  const t = TAIWAN_EXPORT_COPY.vi;
   return {
     title: `${t.title} | Hoàng Long`,
     description: t.intro,
@@ -14,7 +14,7 @@ export async function generateMetadata({ searchParams }) {
     openGraph: {
       title: `${t.title} | Hoàng Long`, description: t.intro,
       url: "https://www.hoanglongtra.com/export/taiwan", type: "website",
-      locale: language === "zh-TW" ? "zh_TW" : language === "vi" ? "vi_VN" : "en_US",
+      locale: "vi_VN",
       images: [{ url: "https://www.hoanglongtra.com/landing/3.jpg", width: 1024, height: 1024, alt: t.visit.title }],
     },
   };
@@ -22,5 +22,7 @@ export async function generateMetadata({ searchParams }) {
 
 export default async function TaiwanExportPage({ searchParams }) {
   const params = await searchParams;
-  return <TaiwanExportDesk initialLocale={exportLocale(params?.lang)} initialCurrency={EXPORT_CURRENCIES.includes(params?.currency) ? params.currency : "TWD"} />;
+  const teaIds = parseExportTeaIds(params?.teas);
+  if (!teaIds) notFound();
+  return <TaiwanExportDesk initialTeaIds={teaIds} initialCurrency={EXPORT_CURRENCIES.includes(params?.currency) ? params.currency : "VND"} />;
 }

@@ -8,7 +8,8 @@ import { EXPORT_TEAS, EXPORT_PRICE_REVISION, EXPORT_CURRENCIES } from "@/lib/exp
 import { convertQuantityPrice } from "@/lib/export-exchange";
 import { TAIWAN_EXPORT_COPY } from "@/lib/export-taiwan-copy";
 import { PROFILE_CONTACT, PROFILE_PDF } from "@/lib/company-profile";
-import { exportLink } from "@/lib/export-enquiry";
+import { exportAttribution, exportLink } from "@/lib/export-enquiry";
+import { EXPORT_SALES_KIT_PDF } from "@/lib/export-sales-kit";
 import ExportEnquiry from "./ExportEnquiry";
 import styles from "./TaiwanExportDesk.module.css";
 
@@ -21,21 +22,26 @@ function money(value, currency, locale) {
 }
 function timestamp(value, locale) {
   const date = new Date(value);
-  return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat(NUMBER_LOCALES[locale], { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Taipei" }).format(date) : "—";
+  return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat(NUMBER_LOCALES[locale], { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }).format(date) : "—";
 }
 
-export default function TaiwanExportDesk({ initialLocale = "zh-TW", initialCurrency = "TWD" }) {
-  const [language, setLanguage] = useState(initialLocale);
+export default function TaiwanExportDesk({ initialTeaIds = EXPORT_TEAS.map(tea => tea.id), initialCurrency = "VND" }) {
+  const language = "vi";
+  const teas = EXPORT_TEAS.filter(tea => initialTeaIds.includes(tea.id));
   const [currency, setCurrency] = useState(initialCurrency);
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(false);
   const [rateError, setRateError] = useState(false);
   const [copied, setCopied] = useState(false);
   const [shareFallback, setShareFallback] = useState("");
-  const [estimateTea, setEstimateTea] = useState(EXPORT_TEAS[0].id);
+  const [estimateTea, setEstimateTea] = useState(teas[0].id);
   const [kg, setKg] = useState("1000");
   const [search, setSearch] = useState("");
   const t = TAIWAN_EXPORT_COPY[language];
+  const selectionKey = teas.map(tea => tea.id).join(",");
+  useEffect(() => {
+    setEstimateTea(current => selectionKey.split(",").includes(current) ? current : selectionKey.split(",")[0]);
+  }, [selectionKey]);
   const loadPrices = useCallback(async (signal) => {
     setLoading(true);
     try {
@@ -56,11 +62,6 @@ export default function TaiwanExportDesk({ initialLocale = "zh-TW", initialCurre
     return () => { controller.abort(); window.clearInterval(refresh); };
   }, [loadPrices]);
 
-  function chooseLanguage(value) {
-    setLanguage(value);
-    const url = new URL(window.location.href); url.searchParams.set("lang", value);
-    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
-  }
   function chooseCurrency(value) {
     setCurrency(value);
     const url = new URL(window.location.href); url.searchParams.set("currency", value);
@@ -75,14 +76,16 @@ export default function TaiwanExportDesk({ initialLocale = "zh-TW", initialCurre
     window.dispatchEvent(new CustomEvent("hl:export-enquiry", { detail: { teaId, intent, quantityKg, currency } }));
   }
   async function copyLink() {
-    const query = new URLSearchParams({ lang: language, currency, utm_source: "connector", utm_medium: "referral", utm_campaign: "taiwan_exw_v1" });
-    const incoming = new URLSearchParams(window.location.search).get("utm_content");
-    if (incoming) query.set("utm_content", incoming.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 32));
+    const attribution = exportAttribution(window.location.search);
+    const query = new URLSearchParams({ teas: teas.map(tea => tea.id).join(","), lang: language, currency,
+      utm_source: attribution.source === "website" ? "connector" : attribution.source,
+      utm_medium: "referral", utm_campaign: attribution.campaign });
+    if (attribution.content) query.set("utm_content", attribution.content);
     const url = `${PROFILE_CONTACT.website}/export/taiwan?${query}`;
     try { await navigator.clipboard.writeText(url); setCopied(true); setShareFallback(""); }
     catch { setShareFallback(url); }
   }
-  const selectedTea = EXPORT_TEAS.find(tea => tea.id === estimateTea) || EXPORT_TEAS[0];
+  const selectedTea = teas.find(tea => tea.id === estimateTea) || teas[0];
   const numericKg = kg.trim() ? Number(kg) : NaN;
   const validQuantity = Number.isFinite(numericKg) && numericKg > 0 && numericKg <= 2000000;
   const estimate = validQuantity ? convertQuantityPrice(unitPrice(selectedTea), numericKg) : null;
@@ -96,7 +99,7 @@ export default function TaiwanExportDesk({ initialLocale = "zh-TW", initialCurre
       <header className={styles.header}>
         <Link href={companyHref} className={styles.wordmark}><span className={styles.seal} aria-hidden="true">皇龍</span><span>Hoàng Long<span className={styles.wordmarkNote}>Vietnam · Export desk</span></span></Link>
         <div className={styles.headerTools}>
-          <label className={styles.languageLabel}><span className={styles.srOnly}>{language === "zh-TW" ? "語言" : language === "vi" ? "Ngôn ngữ" : "Language"}</span><select value={language} onChange={e => chooseLanguage(e.target.value)}><option value="zh-TW">繁體中文</option><option value="en">English</option><option value="vi">Tiếng Việt</option></select></label>
+          <a className={styles.toolButton} href={EXPORT_SALES_KIT_PDF} download><Download size={16} aria-hidden="true"/>Tải PDF · 4 dòng trà</a>
           <button type="button" onClick={copyLink} className={styles.toolButton}><Copy size={16} aria-hidden="true"/>{copied ? t.actions.copied : t.actions.copyLink}</button>
           <button type="button" onClick={() => window.print()} className={`${styles.toolButton} ${styles.printButton}`}><Printer size={16} aria-hidden="true"/>{t.actions.print}</button>
         </div>
@@ -112,11 +115,12 @@ export default function TaiwanExportDesk({ initialLocale = "zh-TW", initialCurre
 
       <section className={styles.pricing} id="export-prices" aria-labelledby="prices-title">
         <div className={styles.sectionHead}><div><p className={styles.eyebrow}>EXW · VND / kg</p><h2 id="prices-title">{t.prices.title}</h2><p>{t.prices.intro}</p></div><div className={styles.currencyControl}><span id="currency-label">{t.prices.currency}</span><div role="group" aria-labelledby="currency-label">{EXPORT_CURRENCIES.map(code => <button type="button" key={code} aria-pressed={code === currency} onClick={() => chooseCurrency(code)}>{code === "TWD" ? "TWD · NT$" : code}</button>)}</div></div></div>
-        <div className={styles.rateStatus} aria-live="polite"><p>{snapshot ? <>{t.prices.updated}: {timestamp(snapshot.updatedAt, language)} · Taipei (UTC+8). {t.prices.daily}</> : (rateError ? t.prices.unavailable : t.prices.daily)}</p><button className={styles.toolButton} type="button" onClick={() => loadPrices()} disabled={loading}><RefreshCw size={15} aria-hidden="true"/>{t.actions.refresh}</button></div>
+        <div className={styles.rateStatus} aria-live="polite"><p>{snapshot ? <>{t.prices.updated}: {timestamp(snapshot.updatedAt, language)} · Việt Nam (UTC+7). {t.prices.daily}</> : (rateError ? t.prices.unavailable : t.prices.daily)}</p><button className={styles.toolButton} type="button" onClick={() => loadPrices()} disabled={loading}><RefreshCw size={15} aria-hidden="true"/>{t.actions.refresh}</button></div>
         {(rateError || snapshot?.status === "stale") && <p role="status" className={styles.warning}>{snapshot?.status === "stale" ? t.prices.stale : t.prices.unavailable}</p>}
-        <div className={styles.priceRows}>{EXPORT_TEAS.map(tea => <article key={tea.id} className={styles.priceRow}><div><h3>{tea.name[language]}</h3><p lang="vi">{tea.name.vi}</p></div><div className={styles.price}><strong>{money(unitPrice(tea), currency, language)}</strong><span>/ kg</span><small>{money(tea.priceVndPerKg, "VND", language)} / kg · EXW</small></div><a href="#export-enquiry" className={styles.sampleLink} onClick={() => enquire(tea.id, "sample")}>{t.actions.sample}<ArrowUpRight size={15} aria-hidden="true"/></a></article>)}</div>
+        {teas.length < EXPORT_TEAS.length && <p className={styles.selectionNote}>{t.prices.selectedRange}: {teas.length} dòng trà. <Link href="/export/taiwan">{t.actions.fullRange}</Link></p>}
+        <div className={styles.priceRows}>{teas.map(tea => <article key={tea.id} className={styles.priceRow}><div><h3>{tea.name[language]}</h3></div><div className={styles.price}><strong>{money(unitPrice(tea), currency, language)}</strong><span>/ kg</span><small>{money(tea.priceVndPerKg, "VND", language)} / kg · EXW</small></div><a href="#export-enquiry" className={styles.sampleLink} onClick={() => enquire(tea.id, "sample")}>{t.actions.sample}<ArrowUpRight size={15} aria-hidden="true"/></a></article>)}</div>
         <p className={styles.priceNote}>{t.prices.teaNote}</p><p className={styles.priceNote}>{t.prices.note}</p><p className={styles.priceNote}>{t.prices.reference}: {EXPORT_PRICE_REVISION}. <a href={sourceUrl} target="_blank" rel="noopener noreferrer">Rates by ExchangeRate-API</a></p>
-        <div className={styles.estimator}><label>{t.prices.estimateTeaLabel}<select value={estimateTea} onChange={e => setEstimateTea(e.target.value)}>{EXPORT_TEAS.map(tea => <option key={tea.id} value={tea.id}>{tea.name[language]}</option>)}</select></label><label>{t.prices.quantity}<input type="number" min="0.01" step="0.01" max="2000000" value={kg} onChange={e => setKg(e.target.value)} inputMode="decimal"/><span>kg</span></label><div className={styles.subtotal}><span>{t.prices.subtotal}</span><output>{money(estimate, currency, language)}</output><a href="#export-enquiry" onClick={() => enquire(estimateTea, "quote", validQuantity ? numericKg : undefined)}>{t.actions.quote}<ArrowUpRight size={15} aria-hidden="true"/></a></div></div>
+        <div className={styles.estimator}><label>{t.prices.estimateTeaLabel}<select value={estimateTea} onChange={e => setEstimateTea(e.target.value)}>{teas.map(tea => <option key={tea.id} value={tea.id}>{tea.name[language]}</option>)}</select></label><label>{t.prices.quantity}<input type="number" min="0.01" step="0.01" max="2000000" value={kg} onChange={e => setKg(e.target.value)} inputMode="decimal"/><span>kg</span></label><div className={styles.subtotal}><span>{t.prices.subtotal}</span><output>{money(estimate, currency, language)}</output><a href="#export-enquiry" onClick={() => enquire(estimateTea, "quote", validQuantity ? numericKg : undefined)}>{t.actions.quote}<ArrowUpRight size={15} aria-hidden="true"/></a></div></div>
       </section>
 
       <section className={styles.photoSection} aria-labelledby="origins-title">
@@ -129,7 +133,7 @@ export default function TaiwanExportDesk({ initialLocale = "zh-TW", initialCurre
 
       <section className={`${styles.section} ${styles.buyerBrief}`} aria-labelledby="brief-title"><div><h2 id="brief-title">{t.buyerChecklist.title}</h2><p>{t.buyerChecklist.intro}</p></div><ul className={styles.checklist}>{t.buyerChecklist.items.map(item => <li key={item}>{item}</li>)}</ul></section>
 
-      <section className={styles.contact} id="export-contact" aria-labelledby="contact-title"><div className={styles.contactLead}><p className={styles.eyebrow}>Hoàng Long · Export desk</p><h2 id="contact-title">{t.contacts.title}</h2><p>{t.contacts.intro}</p><div className={styles.contactLinks}><a href={`mailto:${EMAIL}`}><Mail size={16} aria-hidden="true"/>{EMAIL}</a><a href={`tel:${PROFILE_CONTACT.phone}`}><Phone size={16} aria-hidden="true"/>{PROFILE_CONTACT.phone}</a><a href={PROFILE_CONTACT.zaloUrl} target="_blank" rel="noopener noreferrer">{t.contacts.zaloLabel}<ArrowUpRight size={16} aria-hidden="true"/></a></div><h3>{t.contacts.officeLabel}</h3><address>{PROFILE_CONTACT.address}</address><p>{t.contacts.officeNote}</p><details className={styles.connector}><summary>{t.contacts.connectorTitle}</summary><p>{t.contacts.connectorBody}</p><Link href={partnerHref}>{t.contacts.partnerAction}<ArrowUpRight size={16} aria-hidden="true"/></Link></details></div><div className={styles.enquiry}><ExportEnquiry locale={language} initialCurrency={currency} compact/></div></section>
+      <section className={styles.contact} id="export-contact" aria-labelledby="contact-title"><div className={styles.contactLead}><p className={styles.eyebrow}>Hoàng Long · B2B</p><h2 id="contact-title">{t.contacts.title}</h2><p>{t.contacts.intro}</p><div className={styles.contactLinks}><a href={`mailto:${EMAIL}`}><Mail size={16} aria-hidden="true"/>{EMAIL}</a><a href={`tel:${PROFILE_CONTACT.phone}`}><Phone size={16} aria-hidden="true"/>{PROFILE_CONTACT.phone}</a><a href={PROFILE_CONTACT.zaloUrl} target="_blank" rel="noopener noreferrer">{t.contacts.zaloLabel}<ArrowUpRight size={16} aria-hidden="true"/></a></div><h3>{t.contacts.officeLabel}</h3><address>{PROFILE_CONTACT.address}</address><p>{t.contacts.officeNote}</p><details className={styles.connector}><summary>{t.contacts.connectorTitle}</summary><p>{t.contacts.connectorBody}</p><Link href={partnerHref}>{t.contacts.partnerAction}<ArrowUpRight size={16} aria-hidden="true"/></Link></details></div><div className={styles.enquiry}><ExportEnquiry locale={language} initialCurrency={currency} availableTeaIds={initialTeaIds} compact/></div></section>
       <footer className={styles.footer}><span>House of Hoàng Long · Vietnam</span><a href={pdfHref} download>{t.actions.pdf}</a><Link href="/privacy">{language === "zh-TW" ? "隱私權政策" : language === "vi" ? "Bảo mật thông tin" : "Privacy policy"}</Link></footer>
     </main>
   );

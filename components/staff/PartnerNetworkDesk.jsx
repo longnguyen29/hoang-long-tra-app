@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, ChevronDown, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import PartnerSalesKit from "@/components/partners/PartnerSalesKit";
 import {
   PARTNER_TYPES, PARTNER_STATUS, REFERRAL_STATUS, COMMISSION_STATUS,
   formatPartnerMoney, partnerErrorMessage, partnerStageLabel,
@@ -333,8 +334,9 @@ export default function PartnerNetworkDesk() {
     {error && <div className={styles.error} role="alert"><p>{error}</p><button disabled={loading || busy} onClick={load} type="button">Tải lại dữ liệu</button></div>}
     {notice && <p className={styles.notice} role="status">{notice}</p>}
     <div className={styles.counts}><div><span>Đăng ký cần duyệt</span><strong>{ready ? snapshot.partners.filter(row => row.status === "pending").length : "—"}</strong></div><div><span>Giới thiệu cần đối chiếu</span><strong>{ready ? snapshot.referrals.filter(row => row.status === "pending").length : "—"}</strong></div><div><span>Hoa hồng cần rà soát</span><strong>{ready ? snapshot.commissions.filter(row => row.status === "review" || row.stale).length : "—"}</strong></div></div>
-    <nav className={styles.tabs} aria-label="Các mục quản lý đối tác">{[["partners", "Đăng ký & đối tác"], ["referrals", "Khách giới thiệu"], ["commissions", "Hoa hồng"]].map(([key, title]) => <button key={key} type="button" aria-current={tab === key ? "page" : undefined} onClick={() => { setTab(key); setFilter("all"); setQuery(""); setPage(1); }}>{title}</button>)}</nav>
+    <nav className={styles.tabs} aria-label="Các mục quản lý đối tác">{[["partners", "Đăng ký & đối tác"], ["referrals", "Khách giới thiệu"], ["commissions", "Hoa hồng"], ["saleskit", "Bộ chào hàng"]].map(([key, title]) => <button key={key} type="button" aria-current={tab === key ? "page" : undefined} onClick={() => { setTab(key); setFilter("all"); setQuery(""); setPage(1); }}>{title}</button>)}</nav>
     <section className={styles.workspace} aria-busy={loading}>
+      {tab === "saleskit" ? <PartnerSalesKit mode="manager" partners={ready ? snapshot.partners : []} disabled={loading}/> : <>
       {tab === "commissions" && <ReconcileForm key={review?._request || "new"} orders={snapshot.orders} partners={partnerById} review={review} busy={busy} ready={ready} onAction={perform} onClearReview={() => setReview(null)} />}
       <div className={styles.tools}><label><Search aria-hidden="true" /><span className={styles.srOnly}>Tìm trong danh sách</span><input value={query} onChange={event => { setQuery(event.target.value); setPage(1); }} placeholder={tab === "partners" ? "Tìm tên, mã, email, khu vực…" : "Tìm khách, đối tác, mã đơn…"} /></label><label className={styles.filter}><span>Trạng thái</span><select value={filter} onChange={event => { setFilter(event.target.value); setPage(1); }}><option value="all">Tất cả</option>{statusOptions.map(([key, title]) => <option value={key} key={key}>{title}</option>)}</select></label></div>
       {loading ? <p className={styles.empty} role="status">Đang tải dữ liệu đối tác…</p> : !ready ? <p className={styles.empty}>Chưa có dữ liệu để đối soát. Kiểm tra thông báo phía trên rồi tải lại.</p> : visible.length === 0 ? <p className={styles.empty}>{query || filter !== "all" ? "Không có kết quả phù hợp. Thử đổi tìm kiếm hoặc trạng thái." : tab === "partners" ? "Chưa có đăng ký đối tác. Dùng trang /partners để thử đăng ký trong môi trường nội bộ." : tab === "referrals" ? "Chưa có khách giới thiệu. Đối tác đã duyệt gửi khách từ trang của mình." : "Chưa có khoản hoa hồng. Gắn đơn với giới thiệu rồi đối soát tiền thực thu."}</p> : <div className={styles.records}>{visible.map(row => tab === "partners" ? <PartnerCard key={`${row.id}-${row.updated_at || row.status}`} partner={row} busy={busy} ready={ready} onAction={perform} /> : tab === "referrals" ? <ReferralCard key={`${row.id}-${row.status}`} referral={row} partner={partnerById.get(row.partner_id)} orders={snapshot.orders} busy={busy} ready={ready} onAction={perform} /> : <CommissionCard key={`${row.id}-${row.updated_at || row.status}`} commission={row} partner={partnerById.get(row.partner_id)} referral={referralById.get(row.referral_id)} role={role} busy={busy} ready={ready} onAction={perform} onReview={row => setReview({ ...row, _request: `${row.id}-${Date.now()}` })} />)}</div>}
@@ -343,6 +345,7 @@ export default function PartnerNetworkDesk() {
         const entry = auditDescription(item);
         return <li key={item.id || index}><time>{when(item.created_at)}</time><strong>{entry.title}</strong><span>{entry.note || "Không có ghi chú thêm."}<small>Hồ sơ {item.entity_id} · Người thực hiện: {entry.actor}</small></span></li>;
       })}</ol></details>}
+      </>}
     </section>
   </main>;
 }

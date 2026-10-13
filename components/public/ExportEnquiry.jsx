@@ -36,10 +36,12 @@ const COPY = {
 const INITIAL = { business: "", name: "", contact: "", teaIds: [], intent: "quote", quantityKg: "", desiredDate: "", contactMethod: "email", contactDetail: "", requirements: "", website: "", currency: "TWD", connectorName: "", connectorContact: "" };
 const METHODS = { email: "Email", phone: { vi: "Điện thoại", en: "Phone", "zh-TW": "電話" }, line: "LINE", zalo: "Zalo", whatsapp: "WhatsApp" };
 
-export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], intent = "quote", compact = false, initialCurrency = "TWD" }) {
+export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], availableTeaIds = EXPORT_TEAS.map((tea) => tea.id), intent = "quote", compact = false, initialCurrency = "TWD" }) {
   const language = Object.hasOwn(COPY, locale) ? locale : "zh-TW";
   const t = COPY[language];
-  const [form, setForm] = useState(() => ({ ...INITIAL, teaIds: selectedTeaIds.filter((id) => EXPORT_TEAS.some((tea) => tea.id === id)).slice(0, 4), intent: ["sample", "quote", "factory_visit"].includes(intent) ? intent : "quote", currency: ["VND", "USD", "TWD", "CNY"].includes(initialCurrency) ? initialCurrency : "TWD" }));
+  const availableTeas = EXPORT_TEAS.filter((tea) => Array.isArray(availableTeaIds) && availableTeaIds.includes(tea.id));
+  const availabilityKey = availableTeas.map((tea) => tea.id).join(",");
+  const [form, setForm] = useState(() => ({ ...INITIAL, teaIds: [...new Set(selectedTeaIds)].filter((id) => availableTeas.some((tea) => tea.id === id)).slice(0, 4), intent: ["sample", "quote", "factory_visit"].includes(intent) ? intent : "quote", currency: ["VND", "USD", "TWD", "CNY"].includes(initialCurrency) ? initialCurrency : "TWD" }));
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
@@ -55,12 +57,21 @@ export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], i
   }, [initialCurrency, saved]);
   const inFlight = useRef(false);
   const heading = useRef(null);
+  useEffect(() => {
+    if (inFlight.current || saved) return;
+    setForm((current) => {
+      const teaIds = current.teaIds.filter((id) => availabilityKey.split(",").includes(id));
+      if (teaIds.length === current.teaIds.length) return current;
+      requestId.current = "";
+      return { ...current, teaIds };
+    });
+  }, [availabilityKey, saved]);
   useEffect(() => { setSearch(window.location.search); }, []);
   useEffect(() => {
     const selectTea = (event) => {
       if (inFlight.current || saved) return;
       const { teaId, intent, quantityKg, currency } = event.detail || {};
-      if (teaId != null && !EXPORT_TEAS.some((tea) => tea.id === teaId)) return;
+      if (teaId != null && !availableTeas.some((tea) => tea.id === teaId)) return;
       if (teaId == null && !["sample", "quote", "factory_visit"].includes(intent)) return;
       requestId.current = "";
       setError("");
@@ -70,7 +81,7 @@ export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], i
     };
     window.addEventListener("hl:export-enquiry", selectTea);
     return () => window.removeEventListener("hl:export-enquiry", selectTea);
-  }, [saved]);
+  }, [saved, availabilityKey]);
   useEffect(() => { if (saved) heading.current?.focus(); }, [saved]);
   const update = (field, value) => {
     if (inFlight.current || saved) return;
@@ -125,7 +136,7 @@ export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], i
             <label className={styles.field}>{t.name}<input name="name" autoComplete="name" required maxLength={80} value={form.name} onChange={(e) => update("name", e.target.value)}/></label>
             <label className={styles.field}>{t.contact}<input name="contact" required maxLength={120} placeholder={t.contactHint} aria-invalid={error === "invalid_contact"} value={form.contact} onChange={(e) => update("contact", e.target.value)}/></label>
           </div>
-          <fieldset className={styles.selection}><legend>{t.tea}</legend><div>{EXPORT_TEAS.map((tea) => <label key={tea.id}><input type="checkbox" checked={form.teaIds.includes(tea.id)} onChange={(e) => update("teaIds", e.target.checked ? [...form.teaIds, tea.id] : form.teaIds.filter((id) => id !== tea.id))}/><span>{tea.name[language]}</span></label>)}</div></fieldset>
+          <fieldset className={styles.selection}><legend>{t.tea}</legend><div>{availableTeas.map((tea) => <label key={tea.id}><input type="checkbox" checked={form.teaIds.includes(tea.id)} onChange={(e) => update("teaIds", e.target.checked ? [...form.teaIds, tea.id] : form.teaIds.filter((id) => id !== tea.id))}/><span>{tea.name[language]}</span></label>)}</div></fieldset>
           <div className={styles.twoFields}>
             <label className={styles.field}>{t.purpose}<select name="intent" value={form.intent} onChange={(e) => update("intent", e.target.value)}>{Object.entries(t.intents).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
             <label className={styles.field}>{t.quantity}<input name="quantityKg" type="number" min="0.001" max="10000000" step="0.001" placeholder={t.optional} value={form.quantityKg} onChange={(e) => update("quantityKg", e.target.value)}/></label>
@@ -136,8 +147,8 @@ export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], i
               <label className={styles.field}>{t.method}<select name="contactMethod" value={form.contactMethod} onChange={(e) => update("contactMethod", e.target.value)}>{Object.entries(METHODS).map(([key, label]) => <option key={key} value={key}>{typeof label === "string" ? label : label[language]}</option>)}</select></label>
             </div>
             {needsChannel && <label className={styles.field}>{t.detail}<input name="contactDetail" required maxLength={60} value={form.contactDetail} onChange={(e) => update("contactDetail", e.target.value)}/></label>}
-            <div className={styles.twoFields}><label className={styles.field}>{t.currency}<select name="currency" value={form.currency} onChange={(e) => update("currency", e.target.value)}>{["USD", "TWD", "VND", "CNY"].map((currency) => <option key={currency} value={currency}>{currency}</option>)}</select></label><label className={styles.field}>{t.connectorName}<input name="connectorName" maxLength={40} value={form.connectorName} onChange={(e) => update("connectorName", e.target.value)}/></label></div>
-            <label className={styles.field}>{t.connectorContact}<input name="connectorContact" maxLength={60} value={form.connectorContact} onChange={(e) => update("connectorContact", e.target.value)}/></label>
+            <div className={styles.twoFields}><label className={styles.field}>{t.currency}<select name="currency" value={form.currency} onChange={(e) => update("currency", e.target.value)}>{["USD", "TWD", "VND", "CNY"].map((currency) => <option key={currency} value={currency}>{currency}</option>)}</select></label>{!compact && <label className={styles.field}>{t.connectorName}<input name="connectorName" maxLength={40} value={form.connectorName} onChange={(e) => update("connectorName", e.target.value)}/></label>}</div>
+            {!compact && <label className={styles.field}>{t.connectorContact}<input name="connectorContact" maxLength={60} value={form.connectorContact} onChange={(e) => update("connectorContact", e.target.value)}/></label>}
             <label className={styles.field}>{t.requirements}<textarea name="requirements" rows={3} maxLength={noteLimit} placeholder={t.requirementsHint} aria-invalid={noteTooLong} value={form.requirements} onChange={(e) => update("requirements", e.target.value)}/><small>{form.requirements.length}/{noteLimit}</small></label>
             {noteTooLong && <p className={styles.error} role="alert">{t.noteTooLong}</p>}
           </div></details>
