@@ -4,6 +4,10 @@ import {
 } from "lucide-react";
 
 export const STAFF_APPS = {
+  partnerNetwork: {
+    key: "partnerNetwork", label: "Đối tác giới thiệu", short: "Đối tác", href: "/admin/partner-network",
+    description: "Duyệt đối tác, kiểm tra khách giới thiệu và đối soát hoa hồng theo tiền đã thu.", icon: Handshake,
+  },
   discovery: {
     key: "discovery", label: "Tìm khách hàng", short: "Tìm khách", href: "/admin/discovery",
     description: "Đọc nguồn công khai, phân loại và theo dõi khách hàng tiềm năng.", icon: Search,
@@ -52,7 +56,7 @@ export const STAFF_APPS = {
 
 export const STAFF_APP_GROUPS = [
   { label: "Hằng ngày", keys: ["work", "orders", "procedures", "pipeline"] },
-  { label: "Doanh nghiệp", keys: ["discovery", "operations", "house"] },
+  { label: "Doanh nghiệp", keys: ["discovery", "partnerNetwork", "operations", "house"] },
   { label: "Phòng chuyên môn", keys: ["recipes", "knowledge", "control", "growth"] },
 ];
 

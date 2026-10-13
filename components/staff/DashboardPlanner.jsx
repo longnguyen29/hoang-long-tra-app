@@ -7,6 +7,7 @@ import { calendarCells, houseDateKey, subtractCalendarMonth } from "@/lib/dashbo
 import styles from "./DashboardPlanner.module.css";
 import GovernmentObligations from "./GovernmentObligations";
 import ReminderDispatch from "./ReminderDispatch";
+import { useStaffFeatures } from "./StaffFeatures";
 
 const MONTHS = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
 const WEEKDAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
@@ -15,8 +16,13 @@ const dateLabel = (value) => value ? new Intl.DateTimeFormat("vi-VN", { day: "nu
 const dateKey = (year, month, day) => `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 const taskDate = (dueAt) => houseDateKey(new Date(dueAt));
 const emptyDraft = () => ({ title: "", kind: "feature", notes: "", event_on: "", remind_days: 1, notify_telegram: false });
+const ORIGINAL_PARTNER_REMINDER = {
+  title: "Quay lại duyệt Partner Network sau catalog mua lẻ",
+  notes: "Partner Network Phase 1 đã có code trên nhánh codex/b2b-partner-network-phase-1, chưa lên live. Sau catalog B2C: thử đăng nhập và phân quyền ở môi trường riêng, chốt chính sách hoa hồng theo giá vốn thật, rồi pilot 5–10 đối tác. Không bật công khai trước khi duyệt.",
+};
 
 export default function DashboardPlanner({ supabase }) {
+  const { partnerNetworkEnabled } = useStaffFeatures();
   const today = houseDateKey();
   const [year, setYear] = useState(Number(today.slice(0, 4)));
   const [selectedDate, setSelectedDate] = useState(today);
@@ -37,13 +43,21 @@ export default function DashboardPlanner({ supabase }) {
       // Per-person pending reminder. An existing note/completion is never replaced.
       const { data: identity } = await supabase.auth?.getUser?.() || {};
     if (identity?.user?.id) {
+      const partnerReminder = partnerNetworkEnabled ? {
+        title: "Partner Network: hoàn tất email và thử 5–10 đối tác",
+        notes: "Module quản lý đối tác đã có trong bản này; đăng ký công khai vẫn đóng. Hoàn tất xác minh email tên miền, thử đăng nhập và phân quyền, chốt giá vốn thật cùng điều khoản hoa hồng, rồi duyệt pilot 5–10 đối tác. Không tự gửi lời mời hoặc chuyển tiền.",
+        href: "/admin/partner-network",
+      } : { ...ORIGINAL_PARTNER_REMINDER, href: "/admin/control?tab=updates" };
       const reminder = await supabase.from("dashboard_plans").upsert({
         user_id: identity.user.id, kind: "feature", seed_key: "partner-network-internal-review",
-        title: "Quay lại duyệt Partner Network sau catalog mua lẻ",
-        notes: "Partner Network Phase 1 đã có code trên nhánh codex/b2b-partner-network-phase-1, chưa lên live. Sau catalog B2C: thử đăng nhập và phân quyền ở môi trường riêng, chốt chính sách hoa hồng theo giá vốn thật, rồi pilot 5–10 đối tác. Không bật công khai trước khi duyệt.",
-        href: "/admin/control?tab=updates", status: "pending", notify_telegram: false,
+        ...partnerReminder, status: "pending", notify_telegram: false,
       }, { onConflict: "user_id,seed_key", ignoreDuplicates: true });
-      setReminderError(reminder.error ? "Chưa lưu được lời nhắc Partner Network. Bạn vẫn có thể thêm mục chờ thủ công." : "");
+      // Upgrade only the untouched automatic note, retaining user edits/completion.
+      const upgrade = partnerNetworkEnabled && !reminder.error ? await supabase.from("dashboard_plans")
+        .update({ ...partnerReminder, updated_at: new Date().toISOString() })
+        .eq("user_id", identity.user.id).eq("seed_key", "partner-network-internal-review")
+        .eq("status", "pending").eq("title", ORIGINAL_PARTNER_REMINDER.title).eq("notes", ORIGINAL_PARTNER_REMINDER.notes) : null;
+      setReminderError(reminder.error || upgrade?.error ? "Chưa lưu được lời nhắc Partner Network. Bạn vẫn có thể thêm mục chờ thủ công." : "");
     }
     } catch { setReminderError("Chưa lưu được lời nhắc Partner Network. Bạn vẫn có thể thêm mục chờ thủ công."); }
     try {
@@ -62,7 +76,7 @@ export default function DashboardPlanner({ supabase }) {
     setError("");
     setPlans(plansResult.data || []);
     setTasks(tasksResult.data || []);
-  }, [supabase, year]);
+  }, [supabase, year, partnerNetworkEnabled]);
 
   useEffect(() => { load(); }, [load]);
 

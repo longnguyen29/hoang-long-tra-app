@@ -14,6 +14,7 @@ import TrackingSmsPreview from "./TrackingSmsPreview";
 import OrderSmsHistory from "./OrderSmsHistory";
 import { smsStatus } from "@/lib/sms-status";
 import ProcedureOrderLink from "./ProcedureOrderLink";
+import PartnerReferralLink from "./PartnerReferralLink";
 import NewOrderPanel from "./NewOrderPanel";
 import SampleFollowups from "./SampleFollowups";
 import LoadFailure from "./LoadFailure";
@@ -322,6 +323,7 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
   {order.reorderOfOrderId&&<p className={styles.reorderOrigin}>Đặt lại từ đơn {order.reorderOfOrderId}. Đơn này có lịch sử và trạng thái xử lý riêng.</p>}
   <button type="button" className={styles.reorderAction} onClick={onReorder} disabled={saving}><RotateCcw/> Đặt lại đơn này</button>
   <ProcedureOrderLink order={order} role={role}/>
+  {order.type === "wholesale" && <PartnerReferralLink orderId={order.id}/>}
   {actionError&&<p className={styles.error} role="alert">{actionError}</p>}
   <section className={styles.typeEditor} aria-label="Loại đơn và giá bán">
    <h3>Loại đơn & giá bán</h3>
