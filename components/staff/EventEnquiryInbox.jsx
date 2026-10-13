@@ -56,7 +56,7 @@ export default function EventEnquiryInbox({ supabase, opportunityId = null, refr
 
   return <details className={styles.inbox} data-no-translate>
     <summary>
-      <span><strong>{tx(locale, "Liên hệ từ hội chợ / QR", "Event / QR enquiries")}</strong>
+      <span><strong>{tx(locale, "Liên hệ website / hội chợ / xuất khẩu", "Website / event / export enquiries")}</strong>
         <small>{tx(locale, "Nội dung khách đã gửi về Hoàng Long", "Enquiries submitted to Hoàng Long")}</small>
       </span>
       <span className={styles.summaryEnd}>
@@ -70,7 +70,7 @@ export default function EventEnquiryInbox({ supabase, opportunityId = null, refr
         <button type="button" onClick={load} disabled={loading}><RefreshCw aria-hidden="true" />{tx(locale, "Làm mới", "Refresh")}</button>
       </header>
       {loading ? <p className={styles.message} role="status">{tx(locale, "Đang tải yêu cầu…", "Loading enquiries…")}</p>
-        : error ? <div className={styles.error} role="alert"><p>{tx(locale, "Chưa tải được liên hệ hội chợ. Các phần khác của Pipeline vẫn dùng được.", "Event enquiries could not be loaded. Other Pipeline features remain available.")}</p><button type="button" onClick={load}>{tx(locale, "Thử lại", "Retry")}</button></div>
+        : error ? <div className={styles.error} role="alert"><p>{tx(locale, "Chưa tải được yêu cầu liên hệ. Các phần khác của Pipeline vẫn dùng được.", "Contact enquiries could not be loaded. Other Pipeline features remain available.")}</p><button type="button" onClick={load}>{tx(locale, "Thử lại", "Retry")}</button></div>
           : enquiries.length === 0 ? <p className={styles.message}>{tx(locale, "Chưa có yêu cầu trong mục này.", "No enquiries in this section yet.")}</p>
             : <div className={styles.list}>{enquiries.map((enquiry) => <article className={styles.enquiry} key={enquiry.id}>
               <header><span className={styles.reference}>{reference(enquiry.id)}</span><time dateTime={enquiry.received_at}>{timestamp(enquiry.received_at, locale)} · VN</time><span className={styles.intent}>{intentLabel(enquiry.intent, locale)}</span></header>
