@@ -43,7 +43,8 @@ export default function TaiwanExportDesk({ initialTeaIds = EXPORT_TEAS.map(tea =
   const selectionKey = teas.map(tea => tea.id).join(",");
   useEffect(() => {
     setEstimateTea(current => selectionKey.split(",").includes(current) ? current : selectionKey.split(",")[0]);
-  }, [selectionKey]);
+    setCopied(false); setShareFallback("");
+  }, [selectionKey, profile.id]);
   const loadPrices = useCallback(async (signal) => {
     setLoading(true);
     try {
@@ -66,6 +67,7 @@ export default function TaiwanExportDesk({ initialTeaIds = EXPORT_TEAS.map(tea =
 
   function chooseCurrency(value) {
     setCurrency(value);
+    setCopied(false); setShareFallback("");
     const url = new URL(window.location.href); url.searchParams.set("currency", value);
     window.history.replaceState(null, "", url.pathname + url.search + url.hash);
   }
