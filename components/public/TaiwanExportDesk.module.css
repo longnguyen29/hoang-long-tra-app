@@ -19,6 +19,20 @@
 .nav { display: flex; gap: var(--space-lg); flex-wrap: wrap; padding: var(--space-2xs) var(--page-gutter); border-bottom: var(--rule-thin) solid var(--color-rule-2); }
 .nav a { display: inline-flex; align-items: center; min-height: var(--control-height); font-size: var(--text-sm); text-decoration: none; white-space: nowrap; }
 .hero { display: grid; gap: var(--space-xl); padding: var(--space-xl) var(--page-gutter); }
+.heroAside { min-width: 0; }
+.teaPhotos { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-xs); }
+.teaPhotos figure { min-width: 0; margin: 0; }
+.teaPhotos img { display: block; width: 100%; height: auto; aspect-ratio: 4/3; object-fit: cover; }
+.teaPhotos figcaption, .photoNote { color: var(--color-muted); font-size: var(--text-xs); line-height: 1.65; }
+.teaPhotos figcaption { margin-top: var(--space-2xs); }
+.photoNote { margin: var(--space-xs) 0 var(--space-md); }
+.roles { border-top: var(--rule-thin) solid var(--color-rule); }
+.roleRows { display: grid; gap: var(--space-md); margin: 0; }
+.roleRows > div { min-width: 0; border-top: var(--rule-thin) solid var(--color-accent); padding-top: var(--space-sm); }
+.roleRows dt { font: 600 var(--text-md)/1.5 var(--font-export-display); }
+.roleRows dd { margin: var(--space-xs) 0 0; color: var(--color-ink-2); font-size: var(--text-sm); line-height: 1.85; }
+@media (min-width: 48rem) { .roleRows { grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--space-lg); } }
+@media print { .teaPhotos figure, .roleRows > div { break-inside: avoid; } .roleRows { grid-template-columns: repeat(3,minmax(0,1fr)); } }
 .eyebrow { margin: 0 0 var(--space-sm); color: var(--color-accent); font-size: var(--text-xs); font-weight: 700; letter-spacing: .06em; line-height: 1.6; }
 .hero h1 { max-width: 22ch; margin: 0; font: 500 clamp(2.35rem, 5.2vw, 4.6rem)/1.13 var(--font-export-display); letter-spacing: -.025em; text-wrap: balance; }
 .intro { max-width: 62ch; margin: var(--space-lg) 0 0; color: var(--color-ink-2); font-size: var(--text-base); line-height: 1.85; }

@@ -72,3 +72,33 @@ test("database throttles and unavailable services do not leak data or claim a sa
   fixture(() => { throw new Error("PRIVATE-KEY"); });
   assert.equal((await send()).status, 503);
 });
+test("connector enquiry reaches the shared transaction with the customer's identity, not the connector's", async () => {
+  let count = 0;
+  const calls = fixture((args) => ({ data: { request_id: args.p_request_id, is_new: count++ === 0 }, error: null }));
+  const body = valid({ submitterRole: "connector", connectorName: "Test responsible person", connectorContact: "COORDINATOR@example.test" });
+  const first = await send(body);
+  const retry = await send(body);
+  assert.equal(first.status, 201);
+  assert.equal(retry.status, 200);
+  assert.equal(calls[0].args.p_business, "Test company");
+  assert.equal(calls[0].args.p_name, "Test buyer");
+  assert.equal(calls[0].args.p_contact, "+886 912 345 678");
+  assert.match(calls[0].args.p_note, /Submitted by: Connector/);
+  assert.match(calls[0].args.p_note, /Connector responsible: Test responsible person \/ coordinator@example.test/);
+  assert.deepEqual(calls[0].args, calls[1].args);
+  assert.deepEqual(await first.json(), { ok: true, requestId, reference: "HL-E-12345678" });
+  assert.deepEqual(await retry.json(), { ok: true, requestId, reference: "HL-E-12345678" });
+});
+test("invalid connector roles or details return safe actionable errors, and buyer contact is still mandatory", async () => {
+  const calls = fixture();
+  for (const [fields, error] of [[{ submitterRole: "admin" }, "invalid_submitter_role"],
+    [{ submitterRole: "connector", connectorName: "", connectorContact: "coordinator@example.test" }, "connector_name_required"],
+    [{ submitterRole: "connector", connectorName: "Test connector", connectorContact: "LINE:private-id" }, "invalid_connector_contact"],
+    [{ submitterRole: "connector", connectorName: "Test connector", connectorContact: "coordinator@example.test", contact: "" }, "invalid_contact"],
+    [{ submitterRole: "connector", connectorName: "Test connector", connectorContact: "coordinator@example.test", name: "" }, "invalid_request"]]) {
+    const response = await send(valid(fields));
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { ok: false, error });
+  }
+  assert.equal(calls.length, 0);
+});

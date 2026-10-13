@@ -12,7 +12,7 @@ export async function POST(request) {
   let input;
   try { input = exportEventInput(await readEventEnquiryBody(request)); }
   catch (error) {
-    const codes = ["consent_required", "authorization_required", "tea_required", "contact_detail_required", "invalid_quantity", "invalid_date", "note_too_long"];
+    const codes = ["consent_required", "authorization_required", "tea_required", "contact_detail_required", "invalid_quantity", "invalid_date", "note_too_long", "invalid_submitter_role", "connector_name_required", "invalid_connector_contact"];
     return fail(codes.includes(error.message) ? error.message : "invalid_request");
   }
   const headers = new Headers(request.headers);

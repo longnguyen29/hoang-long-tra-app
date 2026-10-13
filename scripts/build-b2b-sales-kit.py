@@ -166,7 +166,7 @@ class SalesKit:
     def cover(self):
         self.start("01 / SẢN PHẨM & ĐIỀU KIỆN CUNG ỨNG")
         self.para("Trà Việt cho\nhợp tác dài hạn.", M, 751, CW, 30.5, 38, "DisplayBold", JADE)
-        self.para("Nguồn cung tại nhà máy cho đối tác thương mại, nhà phân phối và\nquán đồ uống. Chọn dòng trà, thử mẫu và thống nhất yêu cầu trước khi đặt.",
+        self.para("Bộ thông tin để connector giới thiệu Hoàng Long, tìm hiểu nhu cầu\nkhách mua và phối hợp thử mẫu. Giao dịch được chốt với bên mua.",
                   M, 659, CW, 10.4, 15.6, max_height=33)
         facts = [("NĂNG LỰC CÔNG BỐ", "50-100 tấn/tháng"),
                  ("CHUẨN BỊ XUẤT HÀNG", "2-6 tuần"),
@@ -178,16 +178,26 @@ class SalesKit:
             self.para(value, x, 592, cell - 12, 14.1, 19, "DisplayBold", JADE, max_height=21)
         self.para("Lịch sẵn hàng phụ thuộc khối lượng, quy cách và yêu cầu đã xác nhận cho từng đơn.",
                   M, 562, CW, 8.7, 13, color=MUTED, max_height=14)
-        self.image("landing/3.jpg", M, 535, CW, 147, crop=(0.5, 0.08))
-        self.label("HÌNH ẢNH DÂY CHUYỀN CHẾ BIẾN HOÀNG LONG", M, 378, MUTED, 7.4)
+        photo_gap = 12
+        photo_w = (CW - photo_gap * 2) / 3
+        photos = [
+            ("export/hong-tra-shan-khoi.jpeg", "Ảnh danh mục\nHồng Trà Shan Khói", (0.5, 0.5)),
+            ("export/luc-tra-hoa-ngoc-lan.jpeg", "Ảnh danh mục\nLục Trà Hoa Ngọc Lan", (0.5, 0.5)),
+            ("landing/3.jpg", "Dây chuyền Hoàng Long\nẢnh nhà máy", (0.5, 0.93)),
+        ]
+        for idx, (path, caption, crop) in enumerate(photos):
+            x = M + idx * (photo_w + photo_gap)
+            self.image(path, x, 535, photo_w, 139, crop=crop)
+            self.para(caption, x, 386, photo_w, 7.3, 10.1, color=MUTED, max_height=21)
         self.para("Bốn dòng trà để bắt đầu", M, 355, CW, 18, 25, "DisplayBold", JADE)
-        self.label("SẢN PHẨM", M, 314, MUTED, 7.8)
+        self.para("Ảnh danh mục tham khảo; mẫu và lô chào hàng được xác nhận riêng.", M, 326, CW, 7.5, 11, color=MUTED, max_height=12)
+        self.label("SẢN PHẨM", M, 304, MUTED, 7.8)
         self.c.setFont("BodyBold", 7.8)
         self.c.setFillColor(MUTED)
-        self.c.drawRightString(W - M, 306.2, "GIÁ THAM KHẢO EXW / KG")
-        self.rule(298)
+        self.c.drawRightString(W - M, 296.2, "GIÁ THAM KHẢO EXW / KG")
+        self.rule(288)
         for idx, tea in enumerate(self.data["teas"]):
-            top = 286 - idx * 35
+            top = 276 - idx * 35
             self.label(f"0{idx + 1}", M, top, BRASS, 8.6)
             self.para(tea["name"]["vi"], M + 29, top + 2, 321, 10.8, 15, "BodyBold", max_height=16)
             value = f'{tea["priceVndPerKg"]:,.0f}'.replace(",", ".") + "đ"
@@ -203,51 +213,57 @@ class SalesKit:
         self.c.showPage()
 
     def workflow(self):
-        self.start("02 / QUY TRÌNH LÀM VIỆC HAI BÊN")
-        self.para("Rõ từng bước.\nChốt từng yêu cầu.", M, 751, CW, 28.5, 36, "DisplayBold", JADE)
-        self.para("Mẫu, quy cách và hồ sơ được thống nhất trước khi xác nhận cung ứng.\nĐối tác giới thiệu có thể dùng lộ trình này để trao đổi với khách.",
+        self.start("02 / QUY TRÌNH & VAI TRÒ BA BÊN")
+        self.para("Ba bên rõ vai trò.\nCùng một lộ trình.", M, 751, CW, 28.5, 36, "DisplayBold", JADE)
+        self.para("Connector là người kết nối, hỗ trợ trao đổi và theo dõi việc tiếp theo.\nHoàng Long cùng khách mua xác nhận giá, đơn hàng và thanh toán.",
                   M, 666, CW, 10.2, 15.5, max_height=33)
-        cols = [M, M + 30, M + 165, M + 330]
-        self.label("BƯỚC", cols[1], 613, MUTED, 7.5)
-        self.label("HOÀNG LONG", cols[2], 613, MUTED, 7.5)
-        self.label("KHÁCH HÀNG / ĐỐI TÁC", cols[3], 613, MUTED, 7.5)
+        gap = 18
+        col_w = (CW - gap * 2) / 3
+        cols = [M, M + col_w + gap, M + (col_w + gap) * 2]
+        self.label("HOÀNG LONG · CUNG CẤP", cols[0], 613, MUTED, 7.5)
+        self.label("CONNECTOR · KẾT NỐI", cols[1], 613, MUTED, 7.5)
+        self.label("KHÁCH HÀNG · BÊN MUA", cols[2], 613, MUTED, 7.5)
         self.rule(597)
         steps = [
-            ("Trao đổi nhu cầu", "Đề xuất dòng trà và thông tin cần làm rõ.", "Gửi mục đích dùng, thị trường, lượng và lịch cần hàng."),
-            ("Mẫu & thử nghiệm", "Thống nhất mẫu, cách gửi và phạm vi kiểm tra.", "Thử mẫu; phản hồi chất lượng và tiêu chí cần đáp ứng."),
-            ("Báo giá & PO", "Chốt giá, quy cách, lịch sẵn hàng và hồ sơ cung cấp.", "Xác nhận PO/hợp đồng, thanh toán và đầu mối nhận hàng."),
-            ("Thanh toán & khảo sát", "Xác nhận thanh toán; sắp lịch thăm nhà máy nếu cần.", "Thực hiện điều khoản đã chốt; gửi nội dung muốn kiểm tra."),
-            ("Chuẩn bị & QC", "Chuẩn bị sản xuất/tồn kho, bao bì và kiểm tra theo thỏa thuận.", "Xác nhận nhãn, hồ sơ và phương án nhận hàng."),
-            ("Bàn giao EXW", "Thông báo hàng sẵn tại điểm EXW đã thống nhất.", "Tổ chức bốc hàng, vận chuyển và thủ tục xuất/nhập khẩu."),
+            ("Trao đổi nhu cầu", "Đề xuất trà, mẫu và thông tin cần làm rõ.",
+             "Tổng hợp nhu cầu; chuyển liên hệ khi khách đồng ý.", "Gửi ứng dụng, lượng, thị trường và lịch cần hàng."),
+            ("Mẫu & kiểm nghiệm", "Sắp xếp mẫu; xác nhận quy cách và khả năng cung cấp hồ sơ.",
+             "Phối hợp gửi mẫu, thu phản hồi và hẹn trao đổi.", "Thử, duyệt mẫu; chốt chỉ tiêu kiểm nghiệm cần thiết."),
+            ("Báo giá, PO & thanh toán", "Chốt bằng văn bản giá, bao bì, hồ sơ và lịch sẵn hàng.",
+             "Chuyển yêu cầu và theo dõi; không tự cam kết giá.", "Duyệt báo giá, ký PO/hợp đồng và thanh toán theo thỏa thuận."),
+            ("Khảo sát, chuẩn bị & QC", "Hẹn kiểm tra xưởng; chuẩn bị hàng, mã lô và QC đã chốt.",
+             "Phối hợp lịch kiểm tra; cập nhật tiến độ hai bên.", "Chốt nội dung khảo sát, nhãn và tiêu chí nghiệm thu."),
+            ("Bàn giao EXW", "Thông báo hàng sẵn tại nhà máy; chuẩn bị chứng từ đã chốt.",
+             "Theo dõi lịch nhận; chuyển thông tin giữa hai bên.", "Tổ chức bốc hàng, vận tải và thủ tục xuất/nhập khẩu."),
+            ("Phản hồi & đặt lại", "Xử lý vấn đề theo thỏa thuận; trao đổi nguồn cung tiếp.",
+             "Thu phản hồi; theo dõi vấn đề và cuộc trao đổi tiếp.", "Xác nhận lượng nhận, chất lượng và kế hoạch mua tiếp."),
         ]
-        for idx, (title, seller, buyer) in enumerate(steps):
-            top = 583 - idx * 49
+        for idx, (title, seller, connector, buyer) in enumerate(steps):
+            top = 585 - idx * 60
             self.label(f"0{idx + 1}", M, top, BRASS, 9)
-            self.para(title, cols[1], top, 124, 9.2, 13.4, "BodyBold", max_height=40)
-            self.para(seller, cols[2], top, 151, 8.7, 12.7, max_height=39)
-            self.para(buyer, cols[3], top, CW - 330, 8.7, 12.7, max_height=39)
-            self.rule(top - 39)
-        self.image("landing/1.jpg", M, 269, 130, 158, crop=(0.5, 0.50))
-        x = M + 148
-        self.label("NGUỒN TRÀ · NHÀ MÁY · CHẤT LƯỢNG", x, 268, BRASS, 7.8)
-        self.para("Kiểm tra theo nhu cầu thực tế", x, 247, CW - 148, 15.3, 22, "DisplayBold", JADE)
-        self.para("Trao đổi vùng nguyên liệu theo từng dòng trà. Lịch thăm nhà máy cần hẹn trước; gửi nội dung khảo sát, số người và thời điểm mong muốn.",
-                  x, 214, CW - 148, 9.1, 13.8, max_height=43)
-        self.para("Có thể thống nhất cảm quan, độ ẩm, dư lượng thuốc bảo vệ thực vật, vi sinh hoặc hồ sơ thị trường yêu cầu. Hai bên xác nhận chỉ tiêu, phòng thử nghiệm, chi phí và thời gian trước khi thực hiện.",
-                  x, 164, CW - 148, 9.1, 13.8, max_height=57)
-        self.para("Cây trà trong vùng nguyên liệu; ảnh Hoàng Long đang công bố.",
-                  M, 103, 130, 7.4, 11, color=MUTED, max_height=34)
-        self.para("Hồ sơ và khả năng đáp ứng từng thị trường phải được xác nhận cho đơn cụ thể. Tài liệu này không khẳng định chứng nhận hay kết quả xét nghiệm đã có.",
-                  x, 98, CW - 148, 8, 11.6, color=MUTED, max_height=35)
+            self.para(title, M + 28, top + 1, CW - 28, 9.7, 14, "BodyBold", max_height=15)
+            for x, text in zip(cols, [seller, connector, buyer]):
+                self.para(text, x, top - 20, col_w, 8.55, 12.3, max_height=37)
+            self.rule(top - 57)
+        self.label("THĂM XƯỞNG & NGUỒN TRÀ", M, 207, BRASS, 7.8)
+        right = M + CW / 2 + 12
+        self.label("THỬ MẪU & KIỂM NGHIỆM", right, 207, BRASS, 7.8)
+        half = CW / 2 - 12
+        self.para("Xác nhận vùng nguyên liệu theo dòng trà và lô. Hẹn trước khi thăm nhà máy tại Tân Lập, Hà Giang; gửi nội dung khảo sát, số người và ngày mong muốn.",
+                  M, 185, half, 9.1, 13.8, max_height=70)
+        self.para("Chốt cảm quan, độ ẩm, dư lượng, vi sinh hoặc hồ sơ thị trường yêu cầu. Xác nhận chỉ tiêu, phòng lab, chi phí và thời gian trước khi làm; không mặc định đã có chứng nhận/kết quả.",
+                  right, 185, half, 9.1, 13.8, max_height=70)
+        self.para("Connector hỗ trợ kết nối; không thay bên mua ký đơn, trả tiền hoặc chịu vận tải nếu chưa có thỏa thuận riêng.",
+                  M, 100, CW, 8.2, 12.1, color=MUTED, max_height=25)
         self.c.showPage()
 
     def contact_page(self):
         self.start("03 / THÔNG TIN TRAO ĐỔI & LIÊN HỆ")
         self.para("Chuẩn bị thông tin.\nBắt đầu bằng mẫu.", M, 751, CW, 28.5, 36, "DisplayBold", JADE)
-        self.para("Sáu thông tin giúp hai bên chọn mẫu, tính báo giá và xây lịch cung ứng.\nChưa rõ mục nào, cứ ghi nhu cầu dự kiến để cùng trao đổi.",
+        self.para("Connector thu thập sáu thông tin về bên mua để chọn mẫu và báo giá.\nBàn giao riêng người kết nối và liên hệ khách đã cho phép chia sẻ.",
                   M, 666, CW, 10.3, 15.5, max_height=33)
         briefs = [
-            ("Đơn vị & người liên hệ", "Tên doanh nghiệp/quán, người trao đổi, điện thoại/email và kênh liên hệ phù hợp."),
+            ("Khách mua & liên hệ", "Tên doanh nghiệp/quán của bên mua; người được phép trao đổi và liên hệ khách đồng ý chia sẻ."),
             ("Dòng trà & ứng dụng", "Trà muốn thử, phẩm cấp nếu có; dùng pha đồ uống, phân phối hay đóng gói lại."),
             ("Khối lượng & lịch mua", "Lượng dự kiến mỗi đơn/tháng, ngày cần hàng; ghi bằng kg hoặc tấn."),
             ("Bao bì & nhãn", "Chọn bao bì tiêu chuẩn hoặc yêu cầu riêng; quy cách, ngôn ngữ nhãn và thông tin lô."),
