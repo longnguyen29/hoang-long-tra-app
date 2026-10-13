@@ -63,6 +63,25 @@ test("closed public intake allows only a verified server-checked manager to revi
     if (savedIntake === undefined) delete process.env.PARTNER_NETWORK_PUBLIC_REGISTRATION; else process.env.PARTNER_NETWORK_PUBLIC_REGISTRATION = savedIntake;
   }
 });
+test("closed intake grants only a verified invited UID through trusted app metadata, never user metadata", async () => {
+  const savedModule = process.env.PARTNER_NETWORK_ENABLED;
+  const savedIntake = process.env.PARTNER_NETWORK_PUBLIC_REGISTRATION;
+  const user = { id: "invited-user", email: "partner@example.test", email_confirmed_at: "2026-10-13", app_metadata: { hl_partner_invited: true } };
+  const unprivileged = { async rpc() { return { data: false, error: null }; } };
+  try {
+    process.env.PARTNER_NETWORK_ENABLED = "true"; process.env.PARTNER_NETWORK_PUBLIC_REGISTRATION = "false";
+    assert.deepEqual(await partnerRegistrationAccess(user, unprivileged), { allowRegistration: true, publicRegistration: false, registrationUserId: user.id });
+    for (const variant of [{ ...user, email_confirmed_at: null }, { ...user, app_metadata: {}, user_metadata: { hl_partner_invited: true } },
+      { ...user, app_metadata: { hl_partner_invited: "true" } }, { ...user, app_metadata: Object.create({ hl_partner_invited: true }) }]) {
+      assert.equal((await partnerRegistrationAccess(variant, unprivileged)).allowRegistration, false);
+    }
+    process.env.PARTNER_NETWORK_ENABLED = "false";
+    assert.equal((await partnerRegistrationAccess(user, unprivileged)).allowRegistration, false);
+  } finally {
+    if (savedModule === undefined) delete process.env.PARTNER_NETWORK_ENABLED; else process.env.PARTNER_NETWORK_ENABLED = savedModule;
+    if (savedIntake === undefined) delete process.env.PARTNER_NETWORK_PUBLIC_REGISTRATION; else process.env.PARTNER_NETWORK_PUBLIC_REGISTRATION = savedIntake;
+  }
+});
 test("partner buyer and referral routes refresh sessions without extending refresh to the retail catalog", () => {
   for (const pathname of ["/partners", "/partners/account", "/partners/network", "/partners/auth/callback?code=test", "/admin/partner-network"]) {
     assert.equal(unstable_doesMiddlewareMatch({ config: proxyConfig, url: `https://www.hoanglongtra.com${pathname}` }), true, pathname);
