@@ -4,7 +4,7 @@
 
 ## Commercial source and boundaries
 
-Owner-supplied EXW prices, in VND/kg: Trà Xanh Hấp 75,000; Hồng Trà Khói 85,000; Hồng Trà OP1 80,000; Trà Xanh Hoa Ngọc Lan 100,000. Prices include standard packaging. Named EXW place: **Nhà máy Trà Hoàng Long - Tân Lập, Hà Giang**. Capacity is 50–100 tonnes/month. The owner's updated transaction window is **2–8 weeks including transport, excluding unexpected delays**; the formal quotation confirms the shipment plan. This window does not include freight in EXW prices or guarantee available inventory.
+Owner-supplied EXW prices, updated 14 October 2026 by +5,000 VND/kg: Trà Xanh Hấp 80,000; Hồng Trà Khói 90,000; Hồng Trà OP1 85,000; Trà Xanh Hoa Ngọc Lan 105,000. Prices include standard packaging. Named EXW place: **Nhà máy Trà Hoàng Long - Tân Lập, Hà Giang**. Capacity is 50–100 tonnes/month. The owner's updated transaction window is **2–8 weeks including transport, excluding unexpected delays**; the formal quotation confirms the shipment plan. This window does not include freight in EXW prices or guarantee available inventory.
 
 Custom packaging/labels, applicable taxes, MOQ, payment terms, laboratory scope/costs and shipment schedule are agreed in a formal quotation. The buyer arranges loading, freight and export/import formalities under EXW; any additional seller assistance must be agreed. Office/warehouse in Hanoi is distinguished from the factory. Existing company-profile photographs and EN/VI company PDFs are reused; certificates, laboratory results and import clearance are not invented. These offers do not change retail price agreements or map display IDs to catalog SKUs without verification.
 
