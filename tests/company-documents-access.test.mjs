@@ -79,7 +79,7 @@ test("approved partner lookup uses a safe projection and never exports internal 
   assert.equal(context.partners[0].id, row.id);
   assert.equal(context.partners[0].first_order_rate_percent, null);
   assert.equal(context.partners[0].repeat_order_limit, 3);
-  assert.deepEqual(Object.keys(context.partners[0]), ["id", "code", "business_name", "contact_name", "email", "phone", "region", "partner_type", "first_order_rate_percent", "default_rate_percent", "rate_percent", "repeat_rate_percent", "repeat_order_limit"]);
+  assert.deepEqual(Object.keys(context.partners[0]), ["id", "code", "business_name", "contact_name", "email", "phone", "region", "partner_type", "first_order_rate_percent", "default_rate_percent", "rate_percent", "repeat_rate_percent", "repeat_order_limit", "commission_basis"]);
   assert.equal(calls.find(call => call[0] === "select" && call[1] === "partner_network_partners")[2], Object.keys(context.partners[0]).join(","));
   assert.deepEqual(calls.slice(-3), [["eq", "partner_network_partners", "status", "approved"], ["order", "partner_network_partners", "business_name", { ascending: true }], ["limit", "partner_network_partners", 201]]);
   assert.equal(JSON.stringify(context).includes("private"), false);
