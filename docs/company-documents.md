@@ -16,7 +16,7 @@ For the referral agreement, **Mức hoa hồng mẫu** uses the same explicit pr
 
 - SSR `getUser()` verifies the account, confirmed email and its own `staff_roles` row before rendering the builder or fetching partner information.
 - The optional partner selector uses the existing manager RLS, approved-only SELECT and an explicit projection, bounded to 200 records. It does not call `partner_network_admin_snapshot()`, which synchronizes order links.
-- No service credentials, internal margins/costs, bank information, review notes or customer lists enter the builder.
+- No service credentials, ledger costs, bank information, review notes or customer lists are fetched into the builder. Reconciliation cost totals are entered explicitly by the manager for the draft.
 - Download and print do not approve partners, mutate commission rules, reconcile production data, create payments or persist signed records. Reconciliation minutes calculate an explicitly entered group of orders with one agreed rate; they do not replace the existing commission ledger.
 - No migration, new environment variable, external PDF service or runtime dependency is required.
 
@@ -24,7 +24,9 @@ For the referral agreement, **Mức hoa hồng mẫu** uses the same explicit pr
 
 The user must supply the verified Hoàng Long legal entity, tax ID, registered address and authorised representative. These are not available in the existing public company settings. Public brand contact is reused, not treated as legal identity.
 
-The referral agreement expressly proposes calculating commissions on collected revenue excluding VAT, customer-billed shipping, refunds and cancelled orders, with a bounded repeat-order entitlement. The minutes require each exclusion, including an explicit zero when appropriate; instructions warn against deducting the same refunded/cancelled or tax/shipping amount twice. Different commission rates need separate breakdowns.
+New standalone agreements default to profit after all confirmed order costs, before commission itself. Selecting an existing partner preserves its agreed basis; old saved JSON drafts without a basis retain the earlier revenue policy. A basis selector keeps that distinction explicit. The agreement includes editable cost-allocation and selective private-evidence terms, with a bounded repeat-order entitlement.
+
+The minutes deduct VAT, customer-billed shipping, refunds and cancellations from collected revenue, then deduct explicitly confirmed costs when using the profit basis. Unknown costs block export rather than becoming zero; an explicit zero is valid. Losses yield zero commission. Instructions warn against deducting the same amount twice or including commission in its own calculation base. Different rates need separate breakdowns. The draft is not the database ledger or an approved payout.
 
 Contract structure was cross-checked against the primary reproduction of [Civil Code 91/2015/QH13, Article 398](https://www.wipo.int/wipolex/en/legislation/details/17200). The templates do not claim a legal review, invent statutory rates/tax treatment or replace the parties' agreement and review.
 

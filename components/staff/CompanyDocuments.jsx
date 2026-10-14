@@ -66,7 +66,7 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", p
     importVersion.current += 1;
     setDraft(previous => ({ ...previous, [name]: value }));
     setReviewed(false); setDirty(true); setNotice(""); setFileError("");
-    if (["first_order_rate_percent", "repeat_rate_percent", "repeat_order_limit", "partner_role"].includes(name)) setCommissionTier("custom");
+    if (["first_order_rate_percent", "repeat_rate_percent", "repeat_order_limit", "partner_role", "commission_basis"].includes(name)) setCommissionTier("custom");
   }
   function changeTemplate(id) {
     importVersion.current += 1;
@@ -117,7 +117,7 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", p
       if (version !== importVersion.current) return;
       if (input?.format !== DRAFT_FORMAT || input.version !== 1 || !DOCUMENT_TEMPLATES.some(item => item.id === input.template_id)
         || !input.fields || typeof input.fields !== "object" || Array.isArray(input.fields)) throw new Error("format");
-      const result = normalizeDocumentDraft({ ...input.fields, template_id: input.template_id });
+      const result = normalizeDocumentDraft({ ...input.fields, commission_basis: input.fields.commission_basis ?? "revenue", template_id: input.template_id });
       if (!result.data || Object.keys(result.errors || {}).length) throw new Error("fields");
       setDraft(result.data); setTemplateId(input.template_id); setSelectedPartner(""); setCommissionTier(getMatchingCommissionTier(result.data)); setReviewed(false);
       setShowErrors(false); setFileError(""); setDirty(false); setNotice("Đã mở bản nháp trên thiết bị này. Các số liệu không được ghi ngược vào Partner Network.");

@@ -1,0 +1,22 @@
+.panel { margin-top: var(--space-md); border: 1px solid var(--color-rule); color: var(--color-ink); }
+.panel summary { min-height: var(--control-height); padding: var(--space-sm); cursor: pointer; font-weight: 600; font-size: var(--text-sm); }
+.body { display: grid; gap: var(--space-sm); padding: var(--space-sm); border-top: 1px solid var(--color-rule); }
+.body p { margin: 0; font-size: var(--text-sm); line-height: 1.6; }
+.body form, .body label { display: grid; gap: var(--space-xs); }
+.body form { padding-top: var(--space-sm); border-top: 1px solid var(--color-rule); }
+.body label { font-size: var(--text-sm); font-weight: 600; }
+.body textarea, .body input:not([type=checkbox]) { width: 100%; min-width: 0; min-height: var(--control-height); padding: var(--space-xs); border: 1px solid var(--color-rule); background: var(--color-paper); color: inherit; font: inherit; }
+.body textarea { resize: vertical; }
+.body button, .download { min-height: var(--control-height); padding: var(--space-xs) var(--space-sm); border: 1px solid var(--color-rule); background: var(--color-paper); color: inherit; font: 600 var(--text-sm)/1.4 var(--font-body); cursor: pointer; text-align: left; }
+.body button:disabled { cursor: default; opacity: .55; }
+.body small, .note { color: var(--color-muted); font-size: var(--text-xs); font-weight: 400; }
+.body .consent { display: flex; align-items: flex-start; gap: var(--space-xs); font-weight: 400; line-height: 1.6; }
+.consent input { flex: none; width: 20px; height: 20px; margin-top: 3px; accent-color: var(--color-ink); }
+.totals { margin: 0; display: grid; gap: var(--space-xs); }
+.totals div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-xs); padding-block: var(--space-2xs); border-bottom: 1px solid var(--color-rule); font-size: var(--text-sm); }
+.totals dd { margin: 0; font-weight: 600; }
+.file { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-xs); }
+.file span { flex: 1 1 100%; overflow-wrap: anywhere; font-size: var(--text-sm); }
+.summaryText { white-space: pre-wrap; overflow-wrap: anywhere; }
+.error { color: var(--color-danger); }
+.download { overflow-wrap: anywhere; text-decoration: underline; }
