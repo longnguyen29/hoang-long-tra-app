@@ -42,15 +42,21 @@ const SENDER_ERRORS = {
   en: { connector_name_required: "Add the responsible referral partner's name.", invalid_connector_contact: "Add the referral partner's valid email or phone number, not a LINE ID.", invalid_submitter_role: "Choose Buyer or Referral partner." },
   "zh-TW": { connector_name_required: "請填寫負責介紹人的姓名。", invalid_connector_contact: "請填寫介紹人有效的電子郵件或電話，不可使用 LINE ID。", invalid_submitter_role: "請選擇買方或介紹人。" },
 };
+const PAGE_COPY = {
+  vi: { location: "Khu vực / nơi nhận hàng", locationHint: "Tỉnh, thành phố và quốc gia của khách; chưa cần địa chỉ đầy đủ.", volume: "Khối lượng dự kiến cho đơn này (kg)", consent: name => `Tôi đồng ý để Hoàng Long chia sẻ thông tin yêu cầu, liên hệ của khách và tiến triển mẫu / báo giá / đơn hàng với ${name}, đối tác giới thiệu trên trang này.`, received: "Nguồn đối tác đã được lưu để Hoàng Long kiểm tra. Gửi yêu cầu chưa phải xác nhận đơn hàng hoặc quyền hưởng hoa hồng.", errors: { location_required: "Điền khu vực / nơi nhận hàng của khách.", invalid_location: "Kiểm tra khu vực / nơi nhận hàng, tối đa 160 ký tự.", partner_consent_required: "Xác nhận đồng ý chia sẻ yêu cầu và tiến triển với đối tác trên trang.", invalid_partner_page: "Trang giới thiệu không còn nhận yêu cầu. Liên hệ Hoàng Long để được hỗ trợ.", partner_page_unavailable: "Trang giới thiệu không còn nhận yêu cầu. Liên hệ Hoàng Long để được hỗ trợ.", partner_page_changed: "Thông tin trang đã thay đổi. Tải lại trang và kiểm tra liên hệ trước khi gửi." } },
+  en: { location: "Customer region / delivery destination", locationHint: "City, province and country; a full address is not needed yet.", volume: "Expected volume for this order (kg)", consent: name => `I agree that Hoàng Long may share this enquiry, the customer's business contact details and basic sample / quotation / order progress with ${name}, the referral partner shown on this page.`, received: "The referral source has been saved for Hoàng Long to review. This does not confirm an order or commission entitlement.", errors: { location_required: "Add the customer's region / delivery destination.", invalid_location: "Check the destination, up to 160 characters.", partner_consent_required: "Agree to share the enquiry and progress with the named partner.", invalid_partner_page: "This referral page is no longer accepting enquiries. Contact Hoàng Long.", partner_page_unavailable: "This referral page is no longer accepting enquiries. Contact Hoàng Long.", partner_page_changed: "This page has changed. Reload it and check the contact before submitting." } },
+  "zh-TW": { location: "客戶地區／交貨目的地", locationHint: "請填寫城市、地區及國家，暫不需要完整地址。", volume: "本次訂單預計採購量（公斤）", consent: name => `我同意 Hoàng Long 與本頁介紹合作夥伴 ${name} 分享此需求、客戶業務聯絡資訊及基本樣品／報價／訂單進度。`, received: "介紹來源已儲存供 Hoàng Long 審核；不代表訂單或佣金權利已確認。", errors: { location_required: "請填寫客戶地區／交貨目的地。", invalid_location: "請確認目的地，最多 160 字元。", partner_consent_required: "請同意與本頁合作夥伴分享需求及進度。", invalid_partner_page: "此介紹頁面已停止接受需求，請聯繫 Hoàng Long。", partner_page_unavailable: "此介紹頁面已停止接受需求，請聯繫 Hoàng Long。", partner_page_changed: "頁面資料已更新，請重新載入並確認聯絡資訊。" } },
+};
 const METHODS = { email: "Email", phone: { vi: "Điện thoại", en: "Phone", "zh-TW": "電話" }, line: "LINE", zalo: "Zalo", whatsapp: "WhatsApp" };
 
-export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], availableTeaIds = EXPORT_TEAS.map((tea) => tea.id), intent = "quote", compact = false, initialCurrency = "TWD" }) {
+export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], availableTeaIds = EXPORT_TEAS.map((tea) => tea.id), intent = "quote", compact = false, initialCurrency = "TWD", partnerPage = null, presentationProfileId }) {
   const language = Object.hasOwn(COPY, locale) ? locale : "zh-TW";
   const t = COPY[language];
   const availableTeas = EXPORT_TEAS.filter((tea) => Array.isArray(availableTeaIds) && availableTeaIds.includes(tea.id));
   const availabilityKey = availableTeas.map((tea) => tea.id).join(",");
-  const [form, setForm] = useState(() => ({ ...INITIAL, teaIds: [...new Set(selectedTeaIds)].filter((id) => availableTeas.some((tea) => tea.id === id)).slice(0, 4), intent: ["sample", "quote", "factory_visit"].includes(intent) ? intent : "quote", currency: ["VND", "USD", "TWD", "CNY"].includes(initialCurrency) ? initialCurrency : "TWD" }));
+  const [form, setForm] = useState(() => ({ ...INITIAL, location: "", teaIds: [...new Set(selectedTeaIds)].filter((id) => availableTeas.some((tea) => tea.id === id)).slice(0, 4), intent: ["sample", "quote", "factory_visit"].includes(intent) ? intent : "quote", currency: ["VND", "USD", "TWD", "CNY"].includes(initialCurrency) ? initialCurrency : "TWD" }));
   const [consent, setConsent] = useState(false);
+  const [partnerConsent, setPartnerConsent] = useState(false);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const [saved, setSaved] = useState(null);
@@ -65,6 +71,10 @@ export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], a
   }, [initialCurrency, saved]);
   const inFlight = useRef(false);
   const heading = useRef(null);
+  const pageCopy = PAGE_COPY[language];
+  const pageErrors = { ...pageCopy.errors, page_unavailable: pageCopy.errors.partner_page_unavailable };
+  const partnerPageInput = partnerPage ? { slug: partnerPage.slug, revision: partnerPage.revision } : null;
+  const previewInput = { ...form, ...(partnerPageInput ? { partnerPage: partnerPageInput, partnerConsent: true } : presentationProfileId ? { presentationProfileId } : {}) };
   useEffect(() => {
     if (inFlight.current || saved) return;
     setForm((current) => {
@@ -94,7 +104,7 @@ export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], a
   const update = (field, value) => {
     if (inFlight.current || saved) return;
     if (field === "currency") quoteCurrencyEdited.current = true;
-    if (field === "submitterRole") setConsent(false);
+    if (field === "submitterRole") { setConsent(false); setPartnerConsent(false); }
     requestId.current = "";
     setError("");
     setForm((current) => ({ ...current, [field]: value, ...(field === "submitterRole" && value === "buyer" ? { connectorName: "", connectorContact: "" } : {}), ...(field === "contact" && ["email", "phone"].includes(current.contactMethod) ? { contactMethod: value.includes("@") ? "email" : "phone" } : {}) }));
@@ -105,13 +115,15 @@ export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], a
     if (!form.business.trim() || !form.name.trim() || !form.contact.trim()) { setError("required"); return; }
     if (!form.teaIds.length) { setError("tea_required"); return; }
     if (!consent) { setError("consent_required"); return; }
+    if (partnerPage && !form.location.trim()) { setError("location_required"); return; }
+    if (partnerPage && !partnerConsent) { setError("partner_consent_required"); return; }
     if (form.submitterRole === "connector") {
       if (!form.connectorName.trim()) { setError("connector_name_required"); return; }
       try { normalizeExportConnectorContact(form.connectorContact); }
       catch { setError("invalid_connector_contact"); return; }
     }
     if (["line", "zalo", "whatsapp"].includes(form.contactMethod) && !form.contactDetail.trim()) { setError("contact_detail_required"); return; }
-    if (form.requirements.length > exportRequirementsLimit(form, exportAttribution(search))) { setError("note_too_long"); return; }
+    if (form.requirements.length > exportRequirementsLimit(previewInput, exportAttribution(search))) { setError("note_too_long"); return; }
     inFlight.current = true;
     setSending(true);
     setError("");
@@ -121,27 +133,27 @@ export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], a
       if (!requestId.current) requestId.current = crypto.randomUUID();
       const response = await fetch("/api/export-enquiries", {
         method: "POST", headers: { "Content-Type": "application/json" }, signal: controller.signal,
-        body: JSON.stringify({ ...form, consent: true, authorized: true, requestId: requestId.current, attribution: exportAttribution(search) }),
+        body: JSON.stringify({ ...form, consent: true, authorized: true, requestId: requestId.current, attribution: exportAttribution(search), ...(partnerPageInput ? { partnerPage: partnerPageInput, partnerConsent } : presentationProfileId ? { presentationProfileId } : {}) }),
       });
       const result = await response.json();
       if (response.ok && result.ok === true && result.requestId === requestId.current && /^HL-E-[a-f0-9]{8}$/i.test(result.reference || "")) setSaved(result);
-      else setError(result.error === "note_too_long" ? "note_too_long" : Object.hasOwn(t.errors, result.error) || Object.hasOwn(SENDER_ERRORS[language], result.error) ? result.error : "unavailable");
+      else setError(result.error === "note_too_long" ? "note_too_long" : Object.hasOwn(t.errors, result.error) || Object.hasOwn(SENDER_ERRORS[language], result.error) || Object.hasOwn(pageErrors, result.error) ? result.error : "unavailable");
     } catch { setError("unavailable"); }
     finally { window.clearTimeout(timeout); inFlight.current = false; setSending(false); }
   };
   const reset = () => {
     quoteCurrencyEdited.current = false;
-    requestId.current = ""; setSaved(null); setError(""); setForm({ ...INITIAL, currency: ["VND", "USD", "TWD", "CNY"].includes(initialCurrency) ? initialCurrency : "TWD" }); setConsent(false);
+    requestId.current = ""; setSaved(null); setError(""); setForm({ ...INITIAL, location: "", currency: ["VND", "USD", "TWD", "CNY"].includes(initialCurrency) ? initialCurrency : "TWD" }); setConsent(false); setPartnerConsent(false);
   };
   const needsChannel = ["line", "zalo", "whatsapp"].includes(form.contactMethod);
-  const noteLimit = exportRequirementsLimit(form, exportAttribution(search));
+  const noteLimit = exportRequirementsLimit(previewInput, exportAttribution(search));
   const noteTooLong = form.requirements.length > noteLimit;
   return <section id="export-enquiry" className={`${styles.section} ${compact ? styles.compact : ""}`} lang={language} aria-labelledby="export-enquiry-title">
     <div className={styles.intro}>
       <p className={styles.eyebrow}>{t.eyebrow}</p><h2 id="export-enquiry-title">{t.title}</h2><p>{t.intro}</p>
       {!compact && <aside className={styles.partner}><strong>{t.connector}</strong><Link href={exportLink("/partners/network", search, language)}>{t.partner}<ArrowRight size={16} aria-hidden="true"/></Link><p>{t.partnerHint}</p></aside>}
     </div>
-    {saved ? <div className={styles.saved} role="status"><Check size={24} aria-hidden="true"/><h3 ref={heading} tabIndex={-1}>{t.sent}</h3><p>{t.sentBody}</p><p>{t.reference}: <strong>{saved.reference}</strong></p><button type="button" onClick={reset}>{t.another}</button></div> :
+    {saved ? <div className={styles.saved} role="status"><Check size={24} aria-hidden="true"/><h3 ref={heading} tabIndex={-1}>{t.sent}</h3><p>{t.sentBody}</p>{partnerPage && <p>{pageCopy.received}</p>}<p>{t.reference}: <strong>{saved.reference}</strong></p><button type="button" onClick={reset}>{t.another}</button></div> :
       <form className={styles.form} onSubmit={submit} aria-busy={sending}>
         <fieldset className={styles.fields} disabled={sending}>
           <label className={styles.honeypot} aria-hidden="true">Website<input name="website" tabIndex={-1} autoComplete="off" value={form.website} onChange={(e) => update("website", e.target.value)}/></label>
@@ -152,11 +164,12 @@ export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], a
             <label className={styles.field}>{t.name}<input name="name" autoComplete={form.submitterRole === "connector" ? "off" : "name"} required maxLength={80} value={form.name} onChange={(e) => update("name", e.target.value)}/></label>
             <label className={styles.field}>{t.contact}<input name="contact" required maxLength={120} placeholder={t.contactHint} aria-invalid={error === "invalid_contact"} value={form.contact} onChange={(e) => update("contact", e.target.value)}/></label>
           </div>
+          {partnerPage && <label className={styles.field}>{pageCopy.location}<input name="location" required maxLength={160} autoComplete="off" value={form.location} onChange={e => update("location", e.target.value)} aria-invalid={error === "location_required" || error === "invalid_location"}/><small>{pageCopy.locationHint}</small></label>}
           {form.submitterRole === "connector" && <section className={styles.saved} aria-labelledby="export-connector-title"><h3 id="export-connector-title">{t.connectorSection}</h3><p>{t.connectorSenderHint}</p><div className={styles.twoFields}><label className={styles.field}>{t.connectorSenderName}<input name="connectorName" required maxLength={40} autoComplete="name" aria-invalid={error === "connector_name_required"} value={form.connectorName} onChange={(e) => update("connectorName", e.target.value)}/></label><label className={styles.field}>{t.connectorSenderContact}<input name="connectorContact" required maxLength={60} autoComplete="off" placeholder="Email / +886… / +84…" aria-invalid={error === "invalid_connector_contact"} value={form.connectorContact} onChange={(e) => update("connectorContact", e.target.value)}/></label></div></section>}
           <fieldset className={styles.selection}><legend>{t.tea}</legend><div>{availableTeas.map((tea) => <label key={tea.id}><input type="checkbox" checked={form.teaIds.includes(tea.id)} onChange={(e) => update("teaIds", e.target.checked ? [...form.teaIds, tea.id] : form.teaIds.filter((id) => id !== tea.id))}/><span>{tea.name[language]}</span></label>)}</div></fieldset>
           <div className={styles.twoFields}>
             <label className={styles.field}>{t.purpose}<select name="intent" value={form.intent} onChange={(e) => update("intent", e.target.value)}>{Object.entries(t.intents).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-            <label className={styles.field}>{t.quantity}<input name="quantityKg" type="number" min="0.001" max="10000000" step="0.001" placeholder={t.optional} value={form.quantityKg} onChange={(e) => update("quantityKg", e.target.value)}/></label>
+            <label className={styles.field}>{partnerPage ? pageCopy.volume : t.quantity}<input name="quantityKg" type="number" min="0.001" max="10000000" step="0.001" placeholder={t.optional} value={form.quantityKg} onChange={(e) => update("quantityKg", e.target.value)}/></label>
           </div>
           <details className={styles.details}><summary>{t.details}</summary><div>
             <div className={styles.twoFields}>
@@ -170,7 +183,8 @@ export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], a
             {noteTooLong && <p className={styles.error} role="alert">{t.noteTooLong}</p>}
           </div></details>
           <label className={styles.consent}><input type="checkbox" checked={consent} required onChange={(e) => { if (inFlight.current) return; requestId.current = ""; setError(""); setConsent(e.target.checked); }}/><span>{form.submitterRole === "connector" ? t.connectorConsent : t.consent}</span></label>
-          {error && <p className={styles.error} role="alert">{error === "note_too_long" ? t.noteTooLong : SENDER_ERRORS[language][error] || t.errors[error]}</p>}
+          {partnerPage && <label className={styles.consent}><input type="checkbox" checked={partnerConsent} required onChange={e => { if (inFlight.current) return; requestId.current = ""; setError(""); setPartnerConsent(e.target.checked); }}/><span>{pageCopy.consent(partnerPage.display_name)}</span></label>}
+          {error && <p className={styles.error} role="alert">{error === "note_too_long" ? t.noteTooLong : pageErrors[error] || SENDER_ERRORS[language][error] || t.errors[error]}</p>}
           <button className={styles.submit} type="submit" disabled={noteTooLong}>{sending ? t.sending : t.send}<ArrowRight size={17} aria-hidden="true"/></button>
           <p className={styles.privacy}>{t.privacy} <Link href="/privacy">{t.privacyLink}</Link></p>
         </fieldset>
