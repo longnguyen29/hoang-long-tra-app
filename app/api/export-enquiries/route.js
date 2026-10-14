@@ -1,6 +1,7 @@
 import { POST as submitContactEnquiry } from "../event-enquiries/route.js";
 import { allowedEventEnquiryOrigin, readEventEnquiryBody } from "@/lib/event-enquiry";
 import { exportEventInput } from "@/lib/export-enquiry";
+import { submitPartnerSalesPageEnquiry } from "@/lib/partner-sales-page-server";
 
 export const runtime = "nodejs";
 const fail = (error, status = 400) => Response.json({ ok: false, error }, {
@@ -9,12 +10,13 @@ const fail = (error, status = 400) => Response.json({ ok: false, error }, {
 
 export async function POST(request) {
   if (!allowedEventEnquiryOrigin(request)) return fail("invalid_request", 403);
-  let input;
-  try { input = exportEventInput(await readEventEnquiryBody(request)); }
+  let input, raw;
+  try { raw = await readEventEnquiryBody(request); input = exportEventInput(raw); }
   catch (error) {
     const codes = ["consent_required", "authorization_required", "tea_required", "contact_detail_required", "invalid_quantity", "invalid_date", "note_too_long", "invalid_submitter_role", "connector_name_required", "invalid_connector_contact"];
     return fail(codes.includes(error.message) ? error.message : "invalid_request");
   }
+  if (raw.partnerPage !== undefined) return submitPartnerSalesPageEnquiry(request, raw, input);
   const headers = new Headers(request.headers);
   headers.delete("content-length");
   // Keep the existing server-only transaction, contact validation, trusted IP

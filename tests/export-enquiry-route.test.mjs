@@ -6,6 +6,8 @@ import path from "node:path";
 
 const adminUrl = "data:text/javascript," + encodeURIComponent("let admin;export function setAdmin(value){admin=value}export function createAdminClient(){return admin}");
 registerHooks({ resolve(specifier, context, next) {
+  if (specifier === "server-only") return { url: "data:text/javascript,export{}", shortCircuit: true };
+  if (specifier === "@/lib/supabase/server") return { url: "data:text/javascript,export async function createClient(){throw new Error('SSR not used by intake tests')}", shortCircuit: true };
   if (specifier === "@/lib/supabase/admin") return { url: adminUrl, shortCircuit: true };
   if (specifier.startsWith("@/")) return next(pathToFileURL(path.resolve(specifier.slice(2) + ".js")).href, context);
   return next(specifier, context);
@@ -101,4 +103,53 @@ test("invalid connector roles or details return safe actionable errors, and buye
     assert.deepEqual(await response.json(), { ok: false, error });
   }
   assert.equal(calls.length, 0);
+});
+
+test("published partner-page intake uses an atomic scoped transaction and exposes only its receipt", async () => {
+  process.env.PARTNER_NETWORK_ENABLED = "true";
+  let count = 0;
+  const calls = fixture(args => ({ data: { request_id: args.p_input.request_id, is_new: count++ === 0, partner_id: "PRIVATE", opportunity_id: "PRIVATE" }, error: null }));
+  const body = valid({ partnerPage: { slug: "test-partner", revision: 2 }, partnerConsent: true, location: "Taipei", quantityKg: "125.125" });
+  const first = await send(body), retry = await send(body);
+  assert.equal(first.status, 201); assert.equal(retry.status, 200);
+  assert.deepEqual(await first.json(), { ok: true, requestId, reference: "HL-E-12345678" });
+  assert.equal(calls[0].name, "partner_network_submit_page_enquiry");
+  assert.equal(calls[0].args.p_slug, "test-partner"); assert.equal(calls[0].args.p_revision, 2);
+  assert.equal(calls[0].args.p_input.requested_quantity_kg, 125.125);
+  assert.equal(calls[0].args.p_input.location, "Taipei");
+  assert.deepEqual(calls[0].args.p_input.tea_ids, ["steamed-green"]);
+  assert.match(calls[0].args.p_input.product_interest, /Trà Xanh Hấp/);
+  assert.equal(Object.hasOwn(calls[0].args.p_input, "expected_volume_kg"), false);
+  assert.deepEqual(calls[0].args, calls[1].args);
+});
+
+test("page consent, revision, location and identity tampering are rejected before intake", async () => {
+  process.env.PARTNER_NETWORK_ENABLED = "true";
+  const calls = fixture();
+  const body = valid({ partnerPage: { slug: "test-partner", revision: 2 }, partnerConsent: true, location: "Taipei" });
+  for (const change of [{ partnerConsent: false }, { location: "" }, { partnerPage: { slug: "test-partner", revision: 0 } },
+    { partnerPage: { slug: "test-partner", revision: 2, partner_id: "forged" } }, { partnerId: "forged" }]) {
+    assert.equal((await send({ ...body, ...change })).status, 400);
+  }
+  process.env.PARTNER_NETWORK_ENABLED = "false";
+  assert.equal((await send(body)).status, 404);
+  assert.equal(calls.length, 0);
+});
+
+test("a static presentation source is retained without inventing referral ownership", async () => {
+  const calls = fixture();
+  const response = await send(valid({ presentationProfileId: "anh-long" }));
+  assert.equal(response.status, 201);
+  assert.equal(calls[0].name, "submit_event_enquiry");
+  assert.match(calls[0].args.p_note, /Public brief: anh-long/);
+  assert.equal(Object.hasOwn(calls[0].args, "p_partner_id"), false);
+});
+
+test("withdrawn or changed page errors never fall back to uncredited general intake", async () => {
+  process.env.PARTNER_NETWORK_ENABLED = "true";
+  const calls = fixture({ data: null, error: { message: "partner_sales_page_revision_changed PRIVATE" } });
+  const response = await send(valid({ partnerPage: { slug: "test-partner", revision: 2 }, partnerConsent: true, location: "Taipei" }));
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), { ok: false, error: "page_unavailable" });
+  assert.equal(calls.length, 1); assert.equal(calls[0].name, "partner_network_submit_page_enquiry");
 });

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ArrowUpRight, ChevronDown, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import PartnerSalesKit from "@/components/partners/PartnerSalesKit";
+import PartnerSalesPageEditor from "@/components/partners/PartnerSalesPageEditor";
+import PartnerOrderUpdateEditor from "@/components/partners/PartnerOrderUpdateEditor";
 import PartnerInvitePanel from "@/components/partners/PartnerInvitePanel";
 import CommissionCostStatement from "@/components/partners/CommissionCostStatement";
 import {
@@ -365,9 +367,9 @@ export default function PartnerNetworkDesk() {
     {error && <div className={styles.error} role="alert"><p>{error}</p><button disabled={loading || busy} onClick={load} type="button">Tải lại dữ liệu</button></div>}
     {notice && <p className={styles.notice} role="status">{notice}</p>}
     <div className={styles.counts}><div><span>Đăng ký cần duyệt</span><strong>{ready ? snapshot.partners.filter(row => row.status === "pending").length : "—"}</strong></div><div><span>Giới thiệu cần đối chiếu</span><strong>{ready ? snapshot.referrals.filter(row => row.status === "pending").length : "—"}</strong></div><div><span>Hoa hồng cần rà soát</span><strong>{ready ? snapshot.commissions.filter(row => row.status === "review" || row.stale).length : "—"}</strong></div></div>
-    <nav className={styles.tabs} aria-label="Các mục quản lý đối tác">{[["partners", "Đăng ký & đối tác"], ["referrals", "Khách giới thiệu"], ["commissions", "Hoa hồng"], ["saleskit", "Bộ chào hàng"]].map(([key, title]) => <button key={key} type="button" aria-current={tab === key ? "page" : undefined} onClick={() => { setTab(key); setFilter("all"); setQuery(""); setPage(1); }}>{title}</button>)}</nav>
+    <nav className={styles.tabs} aria-label="Các mục quản lý đối tác">{[["partners", "Đăng ký & đối tác"], ["referrals", "Khách giới thiệu"], ["progress", "Tiến độ đơn"], ["commissions", "Hoa hồng"], ["saleskit", "Bộ chào hàng"]].map(([key, title]) => <button key={key} type="button" aria-current={tab === key ? "page" : undefined} onClick={() => { setTab(key); setFilter("all"); setQuery(""); setPage(1); }}>{title}</button>)}</nav>
     <section className={styles.workspace} aria-busy={loading}>
-      {tab === "saleskit" ? <PartnerSalesKit mode="manager" partners={ready ? snapshot.partners : []} disabled={loading}/> : <>
+      {tab === "saleskit" ? <><PartnerSalesPageEditor key={identity.current} partners={ready ? snapshot.partners : []} salesPages={ready ? snapshot.sales_pages || [] : []} busy={busy || loading} ready={ready} onAction={perform}/><PartnerSalesKit mode="manager" partners={ready ? snapshot.partners : []} salesPages={ready ? snapshot.sales_pages || [] : []} disabled={loading || busy}/></> : tab === "progress" ? <PartnerOrderUpdateEditor key={identity.current} orders={snapshot.orders || []} updates={snapshot.order_updates || []} referrals={snapshot.referrals} partners={snapshot.partners} busy={busy || loading} ready={ready} onAction={perform}/> : <>
       {tab === "partners" && <PartnerInvitePanel key={identity.current} supabase={supabase} managerId={identity.current} disabled={!ready || busy || loading}/>}
       {tab === "commissions" && <ReconcileForm key={review?._request || "new"} orders={snapshot.orders} partners={partnerById} review={review} busy={busy} ready={ready} onAction={perform} onClearReview={() => setReview(null)} />}
       <div className={styles.tools}><label><Search aria-hidden="true" /><span className={styles.srOnly}>Tìm trong danh sách</span><input value={query} onChange={event => { setQuery(event.target.value); setPage(1); }} placeholder={tab === "partners" ? "Tìm tên, mã, email, khu vực…" : "Tìm khách, đối tác, mã đơn…"} /></label><label className={styles.filter}><span>Trạng thái</span><select value={filter} onChange={event => { setFilter(event.target.value); setPage(1); }}><option value="all">Tất cả</option>{statusOptions.map(([key, title]) => <option value={key} key={key}>{title}</option>)}</select></label></div>
