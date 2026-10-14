@@ -37,9 +37,9 @@ export default function StaffShell({ children, partnerNetworkEnabled = false }) 
       router.replace("/admin/login"); router.refresh();
     } catch { setError("Chưa đăng xuất được. Hãy thử lại."); setLeaving(false); }
   }
-  return <StaffFeaturesContext.Provider value={{ partnerNetworkEnabled }}><div className={styles.shell}>
+  return <StaffFeaturesContext.Provider value={{ partnerNetworkEnabled }}><div className={styles.shell} data-staff-shell>
     <a href="#staff-content" className={styles.skip}>Đến nội dung công việc</a>
-    <aside className={styles.sidebar}>
+    <aside className={styles.sidebar} data-staff-navigation>
       <Link href="/admin" className={styles.brand}><span aria-hidden="true">皇龍</span><b>Hoàng Long<small>Bàn làm việc</small></b></Link>
       <nav aria-label="Điều hướng công việc" className={styles.desktop}>{navigation}</nav>
       <details ref={menu} className={styles.mobile} onKeyDown={event => { if(event.key === "Escape") { menu.current.open = false; menu.current.querySelector("summary").focus(); } }}>

@@ -42,3 +42,9 @@ The script uses ReportLab and Pillow. An alternative runtime can be used with th
 Render both PDFs with Poppler and inspect all pages for wrapping, overlapping content, accents, margins and contact links. Check that all 14 public tea names, their listed pack formats, brewing instructions and any actual product notes appear. Blank product facts are labelled for confirmation rather than filled with inferred tasting notes or specifications.
 
 The edition date makes the catalogue a dated reference. Production capacity is explicitly for supply planning; current volumes, pricing, packing and delivery timing require confirmation. The Sóc Sơn address is labelled as an office and warehouse.
+
+## Export and large-bulk packing
+
+The owner-confirmed B2B fact is maintained in `lib/b2b-packing.js`: PP/PE sacks of 20 / 30 / 35 kg, adjustable to the tea's form or the buyer's intended use and confirmed per order. `COMPANY_PROFILE[locale].packing` carries this fact into the JSON payload. Page 3 displays it separately from the product's listed packs; catalogue pages point back to that section.
+
+Retail pack sizes and cake/piece units remain the public product's original data. The B2B packing statement does not change the product unit, imply a minimum order or convert pieces to kilograms. Both B2B sales-kit editions read the same shared fact.

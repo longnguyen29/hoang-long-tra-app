@@ -1,9 +1,13 @@
 import {
   BarChart3, Beaker, ClipboardCheck, ClipboardList, FlaskConical,
-  Handshake, Settings2, Sprout, Search, ListChecks, Network,
+  Handshake, Settings2, Sprout, Search, ListChecks, Network, Files,
 } from "lucide-react";
 
 export const STAFF_APPS = {
+  documents: {
+    key: "documents", label: "Tài liệu công ty", short: "Tài liệu", href: "/admin/documents",
+    description: "Soạn thỏa thuận đối tác, bảo mật và biên bản đối soát; in hoặc lưu PDF.", icon: Files,
+  },
   partnerNetwork: {
     key: "partnerNetwork", label: "Đối tác giới thiệu", short: "Đối tác", href: "/admin/partner-network",
     description: "Duyệt đối tác, kiểm tra khách giới thiệu và đối soát hoa hồng theo tiền đã thu.", icon: Handshake,
@@ -56,7 +60,7 @@ export const STAFF_APPS = {
 
 export const STAFF_APP_GROUPS = [
   { label: "Hằng ngày", keys: ["work", "orders", "procedures", "pipeline"] },
-  { label: "Doanh nghiệp", keys: ["discovery", "partnerNetwork", "operations", "house"] },
+  { label: "Doanh nghiệp", keys: ["discovery", "partnerNetwork", "documents", "operations", "house"] },
   { label: "Phòng chuyên môn", keys: ["recipes", "knowledge", "control", "growth"] },
 ];
 

@@ -9,6 +9,7 @@ import { notifyHouse } from "@/lib/notify";
 import { isTradeTea, selectedTradeTea, TRADE_CATALOG_FIELDS } from "@/lib/trade-catalog";
 import { tradeProductFacts } from "@/lib/trade-product-details";
 import { COMPANY_PROFILE, PROFILE_PDF } from "@/lib/company-profile";
+import { B2B_BULK_PACKING } from "@/lib/b2b-packing";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { trackMetaLead } from "@/lib/meta-pixel";
 import { recordPublicConversion } from "@/lib/public-attribution";
@@ -100,6 +101,7 @@ export default function TradeDesk() {
   const briefStarted = useRef(false);
   const supabase = useMemo(() => createClient(), []);
   const t = COPY[lang];
+  const bulkPacking = B2B_BULK_PACKING[lang === "en" ? "en" : "vi"];
 
   useEffect(() => {
     let live = true;
@@ -181,7 +183,7 @@ export default function TradeDesk() {
       </section>
 
       <section className={styles.catalogue}>
-        <header><h2>{t.available}</h2><p>{t.availableBody}</p><Link href={`/catalog?lang=${lang}`}>{lang === "vi" ? "Xem toàn bộ danh mục trà" : "Explore the full tea range"}<ArrowRight size={16}/></Link></header>
+        <header><h2>{t.available}</h2><p>{t.availableBody}</p><Link href={`/catalog?lang=${lang}`}>{lang === "vi" ? "Xem toàn bộ danh mục trà" : "Explore the full tea range"}<ArrowRight size={16}/></Link><p><strong>{bulkPacking.title}: </strong>{bulkPacking.text}</p></header>
         <div>
           {products.length ? products.map((product, index) => <article key={product.id}>
             <span>{String(index + 1).padStart(2, "0")}</span><h3>{tradeProductFacts(product, lang).name}</h3><p>{local(product.notes)}</p><b>{lang === "vi" ? "Quy cách theo thỏa thuận" : "Packing agreed on enquiry"}</b>
