@@ -10,6 +10,7 @@ import {
 import styles from "./CompanyDocuments.module.css";
 
 const DRAFT_FORMAT = "hoang-long-company-document";
+const MAX_DRAFT_BYTES = 512 * 1024;
 const fieldByName = new Map(DOCUMENT_FIELDS.map(field => [field.name, field]));
 const sectionLabels = {
   document: "Thông tin văn bản", general: "Thông tin văn bản", company: "Bên Hoàng Long",
@@ -93,7 +94,9 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", p
   function saveDraft() {
     const result = normalizeDocumentDraft({ ...draft, template_id: templateId });
     if (Object.keys(result.errors || {}).length) { setFileError("Có dữ liệu sai định dạng. Kiểm tra các ô đã nhập trước khi tải bản nháp."); setShowErrors(true); return; }
-    downloadFile(JSON.stringify({ format: DRAFT_FORMAT, version: 1, template_id: templateId, fields: result.data }, null, 2), `${fileName(templateId, draft)}.json`, "application/json");
+    const content = JSON.stringify({ format: DRAFT_FORMAT, version: 1, template_id: templateId, fields: result.data }, null, 2);
+    if (new Blob([content]).size > MAX_DRAFT_BYTES) { setFileError("Bản nháp vượt 512 KB. Rút gọn nội dung trước khi tải xuống."); return; }
+    downloadFile(content, `${fileName(templateId, draft)}.json`, "application/json");
     setDirty(false); setNotice("Đã tải bản nháp. Giữ file ở nơi riêng tư và dùng “Mở bản nháp” để sửa tiếp; chưa lưu trên website.");
   }
   async function openDraft(event) {
@@ -101,15 +104,16 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", p
     if (!file) return;
     const version = ++importVersion.current;
     try {
-      if (file.size > 96 * 1024) throw new Error("size");
+      if (file.size > MAX_DRAFT_BYTES) throw new Error("size");
       const input = JSON.parse(await file.text());
       if (version !== importVersion.current) return;
-      if (input?.format !== DRAFT_FORMAT || input.version !== 1 || !DOCUMENT_TEMPLATES.some(item => item.id === input.template_id)) throw new Error("format");
+      if (input?.format !== DRAFT_FORMAT || input.version !== 1 || !DOCUMENT_TEMPLATES.some(item => item.id === input.template_id)
+        || !input.fields || typeof input.fields !== "object" || Array.isArray(input.fields)) throw new Error("format");
       const result = normalizeDocumentDraft({ ...input.fields, template_id: input.template_id });
       if (!result.data || Object.keys(result.errors || {}).length) throw new Error("fields");
       setDraft(result.data); setTemplateId(input.template_id); setSelectedPartner(""); setReviewed(false);
       setShowErrors(false); setFileError(""); setDirty(false); setNotice("Đã mở bản nháp trên thiết bị này. Các số liệu không được ghi ngược vào Partner Network.");
-    } catch { if (version === importVersion.current) setFileError("Không mở được file. Chọn bản nháp .json đã tải từ trang này, tối đa 96 KB, có dữ liệu đúng định dạng."); }
+    } catch { if (version === importVersion.current) setFileError("Không mở được file. Chọn bản nháp .json đã tải từ trang này, tối đa 512 KB, có dữ liệu đúng định dạng."); }
   }
 
   return <main className={styles.page} data-company-documents-page data-no-translate>
