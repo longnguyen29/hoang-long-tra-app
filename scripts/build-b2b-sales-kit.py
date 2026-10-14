@@ -61,8 +61,10 @@ def public_data():
       import {EVENT_CONTACT} from './lib/event-contact.js';
       import {EXPORT_SALES_PROFILES, EXPORT_DELIVERY_WINDOW} from './lib/export-sales-profiles.js';
       import {TAIWAN_EXPORT_COPY} from './lib/export-taiwan-copy.js';
+      import {B2B_BULK_PACKING} from './lib/b2b-packing.js';
       console.log(JSON.stringify({teas: EXPORT_TEAS, revision: EXPORT_PRICE_REVISION, contact: EVENT_CONTACT,
-        profiles: EXPORT_SALES_PROFILES, delivery: EXPORT_DELIVERY_WINDOW, copy: TAIWAN_EXPORT_COPY.vi}));
+        profiles: EXPORT_SALES_PROFILES, delivery: EXPORT_DELIVERY_WINDOW, copy: TAIWAN_EXPORT_COPY.vi,
+        packing: B2B_BULK_PACKING.vi}));
     """
     result = subprocess.run([node, "--input-type=module", "-e", code], cwd=ROOT,
                             capture_output=True, check=True, text=True)
@@ -211,10 +213,10 @@ class SalesKit:
             self.c.setFillColor(JADE)
             self.c.drawRightString(W - M, top - 12, value)
             self.rule(top - 23)
-        self.para("Đã gồm bao bì tiêu chuẩn. Nhận hàng tại " + FACTORY + ".",
+        self.para("Đã gồm bao " + self.data["packing"]["value"].removeprefix("Bao ") + ". EXW: " + FACTORY + ".",
                   M, 134, CW, 9.2, 14.3, "BodyBold", max_height=29)
-        self.para("Giá VND/kg tại ngày " + self.revision + "; xác nhận lại trong báo giá chính thức. "
-                  "Không gồm vận chuyển, thuế và thủ tục xuất/nhập khẩu. Bao bì riêng, nhãn, xét nghiệm và hỗ trợ khác: thỏa thuận theo báo giá.",
+        self.para(self.data["packing"]["note"] + " Giá VND/kg ngày " + self.revision + "; xác nhận theo báo giá. "
+                  "Vận chuyển, thuế, thủ tục xuất/nhập khẩu, bao bì và nhãn riêng, kiểm nghiệm: chốt riêng trong báo giá.",
                   M, 97, CW, 8.3, 12.2, color=MUTED, max_height=37)
         self.c.showPage()
 
@@ -252,7 +254,7 @@ class SalesKit:
             ("Đơn vị & người liên hệ", "Tên doanh nghiệp/quán, người trao đổi, điện thoại/email và kênh liên hệ phù hợp."),
             ("Dòng trà & ứng dụng", "Trà muốn thử, phẩm cấp nếu có; dùng pha đồ uống, phân phối hay đóng gói lại."),
             ("Khối lượng & lịch mua", "Lượng dự kiến mỗi đơn/tháng, ngày cần hàng; ghi bằng kg hoặc tấn."),
-            ("Bao bì & nhãn", "Chọn bao bì tiêu chuẩn hoặc yêu cầu riêng; quy cách, ngôn ngữ nhãn và thông tin lô."),
+            ("Bao bì & nhãn", "Bao PP/PE 20 / 30 / 35 kg, điều chỉnh theo ngoại hình trà hoặc yêu cầu sử dụng; chốt nhãn riêng."),
             ("Thị trường & nhận hàng", "Quốc gia/thị trường bán, đầu mối nhận; đơn vị tổ chức vận chuyển và thủ tục từ điểm EXW."),
             ("Mẫu, kiểm tra & hồ sơ", "Mẫu tham chiếu, tiêu chí cần thử, chứng từ yêu cầu và kế hoạch khảo sát nhà máy."),
         ]

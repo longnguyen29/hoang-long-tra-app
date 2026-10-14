@@ -77,6 +77,7 @@ export function PartnerCard({ partner, busy, ready, onAction }) {
       <dl className={styles.facts}><div><dt>Email đăng nhập</dt><dd>{partner.email}</dd></div><div><dt>Điện thoại</dt><dd>{partner.phone || "—"}</dd></div><div><dt>Đăng ký</dt><dd>{when(partner.created_at)}</dd></div><div><dt>Hoa hồng đơn đầu</dt><dd>{firstRate == null ? "Chưa thỏa thuận" : `${firstRate}%`}</dd></div><div><dt>Hoa hồng đơn tiếp theo</dt><dd>{Number(partner.repeat_order_limit) > 0 && partner.repeat_rate_percent != null ? `${partner.repeat_rate_percent}% · tối đa ${partner.repeat_order_limit} đơn tiếp theo` : "Chưa áp dụng cho đơn tiếp theo"}</dd></div></dl>
       {partner.notes && <p className={styles.note}>{partner.notes}</p>}
       {partner.review_reason && <p className={styles.note}><strong>Ghi chú xét duyệt:</strong> {partner.review_reason}</p>}
+      {partner.status === "approved" && <Link className={styles.reviewButton} href={`/admin/documents?partner=${encodeURIComponent(partner.id)}`}>Soạn thỏa thuận hoa hồng</Link>}
       <form onSubmit={submit} className={styles.form}>
         <h4>Xét duyệt / quản lý đối tác</h4><p className={styles.help}>Muốn sửa thông tin liên hệ, chọn “Cập nhật hồ sơ / điều kiện” và lưu trước khi xét duyệt.</p>
         <div className={styles.formGrid}>

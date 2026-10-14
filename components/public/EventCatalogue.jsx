@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { catalogText, isTradeTea, TRADE_CATALOG_FIELDS } from "@/lib/trade-catalog";
 import { EVENT_CONTACT, eventLink } from "@/lib/event-contact";
 import { eventEnquiryHref, selectedEventTeas } from "@/lib/event-catalog";
+import { B2B_BULK_PACKING } from "@/lib/b2b-packing";
 import styles from "./EventCatalogue.module.css";
 
 const COPY = {
@@ -44,6 +45,7 @@ function TeaPhoto({ product, locale, fallback }) {
 export default function EventCatalogue() {
   const { locale, toggleLocale } = useLocale();
   const t = COPY[locale] || COPY.vi;
+  const bulkPacking = B2B_BULK_PACKING[locale === "en" ? "en" : "vi"];
   const [products, setProducts] = useState([]);
   const [selected, setSelected] = useState([]);
   const [status, setStatus] = useState("loading");
@@ -87,6 +89,7 @@ export default function EventCatalogue() {
       <button type="button" onClick={toggleLocale} aria-label={locale === "vi" ? "Switch to English" : "Chuyển sang tiếng Việt"}>{locale === "vi" ? "EN" : "VI"}</button>
     </header>
     <section className={styles.intro} aria-labelledby="catalogue-title"><p className={styles.eyebrow}>{t.eyebrow}</p><h1 id="catalogue-title">{t.title}</h1><p>{t.intro}</p></section>
+    <aside className={styles.bulkPacking}><strong>{bulkPacking.title}: </strong>{bulkPacking.text}</aside>
     <section className={styles.catalogue} aria-label={t.teas} aria-busy={status === "loading"}>
       {status === "loading" && <p className={styles.state} role="status">{t.loading}</p>}
       {status === "error" && <div className={styles.state} role="alert"><p>{t.error}</p><button type="button" onClick={() => setAttempt((value) => value + 1)}>{t.retry}</button><Link href={eventLink("/meet", search)}>{t.continue}<ArrowRight size={16} aria-hidden="true"/></Link></div>}

@@ -8,6 +8,7 @@ import { useLocale } from "@/components/i18n/LocaleProvider";
 import { isTradeTea, matchesTradeSearch, TRADE_CATALOG_FIELDS, tradeEnquiryHref } from "@/lib/trade-catalog";
 import { tradeProductFacts } from "@/lib/trade-product-details";
 import { PROFILE_PDF } from "@/lib/company-profile";
+import { B2B_BULK_PACKING } from "@/lib/b2b-packing";
 import PolicyLinks from "@/components/PolicyLinks";
 import styles from "./TradeCatalog.module.css";
 
@@ -27,6 +28,7 @@ function ProductPhoto({ product, facts, vi }) {
 export default function TradeCatalog() {
   const { locale, toggleLocale } = useLocale();
   const vi = locale === "vi";
+  const bulkPacking = B2B_BULK_PACKING[vi ? "vi" : "en"];
   const [products, setProducts] = useState([]);
   const [status, setStatus] = useState("loading");
   const [attempt, setAttempt] = useState(0);
@@ -93,6 +95,7 @@ export default function TradeCatalog() {
 
     <section className={styles.catalogue} aria-labelledby="trade-range-title">
       <div className={styles.rangeHeading}><h2 id="trade-range-title">{vi ? "Chọn dòng trà" : "Explore the range"}</h2><span>{vi ? "Đặc tính theo danh mục hiện tại" : "Characteristics from the current catalogue"}</span></div>
+      <p className={styles.note}><strong>{bulkPacking.title}: </strong>{bulkPacking.text}</p>
       <div className={styles.toolbar}>
         <div className={styles.filters} role="group" aria-label={vi ? "Lọc nhóm trà" : "Filter tea groups"}>
           <button type="button" aria-pressed={group === "all"} onClick={() => setGroup("all")}>{vi ? "Tất cả" : "All teas"}{status === "ready" && <span>{teas.length}</span>}</button>
@@ -116,7 +119,7 @@ export default function TradeCatalog() {
             {facts.summary && <p className={styles.summary}><span>{vi ? "Khi thử mẫu" : "When sampling"}</span>{facts.summary}</p>}
             {facts.note && <p className={styles.note}>{facts.note}</p>}
             {!!facts.flavors.length && <ul className={styles.flavors} aria-label={vi ? "Hương vị đang công bố" : "Listed tasting notes"}>{facts.flavors.map((flavor, index) => <li key={`${flavor}-${index}`}>{flavor}</li>)}</ul>}
-            <div className={styles.packing}><span>{vi ? "Quy cách đang niêm yết" : "Currently listed packing"}</span><strong>{facts.packing || (vi ? "Trao đổi theo nhu cầu" : "Discuss your requirements")}</strong><p>{vi ? "MOQ và đóng gói đơn sỉ được xác nhận trong báo giá." : "Wholesale MOQ and packing are confirmed in your quotation."}</p></div>
+            <div className={styles.packing}><span>{vi ? "Quy cách sản phẩm / mẫu" : "Product / sample format"}</span><strong>{facts.packing || (vi ? "Trao đổi theo nhu cầu" : "Discuss your requirements")}</strong><p>{vi ? "MOQ và đóng gói đơn sỉ được xác nhận trong báo giá." : "Wholesale MOQ and packing are confirmed in your quotation."}</p></div>
 
             <details className={styles.more}>
               <summary>{vi ? "Gợi ý pha & thông tin đơn sỉ" : "Brewing & wholesale details"}<ChevronDown size={18} aria-hidden="true"/></summary>

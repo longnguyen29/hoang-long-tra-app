@@ -159,6 +159,13 @@ class Document:
             self.t['edition_note'] = self.t['edition_note'].replace('11 October 2026', edition_date)
         self.data = data
         self.profile = loc(data.get('profiles') or data.get('companyProfile') or data.get('profile'), locale, {})
+        packing = self.profile.get('packing') if isinstance(self.profile, dict) else None
+        if not packing or not packing.get('value') or not packing.get('note'):
+            raise ValueError('The public company-profile payload must include approved B2B packing facts')
+        self.t['guide_note_title'] = packing['title']
+        self.t['guide_note'] = packing['value'] + '. ' + packing['note']
+        self.t['catalog_intro'] += (' Quy cách xuất khẩu/lô lớn xem trang 3; khác quy cách sản phẩm niêm yết.' if locale == 'vi'
+                                     else ' See page 3 for export / large-bulk packing, separate from listed product packs.')
         self.contact = data.get('contact') or {}
         self.products = data['products']
         self.base_url = clean(data.get('baseUrl') or self.contact.get('website')).rstrip('/')
