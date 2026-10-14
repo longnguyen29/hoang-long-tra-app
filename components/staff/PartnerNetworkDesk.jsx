@@ -10,6 +10,7 @@ import {
   PARTNER_TYPES, PARTNER_STATUS, REFERRAL_STATUS, COMMISSION_STATUS,
   formatPartnerMoney, partnerErrorMessage, partnerStageLabel,
 } from "@/lib/partner-network";
+import { PARTNER_COMMISSION_TIERS, applyCommissionTier, getCommissionTier } from "@/lib/partner-commission-tiers";
 import styles from "./PartnerNetworkDesk.module.css";
 
 const PAGE_SIZE = 20;
@@ -55,6 +56,14 @@ function OrderInput({ orders, name = "order_id", id, defaultValue = "", onChange
 export function PartnerCard({ partner, busy, ready, onAction }) {
   const [action, setAction] = useState(partner.status === "pending" ? "approve" : "update");
   const firstRate = partner.first_order_rate_percent ?? partner.default_rate_percent ?? partner.rate_percent;
+  const [rates, setRates] = useState(() => ({ first_order_rate_percent: firstRate ?? "", repeat_rate_percent: partner.repeat_rate_percent ?? "", repeat_order_limit: partner.repeat_order_limit ?? 0 }));
+  const [tier, setTier] = useState("custom");
+  useEffect(() => {
+    setRates({ first_order_rate_percent: firstRate ?? "", repeat_rate_percent: partner.repeat_rate_percent ?? "", repeat_order_limit: partner.repeat_order_limit ?? 0 });
+    setTier("custom");
+  }, [partner.id, firstRate, partner.repeat_rate_percent, partner.repeat_order_limit]);
+  const editRate = (key, value) => { setRates(current => ({ ...current, [key]: value })); setTier("custom"); };
+  const chooseTier = id => { setRates(current => applyCommissionTier(id, current)); setTier(id); };
   async function submit(event) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -84,9 +93,10 @@ export function PartnerCard({ partner, busy, ready, onAction }) {
           <Field label="Thao tác"><select value={action} onChange={event => setAction(event.target.value)}>
             <option value="update">Cập nhật hồ sơ / điều kiện</option><option value="approve">Duyệt đối tác</option><option value="reject">Từ chối đăng ký</option><option value="disable">Tạm ngừng đối tác</option>
           </select></Field>
-          {["approve", "update"].includes(action) && <><Field label="Hoa hồng đơn đầu (%)" hint="Để trống nếu chưa thỏa thuận. Không tự áp dụng một tỷ lệ mặc định."><input name="rate" type="number" min="0" max="100" step="0.01" defaultValue={firstRate ?? ""} /></Field>
-          <Field label="Hoa hồng đơn tiếp theo (%)" hint="Để trống nếu chưa thỏa thuận hoa hồng tái đặt hàng."><input name="repeat_rate" type="number" min="0" max="100" step="0.01" defaultValue={partner.repeat_rate_percent ?? ""} /></Field>
-          <Field label="Số đơn tiếp theo tối đa" hint="0 = chỉ áp dụng đơn đầu. Không cấp hoa hồng vô thời hạn."><input name="repeat_order_limit" type="number" min="0" max="30" step="1" required defaultValue={partner.repeat_order_limit ?? 0} /></Field></>}
+          {["approve", "update"].includes(action) && <><Field label="Điền mẫu mức hoa hồng gợi ý" wide hint="Chỉ điền các ô đang sửa. Chưa tạo quyền hưởng; cần kiểm tra, ghi lý do và bấm Lưu / Duyệt. Các khoản đã đối soát hoặc chi trả không tự thay đổi."><select value={tier} onChange={event => chooseTier(event.target.value)} disabled={busy || !ready}>{PARTNER_COMMISSION_TIERS.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select><small>{getCommissionTier(tier)?.description}</small></Field>
+          <Field label="Hoa hồng đơn đầu (%)" hint="Để trống nếu chưa thỏa thuận; mức gợi ý vẫn cần đối soát tiền thực thu và kiểm tra lợi nhuận."><input name="rate" type="number" min="0" max="100" step="0.0001" value={rates.first_order_rate_percent ?? ""} onChange={event => editRate("first_order_rate_percent", event.target.value)} disabled={busy || !ready} /></Field>
+          <Field label="Hoa hồng đơn tiếp theo (%)" hint="Để trống nếu chưa thỏa thuận hoa hồng tái đặt hàng."><input name="repeat_rate" type="number" min="0" max="100" step="0.0001" value={rates.repeat_rate_percent ?? ""} onChange={event => editRate("repeat_rate_percent", event.target.value)} disabled={busy || !ready} /></Field>
+          <Field label="Số đơn tiếp theo tối đa" hint="0 = không hưởng hoa hồng tái mua. Giới hạn theo số đơn, chưa có tự động hết hạn theo tháng."><input name="repeat_order_limit" type="number" min="0" max="30" step="1" required value={rates.repeat_order_limit ?? ""} onChange={event => editRate("repeat_order_limit", event.target.value)} disabled={busy || !ready} /></Field></>}
           {action === "update" && <><Field label="Tên đơn vị"><input readOnly={action !== "update"} name="business_name" required maxLength="160" defaultValue={partner.business_name || ""} /></Field>
           <Field label="Người liên hệ"><input readOnly={action !== "update"} name="contact_name" required maxLength="100" defaultValue={partner.contact_name || ""} /></Field>
           <Field label="Điện thoại"><input readOnly={action !== "update"} name="phone" type="tel" required maxLength="30" defaultValue={partner.phone || ""} /></Field>

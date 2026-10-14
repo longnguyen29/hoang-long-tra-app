@@ -7,6 +7,7 @@ import {
   DOCUMENT_FIELDS, DOCUMENT_TEMPLATES, createDocumentDraft,
   normalizeDocumentDraft, prefillPartner, buildDocument, validateDocument,
 } from "@/lib/company-documents";
+import { PARTNER_COMMISSION_TIERS, companyDocumentTierPatch, getMatchingCommissionTier } from "@/lib/partner-commission-tiers";
 import styles from "./CompanyDocuments.module.css";
 
 const DRAFT_FORMAT = "hoang-long-company-document";
@@ -30,6 +31,7 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", p
   const [templateId, setTemplateId] = useState("partner_agreement");
   const [draft, setDraft] = useState(() => createDocumentDraft("partner_agreement", initial ? prefillPartner(initial) : {}));
   const [selectedPartner, setSelectedPartner] = useState(initial?.id || "");
+  const [commissionTier, setCommissionTier] = useState(() => initial ? getMatchingCommissionTier(prefillPartner(initial)) : "custom");
   const [reviewed, setReviewed] = useState(false);
   const [view, setView] = useState("edit");
   const [showErrors, setShowErrors] = useState(false);
@@ -64,6 +66,7 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", p
     importVersion.current += 1;
     setDraft(previous => ({ ...previous, [name]: value }));
     setReviewed(false); setDirty(true); setNotice(""); setFileError("");
+    if (["first_order_rate_percent", "repeat_rate_percent", "repeat_order_limit", "partner_role"].includes(name)) setCommissionTier("custom");
   }
   function changeTemplate(id) {
     importVersion.current += 1;
@@ -78,7 +81,12 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", p
     importVersion.current += 1;
     setDraft(previous => ({ ...previous, ...Object.fromEntries(DOCUMENT_FIELDS.filter(field => field.name.startsWith("partner_")).map(field => [field.name, ""])),
       first_order_rate_percent: "", repeat_rate_percent: "", repeat_order_limit: "", ...patch }));
-    setSelectedPartner(id); setReviewed(false); setDirty(true); setNotice(partner ? "Đã điền thông tin liên hệ và tỷ lệ hiện có. Kiểm tra tên pháp lý, địa chỉ và người ký riêng." : "Đã bỏ thông tin đối tác trước. Bạn có thể điền thủ công.");
+    setSelectedPartner(id); setCommissionTier(getMatchingCommissionTier(patch)); setReviewed(false); setDirty(true); setNotice(partner ? "Đã điền thông tin liên hệ và tỷ lệ hiện có. Kiểm tra tên pháp lý, địa chỉ và người ký riêng." : "Đã bỏ thông tin đối tác trước. Bạn có thể điền thủ công.");
+  }
+  function chooseTier(id) {
+    importVersion.current += 1;
+    setDraft(previous => ({ ...previous, ...companyDocumentTierPatch(id, previous) }));
+    setCommissionTier(id); setReviewed(false); setDirty(true); setNotice("");
   }
   function exportDocument(kind) {
     setShowErrors(true); setFileError("");
@@ -111,7 +119,7 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", p
         || !input.fields || typeof input.fields !== "object" || Array.isArray(input.fields)) throw new Error("format");
       const result = normalizeDocumentDraft({ ...input.fields, template_id: input.template_id });
       if (!result.data || Object.keys(result.errors || {}).length) throw new Error("fields");
-      setDraft(result.data); setTemplateId(input.template_id); setSelectedPartner(""); setReviewed(false);
+      setDraft(result.data); setTemplateId(input.template_id); setSelectedPartner(""); setCommissionTier(getMatchingCommissionTier(result.data)); setReviewed(false);
       setShowErrors(false); setFileError(""); setDirty(false); setNotice("Đã mở bản nháp trên thiết bị này. Các số liệu không được ghi ngược vào Partner Network.");
     } catch { if (version === importVersion.current) setFileError("Không mở được file. Chọn bản nháp .json đã tải từ trang này, tối đa 512 KB, có dữ liệu đúng định dạng."); }
   }
@@ -132,6 +140,7 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", p
     <div className={styles.workspace} data-view={view}>
       <section className={styles.editor} aria-label="Điền thông tin tài liệu">
         <div className={styles.picker}><label htmlFor="document-partner">Điền từ đối tác đã duyệt</label><select id="document-partner" value={selectedPartner} onChange={event => selectPartner(event.target.value)}><option value="">Điền thủ công</option>{partners.map(partner => <option key={partner.id} value={partner.id}>{partner.business_name} · {partner.code}</option>)}</select><p>Chỉ lấy thông tin liên hệ và tỷ lệ đã thỏa thuận. Thông tin người ký cần xác nhận riêng.</p>{partnersUnavailable && <p className={styles.error}>Chưa tải được danh sách đối tác. Bạn vẫn có thể điền thủ công hoặc tải lại trang.</p>}{partnersTruncated && <p>Đang hiển thị 200 đối tác đầu tiên. Có thể điền thủ công nếu chưa thấy người cần chọn.</p>}</div>
+        {templateId === "partner_agreement" && <div className={styles.picker}><label htmlFor="document-commission-tier">Mức hoa hồng mẫu</label><select id="document-commission-tier" value={commissionTier} onChange={event => chooseTier(event.target.value)}>{PARTNER_COMMISSION_TIERS.map(tier => <option key={tier.id} value={tier.id}>{tier.label}</option>)}</select><p>{PARTNER_COMMISSION_TIERS.find(tier => tier.id === commissionTier)?.description}</p><p>Điền mẫu để hai bên thống nhất, có thể sửa các tỷ lệ ở mục Hoa hồng. Không thay đổi điều kiện đã lưu trong Partner Network.</p></div>}
         {groups.map(([section, fields], index) => <details key={`${templateId}-${section}`} className={styles.group} open={index === 0 || (showErrors && fields.some(field => validation.errors?.[field.name] || validation.missing?.includes(field.name)))}><summary><span><small>0{index + 1}</small>{sectionLabels[section] || section}</span><ChevronDown size={18} aria-hidden="true" /></summary><div className={styles.fields}>{fields.map(field => {
           const required = template.required?.includes(field.name);
           const error = showErrors && (validation.errors?.[field.name] || (validation.missing?.includes(field.name) ? "Vui lòng bổ sung trước khi xuất." : ""));

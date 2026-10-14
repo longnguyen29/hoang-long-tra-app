@@ -7,6 +7,8 @@ Route: `/admin/documents`. Available to verified staff managers/admins only. It 
 1. Choose an agreement for customer referrals/commissions, a mutual NDA, or commission reconciliation minutes.
 2. Optionally prefill the approved partner's public business/contact details and agreed first/repeat rates. A trading name, contact person or operating region is never inferred to be a legal entity, authorised signatory or registered address.
 3. Complete the legal identities and commercial facts; edit the supplied proposed clauses as needed. Unknown rates, dates, expenses and cash exclusions remain blank rather than silently becoming zero.
+
+For the referral agreement, **Mức hoa hồng mẫu** uses the same explicit presets as Partner Network: referral 3% first / 1% for three repeat orders; assisted sale 5% first / 2% for three repeat orders; bulk/export negotiated clears rates for a separate agreement. Choosing a preset only edits the current draft. Editing rates remains possible. It does not overwrite saved partner conditions or extend an existing entitlement.
 4. Review the A4 preview, acknowledge the review and use **In / lưu PDF** (native print, choose Save as PDF). Essential missing fields and invalid amounts prevent the normal export action. The printable document is always marked as an unsigned draft; it is not a payment instruction or an executed agreement.
 5. Download `.txt` for further editing, or download/reopen a private `.json` draft to continue on another computer. Downloading is not an upload or cloud save. Keep these files private. The app does not send documents to the partner.
 
