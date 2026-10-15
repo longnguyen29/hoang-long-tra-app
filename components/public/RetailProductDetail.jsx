@@ -7,6 +7,7 @@ import { useLocale } from "@/components/i18n/LocaleProvider";
 import { EVENT_CONTACT } from "@/lib/event-contact";
 import { retailOptions, retailProductFacts, retailProductHref, retailStockBadge } from "@/lib/retail-catalog";
 import { retailBrewingGuidance } from "@/lib/retail-product-guidance";
+import { retailTeaCharacteristics } from "@/lib/retail-tea-characteristics";
 import { RETAIL_CART_MAX } from "@/lib/retail-cart";
 import { RETAIL_VOLUME_POLICY } from "@/lib/retail-volume-policy";
 import { sellingUnitLabel } from "@/lib/selling-units";
@@ -77,6 +78,8 @@ export default function RetailProductDetail({ product }) {
   const liveProduct = products.find(item => item.id === product.id);
   const currentProduct = liveProduct || product;
   const facts = retailProductFacts(currentProduct, locale);
+  const characteristics = retailTeaCharacteristics(currentProduct, locale);
+  const signatureNotes = characteristics?.signatureNotes || facts.flavors;
   const options = retailOptions(currentProduct);
   const hasVariants = currentProduct.variants?.length > 0;
   const kilogramBasis = !hasVariants && options[0]?.unit === "kg";
@@ -143,7 +146,17 @@ export default function RetailProductDetail({ product }) {
         {stockBadge && <p className={styles.stockBadge} data-kind={stockBadge.kind}>{stockBadge.label}</p>}
         <h1>{facts.name}</h1>
         {facts.note && <p className={styles.note}>{facts.note}</p>}
-        {!!facts.flavors.length && <div className={styles.flavorSection}><h2>{t.flavors}</h2><ul>{facts.flavors.map((flavor, index) => <li key={`${flavor}:${index}`}>{flavor}</li>)}</ul></div>}
+        {!!signatureNotes.length && <div className={styles.flavorSection}><h2>{characteristics?.labels.signature || t.flavors}</h2><ul>{signatureNotes.map((flavor, index) => <li key={`${flavor}:${index}`}>{flavor}</li>)}</ul></div>}
+
+        {characteristics && <section className={styles.characteristics} aria-labelledby={`${groupName}-characteristics`}>
+          <h2 id={`${groupName}-characteristics`}>{characteristics.labels.title}</h2>
+          <dl>
+            <div><dt>{characteristics.labels.feeling}</dt><dd>{characteristics.feeling}</dd></div>
+            <div><dt>{characteristics.labels.moment}</dt><dd>{characteristics.moment}</dd></div>
+            <div><dt>{characteristics.labels.serving}</dt><dd>{characteristics.serving}</dd></div>
+          </dl>
+          <p>{characteristics.labels.caffeine}</p>
+        </section>}
 
         <form className={styles.purchase} onSubmit={addToCart}>
           <fieldset className={styles.packages}>

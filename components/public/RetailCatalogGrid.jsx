@@ -6,6 +6,7 @@ import { ArrowRight, Minus, Plus, Search, ShoppingBag, X } from "lucide-react";
 import { sellingUnitLabel } from "@/lib/selling-units";
 import { RETAIL_CART_MAX } from "@/lib/retail-cart";
 import { matchesRetailSearch, retailOptions, retailProductFacts, retailProductHref, retailStockBadge } from "@/lib/retail-catalog";
+import { retailTeaCharacteristics } from "@/lib/retail-tea-characteristics";
 import styles from "./RetailCatalogGrid.module.css";
 
 const money = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
@@ -32,6 +33,8 @@ function ProductCard({ product, locale, cart, quantity, vendors, isGoods, index 
   const t = COPY[locale];
   const id = useId();
   const facts = retailProductFacts(product, locale);
+  const characteristics = retailTeaCharacteristics(product, locale);
+  const signatureNotes = characteristics?.signatureNotes || facts.flavors;
   const options = retailOptions(product);
   const [selectedKey, setSelectedKey] = useState("");
   const [failedPhoto, setFailedPhoto] = useState("");
@@ -58,8 +61,9 @@ function ProductCard({ product, locale, cart, quantity, vendors, isGoods, index 
       <p className={styles.category}>{isGoods ? vendor?.name || t.houseMarket : facts.groupLabel}</p>
       {stockBadge && <p className={styles.stockBadge} data-kind={stockBadge.kind}>{stockBadge.label}</p>}
       <h2>{isGoods ? facts.name : <Link href={href}>{facts.name}</Link>}</h2>
+      {characteristics && <p className={styles.characteristic} aria-label={characteristics.labels.title}><span>{characteristics.feeling}</span><small>{characteristics.moment}</small></p>}
       {facts.note && <p className={styles.note}>{facts.note}</p>}
-      {Array.isArray(facts.flavors) && facts.flavors.length > 0 && <ul className={styles.flavors} aria-label={locale === "vi" ? "Hương vị" : "Taste notes"}>{facts.flavors.slice(0, 3).map((flavor) => <li key={flavor}>{flavor}</li>)}</ul>}
+      {signatureNotes.length > 0 && <ul className={styles.flavors} aria-label={characteristics?.labels.signature || (locale === "vi" ? "Hương vị" : "Taste notes")}>{signatureNotes.slice(0, 3).map((flavor, index) => <li key={`${flavor}:${index}`}>{flavor}</li>)}</ul>}
       <p className={styles.price}>{lowest ? <>{differentPrices && <small>{t.from} </small>}<strong>{money.format(lowest.price)}</strong><span> / {priceBasis(lowest)}</span></> : <span>{hasPrice ? t.soldOut : t.request}</span>}</p>
       {options.length > 0 && !options.some((option) => option.weight) && facts.packing && facts.packing !== packLabel(options[0]) && <p className={styles.packing}>{t.packing}: {facts.packing}</p>}
     </div>

@@ -21,6 +21,14 @@
 .flavorSection h2{margin:0 0 var(--space-2xs);font-size:var(--text-xs);font-weight:600;color:var(--color-muted)}
 .flavorSection ul{display:flex;flex-wrap:wrap;gap:var(--space-2xs);margin:0;padding:0;list-style:none}
 .flavorSection li{padding:var(--space-3xs) var(--space-xs);border:var(--rule-thin) solid var(--color-rule);font-size:var(--text-sm);line-height:1.5;overflow-wrap:anywhere}
+.characteristics{margin-block-start:var(--space-lg);padding-block-start:var(--space-md);border-block-start:var(--rule-thin) solid var(--color-rule)}
+.characteristics h2{margin:0 0 var(--space-sm);color:var(--color-accent);font-size:var(--text-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.characteristics dl{display:grid;gap:var(--space-xs);margin:0}
+.characteristics dl>div{display:grid;grid-template-columns:minmax(6.5rem,.6fr) minmax(0,1.4fr);gap:var(--space-sm);align-items:baseline}
+.characteristics dt{color:var(--color-muted);font-size:var(--text-xs);line-height:1.6}
+.characteristics dd{margin:0;color:var(--color-ink-2);font-size:var(--text-sm);line-height:1.6;overflow-wrap:anywhere}
+.characteristics dl>div:first-child dd{color:var(--color-ink);font-weight:600}
+.characteristics>p{margin:var(--space-sm) 0 0;max-width:55ch;color:var(--color-muted);font-size:var(--text-xs);line-height:1.6}
 .purchase{margin-block-start:var(--space-lg);padding-block-start:var(--space-lg);border-block-start:var(--rule-thin) solid var(--color-rule)}
 .packages{display:grid;gap:var(--space-2xs);min-width:0;margin:0;padding:0;border:0}
 .packages legend{margin-block-end:var(--space-xs);font-size:var(--text-sm);font-weight:700}

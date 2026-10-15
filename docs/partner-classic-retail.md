@@ -6,11 +6,11 @@ Routes: `/admin/partner-network` (manager), `/partners/network` (own partner), `
 
 Classic applies prospectively after explicit manager adoption. Both B2B and B2C use 1% of confirmed profit before commission for the first two qualifying purchases of the same referred customer; subsequent purchases use 2%. Only accepted, explicitly linked partner sales count. Completed, fully collected, non-refunded earlier purchases determine repeat eligibility. No company-wide or silent telephone-based attribution. Legacy agreements and paid history remain intact.
 
-Configurable commissioner tiers specify tenure since approval, net collected revenue from attributed orders in the trailing twelve months, all/any eligibility, base/repeat profit rates and a monthly reward multiplier. Managers explicitly adopt an eligible tier with a reason; no automatic promotion or retroactive settlement change. Tier definitions are immutable except for opening/stopping future eligibility; applied agreements retain snapshots. Current net revenue is unknown if relevant exclusions have not been reviewed.
+Configurable commissioner tiers specify tenure since approval, net collected revenue from attributed orders in the trailing twelve months, all/any eligibility, base/repeat profit rates and a period-reward multiplier. Managers explicitly adopt an eligible tier with a reason; no automatic promotion or retroactive settlement change. Tier definitions are immutable except for opening/stopping future eligibility; applied agreements retain snapshots. Current net revenue is unknown if relevant exclusions have not been reviewed.
 
 The UI offers **inactive illustrative** examples, not adopted policies:
 
-| Example | Eligibility (either) | First two / third onward | Monthly reward multiplier |
+| Example | Eligibility (either) | First two / third onward | Period reward multiplier |
 | --- | --- | --- | --- |
 | Classic | Manager adoption | 1% / 2% profit | 1 |
 | Gắn bó | 12 months or VND500m net collected / 12 months | 2% / 2% profit | 1.25 |
@@ -20,9 +20,13 @@ Commission rates do not stack. Higher personal rewards remain discretionary; a t
 
 ## Rewards
 
-Manager-configured monthly thresholds are versioned, inactive until explicitly adopted. The highest threshold only applies, not the sum. The example form fills 5/10/20 orders = VND50k/150k/400k and leaves approval unchecked. No migration seeds real rules or liabilities. A month is Vietnam civil time. Orders count when completed **and** fully collected, using the later of actual completion and the first payment that reached the invoice total. Historical orders without a reliable completion date are excluded. Refunds, order/source or rule changes stale outstanding reviews. Monthly approval/payment waits for month close.
+Manager-configured revenue thresholds select **monthly OR yearly**, not both. The highest reached band applies once. Recurring rewards are on net **actual collections** from accepted, explicitly attributed B2B/B2C orders, not order counts or profit. Partial payments count in the Vietnam civil period received. Cumulative reviewed VAT, shipping collected on behalf and refunds are deducted once across payment periods; cash is capped at the receivable total. Unknown exclusions on a relevant paid order block reconciliation instead of assuming zero. Orders with no cash movement in the period do not block it.
 
-Personal rewards require a deliberate amount/reason. Both reward types have review, approval, void and paid records. Creation supports durable retry IDs; payment records one full actual external payment, never transfers funds. Paid records remain unchanged; later source changes require human reconciliation.
+The form offers inactive illustrative examples: monthly VND50m/100m/200m revenue → VND100k/300k/700k reward; yearly examples scale those figures by twelve. These are unvalidated budget suggestions, never seeded agreements or liabilities. Managers approve a rule/version with a reason. Inactive drafts do not choose cadence. Changing an enabled cadence starts January 1 of a future year; non-void monthly/yearly award periods cannot overlap, including historical paid order-count rewards. The applied tier's existing `monthly_bonus_multiplier` column now multiplies either selected period; no duplicate multiplier field is needed.
+
+Completion/full collection still governs Classic repeat purchase eligibility, but is **not** required to recognize received cash for the recurring revenue bonus. Period approval/payment waits for month/year close. Later refunds, collection corrections, cancellation or attribution changes stale recorded reviews. Paid ledger rows stay immutable and require human reconciliation if source data changes. V1 has no automatic refund clawback or negative carry-forward.
+
+Legacy order-count rules and records are labeled historical. Unpaid count awards can be voided but cannot be newly approved/paid after this release; managers reconcile them under the new policy. Existing paid amounts are never recalculated in place. Personal rewards remain deliberate amount/reason, separate from the exclusive month/year choice. Review, approval, void, durable creation retry and recording one full external payment are retained; no money is transferred by the app.
 
 ## B2C source and privacy
 
@@ -40,7 +44,7 @@ Each order uses either percentage commission or price difference, never both. Di
 
 ## Database and environment
 
-Apply once, in order: 0091 Classic/tiers/rewards, 0092 private quote proposals, 0093 retail intake and receipts, 0094 composed snapshots. No existing agreement, paid record or order is rewritten by these migrations. New functions retain existing manager/own-partner authorization. Checkout receipts and retail order writes are service-role only. No service credentials in client code.
+Apply once, in order: 0091 Classic/tiers/rewards, 0092 private quote proposals, 0093 retail intake and receipts, 0094 composed snapshots, then 0095 revenue-based month/year rewards. Apply 0095 once after its predecessors; do not replay 0091–0094. No existing agreement, paid record or order is rewritten by these migrations. New functions retain existing manager/own-partner authorization. Checkout receipts and retail order writes are service-role only. No service credentials in client code.
 
 Reuse production Supabase URL/anon key, server-only service role and `PARTNER_NETWORK_ENABLED=true`. Keep `PARTNER_NETWORK_PUBLIC_REGISTRATION` false/unset during private pilot. No new external service or email setup is required. Do not publish an individual's page or send invitations as deployment QA.
 
@@ -50,10 +54,10 @@ Reuse production Supabase URL/anon key, server-only service role and `PARTNER_NE
 - Own partner: private invite sign-in, own sharing page, pending lead, accepted order progress, rates, rewards; another account must never see these rows.
 - Buyer: choose/refuse introducer, per-order consent, stale/withdrawn page, ordinary direct order, repeat purchase, lost-response retry; existing catalogue prices and 5/20/50/100kg benefits remain unchanged.
 - Manager: release quote, propose above/post-discount floor, review, convert using Pipeline, fulfil, collect, confirm costs, approve and record one payout; cancellation/refund/quantity reduction must flag reconciliation.
-- Month: confirm completion/payment month boundaries, highest tier only, disabled rules, month-open approval rejection, refund staleness, personal bonus retry, and immutable paid history.
+- Month/year: confirm Vietnam payment boundaries, split payments/exclusions once, unknown-review handling, highest revenue band only, exclusive cadence, future-January cadence switches, legacy overlap, open-period approval rejection, refund/source staleness and immutable paid history.
 - Documents: select a partner with an active Classic agreement; confirm first-two/third onward wording and saved tier rates. Old drafts retain their explicit policy. Check customer quote PDF has no base price.
 - Physical mobile QA around 390px remains a manual check; forms wrap, controls have at least44px targets, no wide table is required.
 
 ## Pilot
 
-Start with 5–10 individually invited partners. Agree tenure/revenue thresholds and monthly budgets using real cost data. Confirm each contact and personal page, issue a small approved quote range, perform one real sample/order to settlement, review source conflicts and per-order consent, check returns handling and reconcile the first closed month before widening intake. Do not migrate existing signed agreements without explicit manager adoption. Phase2 may add amendments for converted quotes, installment commission settlements, optional automatic tier suggestions/notifications, bonus profit budgets and better uncertain-checkout recovery after reload.
+Start with 5–10 individually invited partners. Agree tenure/revenue thresholds and period budgets using real cost data. Confirm each contact and personal page, issue a small approved quote range, perform one real sample/order to settlement, review source conflicts and per-order consent, check returns handling and reconcile the first closed period before widening intake. Do not migrate existing signed agreements without explicit manager adoption. Phase2 may add amendments for converted quotes, installment commission settlements, optional automatic tier suggestions/notifications, bonus profit budgets and better uncertain-checkout recovery after reload.
