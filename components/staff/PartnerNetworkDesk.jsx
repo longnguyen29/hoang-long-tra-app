@@ -359,7 +359,7 @@ export default function PartnerNetworkDesk() {
   const referralById = useMemo(() => new Map(snapshot.referrals.map(row => [row.id, row])), [snapshot.referrals]);
   const statuses = tab === "partners" ? PARTNER_STATUS : tab === "referrals" ? REFERRAL_STATUS : COMMISSION_STATUS;
   const statusOptions = Array.isArray(statuses) ? statuses.map(item => [item.id || item.value, item.label]) : Object.entries(statuses).map(([key, value]) => [key, value?.label || value]);
-  const filtered = (snapshot[tab] || []).filter(row => {
+  const filtered = (Array.isArray(snapshot[tab]) ? snapshot[tab] : []).filter(row => {
     if (filter !== "all" && row.status !== filter) return false;
     const partner = partnerById.get(row.partner_id);
     const referral = referralById.get(row.referral_id);
