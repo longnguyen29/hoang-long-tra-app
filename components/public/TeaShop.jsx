@@ -7,7 +7,10 @@ import { ArrowLeft, ArrowRight, Check, Globe2, Minus, Plus, ShoppingBag, X } fro
 import { useRetailCart } from "./RetailCartProvider";
 import RetailCatalogGrid from "./RetailCatalogGrid";
 import RetailProductDetail from "./RetailProductDetail";
+import RetailVolumeOffer from "./RetailVolumeOffer";
 import { retailOptions } from "@/lib/retail-catalog";
+import { RETAIL_CART_MAX } from "@/lib/retail-cart";
+import { retailVolumeBenefits } from "@/lib/retail-volume-policy";
 import { sellingUnitLabel } from "@/lib/selling-units";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import styles from "./TeaShop.module.css";
@@ -136,7 +139,8 @@ export default function TeaShop({ mode = "tea", product = null }) {
   const options = allProducts.flatMap(retailOptions);
   const lines = options.filter(option => cart[option.key] > 0).map(option => ({ ...option, qty: cart[option.key] }));
   const count = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
-  const total = lines.reduce((sum, line) => sum + line.price * line.qty, 0);
+  const benefits = retailVolumeBenefits(lines);
+  const total = benefits.total;
   const quantity = changeQuantity;
 
   const submit = async (event) => {
@@ -190,6 +194,7 @@ export default function TeaShop({ mode = "tea", product = null }) {
           <p>{isGoods ? t.goodsEyebrow : t.teaEyebrow}</p>
           <h1>{isGoods ? t.goodsTitle : t.teaTitle}</h1>
           <div><p>{isGoods ? t.goodsIntro : t.teaIntro}</p><Link href={isGoods ? "/story" : "/catalog"}>{isGoods ? t.goodsLink : t.teaLink} <ArrowRight size={16}/></Link></div>
+          {!isGoods && <RetailVolumeOffer locale={locale}/>}
         </section>
         {loading ? <section className={styles.loading} aria-label={locale === "vi" ? "Đang tải danh mục" : "Loading catalogue"} aria-live="polite"><i/><i/><i/></section>
           : catalogStatus === "error" ? <div className={styles.loadError} role="alert"><p>{t.loadError}</p><button type="button" onClick={() => window.location.reload()}>{locale === "vi" ? "Tải lại danh mục" : "Reload catalogue"}</button></div>
@@ -204,8 +209,10 @@ export default function TeaShop({ mode = "tea", product = null }) {
           <header><div><p>{t.yourOrder}</p><h2 id="cart-title">{t.cart}</h2></div><button onClick={() => setCartOpen(false)} aria-label={t.closeCart}><X size={19}/></button></header>
           {cartAdjusted && <p className={styles.cartNotice} role="status">{locale === "vi" ? "Giỏ hàng đã cập nhật theo quy cách và lượng còn có trong danh mục." : "Your cart was updated to match the current packs and availability."}</p>}
           {catalogStatus !== "ready" ? <p role={catalogStatus === "error" ? "alert" : "status"}>{catalogStatus === "error" ? t.loadError : (locale === "vi" ? "Đang kiểm tra giỏ hàng…" : "Checking your cart…")}</p> : !lines.length ? <div className={styles.empty}><ShoppingBag size={22}/><p>{t.emptyCart}</p><button onClick={() => setCartOpen(false)}>{t.continueTea}</button></div> : <>
-            <div className={styles.lines}>{lines.map((line) => <div key={line.key}><span><b>{line.product.name?.[locale] || line.product.name?.vi || line.product.name?.en}</b><small>{line.weight || line.product.packSize}</small></span><span>{line.qty} {sellingUnitLabel(line.unit, locale)} × {money.format(line.price)}<span className={styles.lineControls}><button type="button" onClick={()=>quantity(line.key,-1)} aria-label={t.remove(line.product.name?.[locale] || line.product.name?.vi)}><Minus size={14}/></button><button type="button" disabled={line.qty >= 99 || (line.stock !== null && line.qty >= line.stock)} onClick={()=>quantity(line.key,1)} aria-label={t.add(line.product.name?.[locale] || line.product.name?.vi)}><Plus size={14}/></button><button type="button" onClick={()=>quantity(line.key,-line.qty)} aria-label={locale === "vi" ? "Xóa dòng sản phẩm" : "Remove item"}><X size={14}/></button></span></span></div>)}</div>
+            <div className={styles.lines}>{lines.map((line) => <div key={line.key}><span><b>{line.product.name?.[locale] || line.product.name?.vi || line.product.name?.en}</b><small>{line.weight || line.product.packSize}</small></span><span>{line.qty} {sellingUnitLabel(line.unit, locale)} × {money.format(line.price)}<span className={styles.lineControls}><button type="button" onClick={()=>quantity(line.key,-1)} aria-label={t.remove(line.product.name?.[locale] || line.product.name?.vi)}><Minus size={14}/></button><input className={styles.quantityInput} type="number" inputMode="numeric" min={1} max={Math.min(RETAIL_CART_MAX,line.stock ?? RETAIL_CART_MAX)} value={line.qty} aria-label={`${locale === 'vi' ? 'Số lượng' : 'Quantity'} ${line.product.name?.[locale] || line.product.name?.vi}`} onChange={event=>{const value=Number(event.target.value);if(Number.isInteger(value)&&value>0&&value<=RETAIL_CART_MAX)quantity(line.key,value-line.qty)}}/><button type="button" disabled={line.qty >= RETAIL_CART_MAX || (line.stock !== null && line.qty >= line.stock)} onClick={()=>quantity(line.key,1)} aria-label={t.add(line.product.name?.[locale] || line.product.name?.vi)}><Plus size={14}/></button><button type="button" onClick={()=>quantity(line.key,-line.qty)} aria-label={locale === "vi" ? "Xóa dòng sản phẩm" : "Remove item"}><X size={14}/></button></span></span></div>)}</div>
             <form className={styles.checkout} onSubmit={submit}>
+              <RetailVolumeOffer benefits={benefits} locale={locale}/>
+              {benefits.discount > 0 && <div className={styles.discountBreakdown}><span>{locale === 'vi' ? 'Tiền hàng trước ưu đãi' : 'Before volume discount'}<b>{money.format(benefits.subtotal)}</b></span><span>{locale === 'vi' ? `Ưu đãi trà ${benefits.percent}%` : `Tea discount ${benefits.percent}%`}<b>−{money.format(benefits.discount)}</b></span></div>}
               <div className={styles.total}><span>{t.estimatedTotal}</span><b>{money.format(total)}</b></div>
               <label>{t.name}<input required maxLength={180} autoComplete="name" value={customer.name} onChange={(e)=>setCustomer({...customer,name:e.target.value})}/></label>
               <label>{t.contact}<input required maxLength={240} autoComplete="tel" value={customer.contact} onChange={(e)=>setCustomer({...customer,contact:e.target.value})}/></label>

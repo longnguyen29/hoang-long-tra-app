@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -21,10 +21,12 @@ import {
   RefreshCw,
   RotateCcw,
   Scale,
+  X,
 } from "lucide-react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { buildJourneyQueue, relativeDueLabel } from "@/lib/customer-journey";
 import { houseDateKey } from "@/lib/dashboard-calendar";
+import { dashboardTextError, FOCUS_TITLE_LIMIT } from "@/lib/dashboard-task-input";
 import { STAFF_APPS as APPS, STAFF_APP_GROUPS, STAFF_APP_LIST as APP_LIST } from "./staff-navigation";
 import DashboardPlanner from "./DashboardPlanner";
 import SampleFollowups from "./SampleFollowups";
@@ -274,6 +276,9 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
   const [editingFocus, setEditingFocus] = useState(false);
   const [dataIncomplete, setDataIncomplete] = useState(false);
   const [focusDraft, setFocusDraft] = useState({ title: "", appKey: "operations" });
+  const [focusError, setFocusError] = useState("");
+  const focusDialog = useRef(null);
+  const focusTitle = useRef(null);
   const [memoryDraft, setMemoryDraft] = useState({ kind: "decision", title: "", body: "" });
 
   const load = useCallback(async () => {
@@ -328,6 +333,28 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (!editingFocus) return;
+    const dialog = focusDialog.current;
+    if (!dialog.open) dialog.showModal();
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const viewport = window.visualViewport;
+    const resize = () => {
+      dialog.style.setProperty("--focus-viewport-height", `${viewport?.height || window.innerHeight}px`);
+      dialog.style.setProperty("--focus-viewport-top", `${viewport?.offsetTop || 0}px`);
+    };
+    resize();
+    viewport?.addEventListener("resize", resize);
+    viewport?.addEventListener("scroll", resize);
+    return () => {
+      document.body.style.overflow = overflow;
+      viewport?.removeEventListener("resize", resize);
+      viewport?.removeEventListener("scroll", resize);
+      if (dialog.open) dialog.close();
+    };
+  }, [editingFocus]);
+
   const mode = snapshot?.preference?.mode || "owner";
   const focus = snapshot?.focus || [];
   const carryOver = snapshot?.carry_over || [];
@@ -377,37 +404,51 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
   };
 
   const beginFocusEdit = (position, item = null) => {
+    setFocusError("");
     setEditingFocus(true);
     setEditingSlot(position);
     setFocusDraft({
       title: item?.title || "",
       appKey: item?.app_key || MODE_DEFAULT_APP[mode],
     });
-    requestAnimationFrame(() => document.querySelector("#focus-editor input")?.focus());
+    // Open and focus in the tap handler so mobile keyboards can respond to the
+    // user's gesture. Native dialog handles focus trapping and return focus.
+    if (focusDialog.current && !focusDialog.current.open) focusDialog.current.showModal();
+    focusTitle.current?.focus({ preventScroll: true });
+  };
+  const closeFocus = () => {
+    if (saving) return;
+    focusDialog.current?.close();
+    setEditingFocus(false);
+    setFocusError("");
   };
 
   const saveFocus = async (event) => {
     event.preventDefault();
     const title = focusDraft.title.trim();
-    if (!title) {
-      setError("Việc ưu tiên cần một mô tả ngắn, đủ để ngày mai vẫn hiểu.");
+    const validation = dashboardTextError(title, FOCUS_TITLE_LIMIT, "Việc ưu tiên", true);
+    if (validation) {
+      setFocusError(validation);
       return;
     }
     setSaving(true);
-    setError("");
+    setFocusError("");
     const app = APPS[focusDraft.appKey];
-    const { error: saveError } = await supabase.rpc("save_morning_focus", {
+    if (!app) { setSaving(false); setFocusError("Chọn app tiếp tục cho việc này."); return; }
+    let saveError;
+    try { ({ error: saveError } = await supabase.rpc("save_morning_focus", {
       p_position: editingSlot,
       p_title: title,
       p_app_key: app.key,
       p_href: app.href,
-    });
+    })); } catch { saveError = true; }
     setSaving(false);
     if (saveError) {
-      setError("Chưa chốt được việc ưu tiên. Kiểm tra kết nối và thử lại.");
+      setFocusError("Chưa lưu được ưu tiên. Nội dung vẫn ở đây; kiểm tra kết nối rồi thử lại.");
       return;
     }
     setFocusDraft({ title: "", appKey: MODE_DEFAULT_APP[mode] });
+    focusDialog.current?.close();
     setEditingFocus(false);
     await load();
   };
@@ -537,17 +578,17 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
                           <button className={styles.checkButton} onClick={() => toggleFocus(item)} aria-pressed={item.status === "done"} aria-label={item.status === "done" ? "Đánh dấu chưa xong" : "Đánh dấu hoàn tất"}>
                             {item.status === "done" ? <CheckCircle2 /> : <Circle />}
                           </button>
-                          <div className={styles.focusText}>
+                          <button type="button" className={styles.focusText} onClick={() => beginFocusEdit(position, item)} aria-haspopup="dialog" aria-controls="focus-editor" aria-label={`Sửa ưu tiên ${position}: ${item.title}`}>
                             <b>{item.title}</b>
                             <span>{app?.label}</span>
-                          </div>
+                          </button>
                           <div className={styles.focusActions}>
-                            <button onClick={() => beginFocusEdit(position, item)} aria-label={`Sửa ưu tiên ${position}`}><PencilLine /></button>
+                            <button onClick={() => beginFocusEdit(position, item)} aria-label={`Sửa ưu tiên ${position}`} aria-haspopup="dialog" aria-controls="focus-editor"><PencilLine /></button>
                             <Link href={item.href} onClick={(event) => openApp(event, { ...app, href: item.href }, { focus_id: item.id, focus_title: item.title })}>Mở<ArrowRight /></Link>
                           </div>
                         </>
                       ) : (
-                        <button className={styles.emptyFocus} onClick={() => beginFocusEdit(position)}><Plus />Chọn việc cho vị trí này</button>
+                        <button className={styles.emptyFocus} onClick={() => beginFocusEdit(position)} aria-haspopup="dialog" aria-controls="focus-editor"><Plus />Chọn việc cho vị trí này</button>
                       )}
                     </article>
                   );
@@ -561,20 +602,6 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
                   <Link href={item.href}>Mở <ArrowRight /></Link>
                 </article>)}
               </div>}
-              {editingFocus && <form className={styles.focusEditor} id="focus-editor" onSubmit={saveFocus}>
-                <label>
-                  <span>Ưu tiên {editingSlot}</span>
-                  <input value={focusDraft.title} onChange={(event) => setFocusDraft({ ...focusDraft, title: event.target.value })} placeholder="Ví dụ: Chốt lịch giao cho đơn đang bị chặn" maxLength={160} />
-                </label>
-                <label>
-                  <span>App tiếp tục</span>
-                  <select value={focusDraft.appKey} onChange={(event) => setFocusDraft({ ...focusDraft, appKey: event.target.value })}>
-                    {APP_LIST.filter(app => app.key !== "partnerNetwork" || partnerNetworkEnabled).map((app) => <option key={app.key} value={app.key}>{app.label}</option>)}
-                  </select>
-                </label>
-                <button disabled={saving || !focusDraft.title.trim()}>{saving ? "Đang lưu" : "Chốt ưu tiên"}</button>
-              <button type="button" onClick={() => setEditingFocus(false)}>Đóng</button>
-              </form>}
             </section>
 
             <section className={styles.exceptions}>
@@ -714,6 +741,21 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
           <p>Dữ liệu thật ở app nguồn. Quyết định chỉ thành trí nhớ sau khi được duyệt.</p>
         </footer>
       </section>
+      <dialog ref={focusDialog} id="focus-editor" className={styles.focusDialog} aria-labelledby="focus-editor-title" aria-describedby="focus-editor-help" onCancel={(event) => { event.preventDefault(); closeFocus(); }} onClick={(event) => {
+        if (event.target !== event.currentTarget) return;
+        const bounds = event.currentTarget.getBoundingClientRect();
+        if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeFocus();
+      }}>
+        <form className={styles.focusEditor} onSubmit={saveFocus}>
+          <header className={styles.focusEditorHead}><h2 id="focus-editor-title">Ưu tiên {editingSlot}</h2><button type="button" disabled={saving} onClick={closeFocus} aria-label="Đóng hộp ưu tiên"><X /></button></header>
+          <p id="focus-editor-help">Ghi việc cần làm và kết quả mong muốn. Việc chưa xong sẽ được giữ sang hôm sau.</p>
+          {focusError && <p className={styles.focusError} role="alert">{focusError}</p>}
+          <label><span>Việc cần làm</span><textarea ref={focusTitle} autoFocus required rows={5} maxLength={FOCUS_TITLE_LIMIT} value={focusDraft.title} onChange={(event) => setFocusDraft({ ...focusDraft, title: event.target.value })} placeholder="Ví dụ: Chốt lịch giao cho đơn đang bị chặn, xác nhận người phụ trách và ngày khách nhận hàng" aria-describedby="focus-editor-count" disabled={saving} /></label>
+          <small id="focus-editor-count" className={styles.focusCount}>{Array.from(focusDraft.title).length.toLocaleString("vi-VN")} / {FOCUS_TITLE_LIMIT.toLocaleString("vi-VN")} ký tự</small>
+          <label><span>App tiếp tục</span><select value={focusDraft.appKey} disabled={saving} onChange={(event) => setFocusDraft({ ...focusDraft, appKey: event.target.value })}>{APP_LIST.filter(app => app.key !== "partnerNetwork" || partnerNetworkEnabled).map((app) => <option key={app.key} value={app.key}>{app.label}</option>)}</select></label>
+          <footer className={styles.focusEditorActions}><button type="button" disabled={saving} onClick={closeFocus}>Đóng</button><button type="submit" disabled={saving || !focusDraft.title.trim()}>{saving ? "Đang lưu…" : "Chốt ưu tiên"}</button></footer>
+        </form>
+      </dialog>
     </main>
   );
 }

@@ -276,7 +276,7 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
  const beforeSubtotal=pricedSubtotal(order.lines||[]),remainingSubtotal=pricedSubtotal(remainingLines);
  const recordedDiscount=Number(order.tier?.pct),recordedTotal=order.estimatedTotal===null||order.estimatedTotal===undefined?null:Number(order.estimatedTotal);
  const matchesRecordedTier=beforeSubtotal!==null&&Number.isFinite(recordedDiscount)&&recordedDiscount>=0&&recordedDiscount<=100&&recordedTotal===Math.round(beforeSubtotal*(1-recordedDiscount/100));
- const remainingTotalPreview=recordedTotal===null||remainingSubtotal===null?null:recordedTotal===beforeSubtotal?remainingSubtotal:matchesRecordedTier?Math.round(remainingSubtotal*(1-recordedDiscount/100)):null;
+ const remainingTotalPreview=recordedTotal===null||remainingSubtotal===null?null:Math.abs(recordedTotal-beforeSubtotal)<0.01?Math.round(remainingSubtotal*100)/100:matchesRecordedTier?Math.round(remainingSubtotal*(1-recordedDiscount/100)):null;
  const startLineRemoval=(index)=>{if(saving||editingPrices||unitLineIndex!==null||!canRemoveLines||(order.lines||[]).length<2)return;setRemovingLineIndex(index);setLineRemovalReason("");setLineRemovalNotice("")};
  const saveLineRemoval=async(event)=>{
   event.preventDefault();

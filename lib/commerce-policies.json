@@ -67,7 +67,8 @@
       [
         "3. Phạm vi và phí giao",
         [
-          "Nhận giao tại Việt Nam trong phạm vi phục vụ của đơn vị vận chuyển. Phí được báo theo địa chỉ, trọng lượng và hình thức giao; không mặc định miễn phí vận chuyển. Đơn quốc tế chỉ thực hiện sau khi có thỏa thuận riêng.",
+          "Nhận giao tại Việt Nam trong phạm vi phục vụ của đơn vị vận chuyển. Đơn từ giỏ mua lẻ trên website có tổng lượng trà xác định từ 5 kg được miễn phí giao tiêu chuẩn trong nước. Đơn chưa đủ ngưỡng được báo phí theo địa chỉ, trọng lượng và hình thức giao. Địa chỉ và phương án giao được xác nhận trước khi gửi; giao quốc tế thỏa thuận phí riêng.",
+          "Ưu đãi theo tổng lượng trà trong giỏ mua lẻ: từ 20 kg giảm 3%, từ 50 kg giảm 5%, từ 100 kg giảm 7%. Áp dụng một mức cao nhất trên tiền trà có khối lượng xác định; không cộng thêm các mức với nhau. Sản vật, phụ kiện, bộ mẫu và trà chưa rõ trọng lượng không tính vào ngưỡng hoặc tiền được giảm. Báo giá B2B và các đơn đã xác nhận giữ điều kiện riêng đã thỏa thuận.",
           "Bạn có thể nhận tại văn phòng / kho 36B QL2A, Sóc Sơn, Hà Nội sau khi hẹn trước qua 0903 333 841. Đây là địa chỉ văn phòng / kho, không phải địa chỉ vùng nguyên liệu."
         ]
       ],
@@ -79,7 +80,8 @@
           "Nếu bạn đổi địa chỉ hoặc thời gian nhận sau khi gửi, Nhà hỗ trợ khi có thể và báo trước phí phát sinh. Trường hợp giao không thành công, Nhà liên hệ để thống nhất giao lại hoặc phương án xử lý."
         ]
       ]
-    ]
+    ],
+    "updatedAt": "14/10/2026"
   },
   "terms": {
     "title": "Điều khoản mua hàng",

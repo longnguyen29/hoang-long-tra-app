@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Archive, ArrowRight, BookOpen, Check, ChevronDown, ChevronRight, ExternalLink, GitBranch, Leaf, Lightbulb, Link2, List, PencilLine, Plus, RefreshCw, Search, X } from "lucide-react";
 import { knowledgePostNodes, normalizeKnowledgeSnapshot, safeKnowledgeUrl, summarizeKnowledge, topicDescendantIds } from "@/lib/knowledge-centre";
+import { dashboardTextError, PLAN_TITLE_LIMIT, PLAN_NOTES_LIMIT } from "@/lib/dashboard-task-input";
 import { useDialogFocus } from "./useDialogFocus";
 import KnowledgeSocialInbox from "./KnowledgeSocialInbox";
 import styles from "./KnowledgeCentre.module.css";
@@ -95,8 +96,8 @@ function KnowledgeDialog({ modal, setModal, saving, error, snapshot, variants, o
       </>}
       {kind === "task" && <>
         <p className={styles.hint}>Việc này xuất hiện trong danh sách Hôm nay của bạn và dẫn trở lại chủ đề.</p>
-        <label>Việc cần làm<input required maxLength={180} value={draft.title} onChange={event => change("title", event.target.value)}/></label>
-        <label>Ghi chú<textarea rows={4} maxLength={3000} value={draft.notes} onChange={event => change("notes", event.target.value)}/></label>
+        <label>Việc cần làm<input required maxLength={PLAN_TITLE_LIMIT} value={draft.title} onChange={event => change("title", event.target.value)}/></label>
+        <label>Ghi chú<textarea rows={4} maxLength={PLAN_NOTES_LIMIT} value={draft.notes} onChange={event => change("notes", event.target.value)}/></label>
         <label>Ngày hẹn (tùy chọn)<input type="date" value={draft.event_on} onChange={event => change("event_on", event.target.value)}/></label>
         <p className={styles.hint}>Nhắc Telegram được quản lý trong Hôm nay khi đã có ngày hẹn.</p>
       </>}
@@ -220,6 +221,8 @@ export default function KnowledgeCentre({ supabase, email, role }) {
     const { kind, draft, record } = modal;
     try {
       if (kind === "task") {
+        const validation = dashboardTextError(draft.title, PLAN_TITLE_LIMIT, "Việc cần làm", true) || dashboardTextError(draft.notes, PLAN_NOTES_LIMIT, "Ghi chú");
+        if (validation) { setDialogError(validation); return; }
         const seedKey = `knowledge-${selection?.type === "angle" ? "angle" : "topic"}:${selection?.type === "angle" ? angle?.id : topic?.id}`;
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !sessionData?.session?.user?.id) throw new Error("session_required");
@@ -227,7 +230,7 @@ export default function KnowledgeCentre({ supabase, email, role }) {
         const existing = await supabase.from("dashboard_plans").select("id,title,status").eq("user_id", owner).eq("seed_key", seedKey).limit(1);
         if (existing.error) throw existing.error;
         if (existing.data?.length) { setNotice(`Đã có việc “${existing.data[0].title}” trong Hôm nay. Mở Hôm nay để xem hoặc sửa việc đó.`); draftCache.current.delete(modal.key); setModalState(null); return; }
-        const result = await supabase.from("dashboard_plans").insert({ user_id: owner, kind: "task", title: draft.title.trim().slice(0, 180), notes: draft.notes.trim().slice(0, 3000), event_on: draft.event_on || null, notify_telegram: false, href: `/admin/knowledge?topic=${encodeURIComponent(topic.id)}`, seed_key: seedKey });
+        const result = await supabase.from("dashboard_plans").insert({ user_id: owner, kind: "task", title: draft.title.trim(), notes: draft.notes.trim(), event_on: draft.event_on || null, notify_telegram: false, href: `/admin/knowledge?topic=${encodeURIComponent(topic.id)}`, seed_key: seedKey });
         if (result.error) { if (result.error.code === "23505") { setNotice("Việc này vừa được thêm vào Hôm nay. Mở Hôm nay để xem lại."); } else throw result.error; }
         else setNotice("Đã thêm bước tiếp theo vào Hôm nay.");
       } else {

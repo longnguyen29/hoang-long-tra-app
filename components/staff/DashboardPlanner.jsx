@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Bell, CalendarDays, Check, ChevronLeft, ChevronRight, Circle, PencilLine, Plus, X } from "lucide-react";
 import { calendarCells, houseDateKey, subtractCalendarMonth } from "@/lib/dashboard-calendar";
+import { dashboardTextError, PLAN_TITLE_LIMIT, PLAN_NOTES_LIMIT } from "@/lib/dashboard-task-input";
 import styles from "./DashboardPlanner.module.css";
 import GovernmentObligations from "./GovernmentObligations";
 import ReminderDispatch from "./ReminderDispatch";
@@ -112,7 +113,8 @@ export default function DashboardPlanner({ supabase }) {
   };
   const save = async (event) => {
     event.preventDefault();
-    if (!draft.title.trim()) return;
+    const validation = dashboardTextError(draft.title, PLAN_TITLE_LIMIT, "Tiêu đề", true) || dashboardTextError(draft.notes, PLAN_NOTES_LIMIT, "Ghi chú");
+    if (validation) { setError(validation); return; }
     if (draft.notify_telegram && !draft.event_on) { setError("Chọn ngày trước khi bật nhắc Telegram."); return; }
     setSaving(true);
     setError("");
@@ -177,9 +179,10 @@ export default function DashboardPlanner({ supabase }) {
     </div>
     {showForm && <div className={styles.dialogBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowForm(false); }}><form className={styles.form} onSubmit={save} aria-label={editingId ? "Sửa mục đang chờ" : "Thêm mục đang chờ"}>
       <div className={styles.formHead}><h3>{editingId ? "Sửa mục" : "Thêm mục"}</h3><button type="button" onClick={() => setShowForm(false)} aria-label="Đóng"><X /></button></div>
-      <label>Tiêu đề<input required maxLength={180} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="Việc gì cần nhớ?" /></label>
+      {error && <p className={styles.error} role="alert">{error}</p>}
+      <label>Tiêu đề<input autoFocus required maxLength={PLAN_TITLE_LIMIT} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="Việc gì cần nhớ?" /><small className={styles.formHint}>Tối đa {PLAN_TITLE_LIMIT.toLocaleString("vi-VN")} ký tự</small></label>
       <label>Loại<select value={draft.kind} onChange={(event) => setDraft({ ...draft, kind: event.target.value })}><option value="feature">Chức năng chờ thử</option><option value="event">Lịch hẹn</option><option value="task">Việc cần làm</option></select></label>
-      <label>Ghi chú<textarea maxLength={3000} rows={3} value={draft.notes} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} placeholder="Tình trạng, bước tiếp theo hoặc điều cần kiểm tra" /></label>
+      <label>Ghi chú<textarea maxLength={PLAN_NOTES_LIMIT} rows={5} value={draft.notes} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} placeholder="Tình trạng, bước tiếp theo hoặc điều cần kiểm tra" /><small className={styles.formHint}>{Array.from(draft.notes).length.toLocaleString("vi-VN")} / {PLAN_NOTES_LIMIT.toLocaleString("vi-VN")} ký tự</small></label>
       <div className={styles.formRow}><label>Ngày diễn ra<input type="date" value={draft.event_on} onChange={(event) => setDraft({ ...draft, event_on: event.target.value, notify_telegram: event.target.value ? draft.notify_telegram : false })} /></label><label>Nhắc trước (ngày)<input type="number" required min="0" max="30" step="1" value={draft.remind_days} onChange={(event) => setDraft({ ...draft, remind_days: event.target.value })} /></label></div>
       <label className={styles.toggle}><input type="checkbox" checked={draft.notify_telegram} disabled={!draft.event_on} onChange={(event) => setDraft({ ...draft, notify_telegram: event.target.checked })} /> Nhắc vào Telegram Hoàng Long hiện có</label>
       <p className={styles.formHint}>Bot gửi một lần trong khoảng 07:00–08:00 giờ Việt Nam khi đến ngày nhắc; mục vẫn ở “Đang chờ” tới khi hoàn tất.</p>
