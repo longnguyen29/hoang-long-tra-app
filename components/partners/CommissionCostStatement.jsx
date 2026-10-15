@@ -15,7 +15,7 @@ const errors = {
   statement_changed: "Dữ liệu đối soát đã thay đổi hoặc chưa đủ điều kiện công bố. Đối soát lại đơn rồi thử lại.",
 };
 
-export default function CommissionCostStatement({ commissionId, mode = "partner", supabase: suppliedSupabase, onChange }) {
+export default function CommissionCostStatement({ commissionId, remunerationMode = "commission", mode = "partner", supabase: suppliedSupabase, onChange }) {
   const supabase = useMemo(() => suppliedSupabase || createClient(), [suppliedSupabase]);
   const manager = mode === "manager";
   const [statement, setStatement] = useState(null);
@@ -109,10 +109,10 @@ export default function CommissionCostStatement({ commissionId, mode = "partner"
       <button type="button" disabled={busy} onClick={() => run(refresh)}>Tải lại bảng đối soát</button>
       {statement && <>
         <p>{statement.stale ? "Bản cũ: dữ liệu đơn / đối soát đã đổi. Cần rà soát và công bố lại." : statement.published ? "Đã công bố riêng cho đối tác của đơn này." : "Chưa công bố cho đối tác."}</p>
-        {snapshot && <p className={styles.note}>{manager ? "Số liệu sẽ công bố: " : "Cơ sở đã công bố: "}{snapshot.commission_basis === "profit" ? "lợi nhuận sau chi phí đơn" : "doanh thu thuần đã thu"}{snapshot.rate_percent !== null && snapshot.rate_percent !== undefined ? ` · ${snapshot.rate_percent}%` : ""}.</p>}
+        {snapshot && <p className={styles.note}>{manager ? "Số liệu sẽ công bố: " : "Cơ sở đã công bố: "}{remunerationMode === "price_difference" ? "chênh giá theo điều kiện đã duyệt, không cộng hoa hồng %" : snapshot.commission_basis === "profit" ? "lợi nhuận sau chi phí đơn" : "doanh thu thuần đã thu"}{remunerationMode !== "price_difference" && snapshot.rate_percent !== null && snapshot.rate_percent !== undefined ? ` · ${snapshot.rate_percent}%` : ""}.</p>}
         {snapshot && <dl className={styles.totals}>{[
           ["Doanh thu thuần đã thu", snapshot.eligible_base], ["Chi phí đơn đã xác nhận", snapshot.internal_cost_total],
-          ["Cơ sở chia hoa hồng", snapshot.commission_base], ["Hoa hồng đối soát", snapshot.calculated_amount],
+          [remunerationMode === "price_difference" ? "Chênh giá đủ điều kiện" : "Cơ sở chia hoa hồng", snapshot.commission_base], ["Hoa hồng đối soát", snapshot.calculated_amount],
         ].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{formatPartnerMoney(value)}</dd></div>)}</dl>}
         {!manager && statement.summary && <p className={styles.summaryText}>{statement.summary}</p>}
         {statement.published_at && <p className={styles.note}>Công bố: {new Date(statement.published_at).toLocaleString("vi-VN")}</p>}

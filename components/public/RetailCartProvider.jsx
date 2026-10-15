@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { publicRetailPartner, RETAIL_PARTNER_STORAGE_KEY } from '@/lib/retail-partner';
 import { fromCatalogRow, fromVariantRow } from '@/lib/mappers';
 import { RETAIL_PRODUCT_FIELDS, RETAIL_VARIANT_FIELDS, retailOptions } from '@/lib/retail-catalog';
 import { RETAIL_CART_STORAGE_KEY, RETAIL_LEGACY_CART_STORAGE_KEY, RETAIL_CART_MAX, changeRetailQuantity, parseRetailCart, restoreRetailCart, reconcileRetailCart } from '@/lib/retail-cart';
@@ -20,6 +21,44 @@ export default function RetailCartProvider({ children }) {
   const [catalogStatus, setCatalogStatus] = useState('loading');
   const [cartOpen, setCartOpen] = useState(false);
   const [cartAdjusted, setCartAdjusted] = useState(false);
+  const [retailPartner, setRetailPartner] = useState(null);
+  const [partnerCandidate, setPartnerCandidate] = useState(null);
+  const [referralStatus, setReferralStatus] = useState('');
+  const clearRetailPartner = useCallback(() => {
+    setRetailPartner(null); setPartnerCandidate(null); setReferralStatus('');
+    try { sessionStorage.removeItem(RETAIL_PARTNER_STORAGE_KEY); } catch { /* Memory-only browsing is supported. */ }
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('ref')) { url.searchParams.delete('ref'); window.history.replaceState(null, '', url); }
+  }, []);
+  const confirmRetailPartner = useCallback(() => {
+    if (!partnerCandidate) return;
+    setRetailPartner(partnerCandidate); setPartnerCandidate(null); setReferralStatus('ready');
+    try { sessionStorage.setItem(RETAIL_PARTNER_STORAGE_KEY, JSON.stringify(partnerCandidate)); } catch { /* No buyer information is stored. */ }
+  }, [partnerCandidate]);
+
+  useEffect(() => {
+    if (!active) return;
+    let live = true, stored = null;
+    try { stored = publicRetailPartner(JSON.parse(sessionStorage.getItem(RETAIL_PARTNER_STORAGE_KEY) || 'null')); } catch { /* Ignore stale public metadata. */ }
+    const incoming = new URL(window.location.href).searchParams.get('ref');
+    const slug = incoming === null ? stored?.slug : incoming;
+    if (!slug) { if (incoming !== null) setReferralStatus('unavailable'); return; }
+    setReferralStatus('loading');
+    fetch(`/api/retail-partner?ref=${encodeURIComponent(slug)}`, { cache: 'no-store' })
+      .then(async response => { const data = await response.json(); return response.ok ? publicRetailPartner(data.partner) : null; })
+      .then(partner => {
+        if (!live) return;
+        if (!partner) { setRetailPartner(null); setPartnerCandidate(null); setReferralStatus('unavailable'); return; }
+        if (stored?.slug === partner.slug && stored.revision === partner.revision) {
+          setRetailPartner(partner); setPartnerCandidate(null); setReferralStatus('ready');
+        } else {
+          // A new link never silently takes over an existing referral. The buyer
+          // must choose this named partner, then consent again for each order.
+          setRetailPartner(null); setPartnerCandidate(partner); setReferralStatus('choice');
+        }
+      }).catch(() => { if (live) { setRetailPartner(null); setReferralStatus('unavailable'); } });
+    return () => { live = false; };
+  }, [pathname, active]);
   const options = useMemo(() => products.flatMap(retailOptions), [products]);
 
   useEffect(() => {
@@ -80,7 +119,7 @@ export default function RetailCartProvider({ children }) {
     return true;
   }, [options, catalogStatus, cart, changeQuantity]);
 
-  const value = { cart, products, vendors, catalogStatus, cartOpen, setCartOpen, cartAdjusted,
+  const value = { retailPartner, partnerCandidate, referralStatus, clearRetailPartner, confirmRetailPartner, cart, products, vendors, catalogStatus, cartOpen, setCartOpen, cartAdjusted,
     clearCart: () => { setCart({}); setCartAdjusted(false); }, openCart: () => setCartOpen(true), changeQuantity, addOption };
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

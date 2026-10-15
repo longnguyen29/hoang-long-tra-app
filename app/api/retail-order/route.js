@@ -1,34 +1,40 @@
+import {createHash} from 'node:crypto';
 import { loadRetailProducts, retailPublicClient } from '@/lib/retail-catalog-server';
 import { prepareRetailCheckout, validateRetailCheckout } from '@/lib/retail-checkout';
+import { normalizeRetailPartnerCheckout } from '@/lib/retail-partner';
 import { createAdminClient } from '@/lib/supabase/admin';
-
+import { partnerNetworkEnabled } from '@/lib/partner-network-server';
+const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
+const failure = error => {
+ const message=error?.message||'';
+ const code=['out_of_stock','price_changed','cart_changed','checkout_retry_conflict','retail_partner_unavailable','partner_consent_required','invalid_partner_contact','invalid_checkout'].find(value=>message.includes(value))||'order_unavailable';
+ return Response.json({error:code},{status:code==='order_unavailable'?503:['invalid_checkout','partner_consent_required','invalid_partner_contact'].includes(code)?400:409,headers});
+};
 export async function POST(request) {
-  const origin = request.headers.get('origin');
-  if (origin && origin !== new URL(request.url).origin) return Response.json({ error: 'invalid_origin' }, { status: 403 });
-  try {
-    const body = await request.text();
-    if (body.length > 20000) return Response.json({ error: 'invalid_checkout' }, { status: 400 });
-    const payload = JSON.parse(body);
-    validateRetailCheckout(payload);
-    // Resolve by real product identity; client prices, units and names are ignored.
-    const client = retailPublicClient();
-    const products = await loadRetailProducts(client);
-    const { lines, total, customer, count } = prepareRetailCheckout(payload, products);
-    // The service-only transaction rechecks locked catalogue prices, sale units
-    // and volume benefits. No browser-supplied discount/shipping flag is trusted.
-    const { data, error } = await createAdminClient().rpc('submit_retail_volume_order', {
-      p_customer_name: customer.name, p_contact: customer.contact, p_address: customer.address,
-      p_tax_number: customer.tax, p_note: customer.note, p_lines: lines, p_total_items: count,
-      p_estimated_total: total, p_payment_method: customer.payment,
-    });
-    if (error || !data?.[0]?.id) {
-      const message = error?.message || '';
-      const code = message.includes('out_of_stock') ? 'out_of_stock' : message.includes('price_changed') ? 'price_changed' : message.includes('cart_changed') ? 'cart_changed' : 'order_unavailable';
-      return Response.json({ error: code }, { status: code === 'order_unavailable' ? 503 : 409 });
-    }
-    return Response.json({ orderId: data[0].id, total }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch (error) {
-    const code = ['invalid_checkout', 'cart_changed', 'price_changed'].includes(error.message) ? error.message : error instanceof SyntaxError ? 'invalid_checkout' : 'order_unavailable';
-    return Response.json({ error: code }, { status: code === 'invalid_checkout' ? 400 : code === 'order_unavailable' ? 503 : 409 });
-  }
+ const origin = request.headers.get('origin');
+ if (origin && origin !== new URL(request.url).origin) return Response.json({ error: 'invalid_origin' }, { status: 403,headers });
+ try {
+  const body = await request.text();
+  if (body.length > 20000) return Response.json({ error: 'invalid_checkout' }, { status: 400,headers });
+  const payload = JSON.parse(body);
+  const {cart,customer,expectedTotal}=validateRetailCheckout(payload);
+  const {requestId,partner}=normalizeRetailPartnerCheckout(payload);
+  if(partner && !partnerNetworkEnabled())return failure(new Error('retail_partner_unavailable'));
+  const fingerprint=createHash('sha256').update(JSON.stringify({cart,customer,expectedTotal,expectedLines:payload.expectedLines,partner})).digest('hex');
+  const admin=createAdminClient();
+  const stored=await admin.rpc('partner_network_retail_receipt',{p_request_id:requestId,p_fingerprint:fingerprint});
+  if(stored.error)return failure(stored.error);
+  if(stored.data?.orderId)return Response.json({orderId:stored.data.orderId,total:stored.data.total},{headers});
+  // Rebuild catalogue prices, units and existing volume benefits. The transaction
+  // repeats this validation under stock locks; referral values never set prices.
+  const client = retailPublicClient();
+  const products = await loadRetailProducts(client);
+  const {lines,total,count}=prepareRetailCheckout(payload,products);
+  const {data,error}=await admin.rpc('submit_partner_retail_order',{
+   p_request_id:requestId,p_fingerprint:fingerprint,p_partner:partner,
+   p_input:{name:customer.name,contact:customer.contact,address:customer.address,tax:customer.tax,note:customer.note,lines,total_items:count,total,payment:customer.payment},
+  });
+  if(error||!data?.orderId)return failure(error);
+  return Response.json({orderId:data.orderId,total:data.total},{headers});
+ }catch(error){return failure(error instanceof SyntaxError?new Error('invalid_checkout'):error);}
 }

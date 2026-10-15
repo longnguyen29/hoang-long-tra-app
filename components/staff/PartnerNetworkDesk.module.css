@@ -18,3 +18,5 @@
 .inviteFields { display: grid; gap: var(--space-sm); min-width: 0; padding: 0; margin: 0; border: 0; }
 .inviteFields .primary { align-self: end; display: inline-flex; justify-content: center; gap: var(--space-xs); align-items: center; }
 @media (min-width: 48rem) { .inviteFields { grid-template-columns: minmax(0,1.2fr) minmax(0,1fr) auto; align-items: end; } }
+
+.tabs{flex-wrap:wrap}.tabs button{flex:0 0 auto}@media(max-width:47.99rem){.tabs button{flex:0 0 auto;padding-inline:.7rem}}

@@ -12,12 +12,19 @@ export const metadata = {
 };
 
 export default async function CompanyDocumentsPage({ searchParams }) {
-  const context = await getCompanyDocumentsContext(await createClient(), { partnersEnabled: partnerNetworkEnabled() });
+  const supabase = await createClient();
+  const context = await getCompanyDocumentsContext(supabase, { partnersEnabled: partnerNetworkEnabled() });
   if (context.access !== "allowed") return <main className="hl-admin-state" data-no-translate>
     <h1>{context.access === "signed_out" ? "Đăng nhập để soạn tài liệu" : context.access === "error" ? "Chưa kiểm tra được quyền truy cập" : "Tài liệu dành cho quản lý"}</h1>
     <p>{context.access === "error" ? "Hãy tải lại trang. Không có dữ liệu đối tác được hiển thị khi chưa xác nhận quyền." : "Dùng tài khoản quản lý / admin Hoàng Long đã xác nhận email."}</p>
     <Link href={context.access === "error" ? "/admin/documents" : "/admin/login"}>{context.access === "error" ? "Thử lại" : "Đăng nhập"}</Link>
   </main>;
+  // Read-only manager RLS query; document preparation must never synchronize orders.
+  if (context.partners.length) {
+    const {data,error} = await supabase.from("partner_network_classic_agreements").select("partner_id,version,effective_at,first_rate,repeat_rate,monthly_bonus_multiplier").lte("effective_at",new Date().toISOString()).order("effective_at",{ascending:false}).order("version",{ascending:false});
+    if (error) { context.partnersUnavailable = true; context.partners = []; }
+    else context.partners = context.partners.map(partner => ({...partner,classic_agreement:data?.find(row => row.partner_id === partner.id) || null}));
+  }
   const query = await searchParams;
   const initialPartner = typeof query?.partner === "string" && /^[0-9a-f-]{36}$/i.test(query.partner) ? query.partner : "";
   return <CompanyDocuments partners={context.partners} initialPartner={initialPartner}
