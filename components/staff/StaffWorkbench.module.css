@@ -40,6 +40,15 @@
 
 .orderDetail .orderSummary>div{display:block;min-width:0;padding:var(--space-2xs) 0;border:0}
 @media(max-width:39.99rem){.orderDetail .orderSummary{grid-template-columns:minmax(0,1fr);margin-inline:0}}
+
+.checkoutBenefits{margin-block:var(--space-md);padding:var(--space-sm);border:var(--rule-thin) solid var(--color-rule);background:var(--color-paper-2)}
+.checkoutBenefits h3{display:flex;align-items:center;gap:var(--space-xs);margin:0 0 var(--space-xs);font-size:var(--text-base);line-height:1.4}
+.checkoutBenefits h3 svg{width:1.1rem;height:1.1rem;flex:none;color:var(--color-accent)}
+.checkoutBenefits dl{margin:0;border:0}
+.checkoutBenefits dl>div{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:var(--space-xs);font-size:var(--text-sm)}
+.checkoutBenefits dd[data-free=true]{color:var(--color-accent);font-weight:700}
+.checkoutBenefits>p{margin:var(--space-xs) 0 0;color:var(--color-muted);font-size:var(--text-xs);line-height:1.5}
+@media(max-width:39.99rem){.checkoutBenefits dl>div{grid-template-columns:minmax(0,1fr);gap:var(--space-3xs)}}
 .deleteOrder{padding:var(--space-sm);border-block-end:var(--rule-thin) solid var(--color-rule)}
 .deleteOrder button{display:inline-flex;align-items:center;gap:var(--space-2xs);min-height:var(--control-height);padding:var(--space-xs);border:var(--rule-thin) solid var(--color-rule);background:var(--color-paper);color:var(--color-danger);border-radius:var(--radius-control);cursor:pointer}
 .deleteOrder button:disabled{opacity:.5;cursor:not-allowed}.deleteOrder button:active{transform:translateY(1px)}.deleteOrder :is(button,input):focus-visible{outline:var(--rule-focus) solid var(--color-focus);outline-offset:2px}

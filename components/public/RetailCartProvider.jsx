@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { fromCatalogRow, fromVariantRow } from '@/lib/mappers';
 import { RETAIL_PRODUCT_FIELDS, RETAIL_VARIANT_FIELDS, retailOptions } from '@/lib/retail-catalog';
-import { RETAIL_CART_STORAGE_KEY, RETAIL_CART_MAX, changeRetailQuantity, parseRetailCart, reconcileRetailCart } from '@/lib/retail-cart';
+import { RETAIL_CART_STORAGE_KEY, RETAIL_LEGACY_CART_STORAGE_KEY, RETAIL_CART_MAX, changeRetailQuantity, parseRetailCart, restoreRetailCart, reconcileRetailCart } from '@/lib/retail-cart';
 
 const Context = createContext(null);
 export function useRetailCart() { return useContext(Context); }
@@ -23,7 +23,7 @@ export default function RetailCartProvider({ children }) {
   const options = useMemo(() => products.flatMap(retailOptions), [products]);
 
   useEffect(() => {
-    try { setCart(parseRetailCart(localStorage.getItem(RETAIL_CART_STORAGE_KEY))); } catch { /* A blocked store still permits an in-memory cart. */ }
+    try { setCart(restoreRetailCart(localStorage.getItem(RETAIL_CART_STORAGE_KEY), localStorage.getItem(RETAIL_LEGACY_CART_STORAGE_KEY))); } catch { /* A blocked store still permits an in-memory cart. */ }
     setHydrated(true);
     const changed = event => {
       if (event.key === RETAIL_CART_STORAGE_KEY) setCart(parseRetailCart(event.newValue));
