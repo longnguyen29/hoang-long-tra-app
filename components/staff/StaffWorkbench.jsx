@@ -313,12 +313,20 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
  const smsHref=makeSmsHref(smsPhone,customerMessage,smsPlatform);
  const currentSms=trackingSms?.shipping_carrier===order.shippingCarrier&&trackingSms?.tracking_code===order.trackingCode?trackingSms:null;
  const smsQuickStatus=loadingEvents?"Đang tải":smsHistory.unavailable?"Chưa tải được":currentSms?smsStatus(currentSms).label:"Chưa có bản ghi vận đơn";
+ const checkoutTerms=order.retailPricing&&typeof order.retailPricing==="object"&&!Array.isArray(order.retailPricing)?order.retailPricing:null;
+ const checkoutNumber=(value)=>typeof value==="number"&&Number.isFinite(value)&&value>=0;
+ const checkoutTeaKg=checkoutTerms&&checkoutNumber(checkoutTerms.tea_grams)?new Intl.NumberFormat("vi-VN",{maximumFractionDigits:3}).format(checkoutTerms.tea_grams/1000):null;
  const copyCustomerMessage=async()=>{try{await navigator.clipboard.writeText(customerMessage);setMessageCopied(true);window.setTimeout(()=>setMessageCopied(false),1800)}catch{setMessageCopied(false)}};
  const chooseMessageKind=(kind)=>{setMessageKind(kind);setMessageDraft(buildManualOrderMessage({order,kind,amountDue}));setMessageCopied(false)};
 
  return <aside ref={dialogRef} tabIndex={-1} className={`${styles.detail} ${styles.orderDetail}`} aria-label="Kiểm tra và điều phối đơn hàng" aria-modal="true" role="dialog">
   <header><div><p>Điều phối đơn</p><h2>{order.customerName}</h2><span className={styles.detailStage}>{stage.number} · {stage.label}</span></div><button onClick={onClose} aria-label="Đóng">×</button></header>
   <dl className={styles.orderSummary} aria-label="Tóm tắt đơn hàng"><div><dt>Mã đơn</dt><dd>{order.id}</dd></div><div><dt>Tổng đơn</dt><dd>{money(order.estimatedTotal)}</dd></div><div><dt>Còn thanh toán</dt><dd>{loadingEvents || detailError ? "Chưa xác nhận" : receivable ? money(amountDue) : "Chưa mở theo dõi"}</dd></div><div><dt>Liên hệ</dt><dd>{order.contact || "Chưa có"}</dd></div></dl>
+  {checkoutTerms&&<section className={styles.checkoutBenefits} aria-label="Ưu đãi lúc đặt trên web">
+   <h3><PackageCheck/>Ưu đãi lúc đặt trên web</h3>
+   <dl><div><dt>Lượng trà ban đầu</dt><dd>{checkoutTeaKg!==null?`${checkoutTeaKg} kg`:"Chưa xác nhận"}</dd></div><div><dt>Giảm giá ban đầu</dt><dd>{checkoutNumber(checkoutTerms.discount_percent)&&checkoutNumber(checkoutTerms.discount_amount)?`${checkoutTerms.discount_percent}% · ${money(checkoutTerms.discount_amount)}`:"Chưa xác nhận"}</dd></div><div><dt>Vận chuyển nội địa</dt><dd data-free={checkoutTerms.free_shipping===true}>{checkoutTerms.free_shipping===true?"Đã được miễn phí vận chuyển":checkoutTerms.free_shipping===false?"Không có ưu đãi miễn phí vận chuyển":"Chưa xác nhận"}</dd></div></dl>
+   <p>Điều kiện được lưu khi khách đặt trên web, không tự tính lại khi sửa sản phẩm, số lượng hoặc giá. Nếu đơn đã được chỉnh sửa, đối chiếu cam kết này với khách trước khi thay đổi ưu đãi hay thu phí giao hàng.</p>
+  </section>}
   <button type="button" className={styles.smsQuickStatus} onClick={()=>document.getElementById("tracking-sms-preview")?.scrollIntoView({behavior:"smooth",block:"start"})}><MessageCircle/><span><small>SMS vận đơn</small><b>{smsQuickStatus}</b></span><ChevronRight/></button>
   {order.reorderOfOrderId&&<p className={styles.reorderOrigin}>Đặt lại từ đơn {order.reorderOfOrderId}. Đơn này có lịch sử và trạng thái xử lý riêng.</p>}
   <button type="button" className={styles.reorderAction} onClick={onReorder} disabled={saving}><RotateCcw/> Đặt lại đơn này</button>
