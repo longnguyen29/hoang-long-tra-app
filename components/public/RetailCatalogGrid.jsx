@@ -7,6 +7,7 @@ import { sellingUnitLabel } from "@/lib/selling-units";
 import { RETAIL_CART_MAX } from "@/lib/retail-cart";
 import { matchesRetailSearch, retailOptions, retailProductFacts, retailProductHref, retailStockBadge } from "@/lib/retail-catalog";
 import { retailTeaCharacteristics } from "@/lib/retail-tea-characteristics";
+import RetailTeaComparison from "./RetailTeaComparison";
 import styles from "./RetailCatalogGrid.module.css";
 
 const money = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
@@ -98,6 +99,7 @@ export default function RetailCatalogGrid({ products = [], locale = "vi", cart =
       {groups.length > 1 && <div className={styles.filters} role="group" aria-label={isGoods ? t.goodsFilter : t.filter}><button type="button" aria-pressed={group === "all"} onClick={() => setGroup("all")}>{t.all}</button>{groups.map(([key, label]) => <button type="button" key={key} aria-pressed={group === key} onClick={() => setGroup(key)}>{label}</button>)}</div>}
       <p className={styles.resultCount} aria-live="polite">{t.results(visible.length, isGoods)}</p>
     </div>
+    {!isGoods && <RetailTeaComparison products={products} locale={locale}/>}
     {visible.length > 0 ? <div className={styles.grid}>{visible.map((product, index) => <ProductCard key={product.id} product={product} locale={locale === "en" ? "en" : "vi"} cart={cart} quantity={quantity} vendors={vendors} isGoods={isGoods} index={index}/>)}</div> : <div className={styles.empty}><h2>{products.length ? t.noResults : t.empty}</h2>{products.length > 0 && <><p>{t.resetHint}</p><button type="button" onClick={reset}>{t.reset}<ArrowRight size={16} aria-hidden="true"/></button></>}</div>}
   </section>;
 }

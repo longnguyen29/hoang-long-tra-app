@@ -13,6 +13,7 @@ import { RETAIL_VOLUME_POLICY } from "@/lib/retail-volume-policy";
 import { sellingUnitLabel } from "@/lib/selling-units";
 import { tradeEnquiryHref } from "@/lib/trade-catalog";
 import { useRetailCart } from "./RetailCartProvider";
+import RetailTeaComparison from "./RetailTeaComparison";
 import styles from "./RetailProductDetail.module.css";
 
 const money = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
@@ -226,6 +227,8 @@ export default function RetailProductDetail({ product }) {
       </section>}
       <section className={styles.business} aria-labelledby={`${groupName}-business`}><h2 id={`${groupName}-business`}>{t.businessTitle}</h2><p>{t.businessNote}</p><div><Link href={tradeEnquiryHref(currentProduct.id, "quote", "", locale)}>{t.quote}<ArrowRight size={16} aria-hidden="true"/></Link><Link href={tradeEnquiryHref(currentProduct.id, "sample", "", locale)}>{t.sample}</Link></div></section>
     </div>
+
+    <RetailTeaComparison products={products} locale={locale} currentProductId={currentProduct.id}/>
 
     <nav className={styles.policies} aria-label={t.policies}><strong>{t.policies}</strong><div><Link href="/shipping">{t.shipping}</Link><Link href="/returns">{t.returns}</Link><Link href="/terms">{t.terms}</Link></div></nav>
 
