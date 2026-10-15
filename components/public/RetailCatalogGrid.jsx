@@ -6,6 +6,8 @@ import { ArrowRight, Minus, Plus, Search, ShoppingBag, X } from "lucide-react";
 import { sellingUnitLabel } from "@/lib/selling-units";
 import { RETAIL_CART_MAX } from "@/lib/retail-cart";
 import { matchesRetailSearch, retailOptions, retailProductFacts, retailProductHref, retailStockBadge } from "@/lib/retail-catalog";
+import { retailTeaCharacteristics } from "@/lib/retail-tea-characteristics";
+import RetailTeaComparison from "./RetailTeaComparison";
 import styles from "./RetailCatalogGrid.module.css";
 
 const money = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
@@ -32,6 +34,8 @@ function ProductCard({ product, locale, cart, quantity, vendors, isGoods, index 
   const t = COPY[locale];
   const id = useId();
   const facts = retailProductFacts(product, locale);
+  const characteristics = retailTeaCharacteristics(product, locale);
+  const signatureNotes = characteristics?.signatureNotes || facts.flavors;
   const options = retailOptions(product);
   const [selectedKey, setSelectedKey] = useState("");
   const [failedPhoto, setFailedPhoto] = useState("");
@@ -58,8 +62,9 @@ function ProductCard({ product, locale, cart, quantity, vendors, isGoods, index 
       <p className={styles.category}>{isGoods ? vendor?.name || t.houseMarket : facts.groupLabel}</p>
       {stockBadge && <p className={styles.stockBadge} data-kind={stockBadge.kind}>{stockBadge.label}</p>}
       <h2>{isGoods ? facts.name : <Link href={href}>{facts.name}</Link>}</h2>
+      {characteristics && <p className={styles.characteristic} aria-label={characteristics.labels.title}><span>{characteristics.feeling}</span><small>{characteristics.moment}</small></p>}
       {facts.note && <p className={styles.note}>{facts.note}</p>}
-      {Array.isArray(facts.flavors) && facts.flavors.length > 0 && <ul className={styles.flavors} aria-label={locale === "vi" ? "Hương vị" : "Taste notes"}>{facts.flavors.slice(0, 3).map((flavor) => <li key={flavor}>{flavor}</li>)}</ul>}
+      {signatureNotes.length > 0 && <ul className={styles.flavors} aria-label={characteristics?.labels.signature || (locale === "vi" ? "Hương vị" : "Taste notes")}>{signatureNotes.slice(0, 3).map((flavor, index) => <li key={`${flavor}:${index}`}>{flavor}</li>)}</ul>}
       <p className={styles.price}>{lowest ? <>{differentPrices && <small>{t.from} </small>}<strong>{money.format(lowest.price)}</strong><span> / {priceBasis(lowest)}</span></> : <span>{hasPrice ? t.soldOut : t.request}</span>}</p>
       {options.length > 0 && !options.some((option) => option.weight) && facts.packing && facts.packing !== packLabel(options[0]) && <p className={styles.packing}>{t.packing}: {facts.packing}</p>}
     </div>
@@ -94,6 +99,7 @@ export default function RetailCatalogGrid({ products = [], locale = "vi", cart =
       {groups.length > 1 && <div className={styles.filters} role="group" aria-label={isGoods ? t.goodsFilter : t.filter}><button type="button" aria-pressed={group === "all"} onClick={() => setGroup("all")}>{t.all}</button>{groups.map(([key, label]) => <button type="button" key={key} aria-pressed={group === key} onClick={() => setGroup(key)}>{label}</button>)}</div>}
       <p className={styles.resultCount} aria-live="polite">{t.results(visible.length, isGoods)}</p>
     </div>
+    {!isGoods && <RetailTeaComparison products={products} locale={locale}/>}
     {visible.length > 0 ? <div className={styles.grid}>{visible.map((product, index) => <ProductCard key={product.id} product={product} locale={locale === "en" ? "en" : "vi"} cart={cart} quantity={quantity} vendors={vendors} isGoods={isGoods} index={index}/>)}</div> : <div className={styles.empty}><h2>{products.length ? t.noResults : t.empty}</h2>{products.length > 0 && <><p>{t.resetHint}</p><button type="button" onClick={reset}>{t.reset}<ArrowRight size={16} aria-hidden="true"/></button></>}</div>}
   </section>;
 }
