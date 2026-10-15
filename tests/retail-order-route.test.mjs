@@ -15,10 +15,11 @@ const backendUrl = 'data:text/javascript,' + encodeURIComponent(`
     return { async rpc(name, args) {
       state.calls.push({ name, args });
       if (config.rpcThrow) throw new Error(config.rpcThrow);
-      return { data: config.data === undefined ? [{ id: 'test-order' }] : config.data, error: config.error || null };
+      return { data: config.data === undefined ? (name === 'partner_network_retail_receipt' ? config.receipt || null : { orderId: 'test-order', total: 50000 }) : config.data, error: config.error || null };
     } };
   }
   export const createAdminClient = retailPublicClient;
+  export const partnerNetworkEnabled = () => true;
   export async function loadRetailProducts(client, ids) {
     state.loads.push(ids);
     if (config.loadError) throw new Error(config.loadError);
@@ -26,7 +27,7 @@ const backendUrl = 'data:text/javascript,' + encodeURIComponent(`
   }
 `);
 registerHooks({ resolve(specifier, context, next) {
-  if (specifier === '@/lib/retail-catalog-server' || specifier === '@/lib/supabase/admin') return { url: backendUrl, shortCircuit: true };
+  if (specifier === '@/lib/retail-catalog-server' || specifier === '@/lib/supabase/admin' || specifier === '@/lib/partner-network-server') return { url: backendUrl, shortCircuit: true };
   if (specifier.startsWith('@/')) return next(pathToFileURL(path.resolve(specifier.slice(2) + '.js')).href, context);
   return next(specifier, context);
 } });
@@ -35,7 +36,7 @@ const { POST } = await import('../app/api/retail-order/route.js');
 
 const product = { id: 'tea-a', available: true, line: 'everyday', name: { vi: 'Trà thử', en: 'Test tea' }, variants: [{ weight: '1 viên (8g)', price: 25000, stockSocSon: 4 }] };
 const snapshots = products => products.flatMap(retailOptions).map(option => ({ key: option.key, price: option.price, unit: option.unit, weight: option.weight, packing: option.product.packSize || '' }));
-const input = () => ({ cart: { 'tea-a__1 viên (8g)': 2 }, expectedTotal: 50000, expectedLines: snapshots([product]), customer: { name: 'Test buyer', contact: 'buyer@example.test', address: 'Test address', consent: true, payment: 'qr' } });
+const input = () => ({ requestId: '00000000-0000-4000-8000-000000000901', cart: { 'tea-a__1 viên (8g)': 2 }, expectedTotal: 50000, expectedLines: snapshots([product]), customer: { name: 'Test buyer', contact: 'buyer@example.test', address: 'Test address', consent: true, payment: 'qr' } });
 const send = (payload, headers = {}) => POST(new Request('http://localhost/api/retail-order', { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: typeof payload === 'string' ? payload : JSON.stringify(payload) }));
 
 test('invalid checkout or foreign origin never touches catalogue or order RPC', async () => {
@@ -57,14 +58,15 @@ test('public route submits fresh catalogue lines, whole package quantities and r
   assert.deepEqual(await response.json(), { orderId: 'test-order', total: 50000 });
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
   assert.equal(state.loads.length, 1);
-  assert.equal(state.calls.length, 1);
-  assert.equal(state.calls[0].name, 'submit_retail_volume_order');
-  const args = state.calls[0].args;
-  assert.equal(args.p_lines[0].price, 25000);
-  assert.equal(args.p_lines[0].unit, 'viên');
-  assert.equal(args.p_lines[0].qty, 2);
-  assert.equal(args.p_estimated_total, 50000);
-  assert.equal(args.p_total_items, 2);
+  assert.equal(state.calls.length, 2);
+  assert.equal(state.calls[0].name, 'partner_network_retail_receipt');
+  assert.equal(state.calls[1].name, 'submit_partner_retail_order');
+  const args = state.calls[1].args.p_input;
+  assert.equal(args.lines[0].price, 25000);
+  assert.equal(args.lines[0].unit, 'viên');
+  assert.equal(args.lines[0].qty, 2);
+  assert.equal(args.total, 50000);
+  assert.equal(args.total_items, 2);
   assert.equal(Object.hasOwn(args,'p_promo'), false);
 });
 
@@ -74,12 +76,12 @@ test('stale expected total or current stock refuses an order before database mut
   let response = await send(stale);
   assert.equal(response.status, 409);
   assert.deepEqual(await response.json(), { error: 'price_changed' });
-  assert.equal(state.calls.length, 0);
+  assert.equal(state.calls.filter(call=>call.name==='submit_partner_retail_order').length, 0);
   state = fixture({ products: [{ ...product, variants: [{ ...product.variants[0], stockSocSon: 1 }] }] });
   response = await send(input());
   assert.equal(response.status, 409);
   assert.deepEqual(await response.json(), { error: 'cart_changed' });
-  assert.equal(state.calls.length, 0);
+  assert.equal(state.calls.filter(call=>call.name==='submit_partner_retail_order').length, 0);
 });
 
 test('transactional stock race returns a safe conflict code without database details', async () => {
@@ -97,7 +99,7 @@ test('same-total unit and packaging changes are blocked before an order write', 
     const response = await send(payload);
     assert.equal(response.status, 409);
     assert.deepEqual(await response.json(), { error: 'cart_changed' });
-    assert.equal(state.calls.length, 0);
+    assert.equal(state.calls.filter(call=>call.name==='submit_partner_retail_order').length, 0);
   }
 });
 
@@ -109,7 +111,7 @@ test('offsetting line price changes are blocked despite an unchanged order total
   const response = await send(payload);
   assert.equal(response.status, 409);
   assert.deepEqual(await response.json(), { error: 'price_changed' });
-  assert.equal(state.calls.length, 0);
+  assert.equal(state.calls.filter(call=>call.name==='submit_partner_retail_order').length, 0);
 });
 
 test('backend errors and missing result stay generic and do not reflect private details', async () => {
@@ -119,4 +121,27 @@ test('backend errors and missing result stay generic and do not reflect private 
     assert.equal(response.status, 503);
     assert.deepEqual(await response.json(), { error: 'order_unavailable' });
   }
+});
+
+
+test('durable receipt recovers a lost response before catalogue stock can reject retry', async () => {
+ const state=fixture({products:[],loadError:'catalogue unavailable',receipt:{orderId:'existing-order',total:50000}});
+ const response=await send(input());assert.equal(response.status,200);
+ assert.deepEqual(await response.json(),{orderId:'existing-order',total:50000});
+ assert.equal(state.loads.length,0);assert.equal(state.calls.length,1);
+});
+test('partner checkout sends only explicit named consent and rejects identity tampering', async () => {
+ const state=fixture({products:[product]});const payload={...input(),partner:{slug:'retail-partner-a',revision:2,consent:true}};
+ assert.equal((await send(payload)).status,200);
+ assert.deepEqual(state.calls.at(-1).args.p_partner,payload.partner);
+ assert.match(state.calls[0].args.p_fingerprint,/^[0-9a-f]{64}$/);
+ for(const bad of [{...payload,partner:{...payload.partner,consent:false}},{...payload,partner:{...payload.partner,partner_id:'forged'}},{...payload,partnerId:'forged'}]){
+  const status=(await send(bad)).status;assert.equal(status,400);
+ }
+});
+test('unavailable partner fails explicitly and never creates a direct fallback order', async () => {
+ const state=fixture({products:[product],error:{message:'retail_partner_unavailable: private details'}});
+ const response=await send({...input(),partner:{slug:'retail-partner-a',revision:1,consent:true}});
+ assert.equal(response.status,409);assert.deepEqual(await response.json(),{error:'retail_partner_unavailable'});
+ assert.equal(state.calls.length,1);
 });

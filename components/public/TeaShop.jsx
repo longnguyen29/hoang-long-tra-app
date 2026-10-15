@@ -1,13 +1,14 @@
 "use client";
 import PolicyLinks from "@/components/PolicyLinks";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, Globe2, Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { useRetailCart } from "./RetailCartProvider";
 import RetailCatalogGrid from "./RetailCatalogGrid";
 import RetailProductDetail from "./RetailProductDetail";
 import RetailVolumeOffer from "./RetailVolumeOffer";
+import RetailPartnerBanner from "./RetailPartnerBanner";
 import { retailOptions } from "@/lib/retail-catalog";
 import { RETAIL_CART_MAX } from "@/lib/retail-cart";
 import { retailVolumeBenefits } from "@/lib/retail-volume-policy";
@@ -125,7 +126,7 @@ const COPY = {
 export default function TeaShop({ mode = "tea", product = null }) {
   const { locale, toggleLocale } = useLocale();
   const t = COPY[locale];
-  const { products: allProducts, vendors, cart, cartOpen, setCartOpen, catalogStatus, cartAdjusted, clearCart, changeQuantity } = useRetailCart();
+  const { retailPartner, partnerCandidate, referralStatus, clearRetailPartner, products: allProducts, vendors, cart, cartOpen, setCartOpen, catalogStatus, cartAdjusted, clearCart, changeQuantity } = useRetailCart();
   const products = allProducts.filter(item => mode === "goods" ? item.kind === "goods" : item.kind !== "goods" && item.line !== "sample");
   const loading = catalogStatus === "loading";
   const cartRef = useRef(null);
@@ -133,6 +134,10 @@ export default function TeaShop({ mode = "tea", product = null }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [complete, setComplete] = useState(null);
+  const [partnerConsent, setPartnerConsent] = useState(false);
+  const attemptRef = useRef(null);
+  useEffect(() => setPartnerConsent(false), [retailPartner?.slug, retailPartner?.revision]);
+  const referralReady = !partnerCandidate && !["loading", "unavailable", "choice"].includes(referralStatus) && (!retailPartner || partnerConsent);
   const [customer, setCustomer] = useState({ name: "", contact: "", address: "", tax: "", note: "", payment: "qr", consent: false });
 
   const isGoods = mode === "goods";
@@ -145,22 +150,30 @@ export default function TeaShop({ mode = "tea", product = null }) {
 
   const submit = async (event) => {
     event.preventDefault();
-    if (sending || catalogStatus !== "ready" || !lines.length || !customer.name.trim() || !customer.contact.trim() || !customer.address.trim() || !customer.consent) return;
+    if (sending || !referralReady || catalogStatus !== "ready" || !lines.length || !customer.name.trim() || !customer.contact.trim() || !customer.address.trim() || !customer.consent) return;
     setSending(true); setError("");
     let result;
+    const checkout = { cart, expectedTotal: total, expectedLines: lines.map(line => ({ key: line.key, price: line.price, unit: line.unit, weight: line.weight, packing: line.product.packSize || "" })), customer,
+      partner: retailPartner ? { slug: retailPartner.slug, revision: retailPartner.revision, consent: partnerConsent } : null };
+    const signature = JSON.stringify(checkout);
+    if (!attemptRef.current || attemptRef.current.signature !== signature) attemptRef.current = { signature, requestId: crypto.randomUUID() };
     try {
       const response = await fetch("/api/retail-order", { method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ cart, expectedTotal: total, expectedLines: lines.map(line => ({ key: line.key, price: line.price, unit: line.unit, weight: line.weight, packing: line.product.packSize || "" })), customer }) });
+        body: JSON.stringify({ ...checkout, requestId: attemptRef.current.requestId }) });
       result = await response.json();
       if (!response.ok) throw new Error(result.error || "order_failed");
     } catch (problem) {
       setSending(false);
-      setError(problem.message === "cart_changed" || problem.message === "out_of_stock" || problem.message === "price_changed"
+      if (problem.message === "retail_partner_unavailable") {
+        setError(locale === "vi" ? "Trang đối tác đã thay đổi hoặc tạm dừng. Bỏ người giới thiệu để mua trực tiếp, hoặc mở lại liên kết và kiểm tra." : "This introducer is no longer available. Remove them to buy directly, or reopen their link."); return;
+      }
+      setError(problem.message === "checkout_retry_conflict" ? (locale === "vi" ? "Yêu cầu trước có thông tin khác. Giữ nguyên thông tin để thử lại, hoặc liên hệ Nhà kiểm tra trước khi tạo đơn khác." : "This request conflicts with an earlier attempt. Contact the house before creating another order.") : problem.message === "cart_changed" || problem.message === "out_of_stock" || problem.message === "price_changed"
         ? (locale === "vi" ? "Giá hoặc quy cách trong giỏ đã thay đổi. Hãy tải lại trang, kiểm tra giỏ rồi đặt lại." : "A price or pack has changed. Reload, review your cart and place the order again.") : t.orderError);
       return;
     }
     setSending(false);
     setComplete({ id: result.orderId, total: result.total });
+    attemptRef.current = null;
     clearCart();
     setCartOpen(false);
     fetch("/api/notify-order", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ orderId: result.orderId }) }).catch(() => {});
@@ -189,6 +202,7 @@ export default function TeaShop({ mode = "tea", product = null }) {
         </div>
       </header>
 
+      <RetailPartnerBanner locale={locale}/>
       {product ? <RetailProductDetail key={product.id} product={product}/> : <>
         <section className={styles.intro}>
           <p>{isGoods ? t.goodsEyebrow : t.teaEyebrow}</p>
@@ -221,9 +235,11 @@ export default function TeaShop({ mode = "tea", product = null }) {
               <label>{t.note} <small>{t.optional}</small><textarea maxLength={3000} value={customer.note} onChange={(e)=>setCustomer({...customer,note:e.target.value})}/></label>
               <fieldset><legend>{t.payment}</legend><label><input type="radio" name="payment" checked={customer.payment==="qr"} onChange={()=>setCustomer({...customer,payment:"qr"})}/> {t.bankTransfer}</label><label><input type="radio" name="payment" checked={customer.payment==="cash"} onChange={()=>setCustomer({...customer,payment:"cash"})}/> {t.cash}</label></fieldset>
               <label className={styles.consent}><input type="checkbox" checked={customer.consent} onChange={(e)=>setCustomer({...customer,consent:e.target.checked})}/> {t.consent}</label>
+              {retailPartner && <label className={styles.consent}><input type="checkbox" checked={partnerConsent} onChange={event=>setPartnerConsent(event.target.checked)}/><span>{locale === "vi" ? `Tôi đồng ý chia sẻ tên, liên hệ và tiến độ đơn này với ${retailPartner.display_name} để tư vấn, chăm sóc và ghi nhận giới thiệu. Không chia sẻ địa chỉ giao hàng hay thông tin thanh toán.` : `I agree to share my name, contact and this order’s progress with ${retailPartner.display_name} for assistance and referral tracking. Delivery address and payment details are not shared.`} <button type="button" onClick={clearRetailPartner}>{locale === "vi" ? "Mua trực tiếp, không chia sẻ" : "Buy directly without sharing"}</button></span></label>}
+              {!referralReady && !retailPartner && <p className={styles.cartNotice}>{locale === "vi" ? "Hãy chọn người giới thiệu hoặc tiếp tục mua trực tiếp ở thông báo đầu trang." : "Choose your introducer or continue buying directly in the banner above."}<button type="button" onClick={clearRetailPartner}>{locale === "vi" ? "Tiếp tục mua trực tiếp" : "Continue buying directly"}</button></p>}
               <PolicyLinks/>
               {error && <p className={styles.error} role="alert">{error}</p>}
-              <button className={styles.submit} disabled={sending || catalogStatus !== "ready" || !customer.name.trim() || !customer.contact.trim() || !customer.address.trim() || !customer.consent}>{sending ? t.placing : t.placeOrder}<ArrowRight size={16}/></button>
+              <button className={styles.submit} disabled={sending || !referralReady || catalogStatus !== "ready" || !customer.name.trim() || !customer.contact.trim() || !customer.address.trim() || !customer.consent}>{sending ? t.placing : t.placeOrder}<ArrowRight size={16}/></button>
             </form>
           </>}
         </aside>
