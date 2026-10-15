@@ -6,7 +6,7 @@ export default function CommercePolicy({kind}) {
  return <main lang="vi" className={styles.page}>
   <header><Link href="/">← Nhà Hoàng Long</Link><a href="tel:+84903333841">0903 333 841</a></header>
   <article>
-   <p className={styles.date}>Áp dụng từ 08/09/2026 · Cập nhật 08/09/2026</p>
+   <p className={styles.date}>Áp dụng từ 08/09/2026 · Cập nhật {policy.updatedAt || "08/09/2026"}</p>
    <h1>{policy.title}</h1><p className={styles.intro}>{policy.intro}</p>
    <nav className={styles.contents} aria-label="Nội dung chính sách">{policy.sections.map(([title],i)=><a key={title} href={`#section-${i+1}`}>{title}</a>)}</nav>
    {policy.sections.map(([title,paragraphs],i)=><section id={`section-${i+1}`} key={title}><h2>{title}</h2>{paragraphs.map(p=><p key={p}>{p}</p>)}</section>)}

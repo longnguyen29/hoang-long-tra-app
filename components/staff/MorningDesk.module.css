@@ -59,3 +59,24 @@
 .briefCopy h2{max-width:none}.focusRail article{min-height:var(--topbar-height)}
 
 @media(max-width:39.99rem){.modeTabs{display:flex;flex-wrap:wrap}.modeTabs button{flex:1 0 auto;white-space:nowrap;padding-inline:var(--space-sm);min-height:var(--control-height)}}
+
+/* A tap opens the editor in the visible viewport, independently of page scroll. */
+.focusText{width:100%;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:start;cursor:pointer}
+.focusText b,.carryOver article b{white-space:pre-wrap}
+.focusText:focus-visible{outline:var(--rule-focus) solid var(--color-accent);outline-offset:var(--space-3xs)}
+.emptyFocus{white-space:normal}
+.focusDialog{position:fixed;inset:calc(var(--focus-viewport-top,0px) + 1rem) 0 auto;width:min(calc(100% - 2rem),36rem);max-height:calc(var(--focus-viewport-height,100dvh) - 2rem);margin:0 auto;padding:0;overflow:auto;overscroll-behavior:contain;scroll-padding-block:var(--space-sm);border:var(--rule-thin) solid var(--color-rule);border-radius:var(--radius-control);background:var(--color-paper);color:var(--color-ink);box-shadow:0 1rem 3rem #0004}
+.focusDialog::backdrop{background:color-mix(in oklch,var(--color-ink) 60%,transparent)}
+.focusDialog .focusEditor{grid-template-columns:minmax(0,1fr);padding:var(--space-md);background:var(--color-paper)}
+.focusEditorHead{display:flex;align-items:center;justify-content:space-between;gap:var(--space-sm)}
+.focusEditorHead h2{margin:0;font-family:var(--font-display);font-size:var(--text-lg)}
+.focusEditorHead button{width:var(--control-height);padding:0;display:grid;place-items:center;border:0;background:transparent;color:var(--color-ink)}
+.focusEditorHead svg{width:1.2rem;height:1.2rem}
+.focusEditor>p{margin:0;color:var(--color-muted);font-size:var(--text-sm);line-height:1.5}
+.focusEditor textarea{width:100%;min-width:0;min-height:8rem;padding:var(--space-xs);resize:vertical;border:var(--rule-thin) solid var(--color-rule);border-radius:var(--radius-control);background:var(--color-paper);color:var(--color-ink);font:inherit;font-size:max(16px,var(--text-base));line-height:1.5}
+.focusEditor textarea:focus-visible,.focusEditor select:focus-visible{outline:var(--rule-focus) solid var(--color-accent);outline-offset:var(--rule-thin)}
+.focusCount{justify-self:end;margin-block-start:calc(-1 * var(--space-xs));color:var(--color-muted);font-size:var(--text-xs)}
+.focusEditor .focusError{padding:var(--space-xs);border:var(--rule-thin) solid var(--color-danger);color:var(--color-danger)}
+.focusEditorActions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--space-xs)}
+.focusEditorActions button:first-child{border:var(--rule-thin) solid var(--color-rule);background:var(--color-paper);color:var(--color-ink)}
+@media(max-width:39.99rem){.focusDialog{inset-block-start:calc(var(--focus-viewport-top,0px) + .5rem);width:calc(100% - 1rem);max-height:calc(var(--focus-viewport-height,100dvh) - 1rem)}.focusEditorActions>button{flex:1}}

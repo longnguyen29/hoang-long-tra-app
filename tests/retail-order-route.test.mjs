@@ -18,6 +18,7 @@ const backendUrl = 'data:text/javascript,' + encodeURIComponent(`
       return { data: config.data === undefined ? [{ id: 'test-order' }] : config.data, error: config.error || null };
     } };
   }
+  export const createAdminClient = retailPublicClient;
   export async function loadRetailProducts(client, ids) {
     state.loads.push(ids);
     if (config.loadError) throw new Error(config.loadError);
@@ -25,7 +26,7 @@ const backendUrl = 'data:text/javascript,' + encodeURIComponent(`
   }
 `);
 registerHooks({ resolve(specifier, context, next) {
-  if (specifier === '@/lib/retail-catalog-server') return { url: backendUrl, shortCircuit: true };
+  if (specifier === '@/lib/retail-catalog-server' || specifier === '@/lib/supabase/admin') return { url: backendUrl, shortCircuit: true };
   if (specifier.startsWith('@/')) return next(pathToFileURL(path.resolve(specifier.slice(2) + '.js')).href, context);
   return next(specifier, context);
 } });
@@ -57,14 +58,14 @@ test('public route submits fresh catalogue lines, whole package quantities and r
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
   assert.equal(state.loads.length, 1);
   assert.equal(state.calls.length, 1);
-  assert.equal(state.calls[0].name, 'submit_retail_order');
+  assert.equal(state.calls[0].name, 'submit_retail_volume_order');
   const args = state.calls[0].args;
   assert.equal(args.p_lines[0].price, 25000);
   assert.equal(args.p_lines[0].unit, 'viên');
   assert.equal(args.p_lines[0].qty, 2);
   assert.equal(args.p_estimated_total, 50000);
   assert.equal(args.p_total_items, 2);
-  assert.equal(args.p_promo, null);
+  assert.equal(Object.hasOwn(args,'p_promo'), false);
 });
 
 test('stale expected total or current stock refuses an order before database mutation', async () => {

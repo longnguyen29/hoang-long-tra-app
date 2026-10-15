@@ -4,7 +4,8 @@ import { useId, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Minus, Plus, Search, ShoppingBag, X } from "lucide-react";
 import { sellingUnitLabel } from "@/lib/selling-units";
-import { matchesRetailSearch, retailOptions, retailProductFacts, retailProductHref } from "@/lib/retail-catalog";
+import { RETAIL_CART_MAX } from "@/lib/retail-cart";
+import { matchesRetailSearch, retailOptions, retailProductFacts, retailProductHref, retailStockBadge } from "@/lib/retail-catalog";
 import styles from "./RetailCatalogGrid.module.css";
 
 const money = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
@@ -44,9 +45,10 @@ function ProductCard({ product, locale, cart, quantity, vendors, isGoods, index 
   const packLabel = (option) => option.weight || `1 ${sellingUnitLabel(option.unit, locale)}`;
   const priceBasis = (option) => `${sellingUnitLabel(option.unit, locale)}${option.weight ? ` · ${option.weight}` : ""}`;
   const selectedQty = selected ? Number(cart?.[selected.key] || 0) : 0;
-  const canAdd = selected?.orderable && selectedQty < 99 && (selected.stock === null || selectedQty < selected.stock);
+  const canAdd = selected?.orderable && selectedQty < RETAIL_CART_MAX && (selected.stock === null || selectedQty < selected.stock);
   const totalQty = options.reduce((sum, option) => sum + Number(cart?.[option.key] || 0), 0);
   const href = retailProductHref(product.id, locale);
+  const stockBadge = !isGoods ? retailStockBadge(product, selected, locale) : null;
   const vendor = isGoods && vendors.find((entry) => entry.id === product.vendorId);
   const photo = <figure className={styles.photo}>{product.photoUrl && failedPhoto !== product.photoUrl ? <img src={product.photoUrl} alt={facts.name} loading={index > 2 ? "lazy" : undefined} style={{ objectPosition: product.photoPosition || "50% 50%" }} onError={() => setFailedPhoto(product.photoUrl)}/> : <div className={styles.photoPlaceholder}><span aria-hidden="true">皇龍</span><small>{t.photo}</small></div>}</figure>;
 
@@ -54,6 +56,7 @@ function ProductCard({ product, locale, cart, quantity, vendors, isGoods, index 
     {isGoods ? photo : <Link href={href} className={styles.photoLink} aria-label={`${t.view}: ${facts.name}`}>{photo}</Link>}
     <div className={styles.copy}>
       <p className={styles.category}>{isGoods ? vendor?.name || t.houseMarket : facts.groupLabel}</p>
+      {stockBadge && <p className={styles.stockBadge} data-kind={stockBadge.kind}>{stockBadge.label}</p>}
       <h2>{isGoods ? facts.name : <Link href={href}>{facts.name}</Link>}</h2>
       {facts.note && <p className={styles.note}>{facts.note}</p>}
       {Array.isArray(facts.flavors) && facts.flavors.length > 0 && <ul className={styles.flavors} aria-label={locale === "vi" ? "Hương vị" : "Taste notes"}>{facts.flavors.slice(0, 3).map((flavor) => <li key={flavor}>{flavor}</li>)}</ul>}

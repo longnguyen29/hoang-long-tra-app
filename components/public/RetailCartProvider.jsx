@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { fromCatalogRow, fromVariantRow } from '@/lib/mappers';
 import { RETAIL_PRODUCT_FIELDS, RETAIL_VARIANT_FIELDS, retailOptions } from '@/lib/retail-catalog';
-import { RETAIL_CART_STORAGE_KEY, changeRetailQuantity, parseRetailCart, reconcileRetailCart } from '@/lib/retail-cart';
+import { RETAIL_CART_STORAGE_KEY, RETAIL_CART_MAX, changeRetailQuantity, parseRetailCart, reconcileRetailCart } from '@/lib/retail-cart';
 
 const Context = createContext(null);
 export function useRetailCart() { return useContext(Context); }
@@ -75,7 +75,7 @@ export default function RetailCartProvider({ children }) {
 
   const addOption = useCallback((option, quantity = 1) => {
     const current = options.find(item => item.key === option?.key);
-    if (catalogStatus !== 'ready' || !current?.orderable || !Number.isInteger(quantity) || quantity < 1 || (cart[current.key] || 0) + quantity > 99 || (current.stock !== null && (cart[current.key] || 0) + quantity > current.stock)) return false;
+    if (catalogStatus !== 'ready' || !current?.orderable || !Number.isInteger(quantity) || quantity < 1 || (cart[current.key] || 0) + quantity > RETAIL_CART_MAX || (current.stock !== null && (cart[current.key] || 0) + quantity > current.stock)) return false;
     changeQuantity(current.key, quantity);
     return true;
   }, [options, catalogStatus, cart, changeQuantity]);
