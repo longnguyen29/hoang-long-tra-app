@@ -4,6 +4,14 @@ import {
 } from "lucide-react";
 
 export const STAFF_APPS = {
+  productDevelopment: {
+    key: "productDevelopment", label: "Phát triển sản phẩm", short: "Phát triển", href: "/admin/product-development",
+    description: "Ý tưởng, thông số, nguồn gia công và bước tiếp theo; liên kết catalog và kho hiện có.", icon: FlaskConical,
+  },
+  suppliers: {
+    key: "suppliers", label: "Nguồn gia công", short: "Gia công", href: "/admin/suppliers",
+    description: "Đầu mối, khả năng nhận trà Hoàng Long và theo dõi việc thẩm định.", icon: Handshake,
+  },
   documents: {
     key: "documents", label: "Tài liệu công ty", short: "Tài liệu", href: "/admin/documents",
     description: "Soạn thỏa thuận đối tác, bảo mật và biên bản đối soát; in hoặc lưu PDF.", icon: Files,
@@ -61,7 +69,7 @@ export const STAFF_APPS = {
 export const STAFF_APP_GROUPS = [
   { label: "Hằng ngày", keys: ["work", "orders", "procedures", "pipeline"] },
   { label: "Doanh nghiệp", keys: ["discovery", "partnerNetwork", "documents", "operations", "house"] },
-  { label: "Phòng chuyên môn", keys: ["recipes", "knowledge", "control", "growth"] },
+  { label: "Phòng chuyên môn", keys: ["productDevelopment", "suppliers", "recipes", "knowledge", "control", "growth"] },
 ];
 
 export const STAFF_APP_LIST = STAFF_APP_GROUPS.flatMap((group) => group.keys.map((key) => STAFF_APPS[key]));
