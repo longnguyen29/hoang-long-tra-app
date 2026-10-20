@@ -1,12 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { publicRetailPartner, RETAIL_PARTNER_STORAGE_KEY } from '@/lib/retail-partner';
 import { fromCatalogRow, fromVariantRow } from '@/lib/mappers';
 import { RETAIL_PRODUCT_FIELDS, RETAIL_VARIANT_FIELDS, retailOptions } from '@/lib/retail-catalog';
 import { RETAIL_CART_STORAGE_KEY, RETAIL_LEGACY_CART_STORAGE_KEY, RETAIL_CART_MAX, changeRetailQuantity, parseRetailCart, restoreRetailCart, reconcileRetailCart } from '@/lib/retail-cart';
+import { RETAIL_BUNDLES, addRetailBundleToCart } from '@/lib/retail-bundles';
 
 const Context = createContext(null);
 export function useRetailCart() { return useContext(Context); }
@@ -14,7 +15,15 @@ export function useRetailCart() { return useContext(Context); }
 export default function RetailCartProvider({ children }) {
   const pathname = usePathname();
   const active = pathname === '/shop' || pathname.startsWith('/shop/') || pathname === '/goods';
-  const [cart, setCart] = useState({});
+  const [cart, setCartState] = useState({});
+  const cartRef = useRef({});
+  // All cart writers use the same synchronous snapshot. Two quick bundle clicks
+  // must validate the combined demand before React renders the next frame.
+  const setCart = useCallback(update => {
+    const next = typeof update === 'function' ? update(cartRef.current) : update;
+    cartRef.current = next;
+    setCartState(next);
+  }, []);
   const [hydrated, setHydrated] = useState(false);
   const [products, setProducts] = useState([]);
   const [vendors, setVendors] = useState([]);
@@ -114,12 +123,22 @@ export default function RetailCartProvider({ children }) {
 
   const addOption = useCallback((option, quantity = 1) => {
     const current = options.find(item => item.key === option?.key);
-    if (catalogStatus !== 'ready' || !current?.orderable || !Number.isInteger(quantity) || quantity < 1 || (cart[current.key] || 0) + quantity > RETAIL_CART_MAX || (current.stock !== null && (cart[current.key] || 0) + quantity > current.stock)) return false;
+    if (catalogStatus !== 'ready' || !current?.orderable || !Number.isInteger(quantity) || quantity < 1 || (cartRef.current[current.key] || 0) + quantity > RETAIL_CART_MAX || (current.stock !== null && (cartRef.current[current.key] || 0) + quantity > current.stock)) return false;
     changeQuantity(current.key, quantity);
     return true;
-  }, [options, catalogStatus, cart, changeQuantity]);
+  }, [options, catalogStatus, changeQuantity]);
+
+  const addBundle = useCallback(bundleId => {
+    const bundle = RETAIL_BUNDLES.find(item => item.id === bundleId);
+    if (catalogStatus !== 'ready' || !hydrated || !bundle) return { ok: false, reason: 'unavailable' };
+    const result = addRetailBundleToCart(cartRef.current, bundle, products);
+    if (!result.ok) return { ok: false, reason: result.reason };
+    setCart(result.cart);
+    setCartAdjusted(false);
+    return { ok: true, reason: null };
+  }, [catalogStatus, hydrated, products, setCart]);
 
   const value = { retailPartner, partnerCandidate, referralStatus, clearRetailPartner, confirmRetailPartner, cart, products, vendors, catalogStatus, cartOpen, setCartOpen, cartAdjusted,
-    clearCart: () => { setCart({}); setCartAdjusted(false); }, openCart: () => setCartOpen(true), changeQuantity, addOption };
+    clearCart: () => { setCart({}); setCartAdjusted(false); }, openCart: () => setCartOpen(true), changeQuantity, addOption, addBundle };
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

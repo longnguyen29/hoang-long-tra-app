@@ -14,6 +14,7 @@ import { sellingUnitLabel } from "@/lib/selling-units";
 import { tradeEnquiryHref } from "@/lib/trade-catalog";
 import { useRetailCart } from "./RetailCartProvider";
 import RetailTeaComparison from "./RetailTeaComparison";
+import RetailTeaBundles from "./RetailTeaBundles";
 import styles from "./RetailProductDetail.module.css";
 
 const money = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
@@ -229,6 +230,8 @@ export default function RetailProductDetail({ product }) {
     </div>
 
     <RetailTeaComparison products={products} locale={locale} currentProductId={currentProduct.id}/>
+
+    <RetailTeaBundles locale={locale} productId={currentProduct.id} compact/>
 
     <nav className={styles.policies} aria-label={t.policies}><strong>{t.policies}</strong><div><Link href="/shipping">{t.shipping}</Link><Link href="/returns">{t.returns}</Link><Link href="/terms">{t.terms}</Link></div></nav>
 

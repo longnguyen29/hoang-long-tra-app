@@ -9,6 +9,7 @@ import RetailCatalogGrid from "./RetailCatalogGrid";
 import RetailProductDetail from "./RetailProductDetail";
 import RetailVolumeOffer from "./RetailVolumeOffer";
 import RetailPartnerBanner from "./RetailPartnerBanner";
+import RetailTeaBundles from "./RetailTeaBundles";
 import { retailOptions } from "@/lib/retail-catalog";
 import { RETAIL_CART_MAX } from "@/lib/retail-cart";
 import { retailVolumeBenefits } from "@/lib/retail-volume-policy";
@@ -33,6 +34,8 @@ const COPY = {
     teaIntro: "Bạn thích vị thanh nhẹ, hương hoa hay đậm đà? Khám phá các loại trà, xem cách pha và chọn gói phù hợp.",
     goodsIntro: "Một gian hàng nhỏ dành cho sản vật Tây Bắc, nơi người làm ra sản phẩm vẫn hiện diện trong câu chuyện.",
     teaLink: "Xem trà sỉ cho quán và doanh nghiệp",
+    chooseSingle: "Chọn từng loại trà",
+    chooseBundle: "Chọn bộ trà theo dịp",
     goodsLink: "Gặp những người phía sau sản vật",
     loadError: "Chưa tải được danh mục mùa này. Vui lòng thử lại.",
     emptyTea: "Danh mục trà mùa này đang được chuẩn bị.",
@@ -83,6 +86,8 @@ const COPY = {
     teaIntro: "Prefer a light cup, floral aromas or a fuller flavour? Explore the teas, find brewing guidance and choose your pack.",
     goodsIntro: "A small market for food from the North-West, carried by the House without removing the growers from the story.",
     teaLink: "Explore wholesale tea for cafés and businesses",
+    chooseSingle: "Browse individual teas",
+    chooseBundle: "Choose a tea set",
     goodsLink: "Meet the people behind the House",
     loadError: "The seasonal catalogue could not be loaded. Please try again.",
     emptyTea: "The seasonal catalogue is being prepared.",
@@ -210,9 +215,10 @@ export default function TeaShop({ mode = "tea", product = null }) {
           <div><p>{isGoods ? t.goodsIntro : t.teaIntro}</p><Link href={isGoods ? "/story" : "/catalog"}>{isGoods ? t.goodsLink : t.teaLink} <ArrowRight size={16}/></Link></div>
           {!isGoods && <RetailVolumeOffer locale={locale}/>}
         </section>
+        {!isGoods && <nav className={styles.shopChoices} aria-label={locale === "vi" ? "Cách chọn trà" : "Ways to choose tea"}><a href="#tea-selection">{t.chooseSingle}</a><a href="#tea-bundles">{t.chooseBundle}<ArrowRight size={16} aria-hidden="true"/></a></nav>}
         {loading ? <section className={styles.loading} aria-label={locale === "vi" ? "Đang tải danh mục" : "Loading catalogue"} aria-live="polite"><i/><i/><i/></section>
           : catalogStatus === "error" ? <div className={styles.loadError} role="alert"><p>{t.loadError}</p><button type="button" onClick={() => window.location.reload()}>{locale === "vi" ? "Tải lại danh mục" : "Reload catalogue"}</button></div>
-          : <RetailCatalogGrid products={products} vendors={vendors} locale={locale} cart={cart} quantity={quantity} mode={mode}/>}
+          : <><div id={isGoods ? undefined : "tea-selection"}><RetailCatalogGrid products={products} vendors={vendors} locale={locale} cart={cart} quantity={quantity} mode={mode}/></div>{!isGoods && <RetailTeaBundles locale={locale}/>}</>}
       </>}
 
       {count > 0 && <button className={styles.cartRail} onClick={() => setCartOpen(true)}><span>{t.itemCount(count)}</span><b>{catalogStatus === "ready" ? money.format(total) : "…"}</b><span>{t.checkout} <ArrowRight size={16}/></span></button>}
