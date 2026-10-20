@@ -65,9 +65,9 @@ test("planned interest uses the existing private transaction and the same refere
   assert.equal(JSON.stringify(expected).includes(saved.p_contact), false);
 });
 
-test("all five known planned definitions use the server name and fit the durable note budget", async () => {
+test("current and previously published plans use the server name and fit the durable note budget", async () => {
   const calls = fixture();
-  const ids = ["find-your-taste", "lotus-discovery", "travel", "cafe-trial", "familiar-and-new"];
+  const ids = ["find-your-taste", "lotus-discovery", "honey-and-smoke", "personal-office", "travel", "cafe-trial", "familiar-and-new"];
   for (const bundleId of ids) {
     const response = await send(valid({ bundleId, note: "x".repeat(RETAIL_BUNDLE_ENQUIRY_NOTE_LIMIT) }));
     assert.equal(response.status, 201, bundleId);
@@ -75,6 +75,7 @@ test("all five known planned definitions use the server name and fit the durable
     assert.equal(definition.ready, false);
     assert.ok(calls.at(-1).args.p_note.includes(typeof definition.name === "string" ? definition.name : definition.name.vi));
     assert.ok(calls.at(-1).args.p_note.length <= 700);
+    assert.match(calls.at(-1).args.p_note, /Bản phối: 2026-10-20/);
   }
   assert.equal((await send(valid({ note: undefined }))).status, 201);
 });
