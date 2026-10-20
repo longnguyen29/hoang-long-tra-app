@@ -32,7 +32,7 @@ const COPY = {
     checking: "Đang kiểm tra giá và tồn kho…", loadError: "Chưa kiểm tra được giá và tồn kho. Tải lại trang hoặc liên hệ Nhà.",
     invalidQuantity: `Chọn số lượng nguyên từ 1 đến ${RETAIL_CART_MAX}, trong lượng hàng hiện có.`,
     volumeTitle: "Ưu đãi theo tổng lượng trà", freeShipping: kg => `Từ ${kg} kg: miễn phí giao tiêu chuẩn nội địa.`, volumeTier: (kg, percent) => `Từ ${kg} kg · giảm ${percent}%`, volumeNote: "Cộng dồn trà có khối lượng xác định trong giỏ, không gồm bộ mẫu và sản vật. Áp dụng một mức giảm cao nhất.",
-    brewing: "Pha theo cách bạn thích", listedBrew: "Hướng dẫn riêng đang niêm yết", brewMethods: "Chọn cách pha",
+    brewing: "Pha theo cách bạn thích", brewMethods: "Chọn cách pha",
     reassurance: "Yên tâm khi đặt trà", trustPrice: "Giá và phí rõ ràng", trustPriceNote: "Nhà xác nhận loại trà, quy cách, tổng tiền và phí giao trước khi thực hiện. Không tự thay sản phẩm hoặc tăng giá đơn đã xác nhận.",
     trustReturns: "Hỗ trợ khi hàng có vấn đề", trustReturnsNote: "Giao sai, thiếu hoặc hàng lỗi: Nhà tiếp nhận và trao đổi bổ sung, đổi hàng hoặc hoàn tiền theo chính sách. Báo sớm trong 7 ngày để xử lý nhanh; không bắt buộc video mở hộp.",
     trustContact: "Trao đổi trực tiếp với Nhà", trustContactNote: "Cần chọn trà, hỏi cách pha hoặc hỗ trợ đơn hàng? Liên hệ trực tiếp Hoàng Long qua điện thoại hoặc Zalo.", contactZalo: "Nhắn Zalo",
@@ -53,7 +53,7 @@ const COPY = {
     checking: "Checking price and availability…", loadError: "Price and availability could not be checked. Reload this page or contact the house.",
     invalidQuantity: `Choose a whole quantity from 1 to ${RETAIL_CART_MAX}, within the available stock.`,
     volumeTitle: "Benefits by total tea weight", freeShipping: kg => `From ${kg} kg: free standard domestic delivery.`, volumeTier: (kg, percent) => `${kg} kg or more · ${percent}% off`, volumeNote: "Combines tea with a confirmed weight in your cart, excluding samples and produce. The single highest discount applies.",
-    brewing: "Brew it your way", listedBrew: "Listed tea-specific instructions", brewMethods: "Choose a brewing method",
+    brewing: "Brew it your way", brewMethods: "Choose a brewing method",
     reassurance: "Order with clarity", trustPrice: "Clear pricing and delivery costs", trustPriceNote: "The house confirms the tea, format, total and delivery cost before fulfilment. Confirmed orders are not changed or repriced without your agreement.",
     trustReturns: "Support for order problems", trustReturnsNote: "For wrong, missing or faulty goods, the house reviews replacement, correction or refund under the returns policy. Report promptly within 7 days for faster handling; an unboxing video is not required.",
     trustContact: "Speak directly with the house", trustContactNote: "Need help choosing tea, brewing or checking an order? Contact Hoàng Long directly by phone or Zalo.", contactZalo: "Message on Zalo",
@@ -217,14 +217,13 @@ export default function RetailProductDetail({ product }) {
     </div>
 
     <div className={styles.detailsGrid}>
-      {(facts.brew || selectedBrew) && <section className={styles.brewing} aria-labelledby={`${groupName}-brew`}>
+      {selectedBrew && <section className={styles.brewing} aria-labelledby={`${groupName}-brew`}>
         <p className={styles.eyebrow}>Hoàng Long</p><h2 id={`${groupName}-brew`}>{t.brewing}</h2>
         {selectedBrew && <>
           <div className={styles.brewMethods} role="group" aria-label={t.brewMethods}>{brewGuidance.methods.map(method => <button type="button" key={method.id} aria-pressed={selectedBrew.id === method.id} onClick={() => setBrewMethod(method.id)}>{method.label}</button>)}</div>
           <div className={styles.brewMethod} role="region" aria-live="polite" aria-label={selectedBrew.label}><strong>{selectedBrew.duration}</strong><span>{selectedBrew.caption}</span><p>{selectedBrew.instructions}</p></div>
           <p className={styles.brewNote}>{brewGuidance.note}</p>
         </>}
-        {facts.brew && (selectedBrew ? <details className={styles.listedBrew}><summary>{t.listedBrew}<ChevronDown size={16} aria-hidden="true"/></summary><p className={styles.brew}>{facts.brew}</p></details> : <p className={styles.brew}>{facts.brew}</p>)}
       </section>}
       <section className={styles.business} aria-labelledby={`${groupName}-business`}><h2 id={`${groupName}-business`}>{t.businessTitle}</h2><p>{t.businessNote}</p><div><Link href={tradeEnquiryHref(currentProduct.id, "quote", "", locale)}>{t.quote}<ArrowRight size={16} aria-hidden="true"/></Link><Link href={tradeEnquiryHref(currentProduct.id, "sample", "", locale)}>{t.sample}</Link></div></section>
     </div>
