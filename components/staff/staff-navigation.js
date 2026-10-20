@@ -67,9 +67,10 @@ export const STAFF_APPS = {
 };
 
 export const STAFF_APP_GROUPS = [
-  { label: "Hằng ngày", keys: ["work", "orders", "procedures", "pipeline"] },
-  { label: "Doanh nghiệp", keys: ["discovery", "partnerNetwork", "documents", "operations", "house"] },
-  { label: "Phòng chuyên môn", keys: ["productDevelopment", "suppliers", "recipes", "knowledge", "control", "growth"] },
+  { label: "Bán hàng", keys: ["pipeline", "orders", "discovery", "partnerNetwork"] },
+  { label: "Vận hành", keys: ["work", "procedures", "operations"] },
+  { label: "Sản phẩm & phát triển", keys: ["house", "productDevelopment", "suppliers", "recipes"] },
+  { label: "Nội dung & quản lý", keys: ["knowledge", "growth", "documents", "control"] },
 ];
 
 export const STAFF_APP_LIST = STAFF_APP_GROUPS.flatMap((group) => group.keys.map((key) => STAFF_APPS[key]));

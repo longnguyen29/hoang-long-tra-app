@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ChevronDown, Download, Globe2, Search } from "lucide-react";
+import { ArrowRight, ChevronDown, Download, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { isTradeTea, matchesTradeSearch, TRADE_CATALOG_FIELDS, tradeEnquiryHref } from "@/lib/trade-catalog";
@@ -11,6 +11,7 @@ import { PROFILE_PDF } from "@/lib/company-profile";
 import { B2B_BULK_PACKING } from "@/lib/b2b-packing";
 import PolicyLinks from "@/components/PolicyLinks";
 import styles from "./TradeCatalog.module.css";
+import PublicSiteHeader from "./PublicSiteHeader";
 
 function ProductPhoto({ product, facts, vi }) {
   const [failed, setFailed] = useState(false);
@@ -26,7 +27,7 @@ function ProductPhoto({ product, facts, vi }) {
 }
 
 export default function TradeCatalog() {
-  const { locale, toggleLocale } = useLocale();
+  const { locale } = useLocale();
   const vi = locale === "vi";
   const bulkPacking = B2B_BULK_PACKING[vi ? "vi" : "en"];
   const [products, setProducts] = useState([]);
@@ -70,14 +71,7 @@ export default function TradeCatalog() {
   const resetFilters = () => { setQuery(""); setGroup("all"); };
 
   return <main className={styles.page} data-no-translate>
-    <header className={styles.header}>
-      <Link className={styles.brand} href="/"><ArrowLeft size={17} aria-hidden="true"/>Hoàng Long</Link>
-      <nav aria-label={vi ? "Điều hướng" : "Navigation"}>
-        <Link className={styles.companyNav} href={`/company?lang=${locale}`}>{vi ? "Hồ sơ công ty" : "Company profile"}</Link>
-        <Link className={styles.briefNav} href={tradeEnquiryHref(null, "quote", enquirySearch, locale)}>{vi ? "Trao đổi nhu cầu" : "Discuss your brief"}<ArrowRight size={17} aria-hidden="true"/></Link>
-        <button type="button" onClick={toggleLocale} aria-label={vi ? "Switch to English" : "Chuyển sang tiếng Việt"}><Globe2 size={17} aria-hidden="true"/>{vi ? "EN" : "VI"}</button>
-      </nav>
-    </header>
+    <PublicSiteHeader/>
 
     <section className={styles.intro}>
       <div><p className={styles.eyebrow}>{vi ? "Trà cho phân phối & xuất khẩu" : "Tea for distribution & export"}</p><h1>{vi ? "Danh mục trà" : "Our tea catalogue"}</h1></div>

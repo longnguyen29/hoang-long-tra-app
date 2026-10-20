@@ -10,6 +10,7 @@ import { recommendMenuLab } from "@/lib/menu-lab";
 import { cafeShareHref, CAFE_DRINKS, cafeDrink, cafeSampleHref, availableCafePrice } from "@/lib/cafe-entry";
 import { recordPublicConversion } from "@/lib/public-attribution";
 import styles from "./CafeEntry.module.css";
+import PublicSiteHeader from "./PublicSiteHeader";
 
 const COPY = {
   vi: {
@@ -75,7 +76,7 @@ export default function CafeEntry() {
     if (details) details.open = true;
     window.print();
   };
-  const { locale, toggleLocale } = useLocale();
+  const { locale } = useLocale();
   const t = COPY[locale] || COPY.vi;
   const [drinkId, setDrinkId] = useState("milk");
   const [shareMessage, setShareMessage] = useState("");
@@ -121,13 +122,7 @@ export default function CafeEntry() {
 
   return (
     <main className={styles.page} data-experiment="cafe-entry-v1">
-      <header className={styles.header}>
-        <Link href="/" className={styles.brand}><span className={styles.seal} aria-hidden="true">皇龍</span>{t.house}</Link>
-        <nav aria-label={locale === "vi" ? "Điều hướng" : "Navigation"}>
-          <Link href="/shop">{t.nav}</Link>
-          <button onClick={toggleLocale} aria-label={locale === "vi" ? "Switch to English" : "Chuyển sang tiếng Việt"}>{locale === "vi" ? "EN" : "VI"}</button>
-        </nav>
-      </header>
+      <PublicSiteHeader/>
 
       <section className={styles.hero}>
         <div className={styles.intro}>

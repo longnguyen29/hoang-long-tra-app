@@ -3,15 +3,16 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, Download, Globe2, MapPin, MessageCircle, Phone } from "lucide-react";
+import { ArrowRight, Check, Download, MapPin, MessageCircle, Phone } from "lucide-react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { COMPANY_PROFILE, PROFILE_CONTACT, PROFILE_PDF } from "@/lib/company-profile";
 import { tradeEnquiryHref } from "@/lib/trade-catalog";
 import PolicyLinks from "@/components/PolicyLinks";
 import styles from "./CompanyProfile.module.css";
+import PublicSiteHeader from "./PublicSiteHeader";
 
 export default function CompanyProfile() {
-  const { locale, toggleLocale } = useLocale();
+  const { locale } = useLocale();
   const language = locale === "en" ? "en" : "vi";
   const t = COMPANY_PROFILE[language];
   const [search, setSearch] = useState("");
@@ -26,20 +27,7 @@ export default function CompanyProfile() {
 
   return (
     <main className={styles.page} data-no-translate lang={language}>
-      <header className={styles.header}>
-        <Link className={styles.wordmark} href="/" aria-label={t.actions.home}>
-          <span className={styles.seal} aria-hidden="true">皇龍</span>
-          <span>House of Hoàng Long</span>
-        </Link>
-        <nav className={styles.nav} aria-label={language === "vi" ? "Điều hướng hồ sơ doanh nghiệp" : "Company profile navigation"}>
-          <Link href={catalogHref}>{t.actions.catalog}</Link>
-          <Link href={quoteHref}>{t.actions.quote}</Link>
-          <button className={styles.language} type="button" onClick={toggleLocale} aria-label={language === "vi" ? "Switch to English" : "Chuyển sang tiếng Việt"}>
-            <Globe2 size={17} aria-hidden="true" />
-            <span>{language === "vi" ? "EN" : "VI"}</span>
-          </button>
-        </nav>
-      </header>
+      <PublicSiteHeader/>
 
       <section className={styles.hero} aria-labelledby="company-title">
         <div className={styles.heroCopy}>

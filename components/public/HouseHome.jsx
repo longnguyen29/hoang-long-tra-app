@@ -3,33 +3,15 @@ import PolicyLinks from "@/components/PolicyLinks";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowRight, Globe2, Menu, ShoppingBag, X } from "lucide-react";
+import { ArrowDown, ArrowRight, ShoppingBag } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { recordPublicConversion } from "@/lib/public-attribution";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import styles from "./HouseHome.module.css";
+import PublicSiteHeader from "./PublicSiteHeader";
 
 const COPY = {
   "vi": {
-    "nav": [
-      [
-        "Hồ sơ công ty",
-        "/company"
-      ],
-      [
-        "Danh mục trà",
-        "/catalog"
-      ],
-      [
-        "Hợp tác",
-        "/wholesale"
-      ],
-      [
-        "Nguồn trà",
-        "/story"
-      ]
-    ],
-    "book": "Trao đổi hợp tác",
     "hero": "Nguồn trà Việt cho phân phối & xuất khẩu.",
     "heroBody": "Năng lực sản xuất 1.000 tấn/năm. Hoàng Long cung cấp trà tại xưởng cho nhà phân phối và doanh nghiệp xuất khẩu quy mô lớn, với chất lượng tinh chỉnh theo nhu cầu.",
     "sampleCta": "Trao đổi nhu cầu cung ứng",
@@ -79,25 +61,6 @@ const COPY = {
     ]
   },
   "en": {
-    "nav": [
-      [
-        "Company profile",
-        "/company"
-      ],
-      [
-        "Tea range",
-        "/catalog"
-      ],
-      [
-        "Partnerships",
-        "/wholesale"
-      ],
-      [
-        "Origins",
-        "/story"
-      ]
-    ],
-    "book": "Discuss supply",
     "hero": "Vietnamese tea for distribution & export.",
     "heroBody": "Production capacity of 1,000 tonnes per year. Hoàng Long supplies distributors and large-scale exporters directly from the factory, with quality tailored to partner requirements.",
     "sampleCta": "Discuss your supply requirements",
@@ -151,8 +114,7 @@ const COPY = {
 const FALLBACK_PHOTOS = ["/landing/1.jpg", "/landing/2.jpg", "/landing/3.jpg"];
 
 export default function HouseHome() {
-  const { locale: lang, toggleLocale } = useLocale();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const { locale: lang } = useLocale();
   const [catalog, setCatalog] = useState([]);
   const [catalogState, setCatalogState] = useState("loading");
   const [attempt, setAttempt] = useState(0);
@@ -191,33 +153,7 @@ export default function HouseHome() {
 
   return (
     <main className={styles.page}>
-      <header className={styles.header}>
-        <Link href="/" className={styles.wordmark} aria-label="House of Hoang Long home" translate="no">
-          <span className={styles.seal} aria-hidden="true">皇龍</span>
-          <span className="notranslate" translate="no">House of Hoang Long</span>
-        </Link>
-
-        <nav className={styles.desktopNav} aria-label="Primary navigation">
-          {t.nav.map(([label, href]) => <Link key={href} href={href === "/catalog" ? catalogHref : href}>{label}</Link>)}
-        </nav>
-
-        <div className={styles.headerActions}>
-          <button className={styles.language} onClick={toggleLocale} aria-label={lang === "vi" ? "Chuyển sang tiếng Anh" : "Switch to Vietnamese"}>
-            <Globe2 size={15} aria-hidden="true" /> <span>{lang.toUpperCase()}</span>
-          </button>
-          <Link href="/wholesale" className={styles.book}>{t.book}</Link>
-          <button className={styles.menuButton} onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-controls="mobile-navigation" aria-label={lang === "vi" ? (menuOpen ? "Đóng trình đơn" : "Mở trình đơn") : (menuOpen ? "Close menu" : "Open menu")}>
-            {menuOpen ? <X size={21}/> : <Menu size={21}/>} 
-          </button>
-        </div>
-      </header>
-
-      {menuOpen && (
-        <nav id="mobile-navigation" className={styles.mobileNav} aria-label="Mobile navigation">
-          {t.nav.map(([label, href]) => <Link key={href} href={href === "/catalog" ? catalogHref : href} onClick={() => setMenuOpen(false)}>{label}<ArrowRight size={18}/></Link>)}
-          <Link href="/wholesale" onClick={() => setMenuOpen(false)}>{t.book}<ArrowRight size={18}/></Link>
-        </nav>
-      )}
+      <PublicSiteHeader/>
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>

@@ -3,7 +3,7 @@ import PolicyLinks from "@/components/PolicyLinks";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, FlaskConical, Globe2, Phone } from "lucide-react";
+import { ArrowRight, Check, FlaskConical, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { notifyHouse } from "@/lib/notify";
 import { isTradeTea, selectedTradeTea, TRADE_CATALOG_FIELDS } from "@/lib/trade-catalog";
@@ -14,6 +14,7 @@ import { useLocale } from "@/components/i18n/LocaleProvider";
 import { trackMetaLead } from "@/lib/meta-pixel";
 import { recordPublicConversion } from "@/lib/public-attribution";
 import styles from "./TradeDesk.module.css";
+import PublicSiteHeader from "./PublicSiteHeader";
 
 const COPY = {
   vi: {
@@ -89,7 +90,7 @@ const COPY = {
 };
 
 export default function TradeDesk() {
-  const { locale: lang, toggleLocale } = useLocale();
+  const { locale: lang } = useLocale();
   const [products, setProducts] = useState([]);
   const [selectedTea, setSelectedTea] = useState(null);
   const [intent, setIntent] = useState("quote");
@@ -156,10 +157,7 @@ export default function TradeDesk() {
 
   return (
     <main className={styles.page}>
-      <header className={styles.header}>
-        <Link href="/" className={styles.back}><ArrowLeft size={17}/>{t.back}</Link>
-        <div className={styles.headerActions}><Link href="/partners/account">{t.portal}<ArrowRight size={15}/></Link><button onClick={toggleLocale}><Globe2 size={15}/>{t.switcher}</button></div>
-      </header>
+      <PublicSiteHeader/>
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>

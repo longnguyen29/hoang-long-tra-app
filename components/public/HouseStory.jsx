@@ -8,6 +8,7 @@ import { fromVendorRow } from "@/lib/mappers";
 import { CATEGORIES } from "@/lib/constants";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import styles from "./PublicLongform.module.css";
+import PublicSiteHeader from "./PublicSiteHeader";
 
 const COPY={
   vi:{back:"Nhà Hoàng Long",switcher:"EN",eyebrow:"Nhà làm trà · từ 1995",title:"Đây là câu chuyện của một nhà làm trà, không phải là một bài truyền thông thương mại.",intro:"Hoàng Long đứng giữa cây trà cổ thụ trên núi và những người sẽ uống trà ở một nơi rất xa. Công việc của Nhà là giữ cho mối nối ấy trung thực.",chapter:"Cách Nhà làm việc",body:["Chúng tôi không sở hữu cả ngọn núi. Trà bắt đầu từ quan hệ lâu dài với người hái, người giữ rừng và những vùng cây Shan Tuyết đã sống trước chúng ta nhiều thế hệ.","Tại xưởng, kinh nghiệm gia đình gặp kỷ luật chế biến Nhật Bản. Không phải để làm trà Việt giống trà Nhật, mà để kiểm soát nhiệt, nước và thời gian đủ chính xác cho bản sắc của lá trà được hiện ra rõ hơn."],people:"Những người và vùng đất phía sau lá",archive:"Hồ sơ của Nhà",empty:"Những ghi chép của Nhà đang được chuẩn bị.",read:"Đọc ghi chép",close:"Trở lại hồ sơ",closing:"Đưa vùng thượng nguồn về với khách hàng.",tea:"Xem trà mùa này"},
@@ -21,7 +22,7 @@ export default function HouseStory(){
   const activeArticle=articles.find(a=>a.id===active); const category=(id)=>CATEGORIES.find(c=>c.id===id)?.label?.[lang]||id;
   if(activeArticle)return <main className={styles.reader}><header><button onClick={()=>setActive(null)}><ArrowLeft size={17}/>{t.close}</button><button onClick={toggleLocale}><Globe2 size={15}/>{t.switcher}</button></header><article><p>{category(activeArticle.category)}</p><h1>{local(activeArticle.title)}</h1><div>{local(activeArticle.body)}</div></article></main>;
   return <main className={styles.page}>
-    <header className={styles.header}><Link href="/"><ArrowLeft size={17}/>{t.back}</Link><button onClick={toggleLocale}><Globe2 size={15}/>{t.switcher}</button></header>
+    <PublicSiteHeader/>
     <section className={styles.storyHero}><div><p>{t.eyebrow}</p><h1>{t.title}</h1><p>{t.intro}</p></div><figure><img src={home?.featured_photos?.[0]||"/landing/1.jpg"} alt="Ancient tea landscape in Hà Giang"/><figcaption>Hà Giang · Việt Nam</figcaption></figure></section>
     {home?.origin_stats?.length>0&&<section className={styles.stats}>{home.origin_stats.slice(0,4).map((s,i)=><div key={i}><b>{s.value}</b><span>{local(s.label)}</span></div>)}</section>}
     <section className={styles.chapter}><div><Mountain size={21}/><h2>{t.chapter}</h2></div><div>{t.body.map((p,i)=><p key={i}>{p}</p>)}</div></section>

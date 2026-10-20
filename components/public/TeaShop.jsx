@@ -3,13 +3,14 @@ import PolicyLinks from "@/components/PolicyLinks";
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, Globe2, Minus, Plus, ShoppingBag, X } from "lucide-react";
+import { ArrowRight, Check, Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { useRetailCart } from "./RetailCartProvider";
 import RetailCatalogGrid from "./RetailCatalogGrid";
 import RetailProductDetail from "./RetailProductDetail";
 import RetailVolumeOffer from "./RetailVolumeOffer";
 import RetailPartnerBanner from "./RetailPartnerBanner";
 import RetailTeaBundles from "./RetailTeaBundles";
+import PublicSiteHeader from "./PublicSiteHeader";
 import { retailOptions } from "@/lib/retail-catalog";
 import { RETAIL_CART_MAX } from "@/lib/retail-cart";
 import { retailVolumeBenefits } from "@/lib/retail-volume-policy";
@@ -129,7 +130,7 @@ const COPY = {
 };
 
 export default function TeaShop({ mode = "tea", product = null }) {
-  const { locale, toggleLocale } = useLocale();
+  const { locale } = useLocale();
   const t = COPY[locale];
   const { retailPartner, partnerCandidate, referralStatus, clearRetailPartner, products: allProducts, vendors, cart, cartOpen, setCartOpen, catalogStatus, cartAdjusted, clearCart, changeQuantity } = useRetailCart();
   const products = allProducts.filter(item => mode === "goods" ? item.kind === "goods" : item.kind !== "goods" && item.line !== "sample");
@@ -195,17 +196,11 @@ export default function TeaShop({ mode = "tea", product = null }) {
 
   return (
     <main className={styles.page} data-no-translate>
-      <header className={styles.header}>
-        <Link href="/" className={styles.back}><ArrowLeft size={17}/> {t.back}</Link>
-        <div className={styles.headerActions}>
-          <button type="button" className={styles.languageButton} onClick={toggleLocale} aria-label={locale === "vi" ? "Switch to English" : "Chuyển sang tiếng Việt"}>
-            <Globe2 size={15} aria-hidden="true"/><span>{t.switcher}</span>
-          </button>
-          <button onClick={() => setCartOpen(true)} className={styles.cartButton} aria-label={t.openCart(count)}>
-            <ShoppingBag size={17}/><span>{t.cart}</span><b>{count}</b>
-          </button>
-        </div>
-      </header>
+      <PublicSiteHeader>
+        <button type="button" onClick={() => setCartOpen(true)} className={styles.cartButton} aria-label={t.openCart(count)}>
+          <ShoppingBag size={17} aria-hidden="true"/><span>{t.cart}</span><b>{count}</b>
+        </button>
+      </PublicSiteHeader>
 
       <RetailPartnerBanner locale={locale}/>
       {product ? <RetailProductDetail key={product.id} product={product}/> : <>
