@@ -7,7 +7,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Search, ChevronRight, ChevronLeft, Menu, X, Edit3, Save, Plus, Trash2,
   Leaf, Mountain, Languages, Copy, Check, Lock, Clock, Upload, Sparkles, ShoppingCart, Minus,
-  MessageCircle, Send, Download, Printer, LogOut, Tag, Truck, Loader2, Calendar, Phone, Images, Gift, Undo2,
+  MessageCircle, Send, Download, LogOut, Tag, Truck, Loader2, Calendar, Phone, Images, Gift, Undo2,
   BarChart3, Users, Building2, Package, Ticket, Star, CreditCard, Home, UserPlus, ArrowLeft, Sprout, FileText,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -28,6 +28,7 @@ import {
 import ConfirmDelete from "./ConfirmDelete";
 import AuthPanel from "./AuthPanel";
 import PaymentBlock from "./PaymentBlock";
+import InvoiceExport from "./InvoiceExport";
 import ReorderBox from "./ReorderBox";
 import TrackOrderBox from "./TrackOrderBox";
 import TeaDetailModal from "./TeaDetailModal";
@@ -1434,61 +1435,6 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
       id: row.id, code: null, businessName: row.business_name, contact: row.contact,
       userId: row.user_id, wholesaleVerified: false,
     });
-  };
-
-  const printInvoice = (order) => {
-    // Escape user-controlled text before interpolating into raw HTML — without this, a malicious
-    // order name/address/note could run arbitrary script in the admin's browser when printing.
-    const esc = (s) =>
-      String(s ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-    const itemRows = order.lines
-      .map((l) => `<tr><td style="padding:8px 0;">${esc(l.name.en || l.name.vi)}${l.price ? ` <span style="color:#AD8A4E;">(${l.price.toLocaleString("vi-VN")}đ)</span>` : ""}</td><td style="padding:8px 0;text-align:right;">${l.qty} ${esc(sellingUnitLabel(l.unit, "en"))}${l.price ? ` = ${(l.price * l.qty).toLocaleString("vi-VN")}đ` : ""}</td></tr>`)
-      .join("");
-    const totalLine =
-      order.type === "retail"
-        ? `<tr><td style="padding:10px 0;font-weight:700;">Total items</td><td style="padding:10px 0;text-align:right;font-weight:700;">${esc(formatLineQuantities(order.lines, "en"))}</td></tr>`
-        : `<tr><td style="padding:10px 0;font-weight:700;">Total volume</td><td style="padding:10px 0;text-align:right;font-weight:700;">${formatMassKg(order.totalKg, "en")}</td></tr>
-           <tr><td colspan="2" style="padding:2px 0 10px;color:#AD8A4E;">${esc(order.tier.range.en)} · ${esc(order.tier.off.en)}</td></tr>`;
-    const estimatedTotalLine = order.estimatedTotal
-      ? `<tr><td style="padding:6px 0;font-weight:700;color:#AD8A4E;">Estimated total</td><td style="padding:6px 0;text-align:right;font-weight:700;color:#AD8A4E;">${order.estimatedTotal.toLocaleString("vi-VN")}đ</td></tr>`
-      : "";
-    const promoLine = order.promo ? `<tr><td colspan="2" style="padding:2px 0 10px;color:#9C3B2E;">Promo: ${esc(order.promo.code)} (-${order.promo.percent}%)</td></tr>` : "";
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice ${esc(order.id)}</title>
-      <style>
-        body{font-family:Georgia,serif;color:#1C2B24;padding:40px;max-width:600px;margin:0 auto;}
-        table{width:100%;border-collapse:collapse;}
-        .seal{width:48px;height:48px;border-radius:50%;border:1.5px solid #AD8A4E;display:flex;align-items:center;justify-content:center;font-size:18px;color:#AD8A4E;margin-bottom:12px;}
-        .brand{font-size:22px;font-weight:600;margin-bottom:2px;}
-        .meta{font-size:13px;color:#2E4A40;margin-bottom:24px;}
-        hr{border:none;border-top:1px solid #AD8A4E55;margin:16px 0;}
-        h2{font-size:14px;text-transform:uppercase;letter-spacing:0.5px;color:#AD8A4E;margin:0 0 10px;}
-      </style></head>
-      <body>
-        <div class="seal">皇龍</div>
-        <div class="brand">House of Hoàng Long</div>
-        <div class="meta">Invoice · Order ${esc(order.id)}<br/>${esc(new Date(order.ts).toLocaleString("vi-VN"))}</div>
-        <hr/>
-        <h2>Customer</h2>
-        <p style="font-size:14px;line-height:1.7;margin:0 0 16px;">
-          ${esc(order.customerName)}<br/>${esc(order.contact)}${order.address ? `<br/>${esc(order.address)}` : ""}${order.taxNumber ? `<br/>Tax No: ${esc(order.taxNumber)}` : ""}
-        </p>
-        <h2>Items</h2>
-        <table>${itemRows}${totalLine}${estimatedTotalLine}${promoLine}</table>
-        ${order.note ? `<p style="font-size:13px;font-style:italic;color:#2E4A40;margin-top:16px;">Note: ${esc(order.note)}</p>` : ""}
-        <hr/>
-        <p style="font-size:11px;color:#2E4A40;">This is a preliminary invoice. Final pricing is confirmed by our team.</p>
-      </body></html>`;
-    const win = window.open("", "_blank", "width=700,height=900");
-    if (!win) return;
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    setTimeout(() => win.print(), 350);
   };
 
   const exportOrdersCsv = () => {
@@ -3164,7 +3110,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                     <Check size={26} color={TOKENS.brassDeep} />
                   </div>
                   <h2 style={{ fontFamily: "Lora, Georgia, serif", fontSize: 20, margin: "0 0 8px" }}>{t.orderSent}</h2>
-                  <PaymentBlock order={orderSubmitted} payment={payment} qrUrl={vietQrUrl(orderSubmitted)} onPrint={printInvoice} t={t} TOKENS={TOKENS} />
+                  <PaymentBlock order={orderSubmitted} payment={payment} qrUrl={vietQrUrl(orderSubmitted)} locale={lang} t={t} TOKENS={TOKENS} />
                   <a
                     href={mailtoHref(orderSubmitted)}
                     style={{
@@ -5210,9 +5156,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                         <a href={mailtoHref(o)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: TOKENS.jade, textDecoration: "none", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 6, padding: "6px 10px" }}>
                           <Send size={12} /> {t.emailFallback}
                         </a>
-                        <button onClick={() => printInvoice(o)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: TOKENS.jade, background: "none", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>
-                          <Printer size={12} /> {t.printInvoice}
-                        </button>
+                        <InvoiceExport key={o.id} order={o} locale={lang} />
                         {o.unread && (
                           <button onClick={() => markOrderRead(o.id)} style={{ fontSize: 12.5, color: TOKENS.jadeSoft, background: "none", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>
                             {t.markRead}
@@ -5280,7 +5224,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                     <Check size={26} color={TOKENS.brassDeep} />
                   </div>
                   <h2 style={{ fontFamily: "Lora, Georgia, serif", fontSize: 20, margin: "0 0 8px" }}>{t.orderSent}</h2>
-                  <PaymentBlock order={orderSubmitted} payment={payment} qrUrl={vietQrUrl(orderSubmitted)} onPrint={printInvoice} t={t} TOKENS={TOKENS} />
+                  <PaymentBlock order={orderSubmitted} payment={payment} qrUrl={vietQrUrl(orderSubmitted)} locale={lang} t={t} TOKENS={TOKENS} />
                   <a
                     href={mailtoHref(orderSubmitted)}
                     style={{
