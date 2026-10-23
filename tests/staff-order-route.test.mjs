@@ -13,12 +13,12 @@ registerHooks({resolve(specifier,context,next){
 }});
 const {setStaff}=await import(authUrl);
 const {PATCH}=await import('../app/api/staff/orders/[id]/route.js');
-function fixture({invoice=null,invoiceError=null,updateError=null,rpcError=null,rpcData=null}={}){
- const original={id:'TEST-1',type:'retail',customer_name:'Test café',contact:'test@example.test',address:'Test address',stage:'new_order',status:'pending',lines:[{productId:'tea',qty:2,unit:'pcs',price:100000},{productId:'tea-2',qty:3,unit:'kg',price:200000}],estimated_total:800000};
- const writes=[],events=[],rpcCalls=[];
- const admin={rpc:async(name,args)=>{rpcCalls.push({name,args});return {data:rpcData,error:rpcError}},from(table){let patch;const chain={select(){return chain},eq(){return chain},neq(){return chain},order(){return chain},limit(){return chain},update(value){patch=value;writes.push(value);return chain},insert(value){events.push(value);return Promise.resolve({error:null})},maybeSingle:async()=>table==='receivables'?{data:invoice,error:invoiceError}:{data:patch?{...original,...patch}:rpcCalls.length&&!rpcError&&table==='orders'?{...original,type:'wholesale',stage:rpcCalls.at(-1)?.name==='force_ship_order'?'shipping':'production',status:rpcCalls.at(-1)?.name==='force_ship_order'?'shipped':'confirmed'}:original,error:patch?updateError:null},then(resolve){return Promise.resolve({data:events,error:null}).then(resolve)}};return chain}};
+function fixture({invoice=null,invoiceError=null,updateError=null,updateConflict=false,rpcError=null,rpcData=null,orderOverrides={}}={}){
+ const original={id:'TEST-1',type:'retail',customer_name:'Test café',contact:'test@example.test',address:'Test address',stage:'new_order',status:'pending',lines:[{productId:'tea',qty:2,unit:'pcs',price:100000},{productId:'tea-2',qty:3,unit:'kg',price:200000}],estimated_total:800000,...orderOverrides};
+ const writes=[],events=[],rpcCalls=[],filters=[];
+ const admin={rpc:async(name,args)=>{rpcCalls.push({name,args});return {data:rpcData,error:rpcError}},from(table){let patch;const chain={select(){return chain},eq(key,value){if(patch)filters.push({key,value});return chain},neq(){return chain},order(){return chain},limit(){return chain},update(value){patch=value;writes.push(value);return chain},insert(value){events.push(value);return Promise.resolve({error:null})},maybeSingle:async()=>table==='receivables'?{data:invoice,error:invoiceError}:{data:patch?(updateConflict?null:{...original,...patch}):rpcCalls.length&&!rpcError&&table==='orders'?{...original,type:'wholesale',stage:rpcCalls.at(-1)?.name==='force_ship_order'?'shipping':'production',status:rpcCalls.at(-1)?.name==='force_ship_order'?'shipped':'confirmed'}:original,error:patch?updateError:null},then(resolve){return Promise.resolve({data:events,error:null}).then(resolve)}};return chain}};
  setStaff({admin,user:{id:'STAFF-1',email:'manager@example.test'},role:'manager'});
- return {original,writes,events,rpcCalls};
+ return {original,writes,events,rpcCalls,filters};
 }
 const send=body=>PATCH(new Request('http://localhost/api/staff/orders/TEST-1',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),{params:Promise.resolve({id:'TEST-1'})});
 test('unauthorized request cannot update order',async()=>{setStaff(null);assert.equal((await send({type:'wholesale'})).status,401)});
@@ -26,6 +26,50 @@ test('type change preserves lines, units, amount and customer details',async()=>
 test('rejects unsupported order type without a write',async()=>{const f=fixture();assert.equal((await send({type:'bulk'})).status,400);assert.equal(f.writes.length,0)});
 test('line prices recalculate total using existing quantities',async()=>{const f=fixture();const response=await send({linePrices:[{index:0,price:150000},{index:1,price:250000}]});assert.equal(response.status,200);const {order}=await response.json();assert.equal(order.estimated_total,1050000);assert.equal(order.lines[0].unit,'pcs');assert.equal(order.lines[1].qty,3);assert.equal(f.events[0].kind,'price_change')});
 test('an unquoted line keeps total unknown',async()=>{fixture();const response=await send({linePrices:[{index:0,price:null},{index:1,price:250000}]});assert.equal((await response.json()).order.estimated_total,null)});
+test('first price edit saves actual previous sale price rather than catalogue list price',async()=>{
+ const f=fixture({orderOverrides:{lines:[{productId:'tea',qty:2,unit:'kg',price:90000,listPrice:120000},{productId:'tea-2',qty:3,unit:'pcs',price:200000}]}});
+ const response=await send({linePrices:[{index:0,price:100000},{index:1,price:200000}]});
+ assert.equal(response.status,200);const {order}=await response.json();
+ assert.equal(order.lines[0].priceBeforeEdit,90000);assert.equal(order.lines[0].listPrice,120000);
+ assert.equal(Object.hasOwn(order.lines[1],'priceBeforeEdit'),false);
+ assert.equal(Object.hasOwn(f.original.lines[0],'priceBeforeEdit'),false);
+ assert.equal(order.estimated_total,800000);assert.equal(f.events[0].kind,'price_change');
+ assert.deepEqual(f.filters.find(filter=>filter.key==='lines'),{key:'lines',value:JSON.stringify(f.original.lines)});
+});
+test('repeated price changes keep the first saved price, including null and zero',async()=>{
+ const f=fixture({orderOverrides:{lines:[{qty:1,unit:'kg',price:100000},{qty:1,unit:'pack',price:0},{qty:1,unit:'pack',price:null}]}});
+ const first=await send({linePrices:[{index:0,price:110000},{index:1,price:20000},{index:2,price:30000}]});
+ assert.equal(first.status,200);f.original.lines=(await first.json()).order.lines;
+ const second=await send({linePrices:[{index:0,price:120000},{index:1,price:25000},{index:2,price:35000}]});
+ assert.equal(second.status,200);const {order}=await second.json();
+ assert.deepEqual(order.lines.map(line=>line.priceBeforeEdit),[100000,0,null]);
+});
+test('unchanged zero and unquoted lines stay without an invented edit history',async()=>{
+ fixture({orderOverrides:{lines:[{qty:1,unit:'kg',price:0},{qty:1,unit:'kg',price:null},{qty:1,unit:'kg',price:100000}]}});
+ const response=await send({linePrices:[{index:0,price:0},{index:1,price:null},{index:2,price:100000}]});
+ assert.equal(response.status,200);const {order}=await response.json();
+ assert.ok(order.lines.every(line=>!Object.hasOwn(line,'priceBeforeEdit')));assert.equal(order.estimated_total,null);
+});
+test('client cannot inject a per-line snapshot and top-level snapshots are ignored',async()=>{
+ const f=fixture();
+ const rejected=await send({linePrices:[{index:0,price:110000,priceBeforeEdit:999999},{index:1,price:200000}]});
+ assert.equal(rejected.status,400);assert.equal(f.writes.length,0);assert.equal(f.events.length,0);
+ const response=await send({priceBeforeEdit:999999,linePrices:[{index:0,price:110000},{index:1,price:200000}]});
+ assert.equal(response.status,200);const {order}=await response.json();assert.equal(order.lines[0].priceBeforeEdit,100000);
+ assert.equal(Object.hasOwn(f.writes[0],'priceBeforeEdit'),false);
+});
+test('failed price write does not change the source lines or log a success',async()=>{
+ const f=fixture({updateError:{message:'offline'}});const before=structuredClone(f.original.lines);
+ const response=await send({linePrices:[{index:0,price:110000},{index:1,price:200000}]});
+ assert.equal(response.status,500);assert.deepEqual(f.original.lines,before);assert.equal(f.events.length,0);
+});
+test('concurrent line changes fail the price compare-and-swap without a success event',async()=>{
+ const f=fixture({updateConflict:true});
+ const response=await send({linePrices:[{index:0,price:110000},{index:1,price:200000}]});
+ assert.equal(response.status,409);assert.equal((await response.json()).error,'order_lines_changed');
+ assert.deepEqual(f.filters.find(filter=>filter.key==='lines'),{key:'lines',value:JSON.stringify(f.original.lines)});
+ assert.equal(f.events.length,0);
+});
 test('duplicate indices cannot overwrite another line or change type',async()=>{const f=fixture();assert.equal((await send({type:'wholesale',linePrices:[{index:0,price:100},{index:0,price:200}]})).status,400);assert.equal(f.writes.length,0)});
 test('existing receivable blocks price edit and combined type update',async()=>{const f=fixture({invoice:{id:'invoice',total:800000,paid:0,status:'open'}});const response=await send({type:'wholesale',linePrices:[{index:0,price:100},{index:1,price:200}]});assert.equal(response.status,409);assert.equal(f.writes.length,0)});
 test('failed invoice read fails closed',async()=>{const f=fixture({invoiceError:{message:'offline'}});assert.equal((await send({linePrices:[]})).status,500);assert.equal(f.writes.length,0)});

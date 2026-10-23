@@ -13,6 +13,7 @@ import { authenticateManagerRequest } from "@/lib/staff-api-auth";
 import { maybeSendShippingSms, readShippingSms } from "@/lib/shipping-sms-server";
 import { readOrderSmsHistory } from "@/lib/order-sms-history-server";
 import { SUPPORTED_SELLING_UNITS } from "@/lib/selling-units";
+import { applyOrderLinePriceChanges } from "@/lib/order-price-history";
 
 async function readEvents(admin, orderId) {
   return admin
@@ -34,7 +35,7 @@ async function readCosts(admin, orderId) {
 async function readReceivable(admin, orderId) {
   return admin
     .from("receivables")
-    .select("id,total,paid,status,due_at,updated_at")
+    .select("id,invoice_number,total,paid,status,due_at,updated_at")
     .eq("order_id", orderId)
     .neq("status", "void")
     .maybeSingle();
@@ -208,6 +209,7 @@ export async function PATCH(request, { params }) {
   const { stage, health, waitingOn, healthNote, trackingCode, shippingCarrier, linePrices, type } = body || {};
   const update = {};
   const events = [];
+  let expectedPriceLines = null;
 
   if (type !== undefined) {
     if (!["retail", "wholesale"].includes(type)) return Response.json({ok:false,error:"invalid_type"},{status:400});
@@ -279,7 +281,9 @@ export async function PATCH(request, { params }) {
 
   if (linePrices !== undefined) {
     if (!Array.isArray(linePrices) || linePrices.some((item) => (
-      !Number.isInteger(item?.index)
+      !item || typeof item !== 'object' || Array.isArray(item)
+      || Object.keys(item).some(key => !['index', 'price'].includes(key))
+      || !Number.isInteger(item.index)
       || item.index < 0
       || (item.price !== null && (!Number.isFinite(item.price) || item.price < 0))
     ))) {
@@ -294,13 +298,14 @@ export async function PATCH(request, { params }) {
     if (readError) return Response.json({ ok: false }, { status: 500 });
     if (!currentOrder) return Response.json({ ok: false }, { status: 404 });
 
-    const lines = Array.isArray(currentOrder.lines) ? currentOrder.lines.map((line) => ({ ...line })) : [];
+    const currentLines = Array.isArray(currentOrder.lines) ? currentOrder.lines : [];
     const distinctIndexes = new Set(linePrices.map((item) => item.index));
-    if (!lines.length || linePrices.length !== lines.length || distinctIndexes.size !== lines.length || linePrices.some((item) => item.index >= lines.length)) {
+    if (!currentLines.length || linePrices.length !== currentLines.length || distinctIndexes.size !== currentLines.length || linePrices.some((item) => item.index >= currentLines.length)) {
       return Response.json({ ok: false, error: "invalid_line_index" }, { status: 400 });
     }
 
-    for (const item of linePrices) lines[item.index].price = item.price;
+    const lines = applyOrderLinePriceChanges(currentLines, linePrices);
+    expectedPriceLines = currentLines;
     update.lines = lines;
     update.estimated_total = lines.every((line) => Number.isFinite(line.price))
       ? lines.reduce((total, line) => total + (Number(line.qty) || 0) * line.price, 0)
@@ -317,10 +322,14 @@ export async function PATCH(request, { params }) {
     return Response.json({ ok: false, error: "empty_update" }, { status: 400 });
   }
 
-  const { data, error } = await staff.admin
+  let orderUpdate = staff.admin
     .from("orders")
     .update(update)
-    .eq("id", id)
+    .eq("id", id);
+  // A concurrent correction must not be overwritten or become the wrong
+  // baseline for this first-edit snapshot. JSONB equality is key-order agnostic.
+  if (expectedPriceLines !== null) orderUpdate = orderUpdate.eq('lines', JSON.stringify(expectedPriceLines));
+  const { data, error } = await orderUpdate
     .select()
     .maybeSingle();
   if (error) {
@@ -330,7 +339,9 @@ export async function PATCH(request, { params }) {
     }
     return Response.json({ ok: false }, { status: 500 });
   }
-  if (!data) return Response.json({ ok: false }, { status: 404 });
+  if (!data) return expectedPriceLines !== null
+    ? Response.json({ ok: false, error: 'order_lines_changed' }, { status: 409 })
+    : Response.json({ ok: false }, { status: 404 });
 
   for (const event of events) {
     await logOrderEvent(staff.admin, {

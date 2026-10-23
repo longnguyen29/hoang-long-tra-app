@@ -9,7 +9,7 @@ export default function PaymentBlock({ order, payment, qrUrl, locale = "vi", t, 
         <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.brassDeep, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
           {t.yourOrderId}
         </div>
-        <InvoiceExport key={order.id} order={order} locale={locale} />
+        <InvoiceExport key={order.id} order={order} locale={locale} payment={payment} />
       </div>
       <div style={{ fontFamily: "monospace", fontSize: 15, fontWeight: 700, marginBottom: 4, overflowWrap: "anywhere" }}>{order.id}</div>
       <div style={{ fontSize: 12, color: TOKENS.jadeSoft, marginBottom: 16 }}>{t.orderIdSaveNote}</div>

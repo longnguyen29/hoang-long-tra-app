@@ -5156,7 +5156,7 @@ export default function TeaConsole({ isAdmin, staffEmail, onLogout, initialSecti
                         <a href={mailtoHref(o)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: TOKENS.jade, textDecoration: "none", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 6, padding: "6px 10px" }}>
                           <Send size={12} /> {t.emailFallback}
                         </a>
-                        <InvoiceExport key={o.id} order={o} locale={lang} />
+                        <InvoiceExport key={o.id} order={o} locale={lang} payment={payment} />
                         {o.unread && (
                           <button onClick={() => markOrderRead(o.id)} style={{ fontSize: 12.5, color: TOKENS.jadeSoft, background: "none", border: `1px solid ${TOKENS.brassDeep}55`, borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>
                             {t.markRead}
