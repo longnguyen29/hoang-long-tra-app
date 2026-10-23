@@ -6,6 +6,21 @@ Present Hoàng Long to senior commercial decision makers, importers, distributor
 
 The narrative is origin → processing → market requirements → a supply/implementation plan. Public entry points are `/`, `/company`, `/company#cooperation`, `/catalog`, `/wholesale` and `/export/taiwan?profile=anh-long`. The retail store and normal sample, quote, consent, attribution, Pipeline, order and commission workflows remain in place. Corporate/B2B navigation appears before retail, with a clear separate `/shop` path.
 
+## Deeper corporate edition
+
+The owner found the first edition too superficial. The revised content explains the business behind the offer: why origin character needs to connect with application, grade, price, packing and supply planning. Each public page has a specific purpose rather than repeating the same generic partnership introduction:
+
+- Homepage: corporate proposition, production foundation and two clear retail/trade paths.
+- Company profile: product-market portfolio, source/processing/commercial/market roles, sample-to-order decision stages, technical evaluation, development priorities and document-review basis.
+- B2B desk: three buyer programmes and four stages with tangible working outputs, followed by the existing intake form.
+- Story: family experience, raw-material selection and processing context, with the previous anti-commercial headline and legacy database statistics removed.
+- Catalogue: current products and actual fields, interpreted by buyer application; no invented product specifications.
+- Export offer: a concise four-tea EXW introduction and execution route, with the existing commercial calculation and contact logic.
+
+The company page has a section index and four native expandable technical topics so longer content remains usable on mobile. The Vietnamese and English profile PDFs now carry 14 pages each, including the same portfolio, operating model, technical framework and strategic direction, plus all 17 current public teas. The concise sales kits remain three pages.
+
+The distinction between the Vietnamese manufacturing foundation and the commercial selection is explicit. Products such as Pu-erh in the wider catalogue must not acquire a Hà Giang origin or a Hoàng Long manufacturing claim merely by appearing on this website. Production declarations, legal identity and contact remit remain owner-supplied; institutional positioning does not imply state ownership, national representation or a government endorsement.
+
 ## Source and claim boundaries
 
 - The owner supplied the legal name **Công ty TNHH Thương Mại Trà Hoàng Long**, tax ID **0110818609**, on 23 October. The company profile preserves that Vietnamese registered name in both languages, without inventing a registered English translation or claiming independent registry verification.
@@ -31,6 +46,15 @@ A public summary can show checked company facts and selected permitted evidence.
 
 ## Research basis
 
+The second edition studies how large Chinese tea businesses explain their role, without borrowing their assets, certifications, scale or institutional standing:
+
+- [Zhejiang Tea — Brand matrix](https://www.zjtea.com/company/index.html?p=2): gives different product/brand lines distinct market roles. Applied here as three buyer-oriented portfolio segments rather than a single undifferentiated list.
+- [Zhejiang Tea — CAMEL](https://www.zjtea.com/company/brand_detail/html/1.html): separates an export-specific proposition from other ranges. Hoàng Long's corporate profile, bulk offer and retail catalogue likewise have different jobs and packing conventions.
+- [China Tea — Export headquarters](https://www.teachina.com/headquarter): links product categories with origin manufacturing teams, quality evidence and the trade contact. Applied here as explicit source, processing, commercial and destination-market responsibilities.
+- [COFCO — Our brands / China Tea](https://www.cofco.com/en/AboutCOFCO/OurBrands/): places the range within a business purpose and longer-term direction. Hoàng Long's development priorities are presented as direction, not as evidence of achieved impact or government relationships.
+
+These are content-architecture references. Their wording and company-specific achievements are not copied. Some Zhejiang pages time out intermittently; the brand-matrix and CAMEL pages were readable during the review.
+
 - [THIE — Quality assurance](https://thie-online.eu/quality-assurance/): supports sample evaluation and quality checks as useful tea-trade presentation topics.
 - [CBI — Buyer requirements in Europe](https://www.cbi.eu/buyer-requirements-europe): distinguishes market requirements from additional buyer requirements. Requirements must be established for the actual product and destination.
 - [International Trade Administration — Common export documents](https://www.trade.gov/common-export-documents): distinguishes invoice, packing list and transport/origin documents. Used to explain the evidence categories, not as a statement of which US rules apply to Vietnamese exports.
@@ -41,6 +65,8 @@ These sources inform document structure. They are not proof of Hoàng Long's own
 
 The three existing catalogue/export link/intake test modules passed (16 tests); production build passed. Browser checks covered Vietnamese/English profile, expanded meeting agenda, named director and correct phone links, existing wholesale form/consent and 390px profile/wholesale layout without horizontal overflow. No enquiry was submitted or customer contacted. Existing unsupported `next lint` is not reported as passed.
 
-Both company PDFs were regenerated from 17 currently public eligible teas: 10 pages each. Both B2B PDFs remain three pages. All 26 pages were rendered and visually checked for text, accents, margins and named contacts; subsequent small copy/date fixes were rerendered on the affected pages. Actual files and public links were checked. No migration, dependency or environment change is needed.
+The initial edition contained 10-page company profiles. The deeper edition is 14 pages per language, with balanced catalogue pagination (5/4/4/4 teas) and three-page B2B kits. PDF layout uses measured paragraph heights and fails on overflow rather than silently dropping content. No migration, dependency or environment change is needed.
+
+For the deeper edition, all 34 PDF pages were rendered and visually reviewed; both company files contain all 17 product names and 38 links. The two sales kits retain the four approved prices and correct profile-specific QR targets. Final production build and the same 16 relevant workflow tests passed. Responsive checks covered the production build at 390px for homepage, profile, B2B desk, catalogue, story and Anh Long's offer, plus desktop profile; English profile and technical disclosure were checked. A local development-origin restriction affected the first 127.0.0.1 check, so subsequent interaction checks used the normal localhost origin and production build. No enquiry was submitted.
 
 When evidence arrives, verify issuer/entity, scope, dates, matching lots and permission before adding any public claim. Update the shared profile/contact source and rebuild both languages/PDF editions together. Full test coverage or legal/trade compliance review is not implied by a copy/layout release.

@@ -1,12 +1,12 @@
 export const metadata = {
-  "title": "Hợp tác thương mại & xuất khẩu trà | Hoàng Long",
-  "description": "Làm việc với Hoàng Long về thị trường, mẫu đối chiếu, quy cách PP/PE, chương trình cung ứng và điều kiện EXW tại Nhà máy Tân Lập, Hà Giang.",
+  "title": "Hợp tác B2B · Nguồn cung trà & phát triển thị trường | Hoàng Long",
+  "description": "Từ lựa chọn trà đến kế hoạch cung ứng: mẫu, thông số, quy cách và điều kiện giao dịch. Dành cho nhà nhập khẩu, phân phối, doanh nghiệp đồ uống và đối tác thương mại.",
   "alternates": {
     "canonical": "https://www.hoanglongtra.com/wholesale"
   },
   "openGraph": {
-    "title": "Hợp tác thương mại & xuất khẩu trà | Hoàng Long",
-    "description": "Làm việc với Hoàng Long về thị trường, mẫu đối chiếu, quy cách PP/PE, chương trình cung ứng và điều kiện EXW tại Nhà máy Tân Lập, Hà Giang.",
+    "title": "Hợp tác B2B · Nguồn cung trà & phát triển thị trường | Hoàng Long",
+    "description": "Từ lựa chọn trà đến kế hoạch cung ứng: mẫu, thông số, quy cách và điều kiện giao dịch. Dành cho nhà nhập khẩu, phân phối, doanh nghiệp đồ uống và đối tác thương mại.",
     "url": "https://www.hoanglongtra.com/wholesale",
     "type": "website",
     "locale": "vi_VN"

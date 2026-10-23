@@ -60,7 +60,18 @@ export default function CompanyProfile() {
         </div>
       </aside>
 
-      <section className={styles.section} aria-labelledby="overview-title">
+      <nav className={styles.sectionIndex} aria-label={language === "vi" ? "Nội dung hồ sơ" : "Profile contents"}>
+        {[
+          ["overview", language === "vi" ? "Doanh nghiệp" : "Company"],
+          ["portfolio", language === "vi" ? "Danh mục & ứng dụng" : "Portfolio & applications"],
+          ["operating-model", language === "vi" ? "Mô hình cung ứng" : "Supply model"],
+          ["quality", language === "vi" ? "Cơ sở chất lượng" : "Quality framework"],
+          ["cooperation", language === "vi" ? "Hợp tác" : "Cooperation"],
+          ["contact", language === "vi" ? "Liên hệ" : "Contact"],
+        ].map(([id, label], index) => <a key={id} href={`#${id}`}><span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>{label}</a>)}
+      </nav>
+
+      <section id="overview" className={styles.section} aria-labelledby="overview-title">
         <div className={styles.sectionHead}>
           <h2 id="overview-title">{t.overview.title}</h2>
           <p>{t.overview.body}</p>
@@ -92,6 +103,27 @@ export default function CompanyProfile() {
         </div>
       </section>
 
+      <section id="portfolio" className={`${styles.section} ${styles.portfolio}`} aria-labelledby="portfolio-title">
+        <div className={styles.sectionHead}><h2 id="portfolio-title">{t.portfolio.title}</h2><p>{t.portfolio.body}</p></div>
+        <div className={styles.portfolioRows}>
+          {t.portfolio.segments.map((segment, index) => <article key={segment.title}>
+            <div className={styles.segmentLead}><span className={styles.stepNumber} aria-hidden="true">{String(index + 1).padStart(2, "0")}</span><h3>{segment.title}</h3><p>{segment.buyer}</p></div>
+            <div className={styles.segmentBody}><p>{segment.products}</p><p>{segment.approach}</p></div>
+          </article>)}
+        </div>
+        <Link className={styles.textLink} href={catalogHref}>{t.actions.catalog}<ArrowRight size={17} aria-hidden="true"/></Link>
+      </section>
+
+      <section id="operating-model" className={`${styles.section} ${styles.operatingModel}`} aria-labelledby="model-title">
+        <div className={styles.sectionHead}><h2 id="model-title">{t.operatingModel.title}</h2><p>{t.operatingModel.body}</p></div>
+        <ol className={styles.modelRows}>
+          {t.operatingModel.links.map((link, index) => <li key={link.title}>
+            <span className={styles.modelNumber} aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+            <h3>{link.title}</h3><div><p>{link.body}</p><p className={styles.modelOutput}>{link.output}</p></div>
+          </li>)}
+        </ol>
+      </section>
+
       <section className={styles.section} aria-labelledby="supply-title">
         <div className={styles.sectionHead}>
           <h2 id="supply-title">{t.supply.title}</h2>
@@ -111,7 +143,7 @@ export default function CompanyProfile() {
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.quality}`} aria-labelledby="quality-title">
+      <section id="quality" className={`${styles.section} ${styles.quality}`} aria-labelledby="quality-title">
         <div className={styles.sectionHead}>
           <h2 id="quality-title">{t.quality.title}</h2>
           <p>{t.quality.body}</p>
@@ -119,6 +151,20 @@ export default function CompanyProfile() {
         <ul className={styles.checklist}>
           {t.quality.items.map((item) => <li key={item}><FileText size={18} aria-hidden="true" /><p>{item}</p></li>)}
         </ul>
+      </section>
+
+      <section className={`${styles.section} ${styles.technical}`} aria-labelledby="technical-title">
+        <div className={styles.sectionHead}><h2 id="technical-title">{t.technical.title}</h2><p>{t.technical.body}</p></div>
+        <div className={styles.technicalDetails}>
+          {t.technical.checks.map((check, index) => <details key={check.title}>
+            <summary><span className={styles.stepNumber} aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>{check.title}</summary><p>{check.body}</p>
+          </details>)}
+        </div>
+      </section>
+
+      <section className={`${styles.section} ${styles.direction}`} aria-labelledby="direction-title">
+        <div className={styles.sectionHead}><h2 id="direction-title">{t.direction.title}</h2><p>{t.direction.body}</p></div>
+        <div className={styles.cooperationGrid}>{t.direction.priorities.map(priority => <article key={priority.title}><h3>{priority.title}</h3><p>{priority.body}</p></article>)}</div>
       </section>
 
       <section id="cooperation" className={`${styles.section} ${styles.cooperation}`} aria-labelledby="cooperation-title">

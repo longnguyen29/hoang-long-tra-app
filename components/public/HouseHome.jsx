@@ -10,103 +10,106 @@ import { useLocale } from "@/components/i18n/LocaleProvider";
 import styles from "./HouseHome.module.css";
 import PublicSiteHeader from "./PublicSiteHeader";
 import { EXPORT_DEVELOPMENT_CONTACT } from "@/lib/export-sales-profiles";
+import { PROFILE_LEGAL } from "@/lib/company-profile";
 
 const COPY = {
   "vi": {
-    "hero": "Từ vùng trà Việt đến thị trường quốc tế.",
-    "heroBody": "Hoàng Long kết nối nguồn trà vùng cao với năng lực chế biến tại Tân Lập, Hà Giang. Cùng đối tác xây dựng chương trình cung ứng cho phân phối và xuất khẩu, từ mẫu trà đến kế hoạch giao hàng.",
-    "sampleCta": "Trao đổi kế hoạch hợp tác",
-    "trade": "Xem năng lực cung ứng",
-    "season": "Danh mục cho từng thị trường",
-    "seasonBody": "Bắt đầu bằng dòng trà và mục đích sử dụng. Mẫu đối chiếu, tiêu chuẩn chất lượng, quy cách và kế hoạch mua hàng là cơ sở để xây dựng báo giá.",
-    "viewTea": "Xem thông tin trà",
+    "hero": "Nguồn trà Việt cho chuỗi cung ứng quốc tế.",
+    "heroBody": "Hoàng Long phát triển sản phẩm trà từ nguyên liệu vùng cao và nền tảng chế biến tại Tân Lập, Hà Giang. Chúng tôi kết nối đặc tính của nguồn trà với yêu cầu của nhà nhập khẩu, nhà phân phối và doanh nghiệp đồ uống — để đi từ một mẫu trà phù hợp đến chương trình cung ứng có thể triển khai.",
+    "sampleCta": "Trao đổi hợp tác",
+    "trade": "Tìm hiểu năng lực sản xuất",
+    "season": "Một nguồn trà. Nhiều hướng phát triển sản phẩm.",
+    "seasonBody": "Trà nền cho đồ uống cần hiệu quả chiết xuất và chi phí sử dụng phù hợp. Trà nguyên lá và dòng đặc sản cần bản sắc hương vị, câu chuyện xuất xứ và cấp chất lượng rõ ràng. Danh mục Hoàng Long mở ra các hướng lựa chọn để đối tác thử mẫu theo chính thị trường của mình.",
+    "viewTea": "Xem đặc tính sản phẩm",
     "noTea": "Danh mục trà đang được cập nhật.",
-    "origin": "Nguồn gốc là điểm bắt đầu. Cách hợp tác tạo giá trị lâu dài.",
-    "originBody": "Từ nguyên liệu đến chế biến, đóng gói và giao nhận, mỗi chương trình cung ứng cần một yêu cầu rõ ràng. Hoàng Long hướng đến hợp tác trong đó nguồn trà, mẫu đối chiếu và trách nhiệm của các bên được thống nhất trước khi triển khai.",
-    "readStory": "Xem hồ sơ & hướng hợp tác",
-    "twoWays": "Lựa chọn hình thức làm việc",
-    "retailTitle": "Trà cho cá nhân & quà tặng",
-    "retailBody": "Xem hương vị, quy cách và giá bán lẻ. Chọn trà cho bàn trà gia đình hoặc nhu cầu quà tặng trong cửa hàng trực tuyến.",
-    "shopNow": "Vào cửa hàng trà",
-    "wholesaleTitle": "Phân phối & xuất khẩu",
-    "wholesaleBody": "Làm việc về thị trường đích, tiêu chuẩn mẫu, kế hoạch mua và điều kiện giao dịch. Tổ chức thử mẫu và thăm nhà máy theo lịch hẹn.",
-    "wholesaleNow": "Gửi đề bài hợp tác",
-    "closing": "Cùng phát triển đầu ra bền vững cho trà Việt.",
-    "contact": "Liên hệ Hoàng Long",
-    "capacityTitle": "Nền tảng sản xuất. Kế hoạch cung ứng rõ ràng.",
+    "origin": "Giá trị của vùng trà cần được tiếp nối ở thị trường.",
+    "originBody": "Kinh nghiệm làm trà của gia đình từ năm 1995 là nền tảng để Hoàng Long hiểu nguyên liệu, mùa vụ và chuyển biến của lá qua chế biến. Tại Hà Giang, câu chuyện ấy tiếp tục bằng công việc lựa chọn dòng trà, phát triển mẫu và chuẩn bị sản phẩm cho những cách sử dụng khác nhau.",
+    "originDetail": "Định hướng của Hoàng Long là kết nối chặt hơn giữa vùng nguyên liệu, nhà máy và đối tác thương mại. Khi nhu cầu thị trường được chuyển thành một đề bài sản phẩm rõ ràng, các bên có cơ sở để cùng cải thiện chất lượng, kế hoạch mua và giá trị của trà Việt qua từng đợt hợp tác.",
+    "readStory": "Đọc định hướng & hồ sơ doanh nghiệp",
+    "twoWays": "Từ người thưởng trà đến đối tác thương mại",
+    "retailTitle": "Thưởng trà & quà tặng",
+    "retailBody": "Khám phá từng loại trà qua hương vị, xuất xứ và quy cách. Cửa hàng dành cho người dùng cá nhân, gia đình và nhu cầu quà tặng, với giá và lựa chọn đặt hàng riêng.",
+    "shopNow": "Khám phá cửa hàng trà",
+    "wholesaleTitle": "Nguồn cung & phát triển thị trường",
+    "wholesaleBody": "Dành cho nhà nhập khẩu, phân phối và doanh nghiệp đồ uống. Làm việc trực tiếp về danh mục, thử mẫu, quy cách lô lớn và kế hoạch giao dịch; có thể sắp xếp khảo sát nhà máy và trao đổi hồ sơ theo phạm vi hợp tác.",
+    "wholesaleNow": "Làm việc với Hoàng Long",
+    "closing": "Phát triển thị trường từ giá trị thật của trà Việt.",
+    "contact": "Văn phòng Hoàng Long",
+    "capacityTitle": "Từ nguồn nguyên liệu đến một đề bài thương mại hoàn chỉnh.",
     "capabilities": [
       [
-        "50–100 tấn/tháng",
-        "Năng lực sản xuất phục vụ lập kế hoạch. Sản lượng khả dụng, mùa nguyên liệu và lịch giao được xác nhận cho từng chương trình."
+        "Nguồn trà vùng cao",
+        "Nguyên liệu từ Hà Giang và Tây Bắc tạo nền tảng cho các dòng Shan, trà xanh, hồng trà và trà hương. Mỗi lựa chọn thương mại cần gắn với nguồn thực tế, mùa vụ và cấp chất lượng của sản phẩm."
       ],
       [
-        "Tân Lập, Hà Giang",
-        "Nhà máy Trà Hoàng Long là điểm làm việc về sản xuất và nhận hàng EXW. Văn phòng & kho giao dịch đặt tại Sóc Sơn, Hà Nội."
+        "Chế biến tại Hà Giang",
+        "Nhà máy Trà Hoàng Long tại Tân Lập là điểm kết nối nguyên liệu với chế biến, hoàn thiện và chuẩn bị hàng. Năng lực sản xuất 50–100 tấn/tháng là cơ sở lập kế hoạch theo từng dòng trà và thời điểm."
       ],
       [
-        "Mẫu làm cơ sở",
-        "Thống nhất dòng trà, cấp chất lượng và mẫu đối chiếu trước khi xác nhận sản xuất hoặc giao hàng."
+        "Danh mục theo ứng dụng",
+        "Từ trà nền F&B đến trà nguyên lá cho phân phối và dòng đặc sản cho thưởng trà. Việc chọn mẫu dựa trên hương vị, cách dùng, hiệu quả pha và phân khúc giá — không chỉ tên gọi của trà."
       ],
       [
-        "Quy cách cho đơn lớn",
-        "Bao PP/PE 20, 30 hoặc 35 kg; điều chỉnh theo ngoại hình trà và yêu cầu sử dụng. Quy cách được chốt trong báo giá."
+        "Mẫu & tiêu chuẩn sản phẩm",
+        "Mẫu đối chiếu là điểm bắt đầu để xác định ngoại hình, cảm quan và cách đánh giá sản phẩm. Yêu cầu về chỉ tiêu kiểm nghiệm, bao bì và thị trường được làm rõ trước khi chốt đơn."
       ],
       [
-        "EXW tại nhà máy",
-        "Phân định rõ giá hàng, bao bì, vận chuyển và hồ sơ cần thiết. Điều kiện thanh toán và trách nhiệm mỗi bên được xác nhận trong hợp đồng."
+        "Tổ chức đơn hàng lớn",
+        "Bao PP/PE 20, 30 hoặc 35 kg, điều chỉnh theo ngoại hình trà và mục đích sử dụng. Giá EXW tại nhà máy; số lượng, lịch hàng và phân công giao nhận được thể hiện trong báo giá và hợp đồng."
       ],
       [
-        "Hợp tác theo chương trình",
-        "Trao đổi kế hoạch mua, yêu cầu thị trường và các đợt giao để kết nối sản xuất với nhu cầu đầu ra dài hạn."
+        "Hợp tác phát triển đầu ra",
+        "Tiếp nhận đề bài từ nhà nhập khẩu, doanh nghiệp phân phối và tổ chức xúc tiến thương mại. Bắt đầu bằng danh mục phù hợp, thử nghiệm quy mô nhỏ và đánh giá điều kiện để xây dựng kế hoạch mua tiếp theo."
       ]
     ]
   },
   "en": {
-    "hero": "From Vietnamese tea origins to international markets.",
-    "heroBody": "Hoàng Long brings highland tea sourcing together with processing in Tân Lập, Hà Giang. We work with partners on distribution and export supply programmes, from the reference sample to delivery planning.",
-    "sampleCta": "Discuss a supply programme",
-    "trade": "Explore supply capabilities",
-    "season": "A range for different markets",
-    "seasonBody": "Start with the tea and its intended application. Reference samples, specifications, packing and purchasing plans form the basis of a quotation.",
-    "viewTea": "View tea details",
+    "hero": "Vietnamese tea for international supply chains.",
+    "heroBody": "Hoàng Long develops tea products from highland raw materials and a processing base in Tân Lập, Hà Giang. We connect the character of Vietnamese tea with the requirements of importers, distributors and beverage businesses, turning product evaluation into a practical supply programme.",
+    "sampleCta": "Discuss cooperation",
+    "trade": "Explore our production base",
+    "season": "One tea origin. Different product opportunities.",
+    "seasonBody": "Beverage teas need suitable extraction performance and cost in use. Loose-leaf and speciality ranges need a distinctive flavour, a clear origin story and the right grade. Our catalogue provides starting points for partners to test against their own market and application.",
+    "viewTea": "View product characteristics",
     "noTea": "The tea catalogue is being updated.",
-    "origin": "Origin sets the foundation. Cooperation builds lasting value.",
-    "originBody": "From raw material to processing, packing and handover, each supply programme needs a clear brief. Our approach is to agree on tea origin, reference samples and each party’s responsibilities before proceeding.",
-    "readStory": "View profile & cooperation areas",
-    "twoWays": "Choose how to work with us",
+    "origin": "The value of a tea origin develops through its market.",
+    "originBody": "The family’s tea-making experience since 1995 underpins our understanding of raw materials, seasons and how processing changes the leaf. In Hà Giang, that experience informs tea selection, sample development and preparation for different uses.",
+    "originDetail": "Hoàng Long’s direction is to strengthen the connection between raw-material origins, the factory and commercial partners. Translating market demand into a clear product brief gives each party a basis for improving quality, purchasing plans and the value of Vietnamese tea over successive supply cycles.",
+    "readStory": "Explore our direction & company profile",
+    "twoWays": "For tea drinkers and trade partners",
     "retailTitle": "Tea for home & gifting",
-    "retailBody": "Explore tasting notes, pack sizes and retail prices. Choose tea for your own tea table or gifting through our online shop.",
-    "shopNow": "Visit the tea shop",
-    "wholesaleTitle": "Distribution & export",
-    "wholesaleBody": "Discuss destination markets, reference specifications, purchasing plans and commercial terms. Arrange sampling and a factory visit by appointment.",
-    "wholesaleNow": "Send a cooperation brief",
-    "closing": "Develop lasting market opportunities for Vietnamese tea.",
-    "contact": "Contact Hoàng Long",
-    "capacityTitle": "A production base. A clear supply plan.",
+    "retailBody": "Discover teas through their flavour, origins and formats. Our retail shop serves individual tea drinkers, families and gifting, with its own prices and ordering options.",
+    "shopNow": "Explore the tea shop",
+    "wholesaleTitle": "Supply & market development",
+    "wholesaleBody": "For importers, distributors and beverage businesses. Discuss the range, sampling, bulk packing and your supply plan directly with Hoàng Long. Factory assessments and document reviews can be arranged to suit the cooperation brief.",
+    "wholesaleNow": "Work with Hoàng Long",
+    "closing": "Build market opportunities on the real value of Vietnamese tea.",
+    "contact": "Hoàng Long office",
+    "capacityTitle": "From a tea origin to a commercial product brief.",
     "capabilities": [
       [
-        "50–100 tonnes/month",
-        "Production capacity for planning. Available volumes, raw-material seasonality and delivery schedules are confirmed for each programme."
+        "Highland tea origins",
+        "Raw materials from Hà Giang and Northwest Vietnam underpin our Shan, green, black and scented tea ranges. Commercial selection takes account of each product’s actual origin, season and grade."
       ],
       [
-        "Tân Lập, Hà Giang",
-        "Hoàng Long Tea Factory is the production base and EXW collection point. Our commercial office & warehouse are in Sóc Sơn, Hanoi."
+        "Processing in Hà Giang",
+        "Hoàng Long Tea Factory in Tân Lập connects raw material with processing, finishing and order preparation. Production capacity of 50–100 tonnes per month supports planning by product and season."
       ],
       [
-        "Sample-led specification",
-        "Agree on the tea, grade and reference sample before confirming production or handover."
+        "A range defined by use",
+        "From beverage bases to loose-leaf distribution and speciality tea. Selection considers flavour, application, brewing performance and price positioning, alongside the tea’s name."
       ],
       [
-        "Bulk packing",
-        "20, 30 or 35 kg PP/PE bags, adjusted to leaf form and intended use. Final packing is confirmed in the quotation."
+        "Samples & specifications",
+        "Reference samples establish the starting point for leaf appearance, sensory characteristics and product evaluation. Testing, packing and market requirements are clarified before order confirmation."
       ],
       [
-        "EXW at the factory",
-        "Identify product, packing, transport and document requirements. Payment terms and the parties’ responsibilities are confirmed in the contract."
+        "Bulk-order preparation",
+        "20, 30 or 35 kg PP/PE bags, adjusted to leaf form and application. EXW pricing at the factory; quantities, schedules and handover responsibilities are recorded in the quotation and contract."
       ],
       [
-        "Programme-based cooperation",
-        "Align purchasing plans, market requirements and delivery phases to connect production with sustained demand."
+        "Market-development cooperation",
+        "We welcome briefs from importers, distributors and trade-facilitation organisations. Begin with a relevant product range, a small-scale trial and an assessment of the conditions needed for subsequent purchasing."
       ]
     ]
   }
@@ -206,6 +209,7 @@ export default function HouseHome() {
         <div>
           <h2>{t.origin}</h2>
           <p>{t.originBody}</p>
+          <p>{t.originDetail}</p>
           <Link href={`/company?lang=${lang}#cooperation`}>{t.readStory}<ArrowRight size={16}/></Link>
         </div>
       </section>
@@ -231,7 +235,7 @@ export default function HouseHome() {
       <footer className={styles.footer}>
         <p>{t.closing}</p>
         <div>
-          <span>House of Hoang Long · Hà Giang / Hà Nội</span>
+          <span>{PROFILE_LEGAL.name}<br/>{lang === "vi" ? "Mã số thuế" : "Tax ID"}: {PROFILE_LEGAL.taxNumber}<br/>Hà Giang / Hà Nội · Việt Nam</span>
           <a href={`tel:${EXPORT_DEVELOPMENT_CONTACT.phone}`}>{EXPORT_DEVELOPMENT_CONTACT.name} · {lang === "vi" ? EXPORT_DEVELOPMENT_CONTACT.role : EXPORT_DEVELOPMENT_CONTACT.roleEn} · {EXPORT_DEVELOPMENT_CONTACT.phoneLabel}</a><a href="https://zalo.me/0903333841" target="_blank" rel="noreferrer">{t.contact} · 0903 333 841</a>
           <Link href="/meet">{lang === "vi" ? "Trang liên hệ" : "Contact card"}</Link>
           <Link href="/privacy">{lang === "vi" ? "Quyền riêng tư & cookie" : "Privacy & cookies"}</Link>

@@ -62,3 +62,8 @@
 @media(max-width:47.99rem){.capacity{padding-block:var(--space-xl)}}
 
 @media(min-width:48rem){.heroImage img{position:absolute;inset:0}.heroCopy{justify-content:center}.paths a{white-space:normal}}
+
+/* Longer institutional contact details must wrap within narrow screens. */
+.footer>div{flex-wrap:wrap;align-items:flex-start;gap:var(--space-md)}
+.footer a{width:fit-content;max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.6}
+@media(min-width:48rem){.footer>div>a{max-width:30rem}}

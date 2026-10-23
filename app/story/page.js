@@ -1,12 +1,12 @@
 export const metadata = {
-  "title": "Câu chuyện nhà làm trà Shan Tuyết | Hoàng Long",
-  "description": "Tìm hiểu nguồn trà Shan Tuyết Hà Giang, người làm trà và những ghi chép của Nhà Hoàng Long. Khám phá hành trình từ vùng trà đến chén trà.",
+  "title": "Câu chuyện Hoàng Long · Kinh nghiệm làm trà & định hướng phát triển",
+  "description": "Từ nền tảng gia đình làm trà từ năm 1995 đến chế biến tại Hà Giang và phát triển sản phẩm. Câu chuyện nguồn nguyên liệu, cách làm và định hướng thương mại của Hoàng Long.",
   "alternates": {
     "canonical": "https://www.hoanglongtra.com/story"
   },
   "openGraph": {
-    "title": "Câu chuyện nhà làm trà Shan Tuyết | Hoàng Long",
-    "description": "Tìm hiểu nguồn trà Shan Tuyết Hà Giang, người làm trà và những ghi chép của Nhà Hoàng Long. Khám phá hành trình từ vùng trà đến chén trà.",
+    "title": "Câu chuyện Hoàng Long · Kinh nghiệm làm trà & định hướng phát triển",
+    "description": "Từ nền tảng gia đình làm trà từ năm 1995 đến chế biến tại Hà Giang và phát triển sản phẩm. Câu chuyện nguồn nguyên liệu, cách làm và định hướng thương mại của Hoàng Long.",
     "url": "https://www.hoanglongtra.com/story",
     "type": "website",
     "locale": "vi_VN"

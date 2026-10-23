@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { isTradeTea, matchesTradeSearch, TRADE_CATALOG_FIELDS, tradeEnquiryHref } from "@/lib/trade-catalog";
 import { tradeProductFacts } from "@/lib/trade-product-details";
-import { PROFILE_PDF } from "@/lib/company-profile";
+import { PROFILE_LEGAL, PROFILE_PDF } from "@/lib/company-profile";
 import { B2B_BULK_PACKING } from "@/lib/b2b-packing";
 import PolicyLinks from "@/components/PolicyLinks";
 import styles from "./TradeCatalog.module.css";
@@ -75,11 +75,11 @@ export default function TradeCatalog() {
 
     <section className={styles.intro}>
       <div><p className={styles.eyebrow}>{vi ? "Nguồn cung · Đặc tính · Điều kiện giao dịch" : "Supply · Specifications · Commercial terms"}</p><h1>{vi ? "Danh mục trà thương mại" : "Trade tea catalogue"}</h1></div>
-      <div className={styles.introCopy}><p>{vi ? "Cơ sở lựa chọn sản phẩm cho phân phối và xuất khẩu." : "A basis for product selection in distribution and export."}</p><p>{vi ? "Đối chiếu dòng trà với ứng dụng, phân khúc giá và yêu cầu thị trường. Sau bước thử mẫu, hai bên thống nhất tiêu chuẩn, khối lượng, quy cách và báo giá EXW tại Nhà máy Trà Hoàng Long, Tân Lập, Hà Giang." : "Match the tea to its application, price positioning and market requirements. After sampling, agree on specifications, volume, packing and an EXW quotation at Hoàng Long Tea Factory, Tân Lập, Hà Giang."}</p><span>{vi ? "Chọn sản phẩm · Đối chiếu mẫu · Thống nhất chương trình cung ứng" : "Select products · Review samples · Agree on supply"}</span></div>
+      <div className={styles.introCopy}><p>{vi ? "Lựa chọn sản phẩm theo cách bạn kinh doanh trà." : "Select teas for the way you do business."}</p><p>{vi ? "Tìm trà nền cho đồ uống, trà nguyên lá cho phân phối hoặc dòng đặc sản cho khách hàng chuyên trà. Mỗi hướng cần cách đánh giá riêng: hiệu quả pha, bản sắc hương vị, phẩm cấp và giá sử dụng. Danh mục giúp chọn mẫu trước khi đi vào thông số, quy cách và phương án mua hàng." : "Explore beverage bases, loose-leaf teas for distribution and speciality products for tea-focused customers. Each requires a different assessment of brewing performance, flavour character, grade and cost in use. Use the catalogue to choose samples before defining specifications, packing and a purchasing plan."}</p><span>{vi ? "Chọn theo ứng dụng · Đánh giá mẫu · Xây dựng đơn hàng" : "Select by use · Evaluate samples · Develop the order"}</span></div>
     </section>
 
     <section className={styles.resources} aria-label={vi ? "Hồ sơ & tài liệu" : "Profile & documents"}>
-      <div><strong>{vi ? "Hồ sơ năng lực & hợp tác" : "Capabilities & cooperation"}</strong><p>{vi ? "Tổng quan nguồn nguyên liệu, năng lực sản xuất và cách làm việc để chuẩn bị cuộc trao đổi với doanh nghiệp, nhà nhập khẩu hoặc tổ chức kết nối thương mại." : "Review tea sourcing, production capacity and our working process to prepare discussions with businesses, importers or trade-facilitation organisations."}</p></div>
+      <div><strong>{vi ? "Hồ sơ năng lực & hợp tác" : "Capabilities & cooperation"}</strong><p>{vi ? "Tìm hiểu nền tảng làm trà, nhà máy tại Tân Lập, danh mục theo ứng dụng và cách chuyển một đề bài thị trường thành chương trình cung ứng. Hồ sơ và danh mục bổ sung cho nhau; nguồn gốc, thông số và điều kiện của từng sản phẩm được làm rõ khi chọn mẫu." : "Explore our tea-making foundation, factory in Tân Lập, product applications and route from market brief to supply programme. Profile and catalogue serve different purposes; origins, specifications and terms are clarified for each selected product."}</p></div>
       <div className={styles.resourceLinks}>
         <Link href={`/company?lang=${locale}`}>{vi ? "Xem hồ sơ năng lực" : "View company profile"}<ArrowRight size={16} aria-hidden="true"/></Link>
         <Link href={`/company?lang=${locale}#cooperation`}>{vi ? "Trao đổi chương trình hợp tác" : "Discuss a cooperation programme"}<ArrowRight size={16} aria-hidden="true"/></Link>
@@ -91,6 +91,7 @@ export default function TradeCatalog() {
     <section className={styles.catalogue} aria-labelledby="trade-range-title">
       <div className={styles.rangeHeading}><h2 id="trade-range-title">{vi ? "Chọn dòng trà" : "Explore the range"}</h2><span>{vi ? "Đặc tính theo danh mục hiện tại" : "Characteristics from the current catalogue"}</span></div>
       <p className={styles.note}><strong>{bulkPacking.title}: </strong>{bulkPacking.text}</p>
+      <p className={styles.note}>{vi ? "Để so sánh mẫu có ý nghĩa, hãy dùng cùng lượng trà, nguồn nước và cách pha. Với đồ uống, thử trong công thức thực tế; với phân phối trà nguyên lá, đối chiếu ngoại hình, hương vị và cấp chất lượng. Giá giao dịch được xây dựng theo sản phẩm, khối lượng và điều kiện giao nhận; danh mục này không thay thế báo giá." : "For a meaningful sample comparison, keep tea dosage, water and preparation method consistent. Trial beverage teas in the actual recipe; assess loose-leaf products for appearance, flavour and grade. Commercial pricing depends on product, volume and delivery terms; this catalogue does not replace a quotation."}</p>
       <div className={styles.toolbar}>
         <div className={styles.filters} role="group" aria-label={vi ? "Lọc nhóm trà" : "Filter tea groups"}>
           <button type="button" aria-pressed={group === "all"} onClick={() => setGroup("all")}>{vi ? "Tất cả" : "All teas"}{status === "ready" && <span>{teas.length}</span>}</button>
@@ -129,6 +130,6 @@ export default function TradeCatalog() {
       </div>
     </section>
 
-    <footer className={styles.footer}><Link href={`/company?lang=${locale}`}>{vi ? "Hồ sơ công ty" : "Company profile"}</Link><Link href={`/company?lang=${locale}#contact`}>{vi ? "Đầu mối phát triển xuất khẩu" : "Export development contact"}</Link><Link href="/cho-quan">{vi ? "Trà dành cho quán" : "Tea for cafés"}</Link><Link href="/shop">{vi ? "Mua trà dùng tại nhà" : "Shop tea for home"}</Link><PolicyLinks/></footer>
+    <footer className={styles.footer}><Link href={`/company?lang=${locale}`}>{vi ? "Hồ sơ công ty" : "Company profile"}</Link><Link href={`/company?lang=${locale}#contact`}>{vi ? "Đầu mối phát triển xuất khẩu" : "Export development contact"}</Link><Link href="/cho-quan">{vi ? "Trà dành cho quán" : "Tea for cafés"}</Link><Link href="/shop">{vi ? "Mua trà dùng tại nhà" : "Shop tea for home"}</Link><span>{PROFILE_LEGAL.name} · {vi ? "MST" : "Tax ID"} {PROFILE_LEGAL.taxNumber}</span><PolicyLinks/></footer>
   </main>;
 }

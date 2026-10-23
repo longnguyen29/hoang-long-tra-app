@@ -5,7 +5,9 @@ Public downloads:
 - `public/downloads/hoang-long-profile-catalog-vi.pdf`
 - `public/downloads/hoang-long-profile-catalog-en.pdf`
 
-Both are ten-page A4 documents in the 23 October 2026 edition (17 current public teas). They use the public company profile, the current public trade-tea catalogue and the two existing local photographs at `public/landing/1.jpg` and `public/landing/3.jpg`. Noto Sans and Noto Serif are embedded for Vietnamese accents. The files contain links to the online catalogue, each tea, quotation form, phone and Zalo; the QR points to `/company`. English website links preserve `?lang=en`.
+Both are fourteen-page A4 documents in the deeper 23 October 2026 edition (17 current public teas). They use the public company profile, the current public trade-tea catalogue and the two existing local photographs at `public/landing/1.jpg` and `public/landing/3.jpg`. Noto Sans and Noto Serif are embedded for Vietnamese accents. The files contain links to the online catalogue, each tea, quotation form, phone and Zalo; the QR points to `/company`. English website links preserve `?lang=en`.
+
+The sequence is cover → company/origins → portfolio → operating model → technical framework → cooperation → direction → due diligence → range guide → four catalogue pages → implementation/contact. The new profile sections are read from the same bilingual source as the web page; the builder requires the approved data and measures paragraph heights. Catalogue pages are balanced at 5/4/4/4 items in this edition.
 
 ## Regenerate
 
@@ -47,7 +49,7 @@ The edition date makes the catalogue a dated reference. Production capacity is e
 
 ## Export and large-bulk packing
 
-The owner-confirmed B2B fact is maintained in `lib/b2b-packing.js`: PP/PE sacks of 20 / 30 / 35 kg, adjustable to the tea's form or the buyer's intended use and confirmed per order. `COMPANY_PROFILE[locale].packing` carries this fact into the JSON payload. Page 5 in this edition displays it separately from the product's listed packs; catalogue pages point back to that section.
+The owner-confirmed B2B fact is maintained in `lib/b2b-packing.js`: PP/PE sacks of 20 / 30 / 35 kg, adjustable to the tea's form or the buyer's intended use and confirmed per order. `COMPANY_PROFILE[locale].packing` carries this fact into the JSON payload. The range-guide page displays it separately from the product's listed packs; catalogue pages refer to the same bulk-packing guidance.
 
 Retail pack sizes and cake/piece units remain the public product's original data. The B2B packing statement does not change the product unit, imply a minimum order or convert pieces to kilograms. Both B2B sales-kit editions read the same shared fact.
 

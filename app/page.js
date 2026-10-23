@@ -1,12 +1,12 @@
 export const metadata = {
-  "title": "Hoàng Long | Nguồn trà Việt · Sản xuất & hợp tác xuất khẩu",
-  "description": "Kết nối nguồn trà vùng cao với chế biến tại Tân Lập, Hà Giang. Năng lực 50–100 tấn/tháng phục vụ lập kế hoạch, thử mẫu và hợp tác phân phối, xuất khẩu.",
+  "title": "Hoàng Long | Trà Việt · Sản xuất, cung ứng & phát triển thị trường",
+  "description": "Hoàng Long kết nối nguyên liệu vùng cao, chế biến tại Hà Giang và danh mục trà theo ứng dụng. Tìm hiểu nền tảng sản xuất, hợp tác B2B, xuất khẩu và cửa hàng trà.",
   "alternates": {
     "canonical": "https://www.hoanglongtra.com/"
   },
   "openGraph": {
-    "title": "Hoàng Long | Nguồn trà Việt · Sản xuất & hợp tác xuất khẩu",
-    "description": "Kết nối nguồn trà vùng cao với chế biến tại Tân Lập, Hà Giang. Năng lực 50–100 tấn/tháng phục vụ lập kế hoạch, thử mẫu và hợp tác phân phối, xuất khẩu.",
+    "title": "Hoàng Long | Trà Việt · Sản xuất, cung ứng & phát triển thị trường",
+    "description": "Hoàng Long kết nối nguyên liệu vùng cao, chế biến tại Hà Giang và danh mục trà theo ứng dụng. Tìm hiểu nền tảng sản xuất, hợp tác B2B, xuất khẩu và cửa hàng trà.",
     "url": "https://www.hoanglongtra.com/",
     "type": "website",
     "locale": "vi_VN"

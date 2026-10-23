@@ -72,14 +72,14 @@ COPY = {
         'cover_sub': 'Năng lực chế biến trà Việt và cơ sở làm việc cùng đối tác thương mại, đơn vị xúc tiến và nhà phân phối.',
         'edition': 'Bản phát hành 11.10.2026', 'catalog': 'Xem danh mục trực tuyến', 'quote': 'Yêu cầu báo giá',
         'profile_label': '01 / NHÀ LÀM TRÀ', 'profile_title': 'Từ vùng trà đến đối tác',
-        'guide_label': '04 / CẤU TRÚC DANH MỤC', 'guide_title': 'Một danh mục, nhiều nhu cầu',
+        'guide_label': '08 / CẤU TRÚC DANH MỤC', 'guide_title': 'Một danh mục, nhiều nhu cầu',
         'guide_intro': 'Bắt đầu từ cách dùng trà của bạn. Chọn nhóm phù hợp, pha thử trong điều kiện thực tế và xác nhận quy cách với Hoàng Long.',
-        'catalog_label': '05 / DANH MỤC TRÀ', 'catalog_title': 'Danh mục sản phẩm',
+        'catalog_label': '09 / DANH MỤC TRÀ', 'catalog_title': 'Danh mục sản phẩm',
         'catalog_intro': 'Tên và thông tin dưới đây theo danh mục công khai ở thời điểm phát hành.',
         'pack': 'Quy cách niêm yết', 'brew': 'Hướng dẫn pha niêm yết', 'flavor': 'Hương vị niêm yết',
         'notes': 'Ghi chú sản phẩm', 'unknown_pack': 'Liên hệ xác nhận quy cách',
         'unknown_brew': 'Liên hệ để được hướng dẫn pha', 'catalog_cta': 'Mở trang trà hoặc yêu cầu báo giá để xác nhận quy cách và lô hàng.',
-        'buy_label': '06 / ĐẦU MỐI HỢP TÁC', 'buy_title': 'Từ trao đổi ban đầu\nđến kế hoạch cung ứng',
+        'buy_label': '10 / ĐẦU MỐI HỢP TÁC', 'buy_title': 'Từ trao đổi ban đầu\nđến kế hoạch cung ứng',
         'buy_intro': 'Gửi sản phẩm quan tâm, cách dùng và lượng dự kiến. Hoàng Long sẽ trao đổi về mẫu thử, quy cách và báo giá phù hợp với yêu cầu cụ thể.',
         'steps': [
             ('Chọn trà và mục đích sử dụng', 'Ghi rõ loại đồ uống, kênh bán hoặc nhu cầu phục vụ mà bạn đang chuẩn bị.'),
@@ -109,14 +109,14 @@ COPY = {
         'cover_sub': 'Vietnamese tea processing capability and a working brief for trade partners, trade-promotion organisations and distributors.',
         'edition': 'Edition 11 October 2026', 'catalog': 'View the online catalogue', 'quote': 'Request a quote',
         'profile_label': '01 / THE TEA HOUSE', 'profile_title': 'From tea region to trade partner',
-        'guide_label': '04 / RANGE STRUCTURE', 'guide_title': 'A range for different needs',
+        'guide_label': '08 / RANGE STRUCTURE', 'guide_title': 'A range for different needs',
         'guide_intro': 'Start with how you plan to use the tea. Choose a relevant group, test it in your working conditions and confirm the pack specification with Hoàng Long.',
-        'catalog_label': '05 / TEA CATALOGUE', 'catalog_title': 'Product catalogue',
+        'catalog_label': '09 / TEA CATALOGUE', 'catalog_title': 'Product catalogue',
         'catalog_intro': 'Names and details below reflect the public catalogue at the date of this edition.',
         'pack': 'Listed pack format', 'brew': 'Listed brewing guide', 'flavor': 'Listed flavour',
         'notes': 'Product note', 'unknown_pack': 'Contact to confirm pack format',
         'unknown_brew': 'Contact for brewing guidance', 'catalog_cta': 'Open a tea page or request a quote to confirm the pack specification and batch.',
-        'buy_label': '06 / COOPERATION CONTACT', 'buy_title': 'From first discussion\nto a supply programme',
+        'buy_label': '10 / COOPERATION CONTACT', 'buy_title': 'From first discussion\nto a supply programme',
         'buy_intro': 'Share the teas you are considering, their intended use and your planned volume. Hoàng Long can discuss samples, pack formats and a quote for your specific enquiry.',
         'steps': [
             ('Choose the tea and intended use', 'Describe your drinks, sales channel or serving requirements.'),
@@ -165,9 +165,12 @@ class Document:
             raise ValueError('The public company-profile payload must include approved B2B packing facts')
         self.t['guide_note_title'] = packing['title']
         self.t['guide_note'] = packing['value'] + '. ' + packing['note']
-        self.t['catalog_intro'] += (' Quy cách xuất khẩu/lô lớn xem trang 5; khác quy cách sản phẩm niêm yết.' if locale == 'vi'
-                                     else ' See page 5 for export / large-bulk packing, separate from listed product packs.')
+        self.t['catalog_intro'] += (' Quy cách xuất khẩu/lô lớn xem mục Cấu trúc danh mục; khác quy cách sản phẩm niêm yết.' if locale == 'vi'
+                                     else ' See Range structure for export / large-bulk packing, separate from listed product packs.')
         self.contact = data.get('contact') or {}
+        imagery = self.profile.get('images') or {}
+        self.t['photo_tree'] = imagery.get('origin') or self.t['photo_tree']
+        self.t['photo_process'] = imagery.get('production') or self.t['photo_process']
         self.director = data.get('director') or {}
         self.legal = data.get('legal') or {}
         self.products = data['products']
@@ -183,7 +186,7 @@ class Document:
         self.c.setSubject(self.t['edition'])
         self.c.setCreator('Hoàng Long public catalogue PDF builder')
         self.page_no = 0
-        self.count = 6 + math.ceil(len(self.products) / 5)
+        self.count = 10 + math.ceil(len(self.products) / 5)
 
     def url(self, path):
         uri = path if path.startswith(('https://', 'http://', 'tel:', 'mailto:')) else self.base_url + path
@@ -208,6 +211,84 @@ class Document:
             raise ValueError(f'Page {self.page_no} reaches footer: {text[:70]}')
         paragraph.drawOn(self.c, x, top - height)
         return top - height
+
+    def section_heading(self, section, p):
+        self.start(section)
+        top = self.para(p['title'], M, 735, CW, 27, 35, 'Display', GREEN, 106)
+        return self.para(p.get('body') or '', M, top - 20, CW, 10.5, 16.3, max_height=100) - 28
+
+    def editorial_rows(self, items, top, body_key='body', output_key=None, body_size=10.1):
+        """Measured editorial rows; never shrink copy to hide an overflow."""
+        for index, item in enumerate(items):
+            self.label(f'{index + 1:02d}', M, top - 1, color=GOLD, size=10)
+            x, width = M + 36, CW - 36
+            bottom = self.para(item['title'], x, top + 1, width, 13, 18.5,
+                               'DisplayBold', GREEN, 58)
+            bottom = self.para(item.get(body_key) or '', x, bottom - 9, width,
+                               body_size, body_size * 1.52, max_height=114)
+            if output_key and item.get(output_key):
+                label = 'Kết quả làm việc' if self.locale == 'vi' else 'Working output'
+                bottom = self.para(label.upper(), x, bottom - 12, width, 7.1, 10.5,
+                                   'BodyBold', MUTED, 12)
+                bottom = self.para(re.sub(r'^(?:Đầu ra|Output):\s*', '', item[output_key]), x, bottom - 5, width, 9.1, 13.8,
+                                   'BodyBold', GREEN, 58)
+            self.rule(bottom - 17, x, width)
+            top = bottom - 36
+        return top
+
+    def portfolio_page(self):
+        p = self.profile.get('portfolio') or {}
+        if not p.get('segments'):
+            raise ValueError('Approved product-market portfolio is required')
+        top = self.section_heading('02 / SẢN PHẨM & THỊ TRƯỜNG' if self.locale == 'vi'
+                                   else '02 / PRODUCTS & MARKETS', p)
+        labels = ('Đối tác', 'Dòng trà', 'Cách triển khai') if self.locale == 'vi' else ('Partners', 'Tea range', 'Programme approach')
+        for index, item in enumerate(p['segments']):
+            self.label(f'{index + 1:02d}', M, top - 1, color=GOLD, size=10)
+            x, width = M + 36, CW - 36
+            bottom = self.para(item['title'], x, top + 1, width, 13.2, 18.5, 'DisplayBold', GREEN, 58)
+            for label, key in zip(labels, ('buyer', 'products', 'approach')):
+                bottom = self.para(label.upper(), x, bottom - 11, 90, 7.2, 10.5, 'BodyBold', MUTED, 24)
+                line_top = bottom + 10.5
+                body_bottom = self.para(item[key], x + 97, line_top, width - 97, 9.5, 14.4, max_height=100)
+                bottom = min(bottom, body_bottom)
+            self.rule(bottom - 18, x, width)
+            top = bottom - 37
+        self.end()
+
+    def operating_page(self):
+        p = self.profile.get('operatingModel') or {}
+        if not p.get('links'):
+            raise ValueError('Approved operating model is required')
+        top = self.section_heading('03 / TỔ CHỨC CHUỖI CUNG ỨNG' if self.locale == 'vi'
+                                   else '03 / SUPPLY-CHAIN ORGANISATION', p)
+        self.editorial_rows(p['links'], top, output_key='output', body_size=9.8)
+        self.end()
+
+    def technical_page(self):
+        p = self.profile.get('technical') or {}
+        if not p.get('checks'):
+            raise ValueError('Approved technical procurement brief is required')
+        top = self.section_heading('04 / NỀN TẢNG KỸ THUẬT' if self.locale == 'vi'
+                                   else '04 / TECHNICAL PROCUREMENT BASIS', p)
+        self.editorial_rows(p['checks'], top, body_size=10.1)
+        self.end()
+
+    def direction_page(self):
+        p = self.profile.get('direction') or {}
+        if not p.get('priorities'):
+            raise ValueError('Approved long-term development direction is required')
+        top = self.section_heading('06 / ĐỊNH HƯỚNG PHÁT TRIỂN' if self.locale == 'vi'
+                                   else '06 / DEVELOPMENT DIRECTION', p)
+        top = self.editorial_rows(p['priorities'], top)
+        # The origin is tangible context for the development agenda, not an award or claim of estate ownership.
+        origins = self.profile.get('origins') or {}
+        if top > 230 and origins.get('body'):
+            self.image('landing/1.jpg', M, top - 5, 144, 159, (.5, .38))
+            x = M + 163
+            bottom = self.para(origins['title'], x, top - 5, CW - 163, 12, 18, 'DisplayBold', GREEN, 58)
+            self.para(origins['body'], x, bottom - 10, CW - 163, 9.4, 14.3, max_height=134)
+        self.end()
 
     def label(self, text, x, top, color=GREEN, size=8):
         self.c.setFont('BodyBold', size)
@@ -270,10 +351,14 @@ class Document:
     def cover(self):
         self.start()
         self.label('HÀ GIANG / VIỆT NAM', M, 765, color=GOLD, size=8.8)
-        self.para(self.t['cover'], M, 734, CW, 30, 39, 'Display', GREEN, 88)
-        self.para(self.t['cover_sub'], M, 634, CW - 22, 10.7, 16.5, max_height=50)
-        self.image('landing/1.jpg', M, 573, CW, 348, (.5, .35))
-        self.para(self.t['photo_tree'], M, 216, CW, 7.4, 11, color=MUTED, max_height=23)
+        p = self.profile
+        title = p.get('title') or self.t['cover']
+        bottom = self.para(title, M, 733, CW, 29, 38, 'Display', GREEN, 117)
+        bottom = self.para(p.get('intro') or self.t['cover_sub'], M, bottom - 20,
+                           CW, 10.5, 16.2, max_height=98)
+        image_top = bottom - 26
+        self.image('landing/1.jpg', M, image_top, CW, image_top - 219, (.5, .35))
+        self.para(self.t['photo_tree'], M, 208, CW, 7.4, 11, color=MUTED, max_height=23)
         self.link(self.t['catalog'], M, 163, 246, self.catalog_url)
         self.link(self.t['quote'], M + 259, 163, CW - 259, self.quote_url, dark=False)
         self.para(self.t['edition_note'], M, 108, CW, 8.4, 12.5, color=MUTED, max_height=48)
@@ -281,47 +366,42 @@ class Document:
 
     def profile_page(self):
         self.start(self.t['profile_label'])
-        p = self.profile if isinstance(self.profile, dict) else {}
-        title = p.get('title') or self.t['profile_title']
-        self.para(title, M, 732, CW, 26, 34, 'Display', GREEN, 75)
-        lead = p.get('intro') or p.get('lead') or p.get('description') or self.t['cover_sub']
-        self.para(lead, M, 650, CW, 10.4, 16, max_height=65)
-        facts = (p.get('overview') or {}).get('facts') or p.get('facts') or p.get('metrics') or []
-        if isinstance(facts, dict):
-            facts = [dict(label=k, value=v) for k, v in facts.items()]
-        if facts:
-            gap = 23
-            cardw = (CW - gap) / 2
-            for i, item in enumerate(facts[:4]):
-                x = M + (i % 2) * (cardw + gap)
-                top = 565 - (i // 2) * 110
-                value = item.get('value') or item.get('title') or ''
-                label = item.get('label') or ''
-                note = item.get('note') or ''
-                self.label(label.upper(), x, top, color=MUTED, size=7.5)
-                self.para(value, x, top - 18, cardw, 14.4, 20, 'DisplayBold', GREEN, 42)
-                self.para(note, x, top - 65, cardw, 7.9, 11.5, color=MUTED, max_height=42)
-        top = 333
-        self.image('landing/3.jpg', M, top, 193, 155)
-        self.para(self.t['photo_process'], M, top - 163, 193, 7.3, 11, color=MUTED, max_height=35)
+        p = self.profile
+        overview = p.get('overview') or {}
+        title = overview.get('title') or self.t['profile_title']
+        bottom = self.para(title, M, 735, CW, 26, 34, 'Display', GREEN, 106)
+        bottom = self.para(overview.get('body') or p.get('intro'), M, bottom - 19,
+                           CW, 10.2, 15.6, max_height=100)
+        facts = overview.get('facts') or []
+        gap, cardw = 23, (CW - 23) / 2
+        top = bottom - 26
+        for row in range(math.ceil(len(facts[:4]) / 2)):
+            row_bottom = top
+            for index, item in enumerate(facts[row * 2:row * 2 + 2]):
+                x = M + index * (cardw + gap)
+                self.label(item.get('label', '').upper(), x, top, color=MUTED, size=7.4)
+                value_bottom = self.para(item.get('value'), x, top - 20, cardw,
+                                         14.1, 20, 'DisplayBold', GREEN, 43)
+                note_bottom = self.para(item.get('note'), x, value_bottom - 9, cardw,
+                                        8.1, 12.3, color=MUTED, max_height=63)
+                row_bottom = min(row_bottom, note_bottom)
+            top = row_bottom - 24
+        self.rule(top + 4)
         origins = p.get('origins') or {}
-        sections = [{'title': origins.get('title'), 'body': origins.get('body')}] if origins else []
-        sx = M + 213
-        sy = top
-        for section in sections[:2]:
-            if isinstance(section, str):
-                title, body = '', section
-            else:
-                title = section.get('title') or section.get('heading') or ''
-                body = section.get('text') or section.get('body') or section.get('description') or ''
-            if title:
-                sy = self.para(title, sx, sy, CW - 213, 11.2, 16, 'BodyBold', GREEN) - 6
-            sy = self.para(body, sx, sy, CW - 213, 9.4, 14, max_height=96) - 15
-        office = loc(self.contact.get('officeAddress') or self.contact.get('address'), self.locale)
-        self.rule(137)
-        self.label(self.t['office'].upper(), M, 123)
-        self.para(office, M, 101, CW, 10.5, 16, 'BodyBold', GREEN, 33)
-        self.para(self.t['not_factory'], M, 65, CW, 8.1, 12, color=MUTED, max_height=15)
+        top -= 15
+        self.image('landing/3.jpg', M, top, 164, 154)
+        self.para(self.t['photo_process'], M, top - 164, 164, 7.3, 11,
+                  color=MUTED, max_height=35)
+        x, width = M + 186, CW - 186
+        if origins.get('entries'):
+            for item in origins['entries']:
+                top = self.para(item['title'], x, top, width, 10.1, 14.5,
+                                 'BodyBold', GREEN, 30) - 6
+                top = self.para(item['body'], x, top, width, 8.8, 13.2, max_height=81) - 16
+        else:
+            top = self.para(origins.get('title'), x, top, width, 11.2, 16,
+                             'BodyBold', GREEN, 48) - 9
+            self.para(origins.get('body'), x, top, width, 9.4, 14, max_height=145)
         self.end()
 
     def guide_page(self):
@@ -352,7 +432,7 @@ class Document:
         p = self.profile.get('cooperation') or {}
         if not p.get('title') or not p.get('tracks') or not p.get('brief'):
             raise ValueError('Approved institutional cooperation and meeting brief are required')
-        self.start('02 / CHƯƠNG TRÌNH HỢP TÁC' if self.locale == 'vi' else '02 / COOPERATION AGENDA')
+        self.start('05 / CHƯƠNG TRÌNH HỢP TÁC' if self.locale == 'vi' else '05 / COOPERATION AGENDA')
         bottom = self.para(p['title'], M, 732, CW, 26, 34, 'Display', GREEN, 75)
         bottom = self.para(p['body'], M, bottom - 20, CW, 10.2, 15.5, max_height=64)
         top = bottom - 25
@@ -375,7 +455,7 @@ class Document:
         p = self.profile.get('evidence') or {}
         if not p.get('title') or not p.get('items'):
             raise ValueError('Approved evidence / due-diligence brief is required')
-        self.start('03 / HỒ SƠ & THẨM ĐỊNH' if self.locale == 'vi' else '03 / EVIDENCE & DUE DILIGENCE')
+        self.start('07 / HỒ SƠ & THẨM ĐỊNH' if self.locale == 'vi' else '07 / EVIDENCE & DUE DILIGENCE')
         bottom = self.para(p['title'], M, 732, CW, 26, 34, 'Display', GREEN, 75)
         bottom = self.para(p['body'], M, bottom - 19, CW, 10.2, 15.5, max_height=65)
         top = bottom - 30
@@ -464,29 +544,35 @@ class Document:
             self.para(step['body'], M + 43, top - 24, CW - 43, 9.2, 13.5, max_height=41)
             top -= 76
         self.c.setFillColor(PALE)
-        self.c.roundRect(M, 94, CW, 156, 3, fill=1, stroke=0)
+        self.c.roundRect(M, 82, CW, 188, 3, fill=1, stroke=0)
         x = M + 16
-        self.label(self.t['contact'].upper(), x, 235)
+        self.label(self.t['contact'].upper(), x, 255)
         person = self.director
         if not person.get('name') or not person.get('phone'):
             raise ValueError('Owner-approved export-development director is required')
-        self.para(person['name'], x, 214, CW - 145, 17, 23, 'DisplayBold', GREEN, 25)
+        self.para(person['name'], x, 234, CW - 145, 17, 23, 'DisplayBold', GREEN, 25)
         role = person.get('roleEn') if self.locale == 'en' else person.get('role')
-        self.para(role, x, 184, CW - 145, 10.2, 15, 'BodyBold', GREEN, 31)
+        self.para(role, x, 204, CW - 145, 10.2, 15, 'BodyBold', GREEN, 31)
         phone = clean(person['phoneLabel'])
         phone_uri = 'tel:' + re.sub(r'[^+\d]', '', person['phone'])
         zalo_uri = clean(self.contact.get('zaloHref') or self.contact.get('zaloUrl') or self.contact.get('zalo'))
         if not phone or not zalo_uri:
             raise ValueError('Public phone and Zalo contact details are required')
-        self.para(phone, x, 157, CW - 145, 12.5, 18, 'BodyBold', GREEN, 21)
-        self.c.linkURL(phone_uri, (x, 137, x + 230, 159), relative=0, thickness=0)
+        self.para(phone, x, 178, CW - 145, 12.5, 18, 'BodyBold', GREEN, 21)
+        self.c.linkURL(phone_uri, (x, 158, x + 230, 180), relative=0, thickness=0)
         house = 'Hoàng Long · ' + clean(self.contact.get('phoneLabel') or self.contact.get('phone'))
-        self.para(house, x, 128, CW - 145, 8.9, 13, color=MUTED, max_height=16)
-        self.c.linkURL(zalo_uri, (x, 112, x + 245, 130), relative=0, thickness=0)
-        self.qr(self.company_url, W - M - 107, 222, 88)
-        self.para(self.t['scan'], W - M - 116, 124, 110, 7.3, 10.5, color=MUTED, max_height=24)
-        self.para(self.base_url.replace('https://', ''), M, 77, CW, 8.7, 13, color=MUTED, max_height=17)
-        self.c.linkURL(self.company_url, (M, 60, W - M, 78), relative=0, thickness=0)
+        self.para(house, x, 152, CW - 145, 8.9, 13, color=MUTED, max_height=16)
+        self.c.linkURL(zalo_uri, (x, 136, x + 245, 154), relative=0, thickness=0)
+        email = clean(self.contact.get('email') or 'hotro.trahoanglong@gmail.com')
+        if email:
+            self.para(email, x, 132, CW - 145, 8.6, 12.8, color=MUTED, max_height=15)
+            self.c.linkURL('mailto:' + email, (x, 117, x + 245, 134), relative=0, thickness=0)
+        office = loc(self.contact.get('officeAddress') or self.contact.get('address'), self.locale)
+        self.para(self.t['office'] + ': ' + office, x, 113, CW - 145, 7.9, 11.6, color=MUTED, max_height=25)
+        self.qr(self.company_url, W - M - 107, 242, 88)
+        self.para(self.t['scan'], W - M - 116, 144, 110, 7.3, 10.5, color=MUTED, max_height=24)
+        self.para(self.base_url.replace('https://', ''), M, 67, CW, 8.7, 13, color=MUTED, max_height=17)
+        self.c.linkURL(self.company_url, (M, 50, W - M, 68), relative=0, thickness=0)
         self.end()
 
     def build(self):
@@ -496,12 +582,23 @@ class Document:
             raise ValueError('Catalogue payload must contain tea products only')
         self.cover()
         self.profile_page()
+        self.portfolio_page()
+        self.operating_page()
+        self.technical_page()
         self.cooperation_page()
+        self.direction_page()
         self.evidence_page()
         self.guide_page()
-        for index in range(0, len(self.products), 5):
-            self.catalog_page(self.products[index:index + 5], index + 1)
+        catalogue_pages = math.ceil(len(self.products) / 5)
+        per_page, extra = divmod(len(self.products), catalogue_pages)
+        index = 0
+        for page_index in range(catalogue_pages):
+            page_size = per_page + int(page_index < extra)
+            self.catalog_page(self.products[index:index + page_size], index + 1)
+            index += page_size
         self.order_page()
+        if self.page_no != self.count:
+            raise ValueError(f'Page-count mismatch: {self.page_no} pages built, expected {self.count}')
         self.c.save()
 
 
