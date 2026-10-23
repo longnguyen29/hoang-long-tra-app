@@ -59,12 +59,14 @@ def public_data():
     code = """
       import {EXPORT_TEAS, EXPORT_PRICE_REVISION} from './lib/export-teas.js';
       import {EVENT_CONTACT} from './lib/event-contact.js';
-      import {EXPORT_SALES_PROFILES, EXPORT_DELIVERY_WINDOW} from './lib/export-sales-profiles.js';
+      import {EXPORT_SALES_PROFILES, EXPORT_DELIVERY_WINDOW, EXPORT_DEVELOPMENT_CONTACT} from './lib/export-sales-profiles.js';
       import {TAIWAN_EXPORT_COPY} from './lib/export-taiwan-copy.js';
       import {B2B_BULK_PACKING} from './lib/b2b-packing.js';
+      import {PROFILE_LEGAL, PROFILE_REVISION} from './lib/company-profile.js';
       console.log(JSON.stringify({teas: EXPORT_TEAS, revision: EXPORT_PRICE_REVISION, contact: EVENT_CONTACT,
         profiles: EXPORT_SALES_PROFILES, delivery: EXPORT_DELIVERY_WINDOW, copy: TAIWAN_EXPORT_COPY.vi,
-        packing: B2B_BULK_PACKING.vi}));
+        packing: B2B_BULK_PACKING.vi, director: EXPORT_DEVELOPMENT_CONTACT, legal: PROFILE_LEGAL,
+        edition: PROFILE_REVISION}));
     """
     result = subprocess.run([node, "--input-type=module", "-e", code], cwd=ROOT,
                             capture_output=True, check=True, text=True)
@@ -75,6 +77,7 @@ def public_data():
         if not tea["name"].get("vi") or not isinstance(tea["priceVndPerKg"], (int, float)) or tea["priceVndPerKg"] <= 0:
             raise ValueError("Each export product requires a Vietnamese name and positive VND/kg price.")
     date.fromisoformat(data["revision"])
+    date.fromisoformat(data["edition"])
     return data
 
 
@@ -97,14 +100,16 @@ class SalesKit:
         self.data = data
         self.profile = profile
         self.contact = data["contact"]
+        self.director = data["director"]
         self.revision = date.fromisoformat(data["revision"]).strftime("%d.%m.%Y")
+        self.edition = date.fromisoformat(data["edition"]).strftime("%d.%m.%Y")
         self.url = self.contact["website"].rstrip("/") + "/export/taiwan"
         if self.profile["id"] != "house":
             self.url += "?profile=" + self.profile["id"]
         self.c = canvas.Canvas(str(path), pagesize=A4, pageCompression=1)
         self.c.setTitle("Hoàng Long - Bộ chào hàng B2B" + (" - " + profile["label"] if profile["contact"] else ""))
         self.c.setAuthor("Nhà làm Trà Hoàng Long")
-        self.c.setSubject("Bốn dòng trà, giá EXW VND/kg, quy trình và liên hệ. Bản " + self.revision)
+        self.c.setSubject("Bốn dòng trà, giá EXW VND/kg, quy trình và liên hệ. Bản " + self.edition)
         self.c.setCreator("Hoàng Long B2B sales kit builder")
         self.page = 0
 
@@ -162,19 +167,19 @@ class SalesKit:
         self.label("NHÀ LÀM TRÀ HOÀNG LONG", M, H - 27, JADE, 8.6)
         self.c.setFillColor(MUTED)
         self.c.setFont("Body", 7.5)
-        self.c.drawRightString(W - M, H - 35.6, f"B2B / {self.revision}")
+        self.c.drawRightString(W - M, H - 35.6, f"B2B / {self.edition}")
         self.rule(H - 49)
         self.label(section, M, H - 66)
         self.rule(42)
         self.c.setFillColor(MUTED)
-        self.c.setFont("Body", 7.2)
-        self.c.drawString(M, 27, "Bộ chào hàng B2B · Danh mục đầy đủ 4 dòng trà")
+        self.c.setFont("Body", 6.8)
+        self.c.drawString(M, 27, self.data["legal"]["name"] + " · MST " + self.data["legal"]["taxNumber"])
         self.c.drawRightString(W - M, 27, f"{self.page:02d} / 03")
 
     def cover(self):
         self.start("01 / SẢN PHẨM & ĐIỀU KIỆN CUNG ỨNG")
-        self.para("Trà Việt cho\nhợp tác dài hạn.", M, 751, CW, 30.5, 38, "DisplayBold", JADE)
-        self.para("Nguồn trà tại nhà máy cho đối tác thương mại, nhà phân phối và quán\nđồ uống. Chọn trà, thử mẫu và cùng xây kế hoạch cung ứng.",
+        self.para("Trà Việt. Năng lực\ncho hợp tác dài hạn.", M, 751, CW, 29, 37, "DisplayBold", JADE)
+        self.para("Nền tảng cung ứng tại nhà máy cho nhà nhập khẩu và nhà phân phối.\nTừ mẫu đối chiếu đến điều kiện thương mại và kế hoạch giao hàng.",
                   M, 659, CW, 10.4, 15.6, max_height=33)
         facts = [("NĂNG LỰC CÔNG BỐ", "50-100 tấn/tháng"),
                  ("THỜI GIAN GIAO HÀNG", clean(self.data["delivery"]["value"])),
@@ -222,8 +227,8 @@ class SalesKit:
 
     def workflow(self):
         self.start("02 / LÀM VIỆC CÙNG HOÀNG LONG")
-        self.para("Bốn bước để\nbắt đầu hợp tác.", M, 751, CW, 28.5, 36, "DisplayBold", JADE)
-        self.para("Chọn đúng trà, chốt rõ điều kiện và cùng theo dõi kế hoạch giao hàng.\nHoàng Long hoặc đối tác giới thiệu hỗ trợ bạn trao đổi nhu cầu.",
+        self.para("Từ nhu cầu thị trường\nđến kế hoạch cung ứng.", M, 751, CW, 27.8, 36, "DisplayBold", JADE)
+        self.para("Thống nhất phạm vi giao dịch trước khi cam kết: sản phẩm, mẫu,\nchất lượng, hồ sơ, giá và trách nhiệm tại từng điểm bàn giao.",
                   M, 666, CW, 10.2, 15.5, max_height=33)
         for idx, step in enumerate(self.data["copy"]["process"]["steps"]):
             top = 607 - idx * 67
@@ -247,8 +252,8 @@ class SalesKit:
 
     def contact_page(self):
         self.start("03 / THÔNG TIN TRAO ĐỔI & LIÊN HỆ")
-        self.para("Chuẩn bị thông tin.\nBắt đầu bằng mẫu.", M, 751, CW, 28.5, 36, "DisplayBold", JADE)
-        self.para("Sáu thông tin giúp chọn mẫu, tính báo giá và xây lịch cung ứng.\nChưa rõ mục nào, cứ ghi nhu cầu dự kiến để cùng trao đổi.",
+        self.para("Một đầu mối rõ ràng.\nMột đề bài cụ thể.", M, 751, CW, 28.5, 36, "DisplayBold", JADE)
+        self.para("Sáu nội dung cho buổi làm việc với đối tác nhập khẩu, phân phối\nvà đơn vị kết nối thương mại; chưa chốt thì ghi nhu cầu dự kiến.",
                   M, 666, CW, 10.3, 15.5, max_height=33)
         briefs = [
             ("Đơn vị & người liên hệ", "Tên doanh nghiệp/quán, người trao đổi, điện thoại/email và kênh liên hệ phù hợp."),
@@ -273,35 +278,24 @@ class SalesKit:
         left = M + 21
         self.label("TRAO ĐỔI TRỰC TIẾP VỚI HOÀNG LONG", left, 312, HexColor("#C7B481"), 7.8)
         self.para("Chọn trà. Hẹn thử mẫu.", left, 292, 310, 17.5, 24, "DisplayBold", PAPER)
-        if self.profile["contact"]:
-            person = self.profile["contact"]
-            self.para(person["name"] + " · " + person["phoneLabel"], left, 257, 294, 10.6, 16, "BodyBold", PAPER)
-            self.c.linkURL("tel:" + person["phone"], (left, 241, left + 275, 258), relative=0, thickness=0)
-            self.para(person["role"], left, 232, 294, 8.5, 13, color=HexColor("#D4DDD4"))
-            house_phone = "Hoàng Long · " + self.contact["phoneLabel"]
-            self.para(house_phone + " · Zalo", left, 210, 294, 10.2, 15, "BodyBold", PAPER)
-            self.c.linkURL("tel:" + self.contact["phone"], (left, 194, left + 275, 212), relative=0, thickness=0)
-            zalo_x = left + pdfmetrics.stringWidth(house_phone + " · ", "BodyBold", 10.2)
-            self.c.linkURL(self.contact["zaloUrl"], (zalo_x, 194, zalo_x + 29, 212), relative=0, thickness=0)
-            self.para(EMAIL, left, 185, 294, 9.2, 14, color=PAPER)
-            self.c.linkURL("mailto:" + EMAIL, (left, 170, left + 275, 187), relative=0, thickness=0)
-            self.para("Văn phòng/kho (không phải xưởng): " + self.contact["address"], left, 158, 294, 8.1, 11.5, color=PAPER, max_height=24)
-        else:
-            self.para(self.contact["phoneLabel"] + " · Điện thoại / Zalo", left, 257, 305, 10.6, 16, "BodyBold", PAPER)
-            self.c.linkURL("tel:" + self.contact["phone"], (left, 241, left + 263, 258), relative=0, thickness=0)
-            zalo_x = left + pdfmetrics.stringWidth(self.contact["phoneLabel"] + " · Điện thoại / ", "BodyBold", 10.6)
-            self.c.linkURL(self.contact["zaloUrl"], (zalo_x, 241, zalo_x + 29, 258), relative=0, thickness=0)
-            self.para(EMAIL, left, 232, 305, 9.5, 15, color=PAPER)
-            self.c.linkURL("mailto:" + EMAIL, (left, 217, left + 275, 234), relative=0, thickness=0)
-            self.para("Văn phòng / kho: " + self.contact["address"], left, 206, 294, 8.8, 13.1, color=PAPER, max_height=27)
-            self.para("Đây không phải địa chỉ nhà máy. Vui lòng gọi trước nếu ghé trao đổi hoặc uống trà.",
-                      left, 173, 294, 8.2, 12.2, color=HexColor("#D4DDD4"), max_height=26)
+        person = self.profile["contact"] or self.director
+        self.para(person["name"] + " · " + person["phoneLabel"], left, 257, 294, 10.6, 16, "BodyBold", PAPER, max_height=18)
+        self.c.linkURL("tel:" + person["phone"], (left, 241, left + 275, 258), relative=0, thickness=0)
+        self.para(person["role"], left, 232, 294, 9, 13.5, color=HexColor("#D4DDD4"), max_height=29)
+        house_phone = "Hoàng Long · " + self.contact["phoneLabel"]
+        self.para(house_phone + " · Zalo", left, 208, 294, 10.2, 15, "BodyBold", PAPER, max_height=17)
+        self.c.linkURL("tel:" + self.contact["phone"], (left, 192, left + 275, 210), relative=0, thickness=0)
+        zalo_x = left + pdfmetrics.stringWidth(house_phone + " · ", "BodyBold", 10.2)
+        self.c.linkURL(self.contact["zaloUrl"], (zalo_x, 192, zalo_x + 29, 210), relative=0, thickness=0)
+        self.para(EMAIL, left, 184, 294, 9.2, 14, color=PAPER, max_height=16)
+        self.c.linkURL("mailto:" + EMAIL, (left, 169, left + 275, 186), relative=0, thickness=0)
+        self.para("Văn phòng/kho (không phải xưởng): " + self.contact["address"], left, 158, 294, 8.1, 11.5, color=PAPER, max_height=24)
         qr_x = W - M - 111
         self.qr(qr_x, 212, 84)
         self.para("Quét để xem tỷ giá,\ngửi nhu cầu và hỏi mẫu.", qr_x - 7, 193, 106, 8.1, 12.1, color=PAPER, max_height=37)
         self.para("hoanglongtra.com/export/taiwan", left, 132 if self.profile["contact"] else 138, CW - 42, 8.3, 12.2, "BodyBold", PAPER)
         self.c.linkURL(self.url, (left, 119, W - M - 21, 140), relative=0, thickness=0)
-        self.para("PDF là bản tham khảo ngày " + self.revision + ", gồm đầy đủ 4 dòng trà. Giá quy đổi trên website chỉ mang tính tham khảo; giá, quy cách, điều khoản thanh toán và lịch sẵn hàng có hiệu lực theo báo giá/PO/hợp đồng đã xác nhận.",
+        self.para("PDF là bản tham khảo ngày " + self.edition + ", gồm đầy đủ 4 dòng trà. Giá quy đổi trên website chỉ mang tính tham khảo; giá, quy cách, điều khoản thanh toán và lịch sẵn hàng có hiệu lực theo báo giá/PO/hợp đồng đã xác nhận.",
                   M, 97, CW, 8.3, 12.2, color=MUTED, max_height=37)
         self.c.showPage()
 
@@ -328,7 +322,7 @@ def main():
     output = args.output or ROOT / "public" / profile["pdf"].lstrip("/")
     output.parent.mkdir(parents=True, exist_ok=True)
     SalesKit(output, data, profile).build()
-    print(f"Built {output} (3 pages; profile {profile['id']}; revision {data['revision']}; complete four-product range)")
+    print(f"Built {output} (3 pages; profile {profile['id']}; edition {data['edition']}; price revision {data['revision']}; complete four-product range)")
 
 
 if __name__ == "__main__":

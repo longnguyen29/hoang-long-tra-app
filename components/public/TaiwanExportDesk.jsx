@@ -7,9 +7,9 @@ import { ArrowUpRight, Copy, Download, Mail, Phone, Printer, RefreshCw } from "l
 import { EXPORT_TEAS, EXPORT_PRICE_REVISION, EXPORT_CURRENCIES } from "@/lib/export-teas";
 import { convertQuantityPrice } from "@/lib/export-exchange";
 import { TAIWAN_EXPORT_COPY } from "@/lib/export-taiwan-copy";
-import { PROFILE_CONTACT, PROFILE_PDF } from "@/lib/company-profile";
+import { PROFILE_CONTACT, PROFILE_LEGAL, PROFILE_PDF } from "@/lib/company-profile";
 import { exportAttribution, exportLink } from "@/lib/export-enquiry";
-import { EXPORT_DELIVERY_WINDOW, EXPORT_SALES_PROFILES } from "@/lib/export-sales-profiles";
+import { EXPORT_DELIVERY_WINDOW, EXPORT_SALES_PROFILES, EXPORT_DEVELOPMENT_CONTACT } from "@/lib/export-sales-profiles";
 import { buildPartnerSalesPageHref, parsePublicPartnerSalesPage, partnerSalesPageProfile } from "@/lib/partner-sales-page";
 import ExportEnquiry from "./ExportEnquiry";
 import styles from "./TaiwanExportDesk.module.css";
@@ -40,7 +40,7 @@ export default function TaiwanExportDesk({ initialTeaIds = EXPORT_TEAS.map(tea =
   const [search, setSearch] = useState("");
   const enquiryRef = useRef(null);
   const page = parsePublicPartnerSalesPage(salesPage);
-  const partnerContact = page ? partnerSalesPageProfile(page).contact : profile.contact;
+  const partnerContact = page ? partnerSalesPageProfile(page).contact : profile.contact || EXPORT_DEVELOPMENT_CONTACT;
   const t = TAIWAN_EXPORT_COPY[language];
   const selectionKey = teas.map(tea => tea.id).join(",");
   useEffect(() => {
@@ -118,7 +118,7 @@ export default function TaiwanExportDesk({ initialTeaIds = EXPORT_TEAS.map(tea =
         <nav className={styles.nav} aria-label="Nội dung trang"><a href="#export-prices">{t.nav.prices}</a><a href="#export-process">Quy trình</a><a href="#export-contact">{t.nav.contact}</a></nav>
       </header>
       <section className={styles.hero} aria-labelledby="export-title">
-        <div className={styles.heroCopy}><p className={styles.eyebrow}>{t.eyebrow}</p><h1 id="export-title">Nguồn trà Việt.<br/>Hợp tác dài lâu.</h1><p className={styles.intro}>{t.intro}</p>{partnerContact && <p className={styles.partnerSignature}><strong>{partnerContact.name}</strong><span>{partnerContact.role}{page && ` · ${page.region}`}</span></p>}<div className={styles.actions}><a className={styles.primary} href="#export-contact">{partnerContact ? `Trao đổi với ${partnerContact.name}` : "Trao đổi với Hoàng Long"}<ArrowUpRight size={18} aria-hidden="true"/></a><a className={styles.textLink} href="#export-prices">Xem trà & giá<ArrowUpRight size={16} aria-hidden="true"/></a></div></div>
+        <div className={styles.heroCopy}><p className={styles.eyebrow}>{t.eyebrow}</p><h1 id="export-title">{t.title}</h1><p className={styles.intro}>{t.intro}</p>{partnerContact && <p className={styles.partnerSignature}><strong>{partnerContact.name}</strong><span>{partnerContact.role}{page && ` · ${page.region}`}</span></p>}<div className={styles.actions}><a className={styles.primary} href="#export-contact">{partnerContact ? `Trao đổi với ${partnerContact.name}` : "Trao đổi với Hoàng Long"}<ArrowUpRight size={18} aria-hidden="true"/></a><a className={styles.textLink} href="#export-prices">Xem trà & giá<ArrowUpRight size={16} aria-hidden="true"/></a></div></div>
         <figure className={styles.heroPhoto}><Image src="/export/hong-tra-shan-khoi.jpeg" alt="Lá trà khô Hồng Trà Shan Khói của Hoàng Long" width={1094} height={872} sizes="(min-width: 768px) 48vw, 100vw" loading="eager"/><figcaption>Hồng Trà Shan Khói · ảnh trà trong danh mục của Nhà</figcaption></figure>
       </section>
       <dl className={styles.facts}><div><dt>Công suất tháng</dt><dd><strong>50–100 tấn</strong><p>Tùy dòng trà, tồn kho và lịch sản xuất.</p></dd></div><div><dt>Thời gian giao dịch</dt><dd><strong>{EXPORT_DELIVERY_WINDOW.value}</strong><p>{EXPORT_DELIVERY_WINDOW.note}</p></dd></div><div><dt>Giá đã gồm bao bì tiêu chuẩn</dt><dd><strong>EXW · tại nhà máy</strong><p>Tân Lập, Hà Giang. Cước vận chuyển tính riêng.</p></dd></div></dl>
@@ -142,16 +142,16 @@ export default function TaiwanExportDesk({ initialTeaIds = EXPORT_TEAS.map(tea =
       <section className={`${styles.section} ${styles.visit}`} id="factory-visit" aria-labelledby="visit-title"><div className={styles.sectionHead}><div><p className={styles.eyebrow}>{t.nav.visit}</p><h2 id="visit-title">{t.visit.title}</h2></div><p>{t.visit.intro}</p></div><div className={styles.visitGrid}><figure className={styles.factoryPhoto}><Image src="/landing/3.jpg" alt={t.visit.title} width={1024} height={1024} sizes="(min-width: 900px) 45vw, 100vw"/><figcaption>{t.visit.addressNote}</figcaption></figure><div><ul className={styles.checklist}>{t.visit.checklist.map(item => <li key={item}>{item}</li>)}</ul><div className={styles.tests}><h3>{t.visit.testsTitle}</h3><p>{t.visit.testsBody}</p><ul>{t.visit.tests.map(item => <li key={item}>{item}</li>)}</ul></div><a className={styles.button} href="#export-enquiry" onClick={() => enquire(null, "factory_visit")}>{t.actions.visit}<ArrowUpRight size={16} aria-hidden="true"/></a></div></div></section>
 
       <section className={styles.contact} id="export-contact" aria-labelledby="contact-title">
-        <div className={styles.contactLead}><p className={styles.eyebrow}>Cùng bàn kế hoạch mua hàng</p><h2 id="contact-title">{t.contacts.title}</h2><p>{t.contacts.intro}</p></div>
+        <div className={styles.contactLead}><p className={styles.eyebrow}>Hợp tác thị trường & thương mại</p><h2 id="contact-title">{t.contacts.title}</h2><p>{t.contacts.intro}</p></div>
         <div className={styles.contactCards}>
-          {partnerContact && <article className={styles.contactCard}><p className={styles.eyebrow}>{partnerContact.role}</p><h3>{partnerContact.name}</h3><p>Trao đổi nhu cầu, sắp xếp mẫu và kết nối với Hoàng Long.</p><div className={styles.contactLinks}><a href={`tel:${partnerContact.phone}`}><Phone size={17} aria-hidden="true"/>{partnerContact.phoneLabel}</a></div></article>}
+          {partnerContact && <article className={styles.contactCard}><p className={styles.eyebrow}>{partnerContact.role}</p><h3>{partnerContact.name}</h3><p>{page ? "Trao đổi nhu cầu, sắp xếp mẫu và kết nối với Hoàng Long." : "Phụ trách phát triển thị trường, kết nối đối tác và điều phối yêu cầu hợp tác xuất khẩu."}</p><div className={styles.contactLinks}><a href={`tel:${partnerContact.phone}`}><Phone size={17} aria-hidden="true"/>{partnerContact.phoneLabel}</a></div></article>}
           <article className={styles.contactCard}><p className={styles.eyebrow}>Nguồn cung & báo giá</p><h3>Hoàng Long</h3><div className={styles.contactLinks}><a href={`tel:${PROFILE_CONTACT.phone}`}><Phone size={17} aria-hidden="true"/>{PROFILE_CONTACT.phoneLabel}</a><a href={PROFILE_CONTACT.zaloUrl} target="_blank" rel="noopener noreferrer">{t.contacts.zaloLabel}<ArrowUpRight size={16} aria-hidden="true"/></a><a href={`mailto:${EMAIL}`}><Mail size={16} aria-hidden="true"/>{EMAIL}</a></div><address>{PROFILE_CONTACT.address}</address><p>{t.contacts.officeNote}</p></article>
         </div>
         <details ref={enquiryRef} className={styles.enquiry}><summary>Gửi nhu cầu để Hoàng Long liên hệ</summary><ExportEnquiry key={page ? `${page.slug}-${page.revision}` : profile.id} locale={language} initialCurrency={currency} availableTeaIds={initialTeaIds} partnerPage={page ? { slug: page.slug, revision: page.revision, display_name: page.display_name } : null} presentationProfileId={page ? undefined : profile.id} compact/></details>
         <details className={styles.briefDetails}><summary>Chuẩn bị gì cho buổi trao đổi?</summary><p>{t.buyerChecklist.intro}</p><ul className={styles.checklist}>{t.buyerChecklist.items.map(item => <li key={item}>{item}</li>)}</ul></details>
         <div className={styles.documents}><h3>Tài liệu gửi khách</h3><div className={styles.documentActions}><a className={styles.button} href={page ? EXPORT_SALES_PROFILES[0].pdf : profile.pdf} download><Download size={16} aria-hidden="true"/>{page ? "PDF Hoàng Long · bản chung" : "Tải bộ chào hàng PDF"}</a><button type="button" onClick={copyLink} className={styles.toolButton}><Copy size={16} aria-hidden="true"/>{copied ? t.actions.copied : t.actions.copyLink}</button><button type="button" onClick={() => window.print()} className={styles.toolButton}><Printer size={16} aria-hidden="true"/>{t.actions.print}</button></div><p>{page ? `PDF tải sẵn là bản chung của Hoàng Long, chưa kèm liên hệ ${partnerContact.name}. Để lưu trang có tên, điện thoại và các dòng trà đang chọn, dùng “In / lưu PDF”.` : `PDF tổng quan gồm 4 dòng trà, giá gốc VND${partnerContact ? ` và liên hệ ${partnerContact.name}` : ""}. Để lưu đúng các dòng trà và tiền tệ đang chọn, dùng “In / lưu PDF”.`}</p>{shareFallback && <input className={styles.shareFallback} aria-label={t.actions.copyLink} value={shareFallback} readOnly onFocus={e => e.target.select()} />}</div>
       </section>
-      <footer className={styles.footer}><span>House of Hoàng Long · Vietnam</span><a href={pdfHref} download>{t.actions.pdf}</a><Link href="/privacy">{language === "zh-TW" ? "隱私權政策" : language === "vi" ? "Bảo mật thông tin" : "Privacy policy"}</Link></footer>
+      <footer className={styles.footer}><p>{PROFILE_LEGAL.name} · MST {PROFILE_LEGAL.taxNumber}</p><span>House of Hoàng Long · Vietnam</span><a href={pdfHref} download>{t.actions.pdf}</a><Link href="/privacy">{language === "zh-TW" ? "隱私權政策" : language === "vi" ? "Bảo mật thông tin" : "Privacy policy"}</Link></footer>
     </main>
   );
 }

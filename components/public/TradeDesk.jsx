@@ -10,6 +10,7 @@ import { isTradeTea, selectedTradeTea, TRADE_CATALOG_FIELDS } from "@/lib/trade-
 import { tradeProductFacts } from "@/lib/trade-product-details";
 import { COMPANY_PROFILE, PROFILE_PDF } from "@/lib/company-profile";
 import { B2B_BULK_PACKING } from "@/lib/b2b-packing";
+import { EXPORT_DEVELOPMENT_CONTACT } from "@/lib/export-sales-profiles";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { trackMetaLead } from "@/lib/meta-pixel";
 import { recordPublicConversion } from "@/lib/public-attribution";
@@ -17,76 +18,108 @@ import styles from "./TradeDesk.module.css";
 import PublicSiteHeader from "./PublicSiteHeader";
 
 const COPY = {
-  vi: {
-    switcher: "EN",
-    portal: "Cổng đối tác",
-    back: "Nhà Hoàng Long",
-    eyebrow: "Nguồn cung cho phân phối & xuất khẩu",
-    title: "Nguồn trà tại xưởng. Hợp tác dài hạn.",
-    intro: "Năng lực sản xuất 1.000 tấn/năm, phục vụ nhà phân phối và doanh nghiệp xuất khẩu lớn. Trao đổi chất lượng, quy cách và kế hoạch cung ứng để nhận mẫu và báo giá tại xưởng.",
-    sample: "Xem bộ mẫu thử",
-    discuss: "Trao đổi nhu cầu",
-    statement: "Thống nhất mẫu và yêu cầu chất lượng trước khi đặt hàng. Điều khoản thanh toán, khối lượng và lịch giao được thỏa thuận theo từng đơn hàng, hướng đến hợp tác lâu dài.",
-    principles: [
-      ["01", "Nguồn trà", "Nguyên liệu Tây Bắc, Hà Giang và trà cổ thụ vùng cao, lựa chọn theo dòng sản phẩm."],
-      ["02", "Chế biến", "Công nghệ Nhật Bản, chế biến hấp hơi và tinh chỉnh chất lượng theo yêu cầu đã thống nhất."],
-      ["03", "Chất lượng", "Tinh chỉnh chất lượng theo nhu cầu và mẫu đã thống nhất với đối tác."],
-      ["04", "Cung ứng", "Trao đổi rõ về quy cách, lượng đặt và thời gian cung ứng trước khi chốt đơn."],
+  "vi": {
+    "switcher": "EN",
+    "portal": "Cổng đối tác",
+    "back": "Hoàng Long",
+    "eyebrow": "Hợp tác thương mại · Phân phối · Xuất khẩu",
+    "title": "Xây dựng nguồn cung. Phát triển thị trường.",
+    "intro": "Từ nhà máy tại Tân Lập, Hà Giang, Hoàng Long cùng đối tác xây dựng chương trình cung ứng trà cho từng thị trường. Năng lực 50–100 tấn/tháng phục vụ lập kế hoạch; sản lượng khả dụng và lịch giao được xác nhận theo yêu cầu.",
+    "sample": "Trao đổi mẫu trà",
+    "discuss": "Gửi đề bài hợp tác",
+    "statement": "Từ mẫu đối chiếu đến điều kiện giao hàng: một cơ sở rõ ràng cho hợp tác dài hạn.",
+    "principles": [
+      [
+        "01",
+        "Xác định nhu cầu",
+        "Thị trường đích, kênh phân phối, ứng dụng và sản lượng dự kiến là cơ sở để lựa chọn dòng trà."
+      ],
+      [
+        "02",
+        "Thử mẫu & thống nhất",
+        "Đối chiếu mẫu, cấp chất lượng, yêu cầu kiểm tra và quy cách trước khi xác nhận đơn hàng. Yêu cầu hồ sơ theo thị trường được rà soát riêng."
+      ],
+      [
+        "03",
+        "Kế hoạch sản xuất",
+        "Thống nhất khối lượng, mùa nguyên liệu, bao bì, tiến độ và điều kiện thanh toán. Thăm nhà máy được sắp xếp theo lịch hẹn."
+      ],
+      [
+        "04",
+        "Giao nhận & tiếp nối",
+        "Xác nhận trách nhiệm giao nhận, kiểm tra hồ sơ và phản hồi chất lượng để chuẩn bị những đợt cung ứng tiếp theo."
+      ]
     ],
-    available: "Trà đang có cho đối tác",
-    availableBody: "Chọn dòng trà để bắt đầu thử mẫu, rồi trao đổi yêu cầu chất lượng và khối lượng dự kiến.",
-    catalogueEmpty: "Danh mục đối tác đang được cập nhật.",
-    requestTitle: "Trao đổi nhu cầu cung ứng của bạn",
-    requestBody: "Cho biết bạn là nhà phân phối hay doanh nghiệp xuất khẩu, thị trường, chất lượng và khối lượng dự kiến. Nội dung chưa rõ có thể ghi “chưa xác định”.",
-    name: "Tên của bạn",
-    business: "Doanh nghiệp / tổ chức",
-    contact: "Số điện thoại hoặc email",
-    need: "Thị trường, yêu cầu chất lượng, khối lượng và lịch cung ứng",
-    consent: "Tôi đồng ý để Nhà Hoàng Long dùng thông tin này để liên hệ về yêu cầu trên.",
-    send: "Gửi yêu cầu",
-    sending: "Đang gửi…",
-    required: "Vui lòng điền tên, thông tin liên hệ, nhu cầu và xác nhận đồng ý.",
-    failed: "Chưa gửi được yêu cầu. Vui lòng thử lại hoặc gọi trực tiếp.",
-    sent: "Hoàng Long đã nhận yêu cầu của bạn.",
-    sentBody: "Nhà sẽ liên hệ lại bằng thông tin bạn vừa cung cấp.",
-    call: "Gọi Nhà · 0903 333 841",
-    footer: "Nguồn trà Việt cho đối tác phân phối và xuất khẩu.",
+    "available": "Dòng trà cho kế hoạch cung ứng",
+    "availableBody": "Danh mục là điểm bắt đầu để chọn mẫu. Sản phẩm phù hợp được xác định theo ứng dụng, phân khúc giá và yêu cầu của thị trường đích.",
+    "catalogueEmpty": "Danh mục đối tác đang được cập nhật.",
+    "requestTitle": "Đề bài hợp tác",
+    "requestBody": "Dành cho nhà nhập khẩu, nhà phân phối, doanh nghiệp và tổ chức kết nối thương mại. Cho biết mục tiêu hợp tác, thị trường, sản phẩm và tiến độ dự kiến; nội dung chưa chốt có thể ghi “chưa xác định”.",
+    "name": "Họ tên / chức danh",
+    "business": "Doanh nghiệp / tổ chức",
+    "contact": "Số điện thoại hoặc email",
+    "need": "Mục tiêu hợp tác, thị trường, sản lượng và thời gian dự kiến",
+    "consent": "Tôi đồng ý để Hoàng Long dùng thông tin này để liên hệ về yêu cầu trên.",
+    "send": "Gửi đề bài hợp tác",
+    "sending": "Đang gửi…",
+    "required": "Vui lòng điền tên, thông tin liên hệ, nhu cầu và xác nhận đồng ý.",
+    "failed": "Chưa gửi được yêu cầu. Vui lòng thử lại hoặc gọi trực tiếp.",
+    "sent": "Hoàng Long đã nhận đề bài hợp tác.",
+    "sentBody": "Đội ngũ sẽ liên hệ theo thông tin đã cung cấp để làm rõ yêu cầu và thống nhất bước tiếp theo.",
+    "call": "Văn phòng Hoàng Long · 0903 333 841",
+    "footer": "Kết nối nguồn trà Việt với cơ hội hợp tác quốc tế."
   },
-  en: {
-    switcher: "VI",
-    portal: "Partner portal",
-    back: "House of Hoàng Long",
-    eyebrow: "The trade tea desk",
-    title: "Factory-direct tea. Long-term partnerships.",
-    intro: "Production capacity of 1,000 tonnes per year for distributors and large-scale exporters. Discuss specifications, packing and supply plans for samples and factory-direct pricing.",
-    sample: "Request the sample set",
-    discuss: "Discuss your brief",
-    statement: "Agree on samples and quality requirements before ordering. Payment terms, volumes and delivery schedules are agreed for each order, with long-term cooperation in mind.",
-    principles: [
-      ["01", "Origin", "Raw materials from Northwest Vietnam, Hà Giang and ancient highland tea trees, selected for each product range."],
-      ["02", "Making", "Japanese technology, steam processing and quality adjustments to agreed requirements."],
-      ["03", "Quality", "Quality tailored to partner requirements and agreed samples."],
-      ["04", "Supply", "Formats from trials to volume, with direct conversations about capacity, lead time and seasonal change."],
+  "en": {
+    "switcher": "VI",
+    "portal": "Partner portal",
+    "back": "Hoàng Long",
+    "eyebrow": "Trade cooperation · Distribution · Export",
+    "title": "Build supply. Develop markets.",
+    "intro": "From our factory in Tân Lập, Hà Giang, Hoàng Long works with partners on tea supply programmes for specific markets. Capacity of 50–100 tonnes per month supports planning; available volumes and delivery schedules are confirmed against the brief.",
+    "sample": "Discuss tea samples",
+    "discuss": "Send a cooperation brief",
+    "statement": "From reference sample to delivery terms: a clear foundation for long-term cooperation.",
+    "principles": [
+      [
+        "01",
+        "Define the brief",
+        "Destination market, distribution channel, application and planned volume guide tea selection."
+      ],
+      [
+        "02",
+        "Sample & specification",
+        "Agree on reference samples, grades, testing requirements and packing before confirming an order. Market-specific document requirements are reviewed separately."
+      ],
+      [
+        "03",
+        "Production planning",
+        "Agree on volume, raw-material seasonality, packing, schedules and payment terms. Factory visits can be arranged by appointment."
+      ],
+      [
+        "04",
+        "Handover & follow-through",
+        "Confirm handover responsibilities, check documents and review quality feedback to plan subsequent supply."
+      ]
     ],
-    available: "Tea currently open to trade",
-    availableBody: "This list comes directly from the working catalogue. Every conversation still begins with your application and required volume.",
-    catalogueEmpty: "The trade catalogue is being prepared.",
-    requestTitle: "Discuss your supply requirements.",
-    requestBody: "Tell us whether you distribute or export, your market, quality requirements and expected volume. Details still undecided can be marked unknown.",
-    name: "Your name",
-    business: "Company / organisation",
-    contact: "Phone or email",
-    need: "Market, quality requirements, volume and delivery plans",
-    consent: "I agree that House of Hoàng Long may use these details to respond to this enquiry.",
-    send: "Send enquiry",
-    sending: "Sending…",
-    required: "Please add your name, contact, brief, and consent.",
-    failed: "The enquiry did not go through. Please try again or call us directly.",
-    sent: "Your brief is at the trade desk.",
-    sentBody: "The house will reply using the details you supplied.",
-    call: "Call the house · 0903 333 841",
-    footer: "Vietnamese tea for distribution and export.",
-  },
+    "available": "Tea ranges for a supply programme",
+    "availableBody": "The catalogue is a starting point for sampling. Selection depends on application, price positioning and destination-market requirements.",
+    "catalogueEmpty": "The trade catalogue is being updated.",
+    "requestTitle": "Cooperation brief",
+    "requestBody": "For importers, distributors, businesses and trade-facilitation organisations. Share your cooperation objectives, market, products and intended timeline. Mark undecided details as “to be confirmed”.",
+    "name": "Name / role",
+    "business": "Company / organisation",
+    "contact": "Phone or email",
+    "need": "Cooperation objectives, market, volume and intended timeline",
+    "consent": "I agree that Hoàng Long may use these details to respond to this enquiry.",
+    "send": "Send cooperation brief",
+    "sending": "Sending…",
+    "required": "Please add your name, contact, brief and consent.",
+    "failed": "The enquiry did not go through. Please try again or call us directly.",
+    "sent": "Hoàng Long has received your brief.",
+    "sentBody": "Our team will use your contact details to clarify requirements and agree on the next step.",
+    "call": "Hoàng Long office · 0903 333 841",
+    "footer": "Connecting Vietnamese tea with international cooperation opportunities."
+  }
 };
 
 export default function TradeDesk() {
@@ -171,17 +204,17 @@ export default function TradeDesk() {
             <a href="#trade-brief">{t.discuss}<ArrowRight size={16}/></a>
           </div>
         </div>
-        <figure><img src="/landing/3.jpg" alt="Hoàng Long tea processing line"/><figcaption>Hà Giang · công nghệ chế biến</figcaption></figure>
+        <figure><img src="/landing/3.jpg" alt={lang === "vi" ? "Dây chuyền chế biến trà Hoàng Long" : "Hoàng Long tea processing line"}/><figcaption>{lang === "vi" ? "Nhà máy Trà Hoàng Long · Tân Lập, Hà Giang" : "Hoàng Long Tea Factory · Tân Lập, Hà Giang"}</figcaption></figure>
       </section>
 
       <section className={styles.statement}><p>{t.statement}</p></section>
 
-      <section className={styles.principles} aria-label="How the house works with trade partners">
+      <section className={styles.principles} aria-label={lang === "vi" ? "Quy trình làm việc với đối tác" : "How we work with trade partners"}>
         {t.principles.map(([number, title, body]) => <article key={number}><span>{number}</span><h2>{title}</h2><p>{body}</p></article>)}
       </section>
 
       <section className={styles.catalogue}>
-        <header><h2>{t.available}</h2><p>{t.availableBody}</p><Link href={`/catalog?lang=${lang}`}>{lang === "vi" ? "Xem toàn bộ danh mục trà" : "Explore the full tea range"}<ArrowRight size={16}/></Link><p><strong>{bulkPacking.title}: </strong>{bulkPacking.text}</p></header>
+        <header><h2>{t.available}</h2><p>{t.availableBody}</p><Link href={`/catalog?lang=${lang}`}>{lang === "vi" ? "Xem toàn bộ danh mục trà" : "Explore the full tea range"}<ArrowRight size={16}/></Link><Link href={`/company?lang=${lang}#cooperation`}>{lang === "vi" ? "Hồ sơ năng lực & hướng hợp tác" : "Capabilities & cooperation areas"}<ArrowRight size={16}/></Link><p><strong>{bulkPacking.title}: </strong>{bulkPacking.text}</p></header>
         <div>
           {products.length ? products.map((product, index) => <article key={product.id}>
             <span>{String(index + 1).padStart(2, "0")}</span><h3>{tradeProductFacts(product, lang).name}</h3><p>{local(product.notes)}</p><b>{lang === "vi" ? "Quy cách theo thỏa thuận" : "Packing agreed on enquiry"}</b>
@@ -190,7 +223,7 @@ export default function TradeDesk() {
       </section>
 
       <section className={styles.brief} id="trade-brief">
-        <div className={styles.briefIntro}><p>Trade brief</p><h2>{t.requestTitle}</h2><p>{t.requestBody}</p><a href="tel:+84903333841"><Phone size={16}/>{t.call}</a><p>{lang === "vi" ? "Văn phòng & kho: 36B QL2A, Sóc Sơn, Hà Nội. Bạn có thể ghé uống trà và trao đổi nhu cầu; vui lòng gọi trước để sắp xếp." : "Office & warehouse: 36B QL2A, Soc Son, Hanoi. You can visit for tea and discuss your requirements; please call ahead to arrange your visit."}</p><a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent("Trà Hoàng Long, 36B QL2A, Sóc Sơn, Hà Nội, Việt Nam")}`} target="_blank" rel="noreferrer">{lang === "vi" ? "Xem đường đến văn phòng" : "Directions to the office"}<ArrowRight size={16}/></a></div>
+        <div className={styles.briefIntro}><p>{lang === "vi" ? "Đầu mối làm việc" : "Contact & next steps"}</p><h2>{t.requestTitle}</h2><p>{t.requestBody}</p><p><strong>{EXPORT_DEVELOPMENT_CONTACT.name}</strong><br/>{lang === "vi" ? EXPORT_DEVELOPMENT_CONTACT.role : EXPORT_DEVELOPMENT_CONTACT.roleEn}</p><a href={`tel:${EXPORT_DEVELOPMENT_CONTACT.phone}`}><Phone size={16}/>{EXPORT_DEVELOPMENT_CONTACT.phoneLabel}</a><br/><a href="tel:+84903333841"><Phone size={16}/>{t.call}</a><p>{lang === "vi" ? "Văn phòng & kho giao dịch: 36B QL2A, Sóc Sơn, Hà Nội. Nhà máy & điểm nhận hàng EXW: Tân Lập, Hà Giang. Vui lòng hẹn trước khi đến làm việc hoặc thăm nhà máy." : "Commercial office & warehouse: 36B QL2A, Sóc Sơn, Hanoi. Factory & EXW collection: Tân Lập, Hà Giang. Please arrange an appointment for meetings or factory visits."}</p><a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent("Trà Hoàng Long, 36B QL2A, Sóc Sơn, Hà Nội, Việt Nam")}`} target="_blank" rel="noreferrer">{lang === "vi" ? "Xem đường đến văn phòng" : "Directions to the office"}<ArrowRight size={16}/></a></div>
         {sent ? <div className={styles.success}><span><Check size={19}/></span><h3>{t.sent}</h3><p>{t.sentBody}</p><Link href="/">{t.back}<ArrowRight size={16}/></Link></div> :
           <form onSubmit={submit} onFocusCapture={() => {
             if (briefStarted.current) return;

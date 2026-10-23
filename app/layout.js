@@ -4,9 +4,9 @@ import LocaleProvider from "@/components/i18n/LocaleProvider";
 import RetailCartProvider from "@/components/public/RetailCartProvider";
 
 export const metadata = {
-  title: "House of Hoàng Long — Trà Cổ Hà Giang",
+  title: "Hoàng Long — Sản xuất trà & phát triển xuất khẩu",
   description:
-    "Nhà làm Trà Hoàng Long — trà Shan Tuyết cổ thụ Hà Giang, chế biến bằng công nghệ Nhật Bản. Gia đình làm trà từ 1995.",
+    "Hoàng Long: nguồn trà vùng cao, chế biến tại Hà Giang và hợp tác cung ứng cho phân phối, xuất khẩu. Hồ sơ năng lực, danh mục trà và đầu mối phát triển thị trường.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

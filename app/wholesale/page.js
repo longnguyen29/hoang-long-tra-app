@@ -1,12 +1,12 @@
 export const metadata = {
-  "title": "Trà tại xưởng cho phân phối & xuất khẩu | Hoàng Long",
-  "description": "Năng lực sản xuất 1.000 tấn/năm. Trao đổi mẫu, chất lượng theo nhu cầu, giá tại xưởng và điều khoản hợp tác dài hạn.",
+  "title": "Hợp tác thương mại & xuất khẩu trà | Hoàng Long",
+  "description": "Làm việc với Hoàng Long về thị trường, mẫu đối chiếu, quy cách PP/PE, chương trình cung ứng và điều kiện EXW tại Nhà máy Tân Lập, Hà Giang.",
   "alternates": {
     "canonical": "https://www.hoanglongtra.com/wholesale"
   },
   "openGraph": {
-    "title": "Trà tại xưởng cho phân phối & xuất khẩu | Hoàng Long",
-    "description": "Năng lực sản xuất 1.000 tấn/năm. Trao đổi mẫu, chất lượng theo nhu cầu, giá tại xưởng và điều khoản hợp tác dài hạn.",
+    "title": "Hợp tác thương mại & xuất khẩu trà | Hoàng Long",
+    "description": "Làm việc với Hoàng Long về thị trường, mẫu đối chiếu, quy cách PP/PE, chương trình cung ứng và điều kiện EXW tại Nhà máy Tân Lập, Hà Giang.",
     "url": "https://www.hoanglongtra.com/wholesale",
     "type": "website",
     "locale": "vi_VN"

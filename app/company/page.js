@@ -1,12 +1,12 @@
 import CompanyProfile from "@/components/public/CompanyProfile";
 
 export const metadata = {
-  title: "Hồ sơ doanh nghiệp & danh mục trà | Hoàng Long",
-  description: "Tìm hiểu Nhà làm Trà Hoàng Long, nguồn nguyên liệu, chế biến và lộ trình hợp tác. Tải hồ sơ và catalog bằng tiếng Việt hoặc tiếng Anh, trao đổi mẫu trà và yêu cầu báo giá.",
+  title: "Hồ sơ năng lực & hợp tác xuất khẩu trà | Hoàng Long",
+  description: "Hồ sơ Công ty TNHH Thương Mại Trà Hoàng Long: nguồn trà, chế biến tại Hà Giang, năng lực cung ứng và hợp tác thị trường. Catalog Việt/Anh và đầu mối phát triển xuất khẩu.",
   alternates: { canonical: "https://www.hoanglongtra.com/company" },
   openGraph: {
-    title: "Hồ sơ doanh nghiệp & danh mục trà | Hoàng Long",
-    description: "Nguồn trà Việt, chế biến và hợp tác cung ứng. Hồ sơ & catalog PDF bằng tiếng Việt và tiếng Anh.",
+    title: "Hồ sơ năng lực & hợp tác xuất khẩu trà | Hoàng Long",
+    description: "Năng lực tại nguồn, kế hoạch cung ứng và hợp tác phát triển thị trường. Hồ sơ năng lực & catalog PDF Việt/Anh.",
     url: "https://www.hoanglongtra.com/company",
     type: "website",
     locale: "vi_VN",

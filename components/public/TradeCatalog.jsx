@@ -74,14 +74,15 @@ export default function TradeCatalog() {
     <PublicSiteHeader/>
 
     <section className={styles.intro}>
-      <div><p className={styles.eyebrow}>{vi ? "Trà cho phân phối & xuất khẩu" : "Tea for distribution & export"}</p><h1>{vi ? "Danh mục trà" : "Our tea catalogue"}</h1></div>
-      <div className={styles.introCopy}><p>{vi ? "Chọn dòng trà cho kế hoạch cung ứng của bạn." : "Find a tea for your supply plans."}</p><p>{vi ? "Xem các đặc tính đang công bố, bắt đầu bằng mẫu trà, rồi thống nhất chất lượng, quy cách, khối lượng và giá tại xưởng theo yêu cầu của bạn." : "Explore the listed characteristics, start with a sample, then agree on quality, packing, volume and factory pricing for your requirements."}</p><span>{vi ? "Xem đặc tính · Thử mẫu · Trao đổi nguồn cung" : "Explore · Sample · Discuss supply"}</span></div>
+      <div><p className={styles.eyebrow}>{vi ? "Nguồn cung · Đặc tính · Điều kiện giao dịch" : "Supply · Specifications · Commercial terms"}</p><h1>{vi ? "Danh mục trà thương mại" : "Trade tea catalogue"}</h1></div>
+      <div className={styles.introCopy}><p>{vi ? "Cơ sở lựa chọn sản phẩm cho phân phối và xuất khẩu." : "A basis for product selection in distribution and export."}</p><p>{vi ? "Đối chiếu dòng trà với ứng dụng, phân khúc giá và yêu cầu thị trường. Sau bước thử mẫu, hai bên thống nhất tiêu chuẩn, khối lượng, quy cách và báo giá EXW tại Nhà máy Trà Hoàng Long, Tân Lập, Hà Giang." : "Match the tea to its application, price positioning and market requirements. After sampling, agree on specifications, volume, packing and an EXW quotation at Hoàng Long Tea Factory, Tân Lập, Hà Giang."}</p><span>{vi ? "Chọn sản phẩm · Đối chiếu mẫu · Thống nhất chương trình cung ứng" : "Select products · Review samples · Agree on supply"}</span></div>
     </section>
 
     <section className={styles.resources} aria-label={vi ? "Hồ sơ & tài liệu" : "Profile & documents"}>
-      <div><strong>{vi ? "Hồ sơ công ty & danh mục" : "Company profile & catalogue"}</strong><p>{vi ? "Tìm hiểu Hoàng Long hoặc tải tài liệu để chia sẻ với đội ngũ mua hàng." : "Get to know Hoàng Long or download a copy for your purchasing team."}</p></div>
+      <div><strong>{vi ? "Hồ sơ năng lực & hợp tác" : "Capabilities & cooperation"}</strong><p>{vi ? "Tổng quan nguồn nguyên liệu, năng lực sản xuất và cách làm việc để chuẩn bị cuộc trao đổi với doanh nghiệp, nhà nhập khẩu hoặc tổ chức kết nối thương mại." : "Review tea sourcing, production capacity and our working process to prepare discussions with businesses, importers or trade-facilitation organisations."}</p></div>
       <div className={styles.resourceLinks}>
-        <Link href={`/company?lang=${locale}`}>{vi ? "Xem hồ sơ công ty" : "View company profile"}<ArrowRight size={16} aria-hidden="true"/></Link>
+        <Link href={`/company?lang=${locale}`}>{vi ? "Xem hồ sơ năng lực" : "View company profile"}<ArrowRight size={16} aria-hidden="true"/></Link>
+        <Link href={`/company?lang=${locale}#cooperation`}>{vi ? "Trao đổi chương trình hợp tác" : "Discuss a cooperation programme"}<ArrowRight size={16} aria-hidden="true"/></Link>
         <a href={PROFILE_PDF.vi} download><Download size={16} aria-hidden="true"/>PDF · Tiếng Việt</a>
         <a href={PROFILE_PDF.en} download><Download size={16} aria-hidden="true"/>PDF · English</a>
       </div>
@@ -113,13 +114,13 @@ export default function TradeCatalog() {
             {facts.summary && <p className={styles.summary}><span>{vi ? "Khi thử mẫu" : "When sampling"}</span>{facts.summary}</p>}
             {facts.note && <p className={styles.note}>{facts.note}</p>}
             {!!facts.flavors.length && <ul className={styles.flavors} aria-label={vi ? "Hương vị đang công bố" : "Listed tasting notes"}>{facts.flavors.map((flavor, index) => <li key={`${flavor}-${index}`}>{flavor}</li>)}</ul>}
-            <div className={styles.packing}><span>{vi ? "Quy cách sản phẩm / mẫu" : "Product / sample format"}</span><strong>{facts.packing || (vi ? "Trao đổi theo nhu cầu" : "Discuss your requirements")}</strong><p>{vi ? "MOQ và đóng gói đơn sỉ được xác nhận trong báo giá." : "Wholesale MOQ and packing are confirmed in your quotation."}</p></div>
+            <div className={styles.packing}><span>{vi ? "Quy cách sản phẩm / mẫu" : "Product / sample format"}</span><strong>{facts.packing || (vi ? "Trao đổi theo nhu cầu" : "Discuss your requirements")}</strong><p>{vi ? "Quy cách trên để tham khảo sản phẩm / mẫu, không phải quy cách bao xuất khẩu. MOQ và bao PP/PE cho đơn lớn được xác nhận trong báo giá." : "The format above describes the product / sample, not export bag sizes. MOQ and bulk PP/PE packing are confirmed in your quotation."}</p></div>
 
             <details className={styles.more}>
-              <summary>{vi ? "Gợi ý pha & thông tin đơn sỉ" : "Brewing & wholesale details"}<ChevronDown size={18} aria-hidden="true"/></summary>
+              <summary>{vi ? "Thử mẫu & điều kiện cung ứng" : "Sampling & supply requirements"}<ChevronDown size={18} aria-hidden="true"/></summary>
               <div className={styles.expanded}>
                 <div><h4>{vi ? "Điểm bắt đầu thử mẫu" : "A starting point for sampling"}</h4>{facts.brew ? <><p className={styles.brew}>{facts.brew}</p><p className={styles.context}>{vi ? "Dùng gợi ý pha hiện có để bắt đầu thử mẫu, rồi hiệu chỉnh theo cách dùng của bạn. Công thức sản xuất sẽ được thống nhất riêng." : "Use the listed brew guidance to begin sampling, then adjust it for your application. A production recipe is agreed separately."}</p></> : <p>{vi ? "Cho biết cách dùng và điều kiện pha dự kiến để cùng trao đổi hướng thử mẫu." : "Share your intended application and brewing conditions to discuss how to trial the sample."}</p>}</div>
-                <div><h4>{vi ? "Xác nhận trong báo giá" : "Confirmed in your quotation"}</h4><p>{vi ? "Cấp chất lượng, MOQ đơn sỉ, thời gian cung ứng và hạn sử dụng được xác nhận theo mẫu và yêu cầu đã thống nhất." : "Grade, wholesale MOQ, lead time and shelf life are confirmed against the agreed sample and your requirements."}</p></div>
+                <div><h4>{vi ? "Xác nhận trong báo giá" : "Confirmed in your quotation"}</h4><p>{vi ? "Cấp chất lượng, MOQ, lịch cung ứng, hạn sử dụng, điều kiện thanh toán và trách nhiệm giao nhận được chốt theo mẫu và yêu cầu. Hồ sơ kiểm nghiệm, chứng nhận hoặc yêu cầu nhập khẩu cụ thể cần được rà soát trước khi cam kết." : "Grade, MOQ, schedules, shelf life, payment and handover responsibilities are agreed against the sample and brief. Specific testing, certification or import-document requirements must be reviewed before commitment."}</p></div>
               </div>
             </details>
             <div className={styles.actions}><Link href={tradeEnquiryHref(product.id, "sample", enquirySearch, locale)}>{vi ? "Trao đổi mẫu trà" : "Enquire about samples"}</Link><Link href={tradeEnquiryHref(product.id, "quote", enquirySearch, locale)}>{vi ? "Yêu cầu báo giá" : "Request a quote"}<ArrowRight size={17} aria-hidden="true"/></Link></div>
@@ -128,6 +129,6 @@ export default function TradeCatalog() {
       </div>
     </section>
 
-    <footer className={styles.footer}><Link href={`/company?lang=${locale}`}>{vi ? "Hồ sơ công ty" : "Company profile"}</Link><Link href="/cho-quan">{vi ? "Trà dành cho quán" : "Tea for cafés"}</Link><Link href="/shop">{vi ? "Mua trà dùng tại nhà" : "Shop tea for home"}</Link><PolicyLinks/></footer>
+    <footer className={styles.footer}><Link href={`/company?lang=${locale}`}>{vi ? "Hồ sơ công ty" : "Company profile"}</Link><Link href={`/company?lang=${locale}#contact`}>{vi ? "Đầu mối phát triển xuất khẩu" : "Export development contact"}</Link><Link href="/cho-quan">{vi ? "Trà dành cho quán" : "Tea for cafés"}</Link><Link href="/shop">{vi ? "Mua trà dùng tại nhà" : "Shop tea for home"}</Link><PolicyLinks/></footer>
   </main>;
 }

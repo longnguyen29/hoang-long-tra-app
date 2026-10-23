@@ -12,6 +12,7 @@ from datetime import date
 import html
 import json
 import os
+import math
 from pathlib import Path
 import re
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
@@ -68,17 +69,17 @@ def register_fonts(font_dir):
 COPY = {
     'vi': {
         'brand': 'NHÀ LÀM TRÀ HOÀNG LONG', 'cover': 'Hồ sơ doanh nghiệp\nvà danh mục trà',
-        'cover_sub': 'Trà Shan Tuyết Hà Giang cho đối tác kinh doanh, quán và nhà phân phối.',
+        'cover_sub': 'Năng lực chế biến trà Việt và cơ sở làm việc cùng đối tác thương mại, đơn vị xúc tiến và nhà phân phối.',
         'edition': 'Bản phát hành 11.10.2026', 'catalog': 'Xem danh mục trực tuyến', 'quote': 'Yêu cầu báo giá',
         'profile_label': '01 / NHÀ LÀM TRÀ', 'profile_title': 'Từ vùng trà đến đối tác',
-        'guide_label': '02 / CHỌN TRÀ', 'guide_title': 'Một danh mục, nhiều nhu cầu',
+        'guide_label': '04 / CẤU TRÚC DANH MỤC', 'guide_title': 'Một danh mục, nhiều nhu cầu',
         'guide_intro': 'Bắt đầu từ cách dùng trà của bạn. Chọn nhóm phù hợp, pha thử trong điều kiện thực tế và xác nhận quy cách với Hoàng Long.',
-        'catalog_label': '03 / DANH MỤC TRÀ', 'catalog_title': 'Danh mục sản phẩm',
+        'catalog_label': '05 / DANH MỤC TRÀ', 'catalog_title': 'Danh mục sản phẩm',
         'catalog_intro': 'Tên và thông tin dưới đây theo danh mục công khai ở thời điểm phát hành.',
         'pack': 'Quy cách niêm yết', 'brew': 'Hướng dẫn pha niêm yết', 'flavor': 'Hương vị niêm yết',
         'notes': 'Ghi chú sản phẩm', 'unknown_pack': 'Liên hệ xác nhận quy cách',
         'unknown_brew': 'Liên hệ để được hướng dẫn pha', 'catalog_cta': 'Mở trang trà hoặc yêu cầu báo giá để xác nhận quy cách và lô hàng.',
-        'buy_label': '04 / LÀM VIỆC CÙNG HOÀNG LONG', 'buy_title': 'Trao đổi để chọn đúng trà',
+        'buy_label': '06 / ĐẦU MỐI HỢP TÁC', 'buy_title': 'Từ trao đổi ban đầu\nđến kế hoạch cung ứng',
         'buy_intro': 'Gửi sản phẩm quan tâm, cách dùng và lượng dự kiến. Hoàng Long sẽ trao đổi về mẫu thử, quy cách và báo giá phù hợp với yêu cầu cụ thể.',
         'steps': [
             ('Chọn trà và mục đích sử dụng', 'Ghi rõ loại đồ uống, kênh bán hoặc nhu cầu phục vụ mà bạn đang chuẩn bị.'),
@@ -105,17 +106,17 @@ COPY = {
     },
     'en': {
         'brand': 'HOUSE OF HOÀNG LONG', 'cover': 'Company profile\nand tea catalogue',
-        'cover_sub': 'Hà Giang Shan Tuyết tea for trade partners, cafés and distributors.',
+        'cover_sub': 'Vietnamese tea processing capability and a working brief for trade partners, trade-promotion organisations and distributors.',
         'edition': 'Edition 11 October 2026', 'catalog': 'View the online catalogue', 'quote': 'Request a quote',
         'profile_label': '01 / THE TEA HOUSE', 'profile_title': 'From tea region to trade partner',
-        'guide_label': '02 / SELECTING TEA', 'guide_title': 'A range for different needs',
+        'guide_label': '04 / RANGE STRUCTURE', 'guide_title': 'A range for different needs',
         'guide_intro': 'Start with how you plan to use the tea. Choose a relevant group, test it in your working conditions and confirm the pack specification with Hoàng Long.',
-        'catalog_label': '03 / TEA CATALOGUE', 'catalog_title': 'Product catalogue',
+        'catalog_label': '05 / TEA CATALOGUE', 'catalog_title': 'Product catalogue',
         'catalog_intro': 'Names and details below reflect the public catalogue at the date of this edition.',
         'pack': 'Listed pack format', 'brew': 'Listed brewing guide', 'flavor': 'Listed flavour',
         'notes': 'Product note', 'unknown_pack': 'Contact to confirm pack format',
         'unknown_brew': 'Contact for brewing guidance', 'catalog_cta': 'Open a tea page or request a quote to confirm the pack specification and batch.',
-        'buy_label': '04 / WORKING WITH HOÀNG LONG', 'buy_title': 'Start with the tea you need',
+        'buy_label': '06 / COOPERATION CONTACT', 'buy_title': 'From first discussion\nto a supply programme',
         'buy_intro': 'Share the teas you are considering, their intended use and your planned volume. Hoàng Long can discuss samples, pack formats and a quote for your specific enquiry.',
         'steps': [
             ('Choose the tea and intended use', 'Describe your drinks, sales channel or serving requirements.'),
@@ -164,9 +165,11 @@ class Document:
             raise ValueError('The public company-profile payload must include approved B2B packing facts')
         self.t['guide_note_title'] = packing['title']
         self.t['guide_note'] = packing['value'] + '. ' + packing['note']
-        self.t['catalog_intro'] += (' Quy cách xuất khẩu/lô lớn xem trang 3; khác quy cách sản phẩm niêm yết.' if locale == 'vi'
-                                     else ' See page 3 for export / large-bulk packing, separate from listed product packs.')
+        self.t['catalog_intro'] += (' Quy cách xuất khẩu/lô lớn xem trang 5; khác quy cách sản phẩm niêm yết.' if locale == 'vi'
+                                     else ' See page 5 for export / large-bulk packing, separate from listed product packs.')
         self.contact = data.get('contact') or {}
+        self.director = data.get('director') or {}
+        self.legal = data.get('legal') or {}
         self.products = data['products']
         self.base_url = clean(data.get('baseUrl') or self.contact.get('website')).rstrip('/')
         if not self.base_url.startswith('https://'):
@@ -180,7 +183,7 @@ class Document:
         self.c.setSubject(self.t['edition'])
         self.c.setCreator('Hoàng Long public catalogue PDF builder')
         self.page_no = 0
-        self.count = 7
+        self.count = 6 + math.ceil(len(self.products) / 5)
 
     def url(self, path):
         uri = path if path.startswith(('https://', 'http://', 'tel:', 'mailto:')) else self.base_url + path
@@ -254,9 +257,12 @@ class Document:
 
     def end(self):
         self.rule(39)
-        self.c.setFont('Body', 7)
+        self.c.setFont('Body', 6.8)
         self.c.setFillColor(MUTED)
-        self.c.drawString(M, 25, self.t['footer'])
+        footer = self.t['footer']
+        if self.legal.get('name') and self.legal.get('taxNumber'):
+            footer = self.legal['name'] + (' · MST ' if self.locale == 'vi' else ' · Tax ID ') + self.legal['taxNumber']
+        self.c.drawString(M, 25, footer)
         self.c.drawRightString(W - M, 25, f'{self.page_no:02d} / {self.count:02d}')
         self.c.linkURL(self.company_url, (M, 20, W - M - 35, 34), relative=0, thickness=0)
         self.c.showPage()
@@ -265,7 +271,7 @@ class Document:
         self.start()
         self.label('HÀ GIANG / VIỆT NAM', M, 765, color=GOLD, size=8.8)
         self.para(self.t['cover'], M, 734, CW, 30, 39, 'Display', GREEN, 88)
-        self.para(self.t['cover_sub'], M, 634, CW - 22, 11, 17, max_height=40)
+        self.para(self.t['cover_sub'], M, 634, CW - 22, 10.7, 16.5, max_height=50)
         self.image('landing/1.jpg', M, 573, CW, 348, (.5, .35))
         self.para(self.t['photo_tree'], M, 216, CW, 7.4, 11, color=MUTED, max_height=23)
         self.link(self.t['catalog'], M, 163, 246, self.catalog_url)
@@ -324,20 +330,64 @@ class Document:
         self.para(self.t['guide_intro'], M, 650, CW, 10.3, 16, max_height=50)
         active = {self.product_fact(p).get('groupId') for p in self.products}
         groups = [g for g in self.data.get('groups', []) if g['id'] in active]
-        if len(groups) != 6:
-            raise ValueError('This edition expects six active public tea groups')
+        if not groups or len(groups) > 8:
+            raise ValueError('The guide layout supports one to eight active tea groups')
         cardw = (CW - 17) / 2
+        row_pitch = 432 / math.ceil(len(groups) / 2)
+        card_height = row_pitch - 15
         for index, group in enumerate(groups):
             x = M + (index % 2) * (cardw + 17)
-            top = 573 - (index // 2) * 144
+            top = 573 - (index // 2) * row_pitch
             self.c.setFillColor(PALE)
-            self.c.roundRect(x, top - 129, cardw, 129, 3, fill=1, stroke=0)
+            self.c.roundRect(x, top - card_height, cardw, card_height, 3, fill=1, stroke=0)
             title = loc(group['label'], self.locale)
             body = loc(group['guidance'], self.locale)
             self.para(title, x + 14, top - 15, cardw - 28, 12, 17, 'BodyBold', GREEN, 24)
-            self.para(body, x + 14, top - 43, cardw - 28, 9.1, 14, max_height=80)
+            self.para(body, x + 14, top - 43, cardw - 28, 9.1 if len(groups) <= 6 else 8.6, 14 if len(groups) <= 6 else 12.2, max_height=card_height - 49)
         self.label(self.t['guide_note_title'].upper(), M, 118)
         self.para(self.t['guide_note'], M, 96, CW, 9.1, 14, max_height=45)
+        self.end()
+
+    def cooperation_page(self):
+        p = self.profile.get('cooperation') or {}
+        if not p.get('title') or not p.get('tracks') or not p.get('brief'):
+            raise ValueError('Approved institutional cooperation and meeting brief are required')
+        self.start('02 / CHƯƠNG TRÌNH HỢP TÁC' if self.locale == 'vi' else '02 / COOPERATION AGENDA')
+        bottom = self.para(p['title'], M, 732, CW, 26, 34, 'Display', GREEN, 75)
+        bottom = self.para(p['body'], M, bottom - 20, CW, 10.2, 15.5, max_height=64)
+        top = bottom - 25
+        for index, track in enumerate(p['tracks']):
+            self.label(f'0{index + 1}', M, top, color=GOLD, size=10)
+            bottom = self.para(track['title'], M + 36, top + 2, CW - 36, 11.8, 17, 'BodyBold', GREEN, 35)
+            bottom = self.para(track['body'], M + 36, bottom - 7, CW - 36, 9.5, 14.3, max_height=58)
+            self.rule(bottom - 13, M + 36, CW - 36)
+            top = bottom - 30
+        title = 'Nội dung chuẩn bị cho buổi làm việc' if self.locale == 'vi' else 'Brief for the first working meeting'
+        top -= 2
+        top = self.para(title, M, top, CW, 13.4, 19, 'DisplayBold', GREEN, 42) - 12
+        for index, item in enumerate(p['brief']):
+            bottom = self.para(f'{index + 1:02d}', M, top, 24, 8.2, 12.5, 'BodyBold', GOLD)
+            bottom = self.para(item, M + 28, top, CW - 28, 9.1, 13.5, max_height=43)
+            top = bottom - 9
+        self.end()
+
+    def evidence_page(self):
+        p = self.profile.get('evidence') or {}
+        if not p.get('title') or not p.get('items'):
+            raise ValueError('Approved evidence / due-diligence brief is required')
+        self.start('03 / HỒ SƠ & THẨM ĐỊNH' if self.locale == 'vi' else '03 / EVIDENCE & DUE DILIGENCE')
+        bottom = self.para(p['title'], M, 732, CW, 26, 34, 'Display', GREEN, 75)
+        bottom = self.para(p['body'], M, bottom - 19, CW, 10.2, 15.5, max_height=65)
+        top = bottom - 30
+        for index, item in enumerate(p['items']):
+            self.label(f'0{index + 1}', M, top, color=GOLD, size=10)
+            bottom = self.para(item['title'], M + 36, top + 1, CW - 36, 11.4, 16.3, 'BodyBold', GREEN, 34)
+            bottom = self.para(item['body'], M + 36, bottom - 7, CW - 36, 9.5, 14.3, max_height=58)
+            self.rule(bottom - 14, M + 36, CW - 36)
+            top = bottom - 33
+        packing = self.profile['packing']
+        self.label(packing['title'].upper(), M, top, size=8)
+        self.para(packing['value'] + '. ' + packing['note'], M, top - 21, CW, 9.2, 14, max_height=60)
         self.end()
 
     def product_fact(self, product):
@@ -400,48 +450,57 @@ class Document:
     def order_page(self):
         self.start(self.t['buy_label'])
         self.para(self.t['buy_title'], M, 732, CW, 27, 35, 'Display', GREEN, 75)
-        self.para(self.t['buy_intro'], M, 649, CW, 10.4, 16, max_height=62)
-        top = 564
-        for i, (title, body) in enumerate(self.t['steps'], 1):
+        supply = self.profile.get('supply') or {}
+        self.para(supply.get('intro') or self.t['buy_intro'], M, 645, CW, 10.2, 15.5, max_height=49)
+        steps = supply.get('steps') or [dict(title=title, body=body) for title, body in self.t['steps']]
+        top = 568
+        for i, step in enumerate(steps, 1):
             self.c.setFillColor(GREEN)
             self.c.circle(M + 14, top - 13, 13, fill=1, stroke=0)
             self.c.setFillColor(CREAM)
             self.c.setFont('BodyBold', 10)
             self.c.drawCentredString(M + 14, top - 16.5, str(i))
-            self.para(title, M + 43, top, CW - 43, 11.5, 16, 'BodyBold', GREEN, 34)
-            self.para(body, M + 43, top - 26, CW - 43, 9.7, 14.5, max_height=45)
-            top -= 89
+            self.para(step['title'], M + 43, top, CW - 43, 11.1, 15.5, 'BodyBold', GREEN, 32)
+            self.para(step['body'], M + 43, top - 24, CW - 43, 9.2, 13.5, max_height=41)
+            top -= 76
         self.c.setFillColor(PALE)
-        self.c.roundRect(M, 224, CW, 67, 3, fill=1, stroke=0)
-        self.label(self.t['ask_title'].upper(), M + 14, 278)
-        self.para(self.t['ask'], M + 14, 256, CW - 28, 9.1, 14, max_height=30)
-        self.label(self.t['contact'].upper(), M, 203)
-        phone = clean(self.contact.get('phoneLabel') or self.contact.get('phoneDisplay') or self.contact.get('phone'))
-        phone_uri = clean(self.contact.get('phoneHref') or self.contact.get('phoneUrl') or 'tel:' + re.sub(r'[^+\d]', '', self.contact['phone']))
+        self.c.roundRect(M, 94, CW, 156, 3, fill=1, stroke=0)
+        x = M + 16
+        self.label(self.t['contact'].upper(), x, 235)
+        person = self.director
+        if not person.get('name') or not person.get('phone'):
+            raise ValueError('Owner-approved export-development director is required')
+        self.para(person['name'], x, 214, CW - 145, 17, 23, 'DisplayBold', GREEN, 25)
+        role = person.get('roleEn') if self.locale == 'en' else person.get('role')
+        self.para(role, x, 184, CW - 145, 10.2, 15, 'BodyBold', GREEN, 31)
+        phone = clean(person['phoneLabel'])
+        phone_uri = 'tel:' + re.sub(r'[^+\d]', '', person['phone'])
         zalo_uri = clean(self.contact.get('zaloHref') or self.contact.get('zaloUrl') or self.contact.get('zalo'))
         if not phone or not zalo_uri:
             raise ValueError('Public phone and Zalo contact details are required')
-        self.para(phone, M, 180, CW - 150, 16, 23, 'DisplayBold', GREEN, 27)
-        self.c.linkURL(phone_uri, (M, 153, M + 230, 183), relative=0, thickness=0)
-        self.link(self.t['quote'], M, 136, 163, self.quote_url, size=8.8)
-        self.link(self.t['zalo'], M + 176, 136, 147, zalo_uri, dark=False, size=8.8)
-        self.para(self.base_url.replace('https://', ''), M, 86, 330, 9, 13, color=MUTED, max_height=16)
-        self.c.linkURL(self.company_url, (M, 66, M + 300, 90), relative=0, thickness=0)
-        self.qr(self.company_url, W - M - 99, 205, 96)
-        self.para(self.t['scan'], W - M - 105, 99, 110, 7.6, 11, color=MUTED, max_height=27)
+        self.para(phone, x, 157, CW - 145, 12.5, 18, 'BodyBold', GREEN, 21)
+        self.c.linkURL(phone_uri, (x, 137, x + 230, 159), relative=0, thickness=0)
+        house = 'Hoàng Long · ' + clean(self.contact.get('phoneLabel') or self.contact.get('phone'))
+        self.para(house, x, 128, CW - 145, 8.9, 13, color=MUTED, max_height=16)
+        self.c.linkURL(zalo_uri, (x, 112, x + 245, 130), relative=0, thickness=0)
+        self.qr(self.company_url, W - M - 107, 222, 88)
+        self.para(self.t['scan'], W - M - 116, 124, 110, 7.3, 10.5, color=MUTED, max_height=24)
+        self.para(self.base_url.replace('https://', ''), M, 77, CW, 8.7, 13, color=MUTED, max_height=17)
+        self.c.linkURL(self.company_url, (M, 60, W - M, 78), relative=0, thickness=0)
         self.end()
 
     def build(self):
-        if len(self.products) != 14:
-            raise ValueError(f'Expected 14 public teas for this edition, got {len(self.products)}')
+        if not self.products or len({p['id'] for p in self.products}) != len(self.products):
+            raise ValueError('The public tea catalogue must be nonempty and contain unique product IDs')
         if any(p.get('kind') not in (None, 'tea') for p in self.products):
             raise ValueError('Catalogue payload must contain tea products only')
         self.cover()
         self.profile_page()
+        self.cooperation_page()
+        self.evidence_page()
         self.guide_page()
-        self.catalog_page(self.products[:5], 1)
-        self.catalog_page(self.products[5:10], 6)
-        self.catalog_page(self.products[10:], 11)
+        for index in range(0, len(self.products), 5):
+            self.catalog_page(self.products[index:index + 5], index + 1)
         self.order_page()
         self.c.save()
 

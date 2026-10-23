@@ -9,28 +9,29 @@ import styles from "./PublicSiteHeader.module.css";
 
 const GROUPS = [
   {
-    id: "shop", label: { vi: "Mua trà", en: "Shop tea" },
+    id: "about", label: { vi: "Doanh nghiệp", en: "Company" },
     links: [
-      { href: "/shop", label: { vi: "Mua trà lẻ", en: "Loose-leaf tea" } },
-      { href: "/shop#tea-bundles", label: { vi: "Chọn bộ trà", en: "Tea sets" } },
-      { href: "/goods", label: { vi: "Sản vật", en: "Regional goods" } },
+      { href: "/company", label: { vi: "Hồ sơ năng lực", en: "Company capabilities" } },
+      { href: "/company#cooperation", label: { vi: "Hợp tác thị trường", en: "Market cooperation" } },
+      { href: "/story", label: { vi: "Nguồn trà & câu chuyện", en: "Tea origins & stories" } },
+      { href: "/company#contact", label: { vi: "Liên hệ hợp tác", en: "Cooperation contact" } },
     ],
   },
   {
-    id: "wholesale", label: { vi: "Mua sỉ", en: "Wholesale" },
+    id: "wholesale", label: { vi: "Hợp tác B2B", en: "B2B supply" },
     links: [
-      { href: "/catalog", label: { vi: "Danh mục trà sỉ", en: "Wholesale tea range" } },
-      { href: "/wholesale", label: { vi: "Xin mẫu & báo giá", en: "Samples & quotes" } },
+      { href: "/catalog", label: { vi: "Danh mục cung ứng", en: "Supply catalogue" } },
+      { href: "/wholesale", label: { vi: "Mẫu & đề bài cung ứng", en: "Samples & supply briefs" } },
       { href: "/cho-quan", label: { vi: "Trà cho quán", en: "Tea for cafés" } },
       { href: "/partners/account", label: { vi: "Khách sỉ đăng nhập", en: "Wholesale sign in" } },
     ],
   },
   {
-    id: "about", label: { vi: "Về Hoàng Long", en: "About Hoàng Long" },
+    id: "shop", label: { vi: "Mua trà", en: "Shop tea" },
     links: [
-      { href: "/company", label: { vi: "Hồ sơ công ty", en: "Company profile" } },
-      { href: "/story", label: { vi: "Nguồn trà & câu chuyện", en: "Tea origins & stories" } },
-      { href: "/meet", label: { vi: "Liên hệ", en: "Contact" } },
+      { href: "/shop", label: { vi: "Mua trà lẻ", en: "Loose-leaf tea" } },
+      { href: "/shop#tea-bundles", label: { vi: "Chọn bộ trà", en: "Tea sets" } },
+      { href: "/goods", label: { vi: "Sản vật", en: "Regional goods" } },
     ],
   },
 ];

@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, Download, MapPin, MessageCircle, Phone } from "lucide-react";
+import { ArrowRight, Download, FileText, MapPin, MessageCircle, Phone } from "lucide-react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
-import { COMPANY_PROFILE, PROFILE_CONTACT, PROFILE_PDF } from "@/lib/company-profile";
+import { COMPANY_PROFILE, PROFILE_CONTACT, PROFILE_EXPORT_CONTACT, PROFILE_LEGAL, PROFILE_PDF } from "@/lib/company-profile";
 import { tradeEnquiryHref } from "@/lib/trade-catalog";
 import PolicyLinks from "@/components/PolicyLinks";
 import styles from "./CompanyProfile.module.css";
@@ -36,7 +36,7 @@ export default function CompanyProfile() {
           <p className={styles.intro}>{t.intro}</p>
           <div className={styles.actions}>
             <Link className={`${styles.button} ${styles.primary}`} href={catalogHref}>{t.actions.catalog}<ArrowRight size={17} aria-hidden="true" /></Link>
-            <Link className={styles.button} href={sampleHref}>{t.actions.sample}</Link>
+            <a className={styles.button} href="#cooperation">{t.cooperation.cta}</a>
           </div>
         </div>
         <figure className={styles.heroImage}>
@@ -117,14 +117,41 @@ export default function CompanyProfile() {
           <p>{t.quality.body}</p>
         </div>
         <ul className={styles.checklist}>
-          {t.quality.items.map((item) => <li key={item}><Check size={18} aria-hidden="true" /><p>{item}</p></li>)}
+          {t.quality.items.map((item) => <li key={item}><FileText size={18} aria-hidden="true" /><p>{item}</p></li>)}
         </ul>
+      </section>
+
+      <section id="cooperation" className={`${styles.section} ${styles.cooperation}`} aria-labelledby="cooperation-title">
+        <div className={styles.sectionHead}>
+          <h2 id="cooperation-title">{t.cooperation.title}</h2>
+          <p>{t.cooperation.body}</p>
+        </div>
+        <div className={styles.cooperationGrid}>
+          {t.cooperation.tracks.map(track => <article key={track.title}><h3>{track.title}</h3><p>{track.body}</p></article>)}
+        </div>
+        <details className={styles.meetingBrief}>
+          <summary>{language === "vi" ? "Đề cương buổi làm việc đầu tiên" : "An agenda for the first meeting"}</summary>
+          <ul>{t.cooperation.brief.map(item => <li key={item}>{item}</li>)}</ul>
+        </details>
+        <div className={styles.actions}><a className={`${styles.button} ${styles.primary}`} href={`tel:${PROFILE_EXPORT_CONTACT.phone}`}>{t.cooperation.cta}<Phone size={17} aria-hidden="true"/></a><Link className={styles.textLink} href={quoteHref}>{t.actions.quote}<ArrowRight size={17} aria-hidden="true"/></Link></div>
+      </section>
+
+      <section id="partner-review" className={styles.section} aria-labelledby="evidence-title">
+        <div className={styles.sectionHead}><h2 id="evidence-title">{t.evidence.title}</h2><p>{t.evidence.body}</p></div>
+        <div className={styles.evidenceGrid}>{t.evidence.items.map(item => <article key={item.title}><h3>{item.title}</h3><p>{item.body}</p></article>)}</div>
       </section>
 
       <section id="contact" className={styles.contact} aria-labelledby="contact-title">
         <div className={styles.contactLead}>
           <h2 id="contact-title">{t.contact.title}</h2>
           <p>{t.contact.legalNote}</p>
+          <article className={styles.exportContact}>
+            <p className={styles.eyebrow}>{t.exportContact.title}</p>
+            <h3>{PROFILE_EXPORT_CONTACT.name}</h3>
+            <strong>{language === "en" ? PROFILE_EXPORT_CONTACT.roleEn : PROFILE_EXPORT_CONTACT.role}</strong>
+            <p>{t.exportContact.scope}</p>
+            <a href={`tel:${PROFILE_EXPORT_CONTACT.phone}`}><Phone size={17} aria-hidden="true"/>{PROFILE_EXPORT_CONTACT.phoneLabel}</a>
+          </article>
         </div>
         <div className={styles.contactDetails}>
           <h3>{t.contact.officeLabel}</h3>
@@ -140,7 +167,7 @@ export default function CompanyProfile() {
       </section>
 
       <footer className={styles.footer}>
-        <p>{PROFILE_CONTACT.name}</p>
+        <div><p>{PROFILE_CONTACT.name}</p><p className={styles.legalIdentity}>{PROFILE_LEGAL.name}<br/>{language === "vi" ? "Mã số thuế" : "Vietnam tax ID"}: {PROFILE_LEGAL.taxNumber}</p></div>
         <div className={styles.footerLinks}>
           <nav aria-label={language === "vi" ? "Liên kết cuối trang" : "Footer links"}>
             <Link href="/">{t.actions.home}</Link>
