@@ -1,5 +1,7 @@
 # Institutional and export positioning — 23 October 2026
 
+The next edition, 24 October 2026, separates the cooperation brief, corporate profile and product annex and rebuilds `/company`. See `docs/trade-cooperation-pack.md` for current materials, photo placeholders and regeneration. This document preserves the research and claim boundaries behind the earlier combined profile.
+
 ## Purpose and scope
 
 Present Hoàng Long to senior commercial decision makers, importers, distributors, trade-promotion bodies and associations through its production-at-origin capability and a concrete cooperation process. Institutional audiences are invited to discuss programmes; the copy does not assert existing government relationships, mandates, endorsements or national representation.

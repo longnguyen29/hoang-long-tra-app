@@ -8,7 +8,8 @@ import { createClient } from "@/lib/supabase/client";
 import { notifyHouse } from "@/lib/notify";
 import { isTradeTea, selectedTradeTea, TRADE_CATALOG_FIELDS } from "@/lib/trade-catalog";
 import { tradeProductFacts } from "@/lib/trade-product-details";
-import { COMPANY_PROFILE, PROFILE_LEGAL, PROFILE_PDF } from "@/lib/company-profile";
+import { PROFILE_LEGAL } from "@/lib/company-profile";
+import { PACK_DOCUMENTS } from "@/lib/institutional-pack";
 import { B2B_BULK_PACKING } from "@/lib/b2b-packing";
 import { EXPORT_DEVELOPMENT_CONTACT } from "@/lib/export-sales-profiles";
 import { useLocale } from "@/components/i18n/LocaleProvider";
@@ -271,7 +272,7 @@ export default function TradeDesk() {
       </section>
 
       <section className={styles.catalogue}>
-        <header><h2>{t.available}</h2><p>{t.availableBody}</p><Link href={`/catalog?lang=${lang}`}>{lang === "vi" ? "Xem toàn bộ danh mục trà" : "Explore the full tea range"}<ArrowRight size={16}/></Link><Link href={`/company?lang=${lang}#cooperation`}>{lang === "vi" ? "Hồ sơ năng lực & hướng hợp tác" : "Capabilities & cooperation areas"}<ArrowRight size={16}/></Link><p><strong>{bulkPacking.title}: </strong>{bulkPacking.text}</p></header>
+        <header><h2>{t.available}</h2><p>{t.availableBody}</p><Link href={`/catalog?lang=${lang}`}>{lang === "vi" ? "Xem toàn bộ danh mục trà" : "Explore the full tea range"}<ArrowRight size={16}/></Link><Link href={`/company?lang=${lang}#documents`}>{lang === "vi" ? "Hồ sơ doanh nghiệp & đề xuất hợp tác" : "Company profile & cooperation proposal"}<ArrowRight size={16}/></Link><p><strong>{bulkPacking.title}: </strong>{bulkPacking.text}</p></header>
         <div>
           {products.length ? products.map((product, index) => <article key={product.id}>
             <span>{String(index + 1).padStart(2, "0")}</span><h3>{tradeProductFacts(product, lang).name}</h3><p>{local(product.notes)}</p><b>{lang === "vi" ? "Quy cách theo thỏa thuận" : "Packing agreed on enquiry"}</b>
@@ -298,7 +299,7 @@ export default function TradeDesk() {
           </form>}
       </section>
 
-      <footer className={styles.footer}><p>{t.footer}</p><span>{lang === "vi" ? "Hoàng Long · Nền tảng gia đình làm trà từ 1995" : "Hoàng Long · Family tea-making roots since 1995"}</span><Link href={`/company?lang=${lang}`}>{lang === "vi" ? "Hồ sơ công ty" : "Company profile"}</Link><a href={PROFILE_PDF[lang]} download>{COMPANY_PROFILE[lang].actions.pdf}</a><p className={styles.legalIdentity}>{PROFILE_LEGAL.name} · {lang === "vi" ? "MST" : "Tax ID"} {PROFILE_LEGAL.taxNumber}</p><PolicyLinks/></footer>
+      <footer className={styles.footer}><p>{t.footer}</p><span>{lang === "vi" ? "Hoàng Long · Nền tảng gia đình làm trà từ 1995" : "Hoàng Long · Family tea-making roots since 1995"}</span><Link href={`/company?lang=${lang}`}>{lang === "vi" ? "Hồ sơ doanh nghiệp" : "Company profile"}</Link><a href={PACK_DOCUMENTS[lang].brief} download>{lang === "vi" ? "Đề xuất hợp tác (PDF)" : "Cooperation proposal (PDF)"}</a><a href={PACK_DOCUMENTS[lang].profile} download>{lang === "vi" ? "Hồ sơ doanh nghiệp (PDF)" : "Company profile (PDF)"}</a><a href={PACK_DOCUMENTS[lang].appendix} download>{lang === "vi" ? "Danh mục & phụ lục sản phẩm (PDF)" : "Catalogue & product appendix (PDF)"}</a><p className={styles.legalIdentity}>{PROFILE_LEGAL.name} · {lang === "vi" ? "MST" : "Tax ID"} {PROFILE_LEGAL.taxNumber}</p><PolicyLinks/></footer>
     </main>
   );
 }

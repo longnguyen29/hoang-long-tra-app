@@ -11,8 +11,9 @@ const GROUPS = [
   {
     id: "about", label: { vi: "Doanh nghiệp", en: "Company" },
     links: [
-      { href: "/company", label: { vi: "Hồ sơ năng lực", en: "Company capabilities" } },
-      { href: "/company#cooperation", label: { vi: "Hợp tác thị trường", en: "Market cooperation" } },
+      { href: "/company", label: { vi: "Hồ sơ doanh nghiệp", en: "Company profile" } },
+      { href: "/company#cooperation", label: { vi: "Đề xuất hợp tác", en: "Cooperation proposal" } },
+      { href: "/company#documents", label: { vi: "Tài liệu giao thương", en: "Trade documents" } },
       { href: "/story", label: { vi: "Nguồn trà & câu chuyện", en: "Tea origins & stories" } },
       { href: "/company#contact", label: { vi: "Liên hệ hợp tác", en: "Cooperation contact" } },
     ],

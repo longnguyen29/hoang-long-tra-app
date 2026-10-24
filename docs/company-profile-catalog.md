@@ -1,5 +1,7 @@
 # Company profile and trade catalogue
 
+Current primary materials (24 October 2026): see `docs/trade-cooperation-pack.md`. `/company` now presents the two-page cooperation framework, eight-page corporate profile and seven-page product annex in Vietnamese and English. The combined 14-page edition described below is retained as a legacy download; catalogue data and commercial workflows remain the same.
+
 Public `/company` introduces Hoàng Long in Vietnamese and English, with a dated profile/catalogue PDF in each language. `/catalog` continues reading eligible, available tea products from the existing `catalog_products` table. Homepage navigation, trade desk and event catalogue link to the profile.
 
 Public contact details reuse `lib/event-contact.js`. Company copy in `lib/company-profile.js` carries already published history, raw-material regions and declared production capacity, with volume/delivery confirmed per order. The Hanoi address is explicitly an office/warehouse. The owner supplied Công ty TNHH Thương Mại Trà Hoàng Long, tax ID0110818609, factory/EXW location Tân Lập, Hà Giang and the export-development contact. These are owner-supplied facts, not independent registry/certification verification. No certification, tested standard or export-market achievement was invented. Requested certificates/test reports are items to confirm, not claims of availability.

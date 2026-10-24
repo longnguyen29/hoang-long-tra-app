@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { isTradeTea, matchesTradeSearch, TRADE_CATALOG_FIELDS, tradeEnquiryHref } from "@/lib/trade-catalog";
 import { tradeProductFacts } from "@/lib/trade-product-details";
-import { PROFILE_LEGAL, PROFILE_PDF } from "@/lib/company-profile";
+import { PROFILE_LEGAL } from "@/lib/company-profile";
+import { PACK_DOCUMENTS } from "@/lib/institutional-pack";
 import { B2B_BULK_PACKING } from "@/lib/b2b-packing";
 import PolicyLinks from "@/components/PolicyLinks";
 import styles from "./TradeCatalog.module.css";
@@ -79,12 +80,12 @@ export default function TradeCatalog() {
     </section>
 
     <section className={styles.resources} aria-label={vi ? "Hồ sơ & tài liệu" : "Profile & documents"}>
-      <div><strong>{vi ? "Hồ sơ năng lực & hợp tác" : "Capabilities & cooperation"}</strong><p>{vi ? "Tìm hiểu nền tảng làm trà, nhà máy tại Tân Lập, danh mục theo ứng dụng và cách chuyển một đề bài thị trường thành chương trình cung ứng. Hồ sơ và danh mục bổ sung cho nhau; nguồn gốc, thông số và điều kiện của từng sản phẩm được làm rõ khi chọn mẫu." : "Explore our tea-making foundation, factory in Tân Lập, product applications and route from market brief to supply programme. Profile and catalogue serve different purposes; origins, specifications and terms are clarified for each selected product."}</p></div>
+      <div><strong>{vi ? "Hồ sơ, đề xuất & danh mục" : "Profile, proposal & catalogue"}</strong><p>{vi ? "Bắt đầu bằng đề xuất hợp tác để xác định nội dung trao đổi. Hồ sơ doanh nghiệp giới thiệu nền tảng sản xuất và phương thức làm việc; danh mục & phụ lục sản phẩm hỗ trợ chọn trà, đánh giá mẫu và chuẩn bị yêu cầu kỹ thuật." : "Use the cooperation proposal to frame the discussion. The company profile presents our production foundation and working approach; the catalogue and product appendix support tea selection, sample evaluation and technical briefs."}</p></div>
       <div className={styles.resourceLinks}>
-        <Link href={`/company?lang=${locale}`}>{vi ? "Xem hồ sơ năng lực" : "View company profile"}<ArrowRight size={16} aria-hidden="true"/></Link>
-        <Link href={`/company?lang=${locale}#cooperation`}>{vi ? "Trao đổi chương trình hợp tác" : "Discuss a cooperation programme"}<ArrowRight size={16} aria-hidden="true"/></Link>
-        <a href={PROFILE_PDF.vi} download><Download size={16} aria-hidden="true"/>PDF · Tiếng Việt</a>
-        <a href={PROFILE_PDF.en} download><Download size={16} aria-hidden="true"/>PDF · English</a>
+        <Link href={`/company?lang=${locale}`}>{vi ? "Hồ sơ doanh nghiệp trên website" : "Company profile online"}<ArrowRight size={16} aria-hidden="true"/></Link>
+        <a href={PACK_DOCUMENTS[locale].brief} download><Download size={16} aria-hidden="true"/>{vi ? "Đề xuất hợp tác · PDF" : "Cooperation proposal · PDF"}</a>
+        <a href={PACK_DOCUMENTS[locale].profile} download><Download size={16} aria-hidden="true"/>{vi ? "Hồ sơ doanh nghiệp · PDF" : "Company profile · PDF"}</a>
+        <a href={PACK_DOCUMENTS[locale].appendix} download><Download size={16} aria-hidden="true"/>{vi ? "Danh mục & phụ lục sản phẩm · PDF" : "Catalogue & product appendix · PDF"}</a>
       </div>
     </section>
 

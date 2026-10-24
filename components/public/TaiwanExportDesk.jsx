@@ -7,7 +7,8 @@ import { ArrowUpRight, Copy, Download, Mail, Phone, Printer, RefreshCw } from "l
 import { EXPORT_TEAS, EXPORT_PRICE_REVISION, EXPORT_CURRENCIES } from "@/lib/export-teas";
 import { convertQuantityPrice } from "@/lib/export-exchange";
 import { TAIWAN_EXPORT_COPY } from "@/lib/export-taiwan-copy";
-import { PROFILE_CONTACT, PROFILE_LEGAL, PROFILE_PDF } from "@/lib/company-profile";
+import { PROFILE_CONTACT, PROFILE_LEGAL } from "@/lib/company-profile";
+import { PACK_DOCUMENTS } from "@/lib/institutional-pack";
 import { exportAttribution, exportLink } from "@/lib/export-enquiry";
 import { EXPORT_DELIVERY_WINDOW, EXPORT_SALES_PROFILES, EXPORT_DEVELOPMENT_CONTACT } from "@/lib/export-sales-profiles";
 import { buildPartnerSalesPageHref, parsePublicPartnerSalesPage, partnerSalesPageProfile } from "@/lib/partner-sales-page";
@@ -103,7 +104,7 @@ export default function TaiwanExportDesk({ initialTeaIds = EXPORT_TEAS.map(tea =
   const numericKg = kg.trim() ? Number(kg) : NaN;
   const validQuantity = Number.isFinite(numericKg) && numericKg > 0 && numericKg <= 2000000;
   const estimate = validQuantity ? convertQuantityPrice(unitPrice(selectedTea), numericKg) : null;
-  const pdfHref = PROFILE_PDF[language === "vi" ? "vi" : "en"];
+  const pdfHref = PACK_DOCUMENTS[language === "vi" ? "vi" : "en"].profile;
   const companyHref = exportLink("/company", search, language);
   const catalogHref = exportLink("/catalog", search, language);
   const fullRangeQuery = new URLSearchParams(exportLink("/export/taiwan", search, language).split("?")[1]);

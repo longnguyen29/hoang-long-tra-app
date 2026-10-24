@@ -1,5 +1,7 @@
 # Company profile and tea catalogue PDFs
 
+These combined 14-page editions remain available for compatibility. The primary public materials from 24 October 2026 are the separate cooperation brief, corporate profile and product annex documented in `docs/trade-cooperation-pack.md`.
+
 Public downloads:
 
 - `public/downloads/hoang-long-profile-catalog-vi.pdf`

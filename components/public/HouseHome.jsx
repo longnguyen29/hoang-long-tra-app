@@ -14,10 +14,10 @@ import { PROFILE_LEGAL } from "@/lib/company-profile";
 
 const COPY = {
   "vi": {
-    "hero": "Nguồn trà Việt cho chuỗi cung ứng quốc tế.",
-    "heroBody": "Hoàng Long phát triển sản phẩm trà từ nguyên liệu vùng cao và nền tảng chế biến tại Tân Lập, Hà Giang. Chúng tôi kết nối đặc tính của nguồn trà với yêu cầu của nhà nhập khẩu, nhà phân phối và doanh nghiệp đồ uống — để đi từ một mẫu trà phù hợp đến chương trình cung ứng có thể triển khai.",
-    "sampleCta": "Trao đổi hợp tác",
-    "trade": "Tìm hiểu năng lực sản xuất",
+    "hero": "Từ nguồn trà Việt đến hợp tác quốc tế.",
+    "heroBody": "Hoàng Long kết nối nguồn trà vùng cao, chế biến tại Hà Giang và nhu cầu phát triển thị trường. Chúng tôi cùng đối tác lựa chọn sản phẩm, đánh giá mẫu và xây dựng kế hoạch cung ứng.",
+    "profileCta": "Hồ sơ doanh nghiệp",
+    "cooperationCta": "Đề xuất hợp tác",
     "season": "Một nguồn trà. Nhiều hướng phát triển sản phẩm.",
     "seasonBody": "Trà nền cho đồ uống cần hiệu quả chiết xuất và chi phí sử dụng phù hợp. Trà nguyên lá và dòng đặc sản cần bản sắc hương vị, câu chuyện xuất xứ và cấp chất lượng rõ ràng. Danh mục Hoàng Long mở ra các hướng lựa chọn để đối tác thử mẫu theo chính thị trường của mình.",
     "viewTea": "Xem đặc tính sản phẩm",
@@ -25,7 +25,7 @@ const COPY = {
     "origin": "Giá trị của vùng trà cần được tiếp nối ở thị trường.",
     "originBody": "Kinh nghiệm làm trà của gia đình từ năm 1995 là nền tảng để Hoàng Long hiểu nguyên liệu, mùa vụ và chuyển biến của lá qua chế biến. Tại Hà Giang, câu chuyện ấy tiếp tục bằng công việc lựa chọn dòng trà, phát triển mẫu và chuẩn bị sản phẩm cho những cách sử dụng khác nhau.",
     "originDetail": "Định hướng của Hoàng Long là kết nối chặt hơn giữa vùng nguyên liệu, nhà máy và đối tác thương mại. Khi nhu cầu thị trường được chuyển thành một đề bài sản phẩm rõ ràng, các bên có cơ sở để cùng cải thiện chất lượng, kế hoạch mua và giá trị của trà Việt qua từng đợt hợp tác.",
-    "readStory": "Đọc định hướng & hồ sơ doanh nghiệp",
+    "readStory": "Xem hồ sơ doanh nghiệp",
     "twoWays": "Từ người thưởng trà đến đối tác thương mại",
     "retailTitle": "Thưởng trà & quà tặng",
     "retailBody": "Khám phá từng loại trà qua hương vị, xuất xứ và quy cách. Cửa hàng dành cho người dùng cá nhân, gia đình và nhu cầu quà tặng, với giá và lựa chọn đặt hàng riêng.",
@@ -64,10 +64,10 @@ const COPY = {
     ]
   },
   "en": {
-    "hero": "Vietnamese tea for international supply chains.",
-    "heroBody": "Hoàng Long develops tea products from highland raw materials and a processing base in Tân Lập, Hà Giang. We connect the character of Vietnamese tea with the requirements of importers, distributors and beverage businesses, turning product evaluation into a practical supply programme.",
-    "sampleCta": "Discuss cooperation",
-    "trade": "Explore our production base",
+    "hero": "Vietnamese tea. International cooperation.",
+    "heroBody": "Hoàng Long connects highland tea origins and processing in Hà Giang with market development. We work with partners to select products, evaluate samples and develop supply plans.",
+    "profileCta": "Company profile",
+    "cooperationCta": "Cooperation proposal",
     "season": "One tea origin. Different product opportunities.",
     "seasonBody": "Beverage teas need suitable extraction performance and cost in use. Loose-leaf and speciality ranges need a distinctive flavour, a clear origin story and the right grade. Our catalogue provides starting points for partners to test against their own market and application.",
     "viewTea": "View product characteristics",
@@ -75,7 +75,7 @@ const COPY = {
     "origin": "The value of a tea origin develops through its market.",
     "originBody": "The family’s tea-making experience since 1995 underpins our understanding of raw materials, seasons and how processing changes the leaf. In Hà Giang, that experience informs tea selection, sample development and preparation for different uses.",
     "originDetail": "Hoàng Long’s direction is to strengthen the connection between raw-material origins, the factory and commercial partners. Translating market demand into a clear product brief gives each party a basis for improving quality, purchasing plans and the value of Vietnamese tea over successive supply cycles.",
-    "readStory": "Explore our direction & company profile",
+    "readStory": "Explore our company profile",
     "twoWays": "For tea drinkers and trade partners",
     "retailTitle": "Tea for home & gifting",
     "retailBody": "Discover teas through their flavour, origins and formats. Our retail shop serves individual tea drinkers, families and gifting, with its own prices and ordering options.",
@@ -151,6 +151,9 @@ export default function HouseHome() {
   }, [supabase]);
 
   const catalogHref = `/catalog${entryHref.includes("?") ? entryHref.slice(entryHref.indexOf("?")) : ""}`;
+  const companyQuery = new URLSearchParams(entryHref.includes("?") ? entryHref.slice(entryHref.indexOf("?") + 1) : "");
+  companyQuery.set("lang", lang);
+  const companyHref = `/company?${companyQuery}`;
   const photos = home?.featured_photos?.length ? home.featured_photos : FALLBACK_PHOTOS;
   const teas = catalog.filter((item) => item.kind === "tea" && item.line !== "sample").slice(0, 3);
   const local = (value) => value?.[lang] || value?.en || value?.vi || "";
@@ -164,10 +167,10 @@ export default function HouseHome() {
           <h1>{t.hero}</h1>
           <p className={styles.heroBody}>{t.heroBody}</p>
           <div className={styles.heroLinks}>
-            <Link href={entryHref}>
-              {t.sampleCta}<ArrowRight size={16}/>
+            <Link href={companyHref}>
+              {t.profileCta}<ArrowRight size={16}/>
             </Link>
-            <a href="#capacity">{t.trade}</a>
+            <Link href={`${companyHref}#cooperation`}>{t.cooperationCta}</Link>
           </div>
           <a href={catalogHref} className={styles.scrollCue} aria-label={lang === "vi" ? "Xem danh mục trà" : "View tea catalogue"}><ArrowDown size={17}/></a>
         </div>
@@ -210,7 +213,7 @@ export default function HouseHome() {
           <h2>{t.origin}</h2>
           <p>{t.originBody}</p>
           <p>{t.originDetail}</p>
-          <Link href={`/company?lang=${lang}#cooperation`}>{t.readStory}<ArrowRight size={16}/></Link>
+          <Link href={companyHref}>{t.readStory}<ArrowRight size={16}/></Link>
         </div>
       </section>
 
