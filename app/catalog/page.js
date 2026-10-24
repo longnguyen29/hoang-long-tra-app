@@ -1,14 +1,14 @@
 import TradeCatalog from "@/components/public/TradeCatalog";
 
 export const metadata = {
-  "title": "Danh mục trà B2B · Pha chế, phân phối & xuất khẩu | Hoàng Long",
-  "description": "Chọn trà nền đồ uống, trà nguyên lá và dòng chuyên trà theo ứng dụng. Đánh giá mẫu, quy cách đơn lớn PP/PE và yêu cầu thương mại; tải hồ sơ Hoàng Long Việt/Anh.",
+  "title": "Danh mục trà xuất khẩu & B2B | Hoàng Long",
+  "description": "Bốn sản phẩm chủ lực: Hồng Trà Mật, Hồng Trà Khói, Xanh Mộc và Trà Xanh Hoa Ngọc Lan. Hồ sơ sản phẩm, quy cách PP/PE, mẫu và báo giá xuất khẩu.",
   "alternates": {
     "canonical": "https://www.hoanglongtra.com/catalog"
   },
   "openGraph": {
-    "title": "Danh mục trà B2B · Pha chế, phân phối & xuất khẩu | Hoàng Long",
-    "description": "Chọn trà nền đồ uống, trà nguyên lá và dòng chuyên trà theo ứng dụng. Đánh giá mẫu, quy cách đơn lớn PP/PE và yêu cầu thương mại; tải hồ sơ Hoàng Long Việt/Anh.",
+    "title": "Danh mục trà xuất khẩu & B2B | Hoàng Long",
+    "description": "Bốn sản phẩm chủ lực: Hồng Trà Mật, Hồng Trà Khói, Xanh Mộc và Trà Xanh Hoa Ngọc Lan. Hồ sơ sản phẩm, quy cách PP/PE, mẫu và báo giá xuất khẩu.",
     "url": "https://www.hoanglongtra.com/catalog",
     "type": "website",
     "locale": "vi_VN",

@@ -1,60 +1,61 @@
-# Trade cooperation pack — 24 October 2026
+# Export product & company pack — 24 October 2026
 
-## Purpose
+## Current direction
 
-A three-layer bilingual public discussion pack for Hoàng Long's meetings with importers, distributors, associations and trade-promotion bodies. It is a company-authored framework, not a government-endorsed programme, an addressed official submission or proof of certifications. The company can use it to introduce a concrete cooperation proposition and develop a specific meeting brief.
+The public website and primary PDFs now lead with the owner's four core export products: **Hồng Trà Mật, Hồng Trà Khói, Xanh Mộc and Trà Xanh Hoa Ngọc Lan**. Product identity, sensory distinctions, actual photographs, supply format and order-specific specifications take priority over general cooperation prose. Brewing instructions remain in the retail experience, outside this export pack.
 
-The presentation has been rebuilt around what Hoàng Long contributes, the coordination sought from a counterpart and the intended commercial next step. Actual certificates, destination requirements and performance evidence cannot be supplied by copywriting. Their public claims remain bounded by verified document scope and owner-approved disclosure.
+The same core editorial source, `lib/export-product-profile.js`, is reused by the home page, B2B catalogue, trade enquiry page, company/product profile and PDF renderer. `lib/institutional-pack.js` supplies company facts and the export sales brief. All four profiles reference existing catalogue IDs; no new products, grades or order entities were created.
 
 ## Documents
 
-| Layer | Pages per language | Published files |
+| Document | Pages per language | Public path |
 | --- | --- | --- |
-| Cooperation framework | 2 | `/downloads/hoang-long-cooperation-brief-vi.pdf`, `-en.pdf` |
+| Export product portfolio | 6 | `/downloads/hoang-long-product-annex-vi.pdf`, `-en.pdf` |
 | Corporate profile | 8 | `/downloads/hoang-long-corporate-profile-vi.pdf`, `-en.pdf` |
-| Product & technical annex | 7 | `/downloads/hoang-long-product-annex-vi.pdf`, `-en.pdf` |
+| Export sales brief | 2 | `/downloads/hoang-long-cooperation-brief-vi.pdf`, `-en.pdf` |
 
-The first two read `lib/institutional-pack.js`, shared with the website. `PACK_DOCUMENTS[locale]` exposes `brief`, `profile` and `appendix`. The annex reuses the existing catalogue renderer and a refreshed public-only payload; it contains a technical page, range guide, four balanced catalogue pages covering 17 current teas, and implementation/contact. The original 14-page profile/catalogue and three-page sales kits remain available at their existing paths for compatibility; they are not the primary corporate downloads.
+The product document contains an overview, one page per tea, and one common specification/commercial/contact page. These six primary PDFs comprise 32 pages. Their existing public filenames are retained for compatibility. Earlier 14-page catalogues and three-page sales kits are preserved at their existing URLs but are not the primary product downloads.
 
-Website entry: `/company`. Anchors: `#overview`, `#capability`, `#portfolio`, `#operating-model`, `#quality`, `#cooperation`, `#documents`, `#contact`. Existing campaign/language handling, B2C store, samples, quotations, enquiries, partner ownership and commissions stay in their existing workflows. No migration or environment change is needed.
+Website: `/company?lang=vi` or `?lang=en`. Product anchors: `#product-hong-tra-shan-mat`, `#product-hong-tra-shan-khoi`, `#product-luc-tra-shan-moc`, `#product-luc-tra-ngoc-lan`. Overview aliases `#products`, `#core-export-products` and `#portfolio` remain usable. Company facts, specifications, supply terms, downloads and contact are separate sections.
 
-## Photographs and missing evidence
+## Product facts and limits
 
-`lib/company-media.js` is the single public photo manifest. Web and PDF read the same sources and captions. A null `src` produces a visibly labelled real-photo space. It is never filled with AI imagery presented as actual production evidence.
+The owner confirmed these sensory descriptions on 24 October 2026:
 
-| Slot | Current state | Suggested file |
+| Existing SKU | Product identity | Confirmed distinction |
 | --- | --- | --- |
-| `factorypanorama` | Photo to be added | `public/company-media/factory-panorama.jpg` |
-| `process` | Existing `/landing/3.jpg` | Optional replacement: `public/company-media/processing-line.jpg` |
-| `qc` | Photo to be added | `public/company-media/product-quality.jpg` |
-| `bulkload` | Photo to be added | `public/company-media/bulk-packing-handover.jpg` |
+| `hong-tra-shan-mat` | Hồng Trà Mật | Honey and caramel aromatic notes; mellow palate; pronounced aroma suitable for beverage applications |
+| `hong-tra-shan-khoi` | Hồng Trà Khói | Smoke, black bean and wood notes; full-flavoured |
+| `luc-tra-shan-moc` | Xanh Mộc | Refreshing, smooth, without harsh astringency |
+| `luc-tra-ngoc-lan` | Trà Xanh Hoa Ngọc Lan | Real dried magnolia flowers |
 
-Use real owner-authorised images. For each replacement, confirm the actual place, depicted operation and capture date; redact unauthorised customer/driver/financial information. Choose horizontal photographs, ideally at least 1600px on the long edge. Add the file, set the manifest entry's `src` to its public path, and update bilingual captions/alt text. Do not set `src` before the file exists. Rebuild the PDFs and website together. Screens and files remain useful while missing images are explicitly marked.
+Honey/caramel describe aroma, not added ingredients. No pine smoking method, roasted-bean ingredient, RTD capability, yield guarantee, health claim or certification is inferred. No measured moisture, leaf grade, liquor colour, origin acreage, shelf life or laboratory result has been invented. Detailed specifications and acceptance criteria must be agreed against the actual offered sample and lot.
 
-Origin photo `/landing/1.jpg` and process photo `/landing/3.jpg` are existing brand-profile assets. Their inclusion does not imply independent audit verification or that every traded tea is grown/manufactured in Hà Giang.
+**Do not map prices from Hồng Trà OP1 or Trà Xanh Hấp onto Mật or Xanh Mộc.** The legacy `EXPORT_TEAS` offer IDs and prices are separate. This release does not change those prices, the Taiwan sales route, partner ownership, commissions, authentication, order flow or B2C products.
 
-## Public facts and commercial limits
+Owner-supplied company facts remain: legal name/MST, family tea-making experience since 1995, overall production planning capacity 50–100 tonnes/month, EXW collection at Tân Lập, Hà Giang, PP/PE sacks 20/30/35 kg adjustable per product, indicative 2–8 week transaction window including transit but excluding unforeseen delay, and Anh Long's export-development contact. EXW freight/loading/formalities are allocated in the offer/contract. Capacity is confirmed per order and product mix.
 
-Owner-supplied legal name and tax ID, family experience since1995, production planning capacity50–100t/month, factory/EXW TânLập HàGiang, PP/PE20/30/35kg, indicative2–8week transaction window and AnhLong's contact/remit remain the basis. They do not introduce new export achievements, acreage, government connections or certifications. Capacity is scheduled per order; transit in a time estimate does not mean freight is included in EXW pricing. Selected traded teas retain product-specific origin information.
+## Photographs
 
-Meeting counterpart, destination market, measurable pilot targets, funding and agreed institutional roles are not yet supplied. The framework therefore proposes buyer connections, sample assessment and commercial follow-through without inventing commitments. Before an addressed submission, add the actual recipient, market, agenda and agreed next steps. Legal signing authority is distinct from the public export-development title.
+Four unmodified public catalogue photos are saved in `public/export/core-*.jpeg`; provenance is in `public/export/README.md`. They identify the tea lines, not a guaranteed export grade or shipment lot. Website detail photos and PDF product pages retain the complete photograph; the overview may crop for layout.
 
-## Regeneration
+Factory/QC/packing photo spaces remain managed by `lib/company-media.js`. Null sources produce labelled spaces, not fabricated factory imagery. The actual existing processing photograph remains available. Replace spaces only with owner-authorised real photographs and accurate captions. Factory location and Hà Nội office/warehouse remain distinct.
 
-Use the bundled Python runtime with ReportLab/Pillow/PyMuPDF and the existing embedded Noto fonts. `scripts/build-institutional-pack.py` reads only public source modules; the catalogue input must contain public products and contact fields only. Never supply secrets, private customer records or internal cost data.
+## Editorial research
 
-```sh
-python3 scripts/build-institutional-pack.py --catalog-input /tmp/hl-institutional-company-data.json
-```
+Reference structures, not copied claims or prose:
 
-The build emits the six new documents. Set the edition in `PACK_REVISION` and update the web edition label together. The public catalogue payload is refreshed separately from currently available eligible tea rows using the public catalogue selection already documented in `docs/company-profile-catalog-pdf.md`.
+- Hälssen & Lyon: https://www.haelssen-lyon.com/product-variety/teas/black-green-tea/ — category and product identity.
+- Finlays: https://www.finlays.net/our-products/tea/black-tea/ — product form and commercial application.
+- Vicony: https://www.viconyteas.com/black-tea-catalogue.pdf — photographed product references and procurement fields.
+- Martin Bauer: https://www.martin-bauer.com/wp-content/uploads/2022/05/MB_Superfine_powders.pdf — concise product-family and specification presentation.
 
-For a particular meeting, the builder also accepts `--recipient`, `--market` and `--meeting-date YYYY-MM-DD`. Use a separate `--output-dir`, such as `/tmp/hoang-long-meeting-pack`, so a counterpart-specific version does not overwrite the generic public documents. The fields identify the meeting; they do not rewrite the substantive proposal. Confirm the actual agenda, objectives and authorised disclosure before sharing a tailored edition.
+Do not reuse these companies' certifications, plantations, customer results or manufacturing capabilities as Hoàng Long claims.
 
-Render every changed PDF page. Check margins, wrapped Vietnamese accents, placeholder labelling, correct contact/QR links, current page counts, all product names, and clear separation of retail pack formats from bulk/export formats. Web checks should cover desktop and390px, both languages, document links and the contact/meeting pathways. Do not submit real test enquiries or send customer messages for a content release.
+## Regeneration & checks
 
-## Release verification
+Run `scripts/build-institutional-pack.py` with the bundled Python runtime (ReportLab/Pillow and embedded Vietnamese Noto fonts). The renderer reads public editorial modules only; no `.env`, private customer records, secrets or internal costs are consumed. `--catalog-input` is optional and, if provided, validates the exact four public catalogue IDs. `--qa-dir` exports text-region bounds. Render PDFs with Poppler for visual review.
 
-Final production build passed. The 16 existing export-sales-kit, trade-catalogue and export-enquiry tests passed; no mirrored content tests were added. Browser review covered desktop company/document hierarchy, Vietnamese/English at390px, expandable QC/handover photo spaces and the six download references without horizontal overflow. No real enquiry was submitted. The existing unsupported Next16 `next lint` script is not reported as passed.
+Use `--recipient`, `--market`, `--meeting-date YYYY-MM-DD` and a separate `--output-dir` to prepare a meeting-specific copy. These identify a meeting, not an endorsement or agreed programme. Confirm the actual recipient and disclosure scope before sharing.
 
-All six new PDFs were rendered:34pages total. Measured-text overflow guards, edition date, legal identity, AnhLong/phone,90links and all17currenttea names per annex were checked. The custom-meeting options were tested into a private temporary directory; the public documents contain the generic framework only. No missing certificate, exporter history, government affiliation or audited production result has been invented to fill an evidence gap.
+Release checks: the 16 existing export-sales-kit, trade-catalogue and export-enquiry tests; production build; desktop/390px VI/EN product pages; exact SKU on sample/quote links; six PDF downloads and page counts; PDF accents, wrapping and page bounds. Do not submit real enquiries or send customer messages for this content release. The repository's unsupported `next lint` script is not a passed lint check. No migration or environment change is required.

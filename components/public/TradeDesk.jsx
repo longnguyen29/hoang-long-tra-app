@@ -12,6 +12,8 @@ import { PROFILE_LEGAL } from "@/lib/company-profile";
 import { PACK_DOCUMENTS } from "@/lib/institutional-pack";
 import { B2B_BULK_PACKING } from "@/lib/b2b-packing";
 import { EXPORT_DEVELOPMENT_CONTACT } from "@/lib/export-sales-profiles";
+import { CORE_EXPORT_PRODUCTS } from "@/lib/export-product-profile";
+import { tradeEnquiryHref } from "@/lib/trade-catalog";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { trackMetaLead } from "@/lib/meta-pixel";
 import { recordPublicConversion } from "@/lib/public-attribution";
@@ -23,161 +25,118 @@ const COPY = {
     "switcher": "EN",
     "portal": "Cổng đối tác",
     "back": "Hoàng Long",
-    "eyebrow": "Nguồn cung B2B · Phân phối · Phát triển xuất khẩu",
-    "title": "Từ lựa chọn sản phẩm đến kế hoạch cung ứng.",
-    "intro": "Một nguồn trà chỉ trở thành giải pháp thương mại khi phù hợp với cách dùng, mức giá và điều kiện triển khai của người mua. Hoàng Long làm việc từ đề bài ấy: lựa chọn dòng trà, đánh giá mẫu, xác định quy cách và chuẩn bị cơ sở cho đơn hàng đầu tiên cũng như những lần mua tiếp theo.",
-    "sample": "Bắt đầu từ mẫu trà",
-    "discuss": "Trao đổi đề bài của bạn",
-    "statement": "Chuyển yêu cầu thị trường thành một hồ sơ sản phẩm và kế hoạch thực hiện.",
+    "eyebrow": "Trà Hoàng Long · Cung ứng B2B & xuất khẩu",
+    "title": "Mẫu sản phẩm & báo giá xuất khẩu.",
+    "intro": "Danh mục chủ lực gồm Hồng Trà Mật, Hồng Trà Khói, Xanh Mộc và Trà Xanh Hoa Ngọc Lan. Tiếp nhận yêu cầu về sản phẩm, phẩm cấp, khối lượng và thị trường nhập khẩu.",
+    "sample": "Xem bốn sản phẩm chủ lực",
+    "discuss": "Yêu cầu mẫu & báo giá",
+    "statement": "Điều kiện cung ứng & quy trình đặt hàng.",
     "principles": [
       [
         "01",
-        "Lựa chọn & đánh giá mẫu",
-        "Làm rõ ứng dụng, phẩm cấp, giá mục tiêu và số lượng. Thử mẫu theo điều kiện sử dụng của bên mua, ghi nhận ngoại hình, hương vị và điểm cần điều chỉnh.",
-        "Cơ sở chuyển bước: mẫu được lựa chọn và phản hồi thử nghiệm."
+        "Mẫu & phẩm cấp",
+        "Chọn dòng trà và mẫu chào hàng. Ghi nhận phẩm cấp, ngoại hình, đặc trưng cảm quan và yêu cầu kỹ thuật.",
+        "Đầu ra: mẫu được chọn và yêu cầu sản phẩm."
       ],
       [
         "02",
-        "Thông số & điều kiện thương mại",
-        "Cụ thể hóa yêu cầu về sản phẩm, bao bì và chỉ tiêu kiểm tra. Với xuất khẩu, nhà nhập khẩu cung cấp yêu cầu thị trường để rà soát phương án hồ sơ, kiểm nghiệm, chi phí và thời gian.",
-        "Cơ sở chuyển bước: quy cách, báo giá, PO/hợp đồng và trách nhiệm mỗi bên."
+        "Báo giá & xác nhận đơn",
+        "Chốt lượng đặt, quy cách, giá, thanh toán, lịch hàng và chứng từ áp dụng. Điều kiện EXW tại Tân Lập, Hà Giang.",
+        "Đầu ra: báo giá và PO/hợp đồng."
       ],
       [
         "03",
-        "Chuẩn bị nguồn hàng",
-        "Với dòng Hoàng Long sản xuất, đối chiếu nguyên liệu, tồn kho và lịch tại Tân Lập; năng lực 50–100 tấn/tháng phục vụ lập kế hoạch. Với trà tuyển chọn, đánh giá nguồn cung và lịch chuẩn bị tương ứng. Tiến độ theo dòng trà, khối lượng và yêu cầu kiểm tra.",
-        "Cơ sở chuyển bước: lịch hàng, số lượng, quy cách đóng và phương án kiểm tra."
+        "Chuẩn bị & kiểm tra hàng",
+        "Xác nhận lịch sản xuất hoặc hàng sẵn, đóng bao, nhãn lô và nội dung kiểm tra theo đơn. Khối lượng khả dụng được xác nhận theo dòng trà và thời điểm.",
+        "Đầu ra: hàng sẵn và hồ sơ đối chiếu."
       ],
       [
         "04",
-        "Giao nhận & đánh giá tiếp nối",
-        "Chuẩn bị hàng và chứng từ trong phạm vi đã thỏa thuận. Với giá EXW, bên mua tổ chức nhận hàng tại nhà máy và các khâu vận chuyển, thủ tục thuộc trách nhiệm của mình. Phản hồi sau nhận hàng làm cơ sở cho lần cung ứng tiếp theo.",
-        "Cơ sở theo dõi: bàn giao số lượng, tình trạng hàng, phản hồi và kế hoạch mua tiếp."
+        "Bàn giao & giao nhận",
+        "Bàn giao hàng và chứng từ theo thỏa thuận. Bốc hàng, vận chuyển và thủ tục xuất nhập khẩu được phân định trong hồ sơ giao dịch.",
+        "Đầu ra: xác nhận bàn giao và hồ sơ lô hàng."
       ]
     ],
-    "available": "Danh mục để bắt đầu đánh giá",
-    "availableBody": "Danh mục cung ứng gồm các dòng trà với nguồn gốc và đặc tính riêng. Chọn sản phẩm để trao đổi mẫu hoặc báo giá; khả năng đáp ứng của từng dòng được xem xét theo lượng mua, yêu cầu và thời điểm. Hồ sơ doanh nghiệp trình bày nền tảng sản xuất và hướng hợp tác rộng hơn.",
+    "available": "Sản phẩm xuất khẩu chủ lực.",
+    "availableBody": "Bốn dòng trà khô rời cho nhập khẩu và phân phối. Mỗi sản phẩm có hồ sơ riêng; mẫu chào hàng là cơ sở lựa chọn phẩm cấp và xác lập yêu cầu kỹ thuật.",
     "catalogueEmpty": "Danh mục đối tác đang được cập nhật.",
-    "requestTitle": "Bắt đầu một cuộc trao đổi có cơ sở.",
-    "requestBody": "Gửi mục tiêu kinh doanh, sản phẩm quan tâm và khoảng sản lượng dự kiến. Nếu chưa có quy cách hoàn chỉnh, hãy mô tả cách dùng và khách hàng mục tiêu. Đầu mối phát triển xuất khẩu tiếp nhận đề bài, kết nối đánh giá sản phẩm và sắp xếp bước làm việc phù hợp.",
+    "requestTitle": "Yêu cầu mẫu & báo giá.",
+    "requestBody": "Cho biết sản phẩm quan tâm, khối lượng dự kiến, nơi nhận hàng và thời điểm cần hàng. Có thể gửi thêm yêu cầu về phẩm cấp, bao bì, kiểm nghiệm hoặc chứng từ nhập khẩu.",
     "name": "Họ tên / chức danh",
     "business": "Doanh nghiệp / tổ chức",
     "contact": "Số điện thoại hoặc email",
-    "need": "Cách dùng, thị trường, dòng trà, sản lượng và thời điểm cần hàng",
+    "need": "Sản phẩm, khối lượng, nơi nhận hàng, lịch hàng và yêu cầu kỹ thuật",
     "consent": "Tôi đồng ý để Hoàng Long dùng thông tin này để liên hệ về yêu cầu trên.",
-    "send": "Gửi đề bài hợp tác",
+    "send": "Gửi yêu cầu",
     "sending": "Đang gửi…",
     "required": "Vui lòng điền tên, thông tin liên hệ, nhu cầu và xác nhận đồng ý.",
     "failed": "Chưa gửi được yêu cầu. Vui lòng thử lại hoặc gọi trực tiếp.",
-    "sent": "Hoàng Long đã nhận đề bài hợp tác.",
+    "sent": "Hoàng Long đã nhận yêu cầu.",
     "sentBody": "Đội ngũ sẽ liên hệ theo thông tin đã cung cấp để làm rõ yêu cầu và thống nhất bước tiếp theo.",
     "call": "Văn phòng Hoàng Long · 0903 333 841",
-    "footer": "Kết nối năng lực sản xuất với kế hoạch phát triển thị trường.",
-    "programmesTitle": "Đề bài khác nhau. Cách lựa chọn khác nhau.",
-    "programmesIntro": "Chọn hướng hợp tác gần nhất với nhu cầu. Hoàng Long tiếp nhận yêu cầu sản phẩm và phối hợp đánh giá điều kiện thực hiện; đối tác mang hiểu biết về thị trường, kênh bán và người sử dụng cuối.",
-    "programmes": [
-      [
-        "01",
-        "Nguyên liệu cho đồ uống",
-        "Trà xanh, hồng trà và trà hương được xem xét theo công thức dự kiến. Thử trà trong điều kiện sử dụng thực tế giúp đối chiếu hương vị, độ đậm, hiệu quả chiết xuất và chi phí trà trên một phần đồ uống.",
-        "Đề bài cần có: cách pha, sản phẩm cuối, phân khúc giá và sản lượng dự kiến."
-      ],
-      [
-        "02",
-        "Danh mục cho phân phối",
-        "Dành cho nhà nhập khẩu, nhà phân phối và đơn vị kinh doanh trà. Cấu trúc danh mục có thể đi từ dòng dùng thường xuyên đến dòng chuyên trà, cân đối đặc tính sản phẩm, cấp chất lượng và vị trí giá trong kênh bán.",
-        "Đề bài cần có: thị trường, khách hàng mục tiêu, dòng trà, quy cách và lịch mua."
-      ],
-      [
-        "03",
-        "Kết nối & phát triển thị trường",
-        "Dành cho đối tác thương mại và tổ chức xúc tiến muốn tìm hiểu nguồn cung trà Việt. Buổi làm việc tập trung vào danh mục có khả năng triển khai, khảo sát nhà máy và lộ trình đưa sản phẩm đến thử nghiệm với bên mua.",
-        "Đề bài cần có: mục tiêu kết nối, bên mua liên quan và kế hoạch làm việc."
-      ]
-    ]
+    "footer": "Hoàng Long · Cung ứng trà Việt Nam."
   },
   "en": {
     "switcher": "VI",
     "portal": "Partner portal",
     "back": "Hoàng Long",
-    "eyebrow": "B2B supply · Distribution · Export development",
-    "title": "From product selection to a supply plan.",
-    "intro": "A tea source becomes a commercial solution when it suits the buyer’s application, price positioning and practical requirements. Hoàng Long starts with that brief: selecting teas, evaluating samples, defining packing and preparing for the first order and subsequent purchases.",
-    "sample": "Begin with tea samples",
-    "discuss": "Discuss your brief",
-    "statement": "Translate market requirements into a product brief and an execution plan.",
+    "eyebrow": "Hoàng Long Tea · B2B & export supply",
+    "title": "Export samples & quotations.",
+    "intro": "Our core selection comprises Honey-Note Black Tea, Smoky Black Tea, Shan Green Tea — Mộc and Magnolia-Scented Green Tea. Send your product, grade, volume and destination-market requirements.",
+    "sample": "Explore the four core selections",
+    "discuss": "Request samples & a quotation",
+    "statement": "Supply terms & ordering.",
     "principles": [
       [
         "01",
-        "Selection & sample evaluation",
-        "Clarify the application, grade, target price and quantity. Trial samples under the buyer’s preparation conditions, recording appearance, flavour and any changes required.",
-        "Basis for the next step: selected samples and trial feedback."
+        "Samples & grades",
+        "Select the tea and offered sample. Record grade, leaf appearance, sensory character and technical requirements.",
+        "Output: selected sample and product requirements."
       ],
       [
         "02",
-        "Specification & commercial terms",
-        "Define product, packing and inspection requirements. For export, the importer provides destination-market requirements so documents, testing, cost and timing can be assessed.",
-        "Basis for the next step: specifications, quotation, PO/contract and responsibilities."
+        "Quotation & confirmation",
+        "Agree quantities, packing, price, payment, dates and applicable documents. EXW collection at Tân Lập, Hà Giang.",
+        "Output: quotation and PO/contract."
       ],
       [
         "03",
-        "Supply preparation",
-        "For Hoàng Long-manufactured lines, review materials, stock and the Tân Lập schedule; capacity of 50–100 tonnes per month supports planning. For selected traded teas, assess the relevant source and preparation schedule. Timing depends on the tea, volume and inspection requirements.",
-        "Basis for the next step: schedule, quantities, packing and inspection arrangements."
+        "Goods preparation & inspection",
+        "Confirm production or stock dates, sacks, lot labels and inspection scope. Available quantities depend on the tea and schedule.",
+        "Output: goods ready and supporting records."
       ],
       [
         "04",
-        "Handover & follow-through",
-        "Prepare goods and documents within the agreed scope. Under EXW terms, the buyer organises factory collection and the transport and formalities for which it is responsible. Receipt feedback informs subsequent supply.",
-        "Follow-through: quantity handover, condition on receipt, feedback and the next purchasing plan."
+        "Handover & logistics",
+        "Hand over goods and documents as agreed. Loading, transport and export/import formalities are allocated in the transaction file.",
+        "Output: handover confirmation and lot documentation."
       ]
     ],
-    "available": "A range to begin evaluating",
-    "availableBody": "The supply catalogue includes teas with their own origins and characteristics. Select a tea for sampling or quotation; availability is assessed against volume, requirements and timing. The company profile explains our production foundation and broader cooperation direction.",
+    "available": "Core export selection.",
+    "availableBody": "Four loose-leaf teas for import and distribution. Each has a separate product profile; offered samples provide the basis for grade selection and technical requirements.",
     "catalogueEmpty": "The trade catalogue is being updated.",
-    "requestTitle": "Start a well-informed discussion.",
-    "requestBody": "Share your commercial objective, products of interest and approximate volume. If specifications are still open, describe the intended use and target customer. Our export-development contact receives the brief, coordinates product assessment and arranges a relevant next step.",
+    "requestTitle": "Request samples & a quotation.",
+    "requestBody": "Share products of interest, approximate volume, destination and required date. Include any grade, packing, testing or import-document requirements.",
     "name": "Name / role",
     "business": "Company / organisation",
     "contact": "Phone or email",
-    "need": "Application, market, teas, volume and required date",
+    "need": "Products, volume, destination, required dates and technical requirements",
     "consent": "I agree that Hoàng Long may use these details to respond to this enquiry.",
-    "send": "Send cooperation brief",
+    "send": "Send enquiry",
     "sending": "Sending…",
     "required": "Please add your name, contact, brief and consent.",
     "failed": "The enquiry did not go through. Please try again or call us directly.",
-    "sent": "Hoàng Long has received your brief.",
+    "sent": "Hoàng Long has received your enquiry.",
     "sentBody": "Our team will use your contact details to clarify requirements and agree on the next step.",
     "call": "Hoàng Long office · 0903 333 841",
-    "footer": "Connect production capabilities with a market-development plan.",
-    "programmesTitle": "Different briefs. Different selection criteria.",
-    "programmesIntro": "Choose the route closest to your requirements. Hoàng Long handles the product brief and assesses practical supply conditions; partners contribute knowledge of their market, channel and end users.",
-    "programmes": [
-      [
-        "01",
-        "Tea ingredients for beverages",
-        "Green, black and scented teas are considered against the intended recipe. Testing under actual preparation conditions helps compare flavour, strength, extraction performance and tea cost per serving.",
-        "Bring: preparation method, finished beverage, price positioning and planned volume."
-      ],
-      [
-        "02",
-        "A range for distribution",
-        "For importers, distributors and tea businesses. A range can extend from everyday products to specialist teas, balancing product character, grade and price positioning within the sales channel.",
-        "Bring: market, target customer, tea range, packing and purchasing schedule."
-      ],
-      [
-        "03",
-        "Trade connections & market development",
-        "For commercial partners and trade-facilitation organisations exploring Vietnamese tea supply. Discussions focus on a viable product range, factory assessment and a practical route to buyer trials.",
-        "Bring: cooperation objective, relevant buyers and the proposed work plan."
-      ]
-    ]
+    "footer": "Hoàng Long · Vietnamese tea supply."
   }
 };
 
 export default function TradeDesk() {
   const { locale: lang } = useLocale();
   const [products, setProducts] = useState([]);
+  const [enquirySearch, setEnquirySearch] = useState("");
   const [selectedTea, setSelectedTea] = useState(null);
   const [intent, setIntent] = useState("quote");
   const [selectionStatus, setSelectionStatus] = useState("loading");
@@ -192,10 +151,11 @@ export default function TradeDesk() {
 
   useEffect(() => {
     let live = true;
+    setEnquirySearch(window.location.search);
     supabase.from("catalog_products").select(TRADE_CATALOG_FIELDS).eq("available", true).order("id").then(({ data, error: catalogError }) => {
       if (live && !catalogError) {
         const teas = (data || []).filter(isTradeTea);
-        setProducts(teas.slice(0, 6));
+        setProducts(CORE_EXPORT_PRODUCTS.map(profile => teas.find(tea => tea.id === profile.catalogId)).filter(Boolean));
         const selected = selectedTradeTea(teas, window.location.search);
         setSelectedTea(selected);
         setSelectionStatus(new URLSearchParams(window.location.search).has("tea") && !selected ? "unavailable" : "ready");
@@ -251,7 +211,7 @@ export default function TradeDesk() {
           <h1>{t.title}</h1>
           <p className={styles.intro}>{t.intro}</p>
           <div className={styles.actions}>
-            <Link href="/sample?utm_source=website&utm_medium=owned&utm_campaign=wholesale_b2b">
+            <Link href={`/company?lang=${lang}#products`}>
               <FlaskConical size={17}/>{t.sample}
             </Link>
             <a href="#trade-brief">{t.discuss}<ArrowRight size={16}/></a>
@@ -260,24 +220,19 @@ export default function TradeDesk() {
         <figure><img src="/landing/3.jpg" alt={lang === "vi" ? "Dây chuyền chế biến trà Hoàng Long" : "Hoàng Long tea processing line"}/><figcaption>{lang === "vi" ? "Nhà máy Trà Hoàng Long · Tân Lập, Hà Giang" : "Hoàng Long Tea Factory · Tân Lập, Hà Giang"}</figcaption></figure>
       </section>
 
-      <section className={styles.programmes} aria-labelledby="cooperation-models">
-        <header><h2 id="cooperation-models">{t.programmesTitle}</h2><p>{t.programmesIntro}</p></header>
-        <div>{t.programmes.map(([number, title, body, brief]) => <article key={number}><span>{number}</span><div><h3>{title}</h3><p>{body}</p><p>{brief}</p></div></article>)}</div>
+      <section className={styles.catalogue}>
+        <header><h2>{t.available}</h2><p>{t.availableBody}</p><Link href={`/catalog?lang=${lang}`}>{lang === "vi" ? "Xem toàn bộ danh mục trà" : "Explore the full tea range"}<ArrowRight size={16}/></Link><Link href={`/company?lang=${lang}#products`}>{lang === "vi" ? "Hồ sơ bốn sản phẩm xuất khẩu" : "Four export product profiles"}<ArrowRight size={16}/></Link><p><strong>{bulkPacking.title}: </strong>{bulkPacking.text}</p></header>
+        <div>
+          {products.length ? products.map((product, index) => <article key={product.id}>
+            <span>{String(index + 1).padStart(2, "0")}</span><h3>{local(CORE_EXPORT_PRODUCTS.find(profile => profile.catalogId === product.id)?.name) || tradeProductFacts(product, lang).name}</h3><p>{local(product.notes) || local(CORE_EXPORT_PRODUCTS.find(profile => profile.catalogId === product.id)?.subtitle)}</p><div className={styles.productActions}><Link href={tradeEnquiryHref(product.id, "sample", enquirySearch, lang)} onClick={() => { setSelectedTea(product); setIntent("sample"); setSelectionStatus("ready"); }}>{lang === "vi" ? "Yêu cầu mẫu" : "Request samples"}</Link><Link href={tradeEnquiryHref(product.id, "quote", enquirySearch, lang)} onClick={() => { setSelectedTea(product); setIntent("quote"); setSelectionStatus("ready"); }}>{lang === "vi" ? "Báo giá" : "Quotation"}</Link></div>
+          </article>) : <p className={styles.empty}>{t.catalogueEmpty}</p>}
+        </div>
       </section>
 
       <section className={styles.statement}><p>{t.statement}</p></section>
 
       <section className={styles.principles} aria-label={lang === "vi" ? "Quy trình làm việc với đối tác" : "How we work with trade partners"}>
         {t.principles.map(([number, title, body, output]) => <article key={number}><span>{number}</span><h2>{title}</h2><p>{body}</p><p className={styles.stepOutput}>{output}</p></article>)}
-      </section>
-
-      <section className={styles.catalogue}>
-        <header><h2>{t.available}</h2><p>{t.availableBody}</p><Link href={`/catalog?lang=${lang}`}>{lang === "vi" ? "Xem toàn bộ danh mục trà" : "Explore the full tea range"}<ArrowRight size={16}/></Link><Link href={`/company?lang=${lang}#documents`}>{lang === "vi" ? "Hồ sơ doanh nghiệp & đề xuất hợp tác" : "Company profile & cooperation proposal"}<ArrowRight size={16}/></Link><p><strong>{bulkPacking.title}: </strong>{bulkPacking.text}</p></header>
-        <div>
-          {products.length ? products.map((product, index) => <article key={product.id}>
-            <span>{String(index + 1).padStart(2, "0")}</span><h3>{tradeProductFacts(product, lang).name}</h3><p>{local(product.notes)}</p><b>{lang === "vi" ? "Quy cách theo thỏa thuận" : "Packing agreed on enquiry"}</b>
-          </article>) : <p className={styles.empty}>{t.catalogueEmpty}</p>}
-        </div>
       </section>
 
       <section className={styles.brief} id="trade-brief">
@@ -299,7 +254,7 @@ export default function TradeDesk() {
           </form>}
       </section>
 
-      <footer className={styles.footer}><p>{t.footer}</p><span>{lang === "vi" ? "Hoàng Long · Nền tảng gia đình làm trà từ 1995" : "Hoàng Long · Family tea-making roots since 1995"}</span><Link href={`/company?lang=${lang}`}>{lang === "vi" ? "Hồ sơ doanh nghiệp" : "Company profile"}</Link><a href={PACK_DOCUMENTS[lang].brief} download>{lang === "vi" ? "Đề xuất hợp tác (PDF)" : "Cooperation proposal (PDF)"}</a><a href={PACK_DOCUMENTS[lang].profile} download>{lang === "vi" ? "Hồ sơ doanh nghiệp (PDF)" : "Company profile (PDF)"}</a><a href={PACK_DOCUMENTS[lang].appendix} download>{lang === "vi" ? "Danh mục & phụ lục sản phẩm (PDF)" : "Catalogue & product appendix (PDF)"}</a><p className={styles.legalIdentity}>{PROFILE_LEGAL.name} · {lang === "vi" ? "MST" : "Tax ID"} {PROFILE_LEGAL.taxNumber}</p><PolicyLinks/></footer>
+      <footer className={styles.footer}><p>{t.footer}</p><span>{lang === "vi" ? "Hoàng Long · Nền tảng gia đình làm trà từ 1995" : "Hoàng Long · Family tea-making roots since 1995"}</span><Link href={`/company?lang=${lang}`}>{lang === "vi" ? "Hồ sơ doanh nghiệp" : "Company profile"}</Link><a href={PACK_DOCUMENTS[lang].brief} download>{lang === "vi" ? "Giới thiệu chào hàng (PDF)" : "Export sales brief (PDF)"}</a><a href={PACK_DOCUMENTS[lang].profile} download>{lang === "vi" ? "Hồ sơ doanh nghiệp (PDF)" : "Company profile (PDF)"}</a><a href={PACK_DOCUMENTS[lang].appendix} download>{lang === "vi" ? "Hồ sơ sản phẩm xuất khẩu (PDF)" : "Export product profiles (PDF)"}</a><p className={styles.legalIdentity}>{PROFILE_LEGAL.name} · {lang === "vi" ? "MST" : "Tax ID"} {PROFILE_LEGAL.taxNumber}</p><PolicyLinks/></footer>
     </main>
   );
 }

@@ -12,6 +12,7 @@ const GROUPS = [
     id: "about", label: { vi: "Doanh nghiệp", en: "Company" },
     links: [
       { href: "/company", label: { vi: "Hồ sơ doanh nghiệp", en: "Company profile" } },
+      { href: "/company#products", label: { vi: "Sản phẩm & hồ sơ xuất khẩu", en: "Export products & profiles" } },
       { href: "/company#cooperation", label: { vi: "Đề xuất hợp tác", en: "Cooperation proposal" } },
       { href: "/company#documents", label: { vi: "Tài liệu giao thương", en: "Trade documents" } },
       { href: "/story", label: { vi: "Nguồn trà & câu chuyện", en: "Tea origins & stories" } },
@@ -22,7 +23,7 @@ const GROUPS = [
     id: "wholesale", label: { vi: "Hợp tác B2B", en: "B2B supply" },
     links: [
       { href: "/catalog", label: { vi: "Danh mục cung ứng", en: "Supply catalogue" } },
-      { href: "/wholesale", label: { vi: "Mẫu & đề bài cung ứng", en: "Samples & supply briefs" } },
+      { href: "/wholesale", label: { vi: "Mẫu & báo giá", en: "Samples & quotations" } },
       { href: "/cho-quan", label: { vi: "Trà cho quán", en: "Tea for cafés" } },
       { href: "/partners/account", label: { vi: "Khách sỉ đăng nhập", en: "Wholesale sign in" } },
     ],

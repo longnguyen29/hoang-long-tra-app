@@ -10,6 +10,7 @@ import { tradeProductFacts } from "@/lib/trade-product-details";
 import { PROFILE_LEGAL } from "@/lib/company-profile";
 import { PACK_DOCUMENTS } from "@/lib/institutional-pack";
 import { B2B_BULK_PACKING } from "@/lib/b2b-packing";
+import { CORE_EXPORT_PRODUCTS, EXPORT_PRODUCT_COPY } from "@/lib/export-product-profile";
 import PolicyLinks from "@/components/PolicyLinks";
 import styles from "./TradeCatalog.module.css";
 import PublicSiteHeader from "./PublicSiteHeader";
@@ -31,6 +32,7 @@ export default function TradeCatalog() {
   const { locale } = useLocale();
   const vi = locale === "vi";
   const bulkPacking = B2B_BULK_PACKING[vi ? "vi" : "en"];
+  const exportCopy = EXPORT_PRODUCT_COPY[vi ? "vi" : "en"];
   const [products, setProducts] = useState([]);
   const [status, setStatus] = useState("loading");
   const [attempt, setAttempt] = useState(0);
@@ -75,24 +77,38 @@ export default function TradeCatalog() {
     <PublicSiteHeader/>
 
     <section className={styles.intro}>
-      <div><p className={styles.eyebrow}>{vi ? "Nguồn cung · Đặc tính · Điều kiện giao dịch" : "Supply · Specifications · Commercial terms"}</p><h1>{vi ? "Danh mục trà thương mại" : "Trade tea catalogue"}</h1></div>
-      <div className={styles.introCopy}><p>{vi ? "Lựa chọn sản phẩm theo cách bạn kinh doanh trà." : "Select teas for the way you do business."}</p><p>{vi ? "Tìm trà nền cho đồ uống, trà nguyên lá cho phân phối hoặc dòng đặc sản cho khách hàng chuyên trà. Mỗi hướng cần cách đánh giá riêng: hiệu quả pha, bản sắc hương vị, phẩm cấp và giá sử dụng. Danh mục giúp chọn mẫu trước khi đi vào thông số, quy cách và phương án mua hàng." : "Explore beverage bases, loose-leaf teas for distribution and speciality products for tea-focused customers. Each requires a different assessment of brewing performance, flavour character, grade and cost in use. Use the catalogue to choose samples before defining specifications, packing and a purchasing plan."}</p><span>{vi ? "Chọn theo ứng dụng · Đánh giá mẫu · Xây dựng đơn hàng" : "Select by use · Evaluate samples · Develop the order"}</span></div>
+      <div><p className={styles.eyebrow}>{vi ? "Trà Hoàng Long · Danh mục xuất khẩu & B2B" : "Hoàng Long Tea · Export & B2B selection"}</p><h1>{vi ? "Danh mục trà xuất khẩu" : "Export tea selection"}</h1></div>
+      <div className={styles.introCopy}><p>{vi ? "Hồng Trà Mật · Hồng Trà Khói · Xanh Mộc · Hoa Ngọc Lan." : "Honey-Note Black · Smoky Black · Shan Green — Mộc · Magnolia Green."}</p><p>{vi ? "Bốn dòng trà chủ lực dành cho nhập khẩu và phân phối. Hồ sơ sản phẩm trình bày nhóm trà, đặc trưng hương, dạng cung ứng và yêu cầu kỹ thuật. Danh mục mở rộng nằm bên dưới để lựa chọn thêm sản phẩm." : "Four core teas for import and distribution. Product profiles cover tea category, aromatic identity, supply format and technical requirements. Explore the wider range below for additional selections."}</p><span>{vi ? "Hồ sơ sản phẩm · Mẫu chào hàng · Báo giá EXW" : "Product profiles · Offered samples · EXW quotations"}</span></div>
+    </section>
+
+    <section className={styles.coreRange} aria-labelledby="core-export-title">
+      <header><h2 id="core-export-title">{exportCopy.title}</h2><Link href={`/company?lang=${locale}#products`}>{vi ? "Xem hồ sơ sản phẩm" : "View product profiles"}<ArrowRight size={16}/></Link></header>
+      <div className={styles.coreGrid}>{CORE_EXPORT_PRODUCTS.map(profile => {
+        const availableProduct = products.find(product => product.id === profile.catalogId);
+        return <article key={profile.id}>
+          <Link href={`/company?lang=${locale}#product-${profile.id}`} className={styles.corePhoto}><img src={profile.photoUrl} alt={profile.name[locale]} loading="lazy" style={{objectPosition: profile.photoPosition}}/></Link>
+          <div className={styles.coreInfo}><p>{profile.category[locale]}</p><h3>{profile.name[locale]}</h3><span>{profile.subtitle[locale]}</span>
+            <dl><div><dt>{exportCopy.labels.form}</dt><dd>{profile.form[locale]}</dd></div>{profile.aroma && <div><dt>{exportCopy.labels.aroma}</dt><dd>{profile.aroma[locale]}</dd></div>}{profile.taste && <div><dt>{exportCopy.labels.taste}</dt><dd>{profile.taste[locale]}</dd></div>}</dl>
+            {availableProduct && <div className={styles.coreActions}><Link href={tradeEnquiryHref(profile.catalogId, "sample", enquirySearch, locale)}>{exportCopy.sample}</Link><Link href={tradeEnquiryHref(profile.catalogId, "quote", enquirySearch, locale)}>{exportCopy.quote}<ArrowRight size={16}/></Link></div>}
+          </div>
+        </article>;
+      })}</div>
     </section>
 
     <section className={styles.resources} aria-label={vi ? "Hồ sơ & tài liệu" : "Profile & documents"}>
-      <div><strong>{vi ? "Hồ sơ, đề xuất & danh mục" : "Profile, proposal & catalogue"}</strong><p>{vi ? "Bắt đầu bằng đề xuất hợp tác để xác định nội dung trao đổi. Hồ sơ doanh nghiệp giới thiệu nền tảng sản xuất và phương thức làm việc; danh mục & phụ lục sản phẩm hỗ trợ chọn trà, đánh giá mẫu và chuẩn bị yêu cầu kỹ thuật." : "Use the cooperation proposal to frame the discussion. The company profile presents our production foundation and working approach; the catalogue and product appendix support tea selection, sample evaluation and technical briefs."}</p></div>
+      <div><strong>{vi ? "Hồ sơ sản phẩm & doanh nghiệp" : "Product & company profiles"}</strong><p>{vi ? "Tải hồ sơ bốn sản phẩm xuất khẩu chủ lực và hồ sơ doanh nghiệp. Gửi yêu cầu về thông số kỹ thuật, kiểm nghiệm và chứng từ nhập khẩu cùng đề nghị mẫu hoặc báo giá." : "Download profiles of the four core export teas and the company. Include specifications, testing or destination-market document requirements with your sample and quotation enquiry."}</p></div>
       <div className={styles.resourceLinks}>
         <Link href={`/company?lang=${locale}`}>{vi ? "Hồ sơ doanh nghiệp trên website" : "Company profile online"}<ArrowRight size={16} aria-hidden="true"/></Link>
-        <a href={PACK_DOCUMENTS[locale].brief} download><Download size={16} aria-hidden="true"/>{vi ? "Đề xuất hợp tác · PDF" : "Cooperation proposal · PDF"}</a>
+        <a href={PACK_DOCUMENTS[locale].brief} download><Download size={16} aria-hidden="true"/>{vi ? "Giới thiệu chào hàng · PDF" : "Export sales brief · PDF"}</a>
         <a href={PACK_DOCUMENTS[locale].profile} download><Download size={16} aria-hidden="true"/>{vi ? "Hồ sơ doanh nghiệp · PDF" : "Company profile · PDF"}</a>
-        <a href={PACK_DOCUMENTS[locale].appendix} download><Download size={16} aria-hidden="true"/>{vi ? "Danh mục & phụ lục sản phẩm · PDF" : "Catalogue & product appendix · PDF"}</a>
+        <a href={PACK_DOCUMENTS[locale].appendix} download><Download size={16} aria-hidden="true"/>{vi ? "Hồ sơ sản phẩm xuất khẩu · PDF" : "Export product profiles · PDF"}</a>
       </div>
     </section>
 
     <section className={styles.catalogue} aria-labelledby="trade-range-title">
-      <div className={styles.rangeHeading}><h2 id="trade-range-title">{vi ? "Chọn dòng trà" : "Explore the range"}</h2><span>{vi ? "Đặc tính theo danh mục hiện tại" : "Characteristics from the current catalogue"}</span></div>
+      <div className={styles.rangeHeading}><h2 id="trade-range-title">{vi ? "Danh mục mở rộng" : "Explore the wider range"}</h2><span>{vi ? "Đặc tính theo danh mục hiện tại" : "Characteristics from the current catalogue"}</span></div>
       <p className={styles.note}><strong>{bulkPacking.title}: </strong>{bulkPacking.text}</p>
-      <p className={styles.note}>{vi ? "Để so sánh mẫu có ý nghĩa, hãy dùng cùng lượng trà, nguồn nước và cách pha. Với đồ uống, thử trong công thức thực tế; với phân phối trà nguyên lá, đối chiếu ngoại hình, hương vị và cấp chất lượng. Giá giao dịch được xây dựng theo sản phẩm, khối lượng và điều kiện giao nhận; danh mục này không thay thế báo giá." : "For a meaningful sample comparison, keep tea dosage, water and preparation method consistent. Trial beverage teas in the actual recipe; assess loose-leaf products for appearance, flavour and grade. Commercial pricing depends on product, volume and delivery terms; this catalogue does not replace a quotation."}</p>
+      <p className={styles.note}>{vi ? "Danh mục hiện hành có thêm các dòng trà ngoài bốn sản phẩm chủ lực. Giá, phẩm cấp, MOQ, lịch hàng và hồ sơ kỹ thuật được chào theo yêu cầu đơn hàng." : "The current catalogue includes additional teas beyond the four core selections. Prices, grades, MOQ, supply dates and technical documentation are quoted for each order."}</p>
       <div className={styles.toolbar}>
         <div className={styles.filters} role="group" aria-label={vi ? "Lọc nhóm trà" : "Filter tea groups"}>
           <button type="button" aria-pressed={group === "all"} onClick={() => setGroup("all")}>{vi ? "Tất cả" : "All teas"}{status === "ready" && <span>{teas.length}</span>}</button>
@@ -113,16 +129,15 @@ export default function TradeCatalog() {
           <div className={styles.productInfo}>
             <p className={styles.groupLabel}>{facts.groupLabel}</p>
             <h3 id={`tea-name-${product.id}`}>{facts.name}</h3>
-            {facts.summary && <p className={styles.summary}><span>{vi ? "Khi thử mẫu" : "When sampling"}</span>{facts.summary}</p>}
             {facts.note && <p className={styles.note}>{facts.note}</p>}
             {!!facts.flavors.length && <ul className={styles.flavors} aria-label={vi ? "Hương vị đang công bố" : "Listed tasting notes"}>{facts.flavors.map((flavor, index) => <li key={`${flavor}-${index}`}>{flavor}</li>)}</ul>}
-            <div className={styles.packing}><span>{vi ? "Quy cách sản phẩm / mẫu" : "Product / sample format"}</span><strong>{facts.packing || (vi ? "Trao đổi theo nhu cầu" : "Discuss your requirements")}</strong><p>{vi ? "Quy cách trên để tham khảo sản phẩm / mẫu, không phải quy cách bao xuất khẩu. MOQ và bao PP/PE cho đơn lớn được xác nhận trong báo giá." : "The format above describes the product / sample, not export bag sizes. MOQ and bulk PP/PE packing are confirmed in your quotation."}</p></div>
+            <div className={styles.packing}><span>{vi ? "Quy cách cung ứng" : "Supply format"}</span><strong>{facts.groupId === "pressed" ? (facts.packing || (vi ? "Bánh / viên theo sản phẩm" : "Cakes / pieces by product")) : bulkPacking.value}</strong><p>{facts.groupId === "pressed" ? (vi ? "Khối lượng mỗi bánh/viên và số đơn vị xác nhận theo sản phẩm." : "Weight per cake/piece and unit quantities are confirmed per product.") : (vi ? "Bao PP/PE, khối lượng tịnh và nhãn theo đơn hàng; tách biệt quy cách bán lẻ." : "PP/PE sacks, net weight and labels agreed per order; separate from retail formats.")}</p></div>
 
             <details className={styles.more}>
-              <summary>{vi ? "Thử mẫu & điều kiện cung ứng" : "Sampling & supply requirements"}<ChevronDown size={18} aria-hidden="true"/></summary>
+              <summary>{vi ? "Thông số & điều kiện mua hàng" : "Specifications & purchasing terms"}<ChevronDown size={18} aria-hidden="true"/></summary>
               <div className={styles.expanded}>
-                <div><h4>{vi ? "Điểm bắt đầu thử mẫu" : "A starting point for sampling"}</h4>{facts.brew ? <><p className={styles.brew}>{facts.brew}</p><p className={styles.context}>{vi ? "Dùng gợi ý pha hiện có để bắt đầu thử mẫu, rồi hiệu chỉnh theo cách dùng của bạn. Công thức sản xuất sẽ được thống nhất riêng." : "Use the listed brew guidance to begin sampling, then adjust it for your application. A production recipe is agreed separately."}</p></> : <p>{vi ? "Cho biết cách dùng và điều kiện pha dự kiến để cùng trao đổi hướng thử mẫu." : "Share your intended application and brewing conditions to discuss how to trial the sample."}</p>}</div>
-                <div><h4>{vi ? "Xác nhận trong báo giá" : "Confirmed in your quotation"}</h4><p>{vi ? "Cấp chất lượng, MOQ, lịch cung ứng, hạn sử dụng, điều kiện thanh toán và trách nhiệm giao nhận được chốt theo mẫu và yêu cầu. Hồ sơ kiểm nghiệm, chứng nhận hoặc yêu cầu nhập khẩu cụ thể cần được rà soát trước khi cam kết." : "Grade, MOQ, schedules, shelf life, payment and handover responsibilities are agreed against the sample and brief. Specific testing, certification or import-document requirements must be reviewed before commitment."}</p></div>
+                <div><h4>{vi ? "Hồ sơ sản phẩm" : "Product documentation"}</h4><p>{vi ? "Phẩm cấp, ngoại hình và tiêu chí cảm quan theo mẫu chào hàng. Yêu cầu kỹ thuật và kiểm nghiệm được xác lập cho sản phẩm và thị trường nhập khẩu." : "Grade, leaf appearance and sensory criteria follow the offered sample. Technical and testing requirements are established for the selected product and destination market."}</p></div>
+                <div><h4>{vi ? "Điều kiện thương mại" : "Commercial terms"}</h4><p>{vi ? "MOQ, giá EXW, thời gian hàng sẵn, hạn sử dụng, thanh toán và chứng từ được ghi trong báo giá/hợp đồng. Hồ sơ kiểm nghiệm hoặc chứng nhận được cung cấp theo phạm vi áp dụng của sản phẩm/lô hàng." : "MOQ, EXW prices, goods-readiness dates, shelf life, payment and documents are recorded in the quotation/contract. Testing or certification documents are supplied within their applicable product/lot scope."}</p></div>
               </div>
             </details>
             <div className={styles.actions}><Link href={tradeEnquiryHref(product.id, "sample", enquirySearch, locale)}>{vi ? "Trao đổi mẫu trà" : "Enquire about samples"}</Link><Link href={tradeEnquiryHref(product.id, "quote", enquirySearch, locale)}>{vi ? "Yêu cầu báo giá" : "Request a quote"}<ArrowRight size={17} aria-hidden="true"/></Link></div>

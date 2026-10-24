@@ -1,12 +1,12 @@
 export const metadata = {
-  "title": "Hợp tác B2B · Nguồn cung trà & phát triển thị trường | Hoàng Long",
-  "description": "Từ lựa chọn trà đến kế hoạch cung ứng: mẫu, thông số, quy cách và điều kiện giao dịch. Dành cho nhà nhập khẩu, phân phối, doanh nghiệp đồ uống và đối tác thương mại.",
+  "title": "Mẫu trà & báo giá xuất khẩu | Hoàng Long",
+  "description": "Yêu cầu mẫu và báo giá Hồng Trà Mật, Hồng Trà Khói, Xanh Mộc, Trà Xanh Hoa Ngọc Lan. Trà khô rời, bao PP/PE và điều kiện EXW tại Tân Lập, Hà Giang.",
   "alternates": {
     "canonical": "https://www.hoanglongtra.com/wholesale"
   },
   "openGraph": {
-    "title": "Hợp tác B2B · Nguồn cung trà & phát triển thị trường | Hoàng Long",
-    "description": "Từ lựa chọn trà đến kế hoạch cung ứng: mẫu, thông số, quy cách và điều kiện giao dịch. Dành cho nhà nhập khẩu, phân phối, doanh nghiệp đồ uống và đối tác thương mại.",
+    "title": "Mẫu trà & báo giá xuất khẩu | Hoàng Long",
+    "description": "Yêu cầu mẫu và báo giá Hồng Trà Mật, Hồng Trà Khói, Xanh Mộc, Trà Xanh Hoa Ngọc Lan. Trà khô rời, bao PP/PE và điều kiện EXW tại Tân Lập, Hà Giang.",
     "url": "https://www.hoanglongtra.com/wholesale",
     "type": "website",
     "locale": "vi_VN"

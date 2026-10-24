@@ -11,105 +11,90 @@ import styles from "./HouseHome.module.css";
 import PublicSiteHeader from "./PublicSiteHeader";
 import { EXPORT_DEVELOPMENT_CONTACT } from "@/lib/export-sales-profiles";
 import { PROFILE_LEGAL } from "@/lib/company-profile";
+import { CORE_EXPORT_PRODUCTS } from "@/lib/export-product-profile";
 
 const COPY = {
   "vi": {
-    "hero": "Từ nguồn trà Việt đến hợp tác quốc tế.",
-    "heroBody": "Hoàng Long kết nối nguồn trà vùng cao, chế biến tại Hà Giang và nhu cầu phát triển thị trường. Chúng tôi cùng đối tác lựa chọn sản phẩm, đánh giá mẫu và xây dựng kế hoạch cung ứng.",
-    "profileCta": "Hồ sơ doanh nghiệp",
-    "cooperationCta": "Đề xuất hợp tác",
-    "season": "Một nguồn trà. Nhiều hướng phát triển sản phẩm.",
-    "seasonBody": "Trà nền cho đồ uống cần hiệu quả chiết xuất và chi phí sử dụng phù hợp. Trà nguyên lá và dòng đặc sản cần bản sắc hương vị, câu chuyện xuất xứ và cấp chất lượng rõ ràng. Danh mục Hoàng Long mở ra các hướng lựa chọn để đối tác thử mẫu theo chính thị trường của mình.",
+    "hero": "Trà Việt Nam. Sản phẩm xuất khẩu Hoàng Long.",
+    "heroBody": "Hồng Trà Mật, Hồng Trà Khói, Xanh Mộc và Trà Xanh Hoa Ngọc Lan. Bốn dòng trà chủ lực dành cho nhà nhập khẩu, nhà phân phối và doanh nghiệp kinh doanh trà.",
+    "profileCta": "Sản phẩm & hồ sơ xuất khẩu",
+    "cooperationCta": "Mẫu & báo giá",
+    "season": "Bốn dòng trà chủ lực.",
+    "seasonBody": "Hai dòng hồng trà, một dòng lục trà Shan và trà xanh hương hoa ngọc lan. Xem hồ sơ từng sản phẩm, quy cách cung ứng và yêu cầu kỹ thuật cho đơn hàng xuất khẩu.",
     "viewTea": "Xem đặc tính sản phẩm",
     "noTea": "Danh mục trà đang được cập nhật.",
-    "origin": "Giá trị của vùng trà cần được tiếp nối ở thị trường.",
-    "originBody": "Kinh nghiệm làm trà của gia đình từ năm 1995 là nền tảng để Hoàng Long hiểu nguyên liệu, mùa vụ và chuyển biến của lá qua chế biến. Tại Hà Giang, câu chuyện ấy tiếp tục bằng công việc lựa chọn dòng trà, phát triển mẫu và chuẩn bị sản phẩm cho những cách sử dụng khác nhau.",
-    "originDetail": "Định hướng của Hoàng Long là kết nối chặt hơn giữa vùng nguyên liệu, nhà máy và đối tác thương mại. Khi nhu cầu thị trường được chuyển thành một đề bài sản phẩm rõ ràng, các bên có cơ sở để cùng cải thiện chất lượng, kế hoạch mua và giá trị của trà Việt qua từng đợt hợp tác.",
+    "origin": "Nguồn trà và chế biến tại Hà Giang.",
+    "originBody": "Hoàng Long phát triển từ nền tảng gia đình làm trà từ năm 1995. Nhà máy tại Tân Lập, Hà Giang là nơi chế biến và chuẩn bị nguồn hàng cho các đơn hàng thương mại.",
+    "originDetail": "Năng lực sản xuất công bố 50–100 tấn/tháng. Danh mục xuất khẩu tập trung bốn dòng trà chủ lực; phẩm cấp, mẫu sản phẩm và lịch cung ứng được lựa chọn theo yêu cầu từng đơn hàng.",
     "readStory": "Xem hồ sơ doanh nghiệp",
     "twoWays": "Từ người thưởng trà đến đối tác thương mại",
     "retailTitle": "Thưởng trà & quà tặng",
     "retailBody": "Khám phá từng loại trà qua hương vị, xuất xứ và quy cách. Cửa hàng dành cho người dùng cá nhân, gia đình và nhu cầu quà tặng, với giá và lựa chọn đặt hàng riêng.",
     "shopNow": "Khám phá cửa hàng trà",
-    "wholesaleTitle": "Nguồn cung & phát triển thị trường",
-    "wholesaleBody": "Dành cho nhà nhập khẩu, phân phối và doanh nghiệp đồ uống. Làm việc trực tiếp về danh mục, thử mẫu, quy cách lô lớn và kế hoạch giao dịch; có thể sắp xếp khảo sát nhà máy và trao đổi hồ sơ theo phạm vi hợp tác.",
-    "wholesaleNow": "Làm việc với Hoàng Long",
-    "closing": "Phát triển thị trường từ giá trị thật của trà Việt.",
+    "wholesaleTitle": "Nhập khẩu & phân phối",
+    "wholesaleBody": "Trao đổi trực tiếp về mẫu trà, phẩm cấp, quy cách PP/PE 20–30–35 kg, thông số sản phẩm và lịch hàng. Chào giá theo điều kiện EXW tại nhà máy Tân Lập, Hà Giang.",
+    "wholesaleNow": "Yêu cầu mẫu hoặc báo giá",
+    "closing": "Hoàng Long · Trà Việt Nam.",
     "contact": "Văn phòng Hoàng Long",
-    "capacityTitle": "Từ nguồn nguyên liệu đến một đề bài thương mại hoàn chỉnh.",
+    "capacityTitle": "Thông tin cung ứng.",
     "capabilities": [
       [
-        "Nguồn trà vùng cao",
-        "Nguyên liệu từ Hà Giang và Tây Bắc tạo nền tảng cho các dòng Shan, trà xanh, hồng trà và trà hương. Mỗi lựa chọn thương mại cần gắn với nguồn thực tế, mùa vụ và cấp chất lượng của sản phẩm."
+        "Danh mục xuất khẩu",
+        "Hồng Trà Mật, Hồng Trà Khói, Xanh Mộc và Trà Xanh Hoa Ngọc Lan. Trà khô rời, lựa chọn phẩm cấp theo mẫu chào hàng."
       ],
       [
-        "Chế biến tại Hà Giang",
-        "Nhà máy Trà Hoàng Long tại Tân Lập là điểm kết nối nguyên liệu với chế biến, hoàn thiện và chuẩn bị hàng. Năng lực sản xuất 50–100 tấn/tháng là cơ sở lập kế hoạch theo từng dòng trà và thời điểm."
+        "Nhà máy & năng lực",
+        "Tân Lập, Hà Giang. Năng lực sản xuất công bố 50–100 tấn/tháng; lịch hàng và sản lượng từng loại được xác nhận theo đơn."
       ],
       [
-        "Danh mục theo ứng dụng",
-        "Từ trà nền F&B đến trà nguyên lá cho phân phối và dòng đặc sản cho thưởng trà. Việc chọn mẫu dựa trên hương vị, cách dùng, hiệu quả pha và phân khúc giá — không chỉ tên gọi của trà."
+        "Bao bì lô lớn",
+        "Bao PP/PE 20, 30 hoặc 35 kg. Khối lượng mỗi bao có thể điều chỉnh theo ngoại hình trà và nhu cầu sử dụng."
       ],
       [
-        "Mẫu & tiêu chuẩn sản phẩm",
-        "Mẫu đối chiếu là điểm bắt đầu để xác định ngoại hình, cảm quan và cách đánh giá sản phẩm. Yêu cầu về chỉ tiêu kiểm nghiệm, bao bì và thị trường được làm rõ trước khi chốt đơn."
-      ],
-      [
-        "Tổ chức đơn hàng lớn",
-        "Bao PP/PE 20, 30 hoặc 35 kg, điều chỉnh theo ngoại hình trà và mục đích sử dụng. Giá EXW tại nhà máy; số lượng, lịch hàng và phân công giao nhận được thể hiện trong báo giá và hợp đồng."
-      ],
-      [
-        "Hợp tác phát triển đầu ra",
-        "Tiếp nhận đề bài từ nhà nhập khẩu, doanh nghiệp phân phối và tổ chức xúc tiến thương mại. Bắt đầu bằng danh mục phù hợp, thử nghiệm quy mô nhỏ và đánh giá điều kiện để xây dựng kế hoạch mua tiếp theo."
+        "Điều kiện thương mại",
+        "EXW tại Nhà máy Trà Hoàng Long. Bao bì, vận tải, chứng từ và kiểm nghiệm được xác nhận trong báo giá theo sản phẩm và thị trường nhập khẩu."
       ]
     ]
   },
   "en": {
-    "hero": "Vietnamese tea. International cooperation.",
-    "heroBody": "Hoàng Long connects highland tea origins and processing in Hà Giang with market development. We work with partners to select products, evaluate samples and develop supply plans.",
-    "profileCta": "Company profile",
-    "cooperationCta": "Cooperation proposal",
-    "season": "One tea origin. Different product opportunities.",
-    "seasonBody": "Beverage teas need suitable extraction performance and cost in use. Loose-leaf and speciality ranges need a distinctive flavour, a clear origin story and the right grade. Our catalogue provides starting points for partners to test against their own market and application.",
+    "hero": "Vietnamese tea. Hoàng Long export selection.",
+    "heroBody": "Honey-Note Black Tea, Smoky Black Tea, Shan Green Tea — Mộc and Magnolia-Scented Green Tea. Four core selections for importers, distributors and tea businesses.",
+    "profileCta": "Export products & company profile",
+    "cooperationCta": "Samples & quotations",
+    "season": "Four core tea selections.",
+    "seasonBody": "Two black teas, one Shan green tea and a magnolia-scented green tea. Explore product profiles, supply formats and technical requirements for export orders.",
     "viewTea": "View product characteristics",
     "noTea": "The tea catalogue is being updated.",
-    "origin": "The value of a tea origin develops through its market.",
-    "originBody": "The family’s tea-making experience since 1995 underpins our understanding of raw materials, seasons and how processing changes the leaf. In Hà Giang, that experience informs tea selection, sample development and preparation for different uses.",
-    "originDetail": "Hoàng Long’s direction is to strengthen the connection between raw-material origins, the factory and commercial partners. Translating market demand into a clear product brief gives each party a basis for improving quality, purchasing plans and the value of Vietnamese tea over successive supply cycles.",
+    "origin": "Tea origins and processing in Hà Giang.",
+    "originBody": "Hoàng Long builds on family tea-making experience since 1995. Our factory in Tân Lập, Hà Giang processes tea and prepares goods for commercial orders.",
+    "originDetail": "Declared production capacity is 50–100 tonnes per month. The export selection centres on four core teas; grades, samples and supply schedules are selected to meet each order’s requirements.",
     "readStory": "Explore our company profile",
     "twoWays": "For tea drinkers and trade partners",
     "retailTitle": "Tea for home & gifting",
     "retailBody": "Discover teas through their flavour, origins and formats. Our retail shop serves individual tea drinkers, families and gifting, with its own prices and ordering options.",
     "shopNow": "Explore the tea shop",
-    "wholesaleTitle": "Supply & market development",
-    "wholesaleBody": "For importers, distributors and beverage businesses. Discuss the range, sampling, bulk packing and your supply plan directly with Hoàng Long. Factory assessments and document reviews can be arranged to suit the cooperation brief.",
-    "wholesaleNow": "Work with Hoàng Long",
-    "closing": "Build market opportunities on the real value of Vietnamese tea.",
+    "wholesaleTitle": "Import & distribution",
+    "wholesaleBody": "Discuss samples, grades, 20–30–35 kg PP/PE sacks, product specifications and supply dates. Quotations are on an EXW basis at our factory in Tân Lập, Hà Giang.",
+    "wholesaleNow": "Request samples or a quotation",
+    "closing": "Hoàng Long · Vietnamese tea.",
     "contact": "Hoàng Long office",
-    "capacityTitle": "From a tea origin to a commercial product brief.",
+    "capacityTitle": "Supply information.",
     "capabilities": [
       [
-        "Highland tea origins",
-        "Raw materials from Hà Giang and Northwest Vietnam underpin our Shan, green, black and scented tea ranges. Commercial selection takes account of each product’s actual origin, season and grade."
+        "Export selection",
+        "Honey-Note Black Tea, Smoky Black Tea, Shan Green Tea — Mộc and Magnolia-Scented Green Tea. Loose-leaf teas, with grades selected against offered samples."
       ],
       [
-        "Processing in Hà Giang",
-        "Hoàng Long Tea Factory in Tân Lập connects raw material with processing, finishing and order preparation. Production capacity of 50–100 tonnes per month supports planning by product and season."
+        "Factory & capacity",
+        "Tân Lập, Hà Giang. Declared production capacity of 50–100 tonnes per month; product volumes and availability are confirmed per order."
       ],
       [
-        "A range defined by use",
-        "From beverage bases to loose-leaf distribution and speciality tea. Selection considers flavour, application, brewing performance and price positioning, alongside the tea’s name."
+        "Bulk packing",
+        "20, 30 or 35 kg PP/PE sacks. Sack weight may be adjusted to leaf form and buyer requirements."
       ],
       [
-        "Samples & specifications",
-        "Reference samples establish the starting point for leaf appearance, sensory characteristics and product evaluation. Testing, packing and market requirements are clarified before order confirmation."
-      ],
-      [
-        "Bulk-order preparation",
-        "20, 30 or 35 kg PP/PE bags, adjusted to leaf form and application. EXW pricing at the factory; quantities, schedules and handover responsibilities are recorded in the quotation and contract."
-      ],
-      [
-        "Market-development cooperation",
-        "We welcome briefs from importers, distributors and trade-facilitation organisations. Begin with a relevant product range, a small-scale trial and an assessment of the conditions needed for subsequent purchasing."
+        "Commercial terms",
+        "EXW at Hoàng Long Tea Factory. Packing, freight, documentation and testing are confirmed in the quotation for the selected product and destination market."
       ]
     ]
   }
@@ -119,9 +104,6 @@ const FALLBACK_PHOTOS = ["/landing/1.jpg", "/landing/2.jpg", "/landing/3.jpg"];
 
 export default function HouseHome() {
   const { locale: lang } = useLocale();
-  const [catalog, setCatalog] = useState([]);
-  const [catalogState, setCatalogState] = useState("loading");
-  const [attempt, setAttempt] = useState(0);
   const [entryHref, setEntryHref] = useState("/wholesale");
   const [home, setHome] = useState(null);
   const supabase = useMemo(() => createClient(), []);
@@ -129,33 +111,26 @@ export default function HouseHome() {
 
   useEffect(() => {
     let live = true;
-    setCatalogState("loading");
-    Promise.all([
-      supabase.from("catalog_products").select("id,name,notes,photo_url,photo_position,available,kind,line,price").eq("available", true).order("id").limit(6),
-      supabase.from("settings_home").select("featured_photos,producer_name,producer_photo,producer_role,producer_quote").eq("id", 1).maybeSingle(),
-    ]).then(([products, settings]) => {
-      if (!live) return;
-      if (!products.error) setCatalog(products.data || []);
-      setCatalogState(products.error ? "error" : "ready");
-      if (!settings.error) setHome(settings.data || null);
-    }).catch(() => { if (live) setCatalogState("error"); });
+    supabase.from("settings_home").select("featured_photos,producer_name,producer_photo,producer_role,producer_quote").eq("id", 1).maybeSingle()
+      .then(({ data, error }) => { if (live && !error) setHome(data || null); }).catch(() => {});
     return () => { live = false; };
-  }, [supabase, attempt]);
+  }, [supabase]);
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     const attribution = new URLSearchParams();
     for (const key of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]) { const value = query.get(key); if(value) attribution.set(key, value.replace(/[^a-zA-Z0-9._-]/g,"-").slice(0,80)); }
-    setEntryHref(`/wholesale${attribution.size ? `?${attribution}` : ""}`);
+    attribution.set("lang", lang);
+    setEntryHref(`/wholesale?${attribution}`);
     recordPublicConversion(supabase, "home_view", { once: true, placement: "home" }).catch(() => {});
-  }, [supabase]);
+  }, [supabase, lang]);
 
   const catalogHref = `/catalog${entryHref.includes("?") ? entryHref.slice(entryHref.indexOf("?")) : ""}`;
   const companyQuery = new URLSearchParams(entryHref.includes("?") ? entryHref.slice(entryHref.indexOf("?") + 1) : "");
   companyQuery.set("lang", lang);
   const companyHref = `/company?${companyQuery}`;
   const photos = home?.featured_photos?.length ? home.featured_photos : FALLBACK_PHOTOS;
-  const teas = catalog.filter((item) => item.kind === "tea" && item.line !== "sample").slice(0, 3);
+  const teas = CORE_EXPORT_PRODUCTS;
   const local = (value) => value?.[lang] || value?.en || value?.vi || "";
 
   return (
@@ -167,10 +142,10 @@ export default function HouseHome() {
           <h1>{t.hero}</h1>
           <p className={styles.heroBody}>{t.heroBody}</p>
           <div className={styles.heroLinks}>
-            <Link href={companyHref}>
+            <Link href={`${companyHref}#products`}>
               {t.profileCta}<ArrowRight size={16}/>
             </Link>
-            <Link href={`${companyHref}#cooperation`}>{t.cooperationCta}</Link>
+            <Link href={entryHref}>{t.cooperationCta}</Link>
           </div>
           <a href={catalogHref} className={styles.scrollCue} aria-label={lang === "vi" ? "Xem danh mục trà" : "View tea catalogue"}><ArrowDown size={17}/></a>
         </div>
@@ -180,11 +155,6 @@ export default function HouseHome() {
         </figure>
       </section>
 
-      <section id="capacity" className={styles.capacity}>
-        <h2>{t.capacityTitle}</h2>
-        <dl>{t.capabilities.map(([title,body])=><div key={title}><dt>{title}</dt><dd>{body}</dd></div>)}</dl>
-      </section>
-
       <section id="season" className={styles.season}>
         <header className={styles.sectionHead}>
           <h2>{t.season}</h2>
@@ -192,16 +162,21 @@ export default function HouseHome() {
         </header>
 
         <div className={styles.teaIndex}>
-          {teas.length ? teas.map((tea, index) => (
-            <Link href={`${catalogHref}#${tea.id}`} className={styles.teaRow} key={tea.id}>
+          {teas.map((tea, index) => (
+            <Link href={`${companyHref}#product-${tea.id}`} className={styles.teaRow} key={tea.id}>
               <span className={styles.teaNumber}>{String(index + 1).padStart(2, "0")}</span>
               <span className={styles.teaName}>{local(tea.name)}</span>
-              <span className={styles.teaNote}>{local(tea.notes) || t.viewTea}</span>
-              {tea.photo_url ? <img src={tea.photo_url} alt="" loading="lazy" style={{objectPosition: tea.photo_position || "50% 50%"}} /> : <span className={styles.teaBlank} aria-hidden="true" />}
+              <span className={styles.teaNote}>{local(tea.subtitle)}</span>
+              <img src={tea.photoUrl} alt="" loading="lazy" style={{objectPosition: tea.photoPosition}} />
               <ArrowRight size={18} aria-hidden="true" />
             </Link>
-          )) : <div className={styles.empty} role="status">{catalogState === "loading" ? (lang === "vi" ? "Đang tải danh mục trà…" : "Loading the tea catalogue…") : catalogState === "error" ? <><p>{lang === "vi" ? "Chưa tải được danh mục trà." : "The tea catalogue could not load."}</p><button onClick={() => setAttempt(value => value + 1)}>{lang === "vi" ? "Thử tải lại" : "Try again"}</button></> : t.noTea}</div>}
+          ))}
         </div>
+      </section>
+
+      <section id="capacity" className={styles.capacity}>
+        <h2>{t.capacityTitle}</h2>
+        <dl>{t.capabilities.map(([title,body])=><div key={title}><dt>{title}</dt><dd>{body}</dd></div>)}</dl>
       </section>
 
       <section className={styles.origin}>

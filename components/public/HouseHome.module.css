@@ -67,3 +67,6 @@
 .footer>div{flex-wrap:wrap;align-items:flex-start;gap:var(--space-md)}
 .footer a{width:fit-content;max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.6}
 @media(min-width:48rem){.footer>div>a{max-width:30rem}}
+
+/* Keep the four core tea photographs visible in the mobile product index. */
+@media(max-width:47.99rem){.teaRow{grid-template-columns:1.5rem minmax(0,1fr) 3.4rem 1rem;gap:.5rem;min-height:6rem}.teaRow img{display:block;width:3.4rem;height:3.4rem;object-fit:cover}.teaRow>svg{width:1rem}.teaName{font-size:1.25rem;line-height:1.15}}

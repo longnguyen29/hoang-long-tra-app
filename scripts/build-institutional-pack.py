@@ -4,9 +4,10 @@
 This builder reads public editorial modules only, via Node. It does not read
 .env files, fetch images, query customers, or turn missing evidence into claims.
 Run with the bundled Python runtime (ReportLab, Pillow and Vietnamese Noto fonts).
-The longer product catalogue remains a separate commercial appendix.
+The export product profile presents the four core lines separately from the
+longer retail/product catalogue. It contains no brewing or retail-pack advice.
 
-Usage: python3 scripts/build-institutional-pack.py --catalog-input /tmp/public-catalogue.json
+Usage: python3 scripts/build-institutional-pack.py --catalog-input /tmp/public-core-teas.json
 """
 from __future__ import annotations
 
@@ -73,8 +74,10 @@ def public_payload():
 import {INSTITUTIONAL_PACK,PACK_REVISION,PACK_DOCUMENTS} from './lib/institutional-pack.js';
 import {COMPANY_PROFILE,PROFILE_CONTACT,PROFILE_EXPORT_CONTACT,PROFILE_LEGAL} from './lib/company-profile.js';
 import * as media from './lib/company-media.js';
+import {CORE_EXPORT_PRODUCTS,EXPORT_PRODUCT_COPY} from './lib/export-product-profile.js';
 console.log(JSON.stringify({pack:INSTITUTIONAL_PACK,revision:PACK_REVISION,documents:PACK_DOCUMENTS,
-profiles:COMPANY_PROFILE,contact:PROFILE_CONTACT,director:PROFILE_EXPORT_CONTACT,legal:PROFILE_LEGAL,media}));
+profiles:COMPANY_PROFILE,contact:PROFILE_CONTACT,director:PROFILE_EXPORT_CONTACT,legal:PROFILE_LEGAL,media,
+coreProducts:CORE_EXPORT_PRODUCTS,coreCopy:EXPORT_PRODUCT_COPY}));
 '''
     result = subprocess.run(['node', '--input-type=module', '-e', source], cwd=ROOT,
                             check=True, capture_output=True, text=True, timeout=30)
@@ -84,19 +87,19 @@ profiles:COMPANY_PROFILE,contact:PROFILE_CONTACT,director:PROFILE_EXPORT_CONTACT
 COPY = {
  'vi': {
   'brand': 'HOUSE OF HOÀNG LONG', 'region': 'HÀ GIANG · VIỆT NAM',
-  'brief': 'ĐỀ XUẤT HỢP TÁC THƯƠNG MẠI', 'profile': 'HỒ SƠ DOANH NGHIỆP',
+  'brief': 'GIỚI THIỆU CHÀO HÀNG XUẤT KHẨU', 'profile': 'HỒ SƠ DOANH NGHIỆP',
   'edition': 'PHÁT HÀNH', 'proposal': 'ĐỀ XUẤT THẢO LUẬN', 'facts': 'THÔNG TIN DOANH NGHIỆP',
   'recipient': 'ĐƠN VỊ TIẾP NHẬN', 'market': 'THỊ TRƯỜNG TRAO ĐỔI', 'meetingDate': 'NGÀY LÀM VIỆC',
-  'objective': 'MỤC TIÊU LÀM VIỆC', 'contribution': 'HOÀNG LONG ĐÓNG GÓP',
-  'request': 'NỘI DUNG ĐỀ NGHỊ KẾT NỐI', 'path': 'LỘ TRÌNH ĐỀ XUẤT',
-  'outcome': 'KẾT QUẢ CẦN THỐNG NHẤT', 'contact': 'ĐẦU MỐI LÀM VIỆC',
+  'objective': 'PHẠM VI CHÀO HÀNG', 'contribution': 'SẢN PHẨM & CUNG ỨNG',
+  'request': 'THÔNG TIN YÊU CẦU BÁO GIÁ', 'path': 'QUY TRÌNH CHÀO HÀNG',
+  'outcome': 'CƠ SỞ CHÀO HÀNG', 'contact': 'ĐẦU MỐI LÀM VIỆC',
   'origin': 'NGUỒN TRÀ & VAI TRÒ KINH DOANH', 'capacity': 'CƠ SỞ SẢN XUẤT & CUNG ỨNG',
-  'portfolio': 'DANH MỤC & ỨNG DỤNG', 'delivery': 'TỔ CHỨC THƯƠNG MẠI & GIAO NHẬN',
+  'portfolio': 'DANH MỤC XUẤT KHẨU', 'delivery': 'THƯƠNG MẠI & GIAO NHẬN',
   'quality': 'CHẤT LƯỢNG & HỒ SƠ ĐỐI CHIẾU', 'development': 'CHƯƠNG TRÌNH HỢP TÁC',
   'working': 'Vai trò trong chương trình cung ứng', 'factory': 'Nhà máy & điểm nhận EXW',
   'office': 'Văn phòng giao dịch & kho', 'tax': 'Mã số thuế',
   'director': 'Phát triển xuất khẩu', 'house': 'Liên hệ Hoàng Long',
-  'website': 'Hồ sơ và tài liệu trực tuyến', 'catalog': 'Danh mục trà & phụ lục thương mại',
+  'website': 'Hồ sơ và tài liệu trực tuyến', 'catalog': 'Hồ sơ sản phẩm xuất khẩu',
   'current': 'Xem tài liệu trực tuyến', 'factoryValue': 'Nhà máy Trà Hoàng Long\nTân Lập, Hà Giang',
   'diligence': 'Hồ sơ phục vụ thẩm định', 'diligenceNote': 'Phạm vi tài liệu, thẩm quyền ký và trách nhiệm thực hiện được đối chiếu trước khi cam kết giao dịch. Hồ sơ có thông tin khách hàng được trao đổi riêng theo phạm vi cho phép.',
   'photoLabel': 'VỊ TRÍ ẢNH · CHỜ BỔ SUNG', 'photoBody': 'Bổ sung ảnh thực tế và chú thích trước khi sử dụng làm bằng chứng năng lực.',
@@ -106,25 +109,25 @@ COPY = {
   'packingNote': 'Quy cách cho đơn lô lớn và xuất khẩu; điều chỉnh theo ngoại hình trà và yêu cầu sử dụng. Tách biệt quy cách bán lẻ.',
   'leadTime': '2–8 tuần', 'leadLabel': 'Khung thời gian giao dịch tham chiếu',
   'leadNote': 'Đã gồm thời gian vận chuyển; chưa gồm chậm trễ ngoài dự kiến. Trách nhiệm, phương án vận chuyển và mốc thực hiện được thỏa thuận riêng; giá EXW không mặc định bao gồm cước vận tải.',
-  'factNote': 'Năng lực và địa điểm theo thông tin Hoàng Long cung cấp. Kế hoạch sản xuất, lượng sẵn có và phạm vi từng sản phẩm cần được xác nhận cho chương trình cụ thể.',
-  'proposedNote': 'Các nội dung trên là đề xuất hợp tác để hai bên thống nhất; không thể hiện dự án đã ký, cam kết hỗ trợ hay sự bảo trợ của cơ quan nhà nước.',
+  'factNote': 'Công suất khả dụng, cơ cấu sản phẩm và mốc hàng sẵn được xác nhận theo kế hoạch sản xuất của từng đơn hàng.',
+  'proposedNote': 'Phạm vi cung ứng, giá và tiến độ được xác nhận theo báo giá và hợp đồng của từng giao dịch.',
   'contactNote': 'Chức danh phát triển xuất khẩu xác định đầu mối thương mại; thẩm quyền ký được xác nhận trong hồ sơ giao dịch.',
  },
  'en': {
   'brand': 'HOUSE OF HOÀNG LONG', 'region': 'HÀ GIANG · VIETNAM',
-  'brief': 'TRADE COOPERATION BRIEF', 'profile': 'CORPORATE PROFILE',
+  'brief': 'EXPORT SALES BRIEF', 'profile': 'CORPORATE PROFILE',
   'edition': 'EDITION', 'proposal': 'PROPOSAL FOR DISCUSSION', 'facts': 'COMPANY INFORMATION',
   'recipient': 'PREPARED FOR', 'market': 'MARKET', 'meetingDate': 'MEETING DATE',
-  'objective': 'MEETING OBJECTIVE', 'contribution': 'HOÀNG LONG’S CONTRIBUTION',
-  'request': 'PROPOSED CONNECTIONS & SUPPORT', 'path': 'PROPOSED PATHWAY',
-  'outcome': 'INTENDED WORKING OUTCOME', 'contact': 'WORKING CONTACT',
+  'objective': 'OFFER SCOPE', 'contribution': 'PRODUCTS & SUPPLY',
+  'request': 'INFORMATION FOR A QUOTATION', 'path': 'OFFER PROCESS',
+  'outcome': 'BASIS OF THE OFFER', 'contact': 'WORKING CONTACT',
   'origin': 'TEA ORIGINS & COMMERCIAL ROLE', 'capacity': 'PRODUCTION & SUPPLY BASIS',
-  'portfolio': 'PRODUCTS & APPLICATIONS', 'delivery': 'COMMERCIAL EXECUTION & DELIVERY',
+  'portfolio': 'EXPORT PRODUCT RANGE', 'delivery': 'COMMERCIAL TERMS & DELIVERY',
   'quality': 'QUALITY & SUPPORTING RECORDS', 'development': 'COOPERATION PROGRAMME',
   'working': 'Responsibilities in a supply programme', 'factory': 'Factory & EXW collection point',
   'office': 'Commercial office & warehouse', 'tax': 'Tax ID',
   'director': 'Export development', 'house': 'Hoàng Long contact',
-  'website': 'Profile and documents online', 'catalog': 'Tea catalogue & commercial appendix',
+  'website': 'Profile and documents online', 'catalog': 'Export product portfolio',
   'current': 'Open the online documents', 'factoryValue': 'Hoàng Long Tea Factory\nTân Lập, Hà Giang, Vietnam',
   'diligence': 'Records for due diligence', 'diligenceNote': 'The document scope, signing authority and execution responsibilities are reviewed before a transaction is agreed. Records containing customer information are shared privately within the authorised scope.',
   'photoLabel': 'PHOTO POSITION · TO BE ADDED', 'photoBody': 'Add an actual photograph and caption before using this position as evidence of capability.',
@@ -134,8 +137,8 @@ COPY = {
   'packingNote': 'For large-bulk and export orders, adjusted to tea form and application. Separate from retail pack formats.',
   'leadTime': '2–8 weeks', 'leadLabel': 'Indicative transaction window',
   'leadNote': 'Includes transport time and excludes unforeseen delays. Transport arrangements, responsibilities and milestones are agreed separately; EXW pricing does not imply freight is included.',
-  'factNote': 'Capacity and locations reflect information supplied by Hoàng Long. Production plans, stock availability and the scope of each product must be confirmed for the specific programme.',
-  'proposedNote': 'These are proposed areas for discussion, not signed projects, commitments of support or endorsement by a public authority.',
+  'factNote': 'Available capacity, product mix and goods-readiness dates are confirmed against the production plan for each order.',
+  'proposedNote': 'Supply scope, prices and schedules are confirmed in the quotation and contract for each transaction.',
   'contactNote': 'The export-development title identifies the commercial contact. Signing authority is confirmed in transaction documents.',
  }
 }
@@ -164,7 +167,7 @@ class Document:
         if not self.base_url.startswith('https://'):
             raise ValueError('A public HTTPS website is required')
         self.c = canvas.Canvas(str(path), pagesize=A4, pageCompression=1)
-        self.c.setTitle(('Đề xuất hợp tác thương mại' if locale == 'vi' else 'Trade Cooperation Brief') + ' — Hoàng Long' if kind == 'brief'
+        self.c.setTitle(('Giới thiệu chào hàng xuất khẩu' if locale == 'vi' else 'Export Sales Brief') + ' — Hoàng Long' if kind == 'brief'
                         else ('Hồ sơ doanh nghiệp' if locale == 'vi' else 'Corporate Profile') + ' — Hoàng Long')
         self.c.setAuthor(self.legal['name'])
         self.c.setSubject(('Bản trao đổi ngày ' if locale == 'vi' else 'Discussion edition ') + self.revision)
@@ -239,11 +242,16 @@ class Document:
             top = self.para(body, M, top - 18, CW, 10.1, 15.5, max_height=96)
         return top - 27
 
-    def image(self, source, x, top, width, height, crop=(.5, .5)):
+    def image(self, source, x, top, width, height, crop=(.5, .5), contain=False):
         path = (ROOT / 'public' / source.lstrip('/')).resolve()
         if not path.is_relative_to((ROOT / 'public').resolve()) or not path.is_file():
             raise ValueError(f'Image must be an existing local public asset: {source}')
         im = Image.open(path); iw, ih = im.size
+        if contain:
+            scale=min(width/iw,height/ih);sw,sh=iw*scale,ih*scale
+            self.c.setFillColor(HexColor('#E9E7DF'));self.c.rect(x,top-height,width,height,fill=1,stroke=0)
+            self.c.drawImage(str(path),x+(width-sw)/2,top-height+(height-sh)/2,sw,sh,mask='auto')
+            return
         scale = max(width / iw, height / ih); sw, sh = iw * scale, ih * scale
         self.c.saveState()
         clip = self.c.beginPath(); clip.rect(x, top-height, width, height); self.c.clipPath(clip, stroke=0)
@@ -420,14 +428,27 @@ class Document:
     def company_portfolio(self):
         self.begin('03 / '+self.t['portfolio'])
         p = self.s['portfolio']; top = self.heading(p['title'], p['body'])
-        top = self.rows(p['segments'], top, body_size=9.5, gap=20, title_size=12.2)
-        image_h = min(134, top-147)
-        if image_h < 65:
-            raise ValueError('Portfolio copy leaves insufficient space for product photographs')
-        gap=12; width=(CW-gap)/2
-        self.image('/export/hong-tra-shan-khoi.jpeg', M, top, width, image_h, (.5,.45))
-        self.image('/export/luc-tra-hoa-ngoc-lan.jpeg', M+width+gap, top, width, image_h, (.5,.45))
-        self.para(self.t['archivalTea'], M, top-image_h-8, CW, 7.2, 10.8, color=MUTED, max_height=22)
+        products = self.data.get('coreProducts') or []
+        if len(products) != 4:
+            raise ValueError('Corporate portfolio requires the four approved export product lines')
+        gap=22; width=(CW-gap)/2
+        for start in (0,2):
+            bottoms=[]
+            for offset, product in enumerate(products[start:start+2]):
+                x=M+offset*(width+gap)
+                self.label(f'{start+offset+1:02d} / '+localized(product['category'],self.locale).upper(),x,top,width,size=6.6)
+                bottom=self.para(localized(product['name'],self.locale),x,top-22,width,16,22,'SerifBold',GREEN,67)
+                bottom=self.para(localized(product['subtitle'],self.locale),x,bottom-9,width,9.1,13.6,'Body',INK,55)
+                bottom=self.para(localized(product['commercialUse'],self.locale),x,bottom-11,width,8.7,13.2,'Body',MUTED,81)
+                self.rule(bottom-14,x,width)
+                bottoms.append(bottom)
+            top=min(bottoms)-42
+        if top < 129:
+            raise ValueError('Four-product corporate portfolio reaches packing note')
+        image_gap=12;image_width=(CW-image_gap*3)/4;image_height=min(151,top-155)
+        if image_height>=75:
+            for index,product in enumerate(products):
+                self.image(product['photoUrl'],M+index*(image_width+image_gap),top,image_width,image_height,contain=True)
         self.label(self.t['packing'], M, 100)
         self.para(self.t['packingNote'], M, 81, CW, 7.8, 11.5, color=MUTED, max_height=24)
         self.end()
@@ -507,48 +528,131 @@ class Document:
         return self.regions
 
 
-def build_annex(payload_path, output_dir, font_dir):
-    """Reuse existing catalogue rendering without changing its long-form PDFs."""
-    import importlib.util
-    spec = importlib.util.spec_from_file_location('hl_catalogue_pdf', ROOT/'scripts'/'build-company-catalog-pdf.py')
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    module.register_fonts(font_dir)
-    data = json.loads(Path(payload_path).read_text())
-    products = data.get('products') or []
-    if len(products) != 17 or len({p['id'] for p in products}) != 17:
-        raise ValueError('Current annex requires the 17 unique public teas; update pagination if the range changes')
-    for locale in ('vi', 'en'):
-        output = output_dir/f'hoang-long-product-annex-{locale}.pdf'
-        document = module.Document(output, data, locale)
-        document.count = 7
-        document.t['cover'] = 'Phụ lục danh mục & kỹ thuật' if locale=='vi' else 'Product & technical reference'
-        document.t['footer'] = document.t['cover']
-        document.t['brand'] = 'HOÀNG LONG · DANH MỤC & KỸ THUẬT' if locale=='vi' else 'HOÀNG LONG · PRODUCT & TECHNICAL REFERENCE'
-        document.t['guide_label'] = '02 / DANH MỤC & QUY CÁCH' if locale=='vi' else '02 / RANGE & PACKING'
-        document.t['catalog_label'] = '03 / DANH MỤC TRÀ' if locale=='vi' else '03 / TEA CATALOGUE'
-        document.t['buy_label'] = '04 / ĐẦU MỐI THƯƠNG MẠI' if locale=='vi' else '04 / COMMERCIAL CONTACT'
-        document.c.setTitle(document.t['cover']+' — Hoàng Long')
-        # Use the established measured technical layout, with an annex-specific section marker.
-        original_start = document.start
-        def start(section=None):
-            if section and section.startswith('04 /') and 'TECHNICAL PROCUREMENT' in section:
-                section='01 / TECHNICAL PROCUREMENT BASIS'
-            elif section and section.startswith('04 /') and 'NỀN TẢNG KỸ THUẬT' in section:
-                section='01 / NỀN TẢNG KỸ THUẬT'
-            original_start(section)
-        document.start=start
-        document.technical_page()
-        document.guide_page()
-        index=0
-        for count in (5,4,4,4):
-            document.catalog_page(products[index:index+count],index+1)
-            index+=count
-        document.order_page()
-        if document.page_no!=7:
-            raise ValueError('Product annex page-count mismatch')
-        document.c.save()
-        print(f'{output} ({output.stat().st_size:,} bytes; 7 pages; 17 teas)')
+class ExportProductDocument(Document):
+    """An editorial product dossier, with one actual export line per spread/page."""
+    def __init__(self, path, data, locale):
+        super().__init__(path,data,locale,'company')
+        self.kind='export-products'
+        self.total=6
+        self.products=data.get('coreProducts') or []
+        self.copy=data['coreCopy'][locale]
+        expected={'hong-tra-shan-mat','hong-tra-shan-khoi','luc-tra-shan-moc','luc-tra-ngoc-lan'}
+        actual={p.get('catalogId') or p['id'] for p in self.products}
+        if len(self.products)!=4 or actual!=expected:
+            raise ValueError('Export product profile must contain exactly the four core catalogue products')
+        self.c.setTitle(('Hồ sơ sản phẩm xuất khẩu' if locale=='vi' else 'Export Product Portfolio')+' — Hoàng Long')
+        self.c.setSubject('Four core tea lines · Bulk / export · '+self.revision)
+
+    def product_photo(self,product,x,top,width,height):
+        src=product.get('photoUrl')
+        if src and not src.startswith(('https:','http:')):
+            self.image(src,x,top,width,height,contain=True)
+            return
+        self.c.setFillColor(PALE);self.c.rect(x,top-height,width,height,fill=1,stroke=0)
+        self.c.setStrokeColor(LINE);self.c.rect(x+.5,top-height+.5,width-1,height-1,fill=0,stroke=1)
+        self.label(self.t['photoLabel'],x+20,top-height/2+18,width-40,color=MUTED,size=6.8)
+        self.para(localized(product['name'],self.locale),x+20,top-height/2-2,width-40,15,21,'Serif',GREEN,55)
+
+    def cover(self):
+        self.begin('HỒ SƠ SẢN PHẨM XUẤT KHẨU' if self.locale=='vi' else 'EXPORT PRODUCT PORTFOLIO',dark=True)
+        self.label('04 / VIETNAMESE TEA',M,740,color=PALE,size=8)
+        top=self.para(self.copy['title'],M,708,CW,29,39,'Serif',PAPER,118)
+        top=self.para(self.copy['intro'],M,top-17,CW,10,15.5,color=PALE,max_height=95)-27
+        gap=17;width=(CW-gap)/2
+        image_h=150
+        for start in (0,2):
+            bottoms=[]
+            for offset,product in enumerate(self.products[start:start+2]):
+                x=M+offset*(width+gap)
+                self.product_photo(product,x,top,width,image_h)
+                bottom=self.para(localized(product['name'],self.locale),x,top-image_h-11,width,12,17,'SerifBold',PAPER,51)
+                bottom=self.para(localized(product['category'],self.locale),x,bottom-5,width,7.3,11,color=PALE,max_height=22)
+                bottoms.append(bottom)
+            top=min(bottoms)-24
+        if top<78:
+            raise ValueError('Export cover portfolio reaches footer')
+        self.end(dark=True)
+
+    def product_page(self,product,index):
+        self.begin(f'{index:02d} / '+localized(product['category'],self.locale).upper())
+        title=localized(product['name'],self.locale)
+        top=self.para(title,M,737,CW,30,40,'Serif',GREEN,84)
+        top=self.para(localized(product['subtitle'],self.locale),M,top-12,CW,11.1,16,'Body',GOLD,49)
+        top=self.para(localized(product['description'],self.locale),M,top-15,CW,9.7,14.8,max_height=94)-23
+        image_h=320
+        image_w=298
+        self.product_photo(product,M,top,image_w,image_h)
+        labels=self.copy['labels']
+        aroma=localized(product.get('aroma'),self.locale)
+        right_x=M+image_w+23;right_w=CW-image_w-23
+        self.label(labels['form'].upper(),right_x,top-10,right_w,color=MUTED)
+        self.para(localized(product['form'],self.locale),right_x,top-35,right_w,12,18,'SerifBold',GREEN,42)
+        if aroma:
+            self.rule(top-91,right_x,right_w)
+            self.label(labels['aroma'].upper(),right_x,top-112,right_w)
+            self.para(aroma,right_x,top-138,right_w,14,21,'SerifBold',GREEN,86)
+        top-=image_h+25
+        # Empty sensory data is not replaced with invented leaf/infusion/grade claims.
+        fields=[(labels[key],localized(product.get(key),self.locale)) for key in ('taste','appearance','liquor') if localized(product.get(key),self.locale)]
+        if fields:
+            for label,value in fields:
+                self.label(label.upper(),M,top,136,size=6.7,color=MUTED)
+                top=self.para(value,M+148,top,CW-148,9,13.5,max_height=42)-15
+        self.label(labels['commercialUse'].upper(),M,top,CW)
+        top=self.para(localized(product['commercialUse'],self.locale),M,top-20,CW,9.6,14.7,max_height=83)-20
+        self.rule(top+5)
+        note=localized(product.get('lotNote'),self.locale) or self.copy['lotProfile']
+        self.para(note,M,top-9,CW,7.6,11.5,color=MUTED,max_height=47)
+        self.end()
+
+    def technical_page(self):
+        self.begin('05 / '+('QUY CÁCH & HỒ SƠ XUẤT KHẨU' if self.locale=='vi' else 'BULK SPECIFICATION & EXPORT RECORDS'))
+        top=self.heading(self.copy['technicalTitle'],self.copy['technicalIntro'],24)
+        checks=self.copy['technicalChecks']
+        for item in checks:
+            self.label(item['title'].upper(),M,top,142,size=6.7,color=GOLD)
+            bottom=self.para(item['body'],M+157,top+1,CW-157,8.6,13,max_height=67)
+            self.rule(bottom-11)
+            top=bottom-26
+        facts=self.copy['commercialFacts']
+        gap=22; width=(CW-gap)/2
+        top-=2
+        for start in range(0,len(facts),2):
+            row_bottom=top
+            for offset,fact in enumerate(facts[start:start+2]):
+                x=M+offset*(width+gap)
+                self.label(fact['label'].upper(),x,top,width,size=6.5,color=MUTED)
+                bottom=self.para(fact['value'],x,top-20,width,10.2,14.8,'SerifBold',GREEN,45)
+                if fact.get('note'):
+                    bottom=self.para(fact['note'],x,bottom-6,width,7.4,10.7,color=MUTED,max_height=66)
+                row_bottom=min(row_bottom,bottom)
+            top=row_bottom-20
+        if top<162:
+            raise ValueError('Technical matrix leaves insufficient room for commercial contact')
+        self.rule(top)
+        self.contact_line(M,top-17,CW-115,compact=True)
+        self.qr(self.url('/company#core-export-products'),W-M-84,top-13,75)
+        self.para(self.base_url.replace('https://',''),M,top-96,CW-115,8.3,12,color=MUTED,max_height=20)
+        self.end()
+
+    def build(self):
+        self.cover()
+        for index,product in enumerate(self.products,1):
+            self.product_page(product,index)
+        self.technical_page()
+        if self.page!=self.total:
+            raise ValueError('Export product profile page-count mismatch')
+        self.c.save()
+        return self.regions
+
+
+def build_annex(data, output_dir, qa_dir=None):
+    for locale in ('vi','en'):
+        output=output_dir/f'hoang-long-product-annex-{locale}.pdf'
+        regions=ExportProductDocument(output,data,locale).build()
+        if qa_dir:
+            (qa_dir/(output.stem+'-regions.json')).write_text(json.dumps(regions,indent=2))
+        print(f'{output} ({output.stat().st_size:,} bytes; 6 pages; 4 core export teas)')
 
 
 def main():
@@ -557,7 +661,7 @@ def main():
     parser.add_argument('--market', help='Optional destination market for a meeting-specific brief')
     parser.add_argument('--meeting-date', help='Optional meeting date in YYYY-MM-DD format')
     parser.add_argument('--input', type=Path, help='Optional JSON export of the same public editorial modules')
-    parser.add_argument('--catalog-input', type=Path, help='Explicit public catalogue payload for the separate technical/product annex')
+    parser.add_argument('--catalog-input', type=Path, help='Optional public core-product snapshot used to confirm the four catalogue IDs')
     parser.add_argument('--output-dir', type=Path, default=ROOT/'public'/'downloads')
     parser.add_argument('--font-dir', type=Path, default=Path(os.environ.get('HL_PDF_FONT_DIR', str(FONT_DIR))))
     parser.add_argument('--qa-dir', type=Path, help='Optional location for measured text regions and QA renders')
@@ -585,7 +689,12 @@ def main():
                 (args.qa_dir/(destination.stem+'-regions.json')).write_text(json.dumps(regions,indent=2))
             print(f'{destination} ({destination.stat().st_size:,} bytes; {2 if kind=="brief" else 8} pages)')
     if args.catalog_input:
-        build_annex(args.catalog_input, args.output_dir, args.font_dir)
+        snapshot=json.loads(args.catalog_input.read_text())
+        source_ids={p['id'] for p in snapshot.get('products',[])}
+        profile_ids={p.get('catalogId') or p['id'] for p in data['coreProducts']}
+        if source_ids!=profile_ids or len(snapshot.get('products',[]))!=4:
+            raise ValueError('Public catalogue snapshot does not match the four core export lines')
+    build_annex(data,args.output_dir,args.qa_dir)
 
 
 if __name__ == '__main__':
