@@ -8,15 +8,26 @@ The app is deployed on Vercel; Wix manages DNS. Pixel setup does not require a D
 `MetaPixel` loads on approved public routes on `hoanglongtra.com` and
 `www.hoanglongtra.com` only after the visitor chooses Allow. It sends PageView
 on entry and client-side route changes. Successful sample requests and wholesale
-enquiries send Lead, with only the form type as a custom parameter. Failed forms
-send no lead. No Purchase event is sent for an unpaid enquiry or order.
+enquiries, including `/hong-tra-ban-si`, send Lead, with only the form type as a
+custom parameter. Failed forms send no lead. Confirmed server receipts suppress
+duplicate success callbacks in browser memory; the receipt is not sent to Meta.
+No Purchase event is sent for an unpaid enquiry or order.
 
 Admin, ops, partner accounts, private order links, previews and localhost are
-excluded. Unknown query parameters and URL fragments are excluded. Pixel settings
+excluded. Unknown query parameters and private URL fragments are excluded. Only
+known public enquiry anchors and canonical cafe drink/Menu Lab selection values
+are allowed alongside UTMs, `fbclid`, and the Vietnamese/English locale. Pixel settings
 disable automatic configuration; form contents are not included in event payloads.
 Cookie preferences allow declining and withdrawing consent. A stored decline
 prevents loading Meta's script on subsequent visits. Browser storage failures
 fail closed for lead tracking. The bilingual privacy notice describes Meta tracking.
+
+Cafe-to-Menu-Lab links preserve a bounded, valid `fbclid` unchanged alongside UTM
+labels; they never copy arbitrary contact/query fields. The sample request's
+existing private CRM note retains sanitized UTM campaign/ad-variant labels, but
+not click IDs. This lets staff compare qualified enquiries by campaign/content
+without adding customer fields to Meta events. No CAPI or cross-channel event
+deduplication is configured by this change.
 
 ## Verify before production
 
@@ -26,6 +37,10 @@ fail closed for lead tracking. The bilingual privacy notice describes Meta track
 - On production, a fresh browser must not load `connect.facebook.net` before Allow.
 - After Allow, verify one PageView per navigation in Events Manager > Test events.
 - Verify declined consent, withdrawal, private routes and failed forms send no events.
+- Verify a campaign URL to `/hong-tra-ban-si` still allows tracking after jumping
+  to its public `#mau-bao-gia` form; unknown/private fragments remain blocked.
+- Verify cafe drink selection carries `fbclid` and UTMs into Menu Lab and that a
+  repeated success callback for the same receipt does not send another Lead.
 - With approval to create a real test enquiry, verify one Lead after each successful
   sample/wholesale submission. Do not submit fake customer records without agreement.
 

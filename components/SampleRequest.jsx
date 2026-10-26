@@ -1,6 +1,6 @@
 "use client";
 import PolicyLinks from "@/components/PolicyLinks";
-import { safeReferrer } from "@/lib/public-attribution";
+import { safeReferrer, campaignAttributionNote } from "@/lib/public-attribution";
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Leaf, Loader2, Phone } from "lucide-react";
@@ -157,6 +157,7 @@ export default function SampleRequest({ variant = "control" }) {
   const [labResult, setLabResult] = useState(null);
   const [cafeEntry, setCafeEntry] = useState(false);
   const cafeAccepted = useRef(false);
+  const requestInFlight = useRef(false);
   const [labDefaults, setLabDefaults] = useState({ useCase: "milk", character: "strong" });
 
   useEffect(() => {
@@ -245,23 +246,25 @@ export default function SampleRequest({ variant = "control" }) {
 
   const submit = async (event) => {
     event.preventDefault();
+    if (requestInFlight.current || sent) return;
     setError("");
     if (!form.store.trim() || !form.phone.trim() || !form.address.trim()) {
       setError(t.errRequired);
       return;
     }
+    requestInFlight.current = true;
     setSending(true);
     try {
       const { data, error: requestError } = await supabase.rpc("submit_sample_request", {
         p_store_name: form.store.trim(), p_contact_name: form.name.trim(), p_phone: form.phone.trim(),
         p_address: form.address.trim(), p_pack: pack, p_has_shop: checks.hasShop,
         p_can_reformulate: checks.canReformulate, p_can_feedback: checks.canFeedback,
-        p_note: [menuLabEnabled ? menuLabRequestNote(labResult) : "", form.note.trim()].filter(Boolean).join("\n\n"),
+        p_note: [menuLabEnabled ? menuLabRequestNote(labResult) : "", form.note.trim(), campaignAttributionNote(window.location.search)].filter(Boolean).join("\n\n"),
         p_heard_from: form.heardFrom, p_growth_code: growthCode,
       });
       if (requestError) throw requestError;
       notifyHouse("sample_requests", data);
-      trackMetaLead("sample_request");
+      trackMetaLead("sample_request", data);
       recordPublicConversion(supabase, "sample_submitted", { pack, placement: `${experimentPlacement}_form` }).catch(() => {});
       setSent(true);
       scrollToTop();
@@ -272,6 +275,7 @@ export default function SampleRequest({ variant = "control" }) {
         : message.includes("not_qualified") ? t.qualifyFail
         : message.includes("_required") ? t.errRequired : t.errGeneric);
     } finally {
+      requestInFlight.current = false;
       setSending(false);
     }
   };
