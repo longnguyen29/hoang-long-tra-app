@@ -6,6 +6,7 @@ import { DOMESTIC_TEAS, domesticAttribution, domesticEnquiryInput, domesticNoteL
 import { EVENT_CONTACT } from "@/lib/event-contact";
 import { createClient } from "@/lib/supabase/client";
 import { recordPublicConversion } from "@/lib/public-attribution";
+import { trackMetaLead } from "@/lib/meta-pixel";
 import styles from "./DomesticBlackTeaLanding.module.css";
 const initial={teaIds:DOMESTIC_TEAS.map(tea=>tea.id),intent:"sample",businessType:"distributor",name:"",business:"",phone:"",quantityKg:"",packingKg:"",destination:"",note:"",website:"",consent:false};
 const ERRORS={consent_required:"Vui lòng đồng ý để Hoàng Long liên hệ về yêu cầu này.",tea_required:"Vui lòng chọn ít nhất một dòng trà.",invalid_contact:"Kiểm tra lại số điện thoại để Hoàng Long liên hệ.",invalid_quantity:"Khối lượng cần là số kg lớn hơn 0.",note_too_long:"Nội dung yêu cầu hơi dài. Vui lòng rút gọn ghi chú.",rate_limited:"Bạn đã gửi nhiều yêu cầu trong thời gian ngắn. Vui lòng thử lại sau hoặc trao đổi qua Zalo Hoàng Long.",invalid_request:"Vui lòng kiểm tra tên, doanh nghiệp và thông tin yêu cầu.",unavailable:"Chưa xác nhận được yêu cầu đã lưu. Bạn có thể bấm gửi lại hoặc liên hệ Zalo Hoàng Long."};
@@ -28,7 +29,7 @@ export default function DomesticBlackTeaLanding({legal}){
   try{
    const response=await fetch("/api/domestic-wholesale-enquiries",{method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal,body:JSON.stringify({...form,attribution:attribution.current,requestId:requestId.current})});
    const result=await response.json();
-   if(response.ok&&result.ok===true&&result.requestId===requestId.current&&/^HL-E-[a-f0-9]{8}$/i.test(result.reference||"")){setSaved(result);track("trade_lead_submitted");}
+   if(response.ok&&result.ok===true&&result.requestId===requestId.current&&/^HL-E-[a-f0-9]{8}$/i.test(result.reference||"")){setSaved(result);trackMetaLead("wholesale_enquiry",result.requestId);track("trade_lead_submitted");}
    else setError(ERRORS[result.error]||ERRORS.unavailable);
   }catch{setError(ERRORS.unavailable);}finally{window.clearTimeout(timeout);inFlight.current=false;setSending(false);}
  }

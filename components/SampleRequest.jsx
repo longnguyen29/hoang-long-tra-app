@@ -1,6 +1,6 @@
 "use client";
 import PolicyLinks from "@/components/PolicyLinks";
-import { safeReferrer } from "@/lib/public-attribution";
+import { safeReferrer, campaignAttributionNote } from "@/lib/public-attribution";
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Leaf, Loader2, Phone } from "lucide-react";
@@ -64,10 +64,10 @@ const STR = {
     imageAlt: "A finished tea drink being tested at a café bar",
     imageCaption: "The point of a sample is not another tasting cup. It is a recipe your shop can actually serve.",
     setTitle: "Inside the test",
-    facts: [["4", "tea samples selected from the batches currently available"], ["At your bar", "tested with your water, equipment and actual recipe"], ["A decision", "identify what fits before discussing a wholesale order"]],
+    facts: [["4", "Honey Shan Black Tea, Smoked Shan Black Tea, Shan Mộc Green Tea and Magnolia Green Tea"], ["At your bar", "tested with your water, equipment and actual recipe"], ["A decision", "identify what fits before discussing a wholesale order"]],
     stepLab: "Choose drink", stepPack: "Choose set", stepDetails: "Delivery",
     pickPack: "Choose the amount that matches the decision you need to make",
-    packHelp: "All three options contain four tea samples. Only the working quantity changes.",
+    packHelp: "All three options contain four tea samples. The 4 × 50g set is free; you pay the delivery fee. Contact Hoàng Long if you need extra samples.",
     free: "Free", paidCredit: "Credited to the first wholesale order",
     creditNote: "The amount paid for this set is deducted from your first wholesale order.",
     qualifyTitle: "Free-set eligibility",
@@ -103,10 +103,10 @@ const STR = {
     imageAlt: "Một ly trà hoàn thiện đang được thử tại quầy pha chế",
     imageCaption: "Đích đến của bộ mẫu không phải thêm một ly trà thử. Mà là một công thức quán có thể phục vụ thật.",
     setTitle: "Bộ thử giúp quán làm gì?",
-    facts: [["4", "mẫu trà được chọn theo những mẻ đang có"], ["Tại quầy", "thử bằng nguồn nước, thiết bị và công thức thực tế của quán"], ["Ra quyết định", "chọn loại phù hợp trước khi trao đổi đơn sỉ"]],
+    facts: [["4", "Hồng Trà Shan Mật, Hồng Trà Shan Khói, Lục Trà Shan Mộc và Lục Trà Hoa Ngọc Lan"], ["Tại quầy", "thử bằng nguồn nước, thiết bị và công thức thực tế của quán"], ["Ra quyết định", "chọn loại phù hợp trước khi trao đổi đơn sỉ"]],
     stepLab: "Chọn món", stepPack: "Chọn bộ", stepDetails: "Nhận mẫu",
     pickPack: "Chọn lượng trà phù hợp với điều quán cần kiểm chứng",
-    packHelp: "Cả ba lựa chọn đều có bốn mẫu trà. Khác nhau ở lượng trà để quán thử sâu đến đâu.",
+    packHelp: "Cả ba lựa chọn đều có bốn mẫu trà. Bộ 4 × 50g miễn phí; khách trả phí giao hàng. Cần thêm mẫu, vui lòng liên hệ Hoàng Long.",
     free: "Miễn phí", paidCredit: "Trừ vào đơn sỉ đầu tiên",
     creditNote: "Số tiền thanh toán cho bộ mẫu sẽ được trừ vào đơn sỉ đầu tiên.",
     qualifyTitle: "Điều kiện nhận bộ miễn phí",
@@ -157,6 +157,7 @@ export default function SampleRequest({ variant = "control" }) {
   const [labResult, setLabResult] = useState(null);
   const [cafeEntry, setCafeEntry] = useState(false);
   const cafeAccepted = useRef(false);
+  const requestInFlight = useRef(false);
   const [labDefaults, setLabDefaults] = useState({ useCase: "milk", character: "strong" });
 
   useEffect(() => {
@@ -245,23 +246,25 @@ export default function SampleRequest({ variant = "control" }) {
 
   const submit = async (event) => {
     event.preventDefault();
+    if (requestInFlight.current || sent) return;
     setError("");
     if (!form.store.trim() || !form.phone.trim() || !form.address.trim()) {
       setError(t.errRequired);
       return;
     }
+    requestInFlight.current = true;
     setSending(true);
     try {
       const { data, error: requestError } = await supabase.rpc("submit_sample_request", {
         p_store_name: form.store.trim(), p_contact_name: form.name.trim(), p_phone: form.phone.trim(),
         p_address: form.address.trim(), p_pack: pack, p_has_shop: checks.hasShop,
         p_can_reformulate: checks.canReformulate, p_can_feedback: checks.canFeedback,
-        p_note: [menuLabEnabled ? menuLabRequestNote(labResult) : "", form.note.trim()].filter(Boolean).join("\n\n"),
+        p_note: [menuLabEnabled ? menuLabRequestNote(labResult) : "", form.note.trim(), campaignAttributionNote(window.location.search)].filter(Boolean).join("\n\n"),
         p_heard_from: form.heardFrom, p_growth_code: growthCode,
       });
       if (requestError) throw requestError;
       notifyHouse("sample_requests", data);
-      trackMetaLead("sample_request");
+      trackMetaLead("sample_request", data);
       recordPublicConversion(supabase, "sample_submitted", { pack, placement: `${experimentPlacement}_form` }).catch(() => {});
       setSent(true);
       scrollToTop();
@@ -272,6 +275,7 @@ export default function SampleRequest({ variant = "control" }) {
         : message.includes("not_qualified") ? t.qualifyFail
         : message.includes("_required") ? t.errRequired : t.errGeneric);
     } finally {
+      requestInFlight.current = false;
       setSending(false);
     }
   };
