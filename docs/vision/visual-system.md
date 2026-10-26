@@ -1,153 +1,157 @@
-# HL-001 — Visual system proposal
+# HL-001 — Signature visual system, round 2
 
-**DRAFT v0.1 · 26 October 2026 · Not approved. No tokens or UI changed.**
+**DRAFT v0.2 · 26 October 2026 · Not approved. No application styling changed.**
 
-This proposes a more expressive public website, starting with home. It is allowed
-to challenge the old `design.md` composition; it does not apply a new theme to the
-staff console, checkout or partner operations. See the [storyboard](homepage-storyboard.md).
+R4 response. Read the [visual plates](concepts/round-2/README.md) and
+[composition specification](homepage-storyboard.md). The recommendation is B,
+Working Tea Atlas; A/C are alternatives, not extra themes to mix indiscriminately.
 
-## Visual thesis
+## A recognisable system without relying on the logo
 
-**A photographic tea monograph with the precision of a manufacturer's dossier.**
-The tree, leaf, hand and equipment create presence. Typography carries the story;
-captions and measured data establish a commercial footing. Distinction comes
-from scale, framing and sequence, not from adding more components.
+The system is the relationship between real tea material and the buyer's field
+sheet. The three devices below must work as a composition, not ornamental icons.
+Do not claim global originality; the goal is a specific, recognizable Hoàng Long
+expression that cannot be reproduced by swapping a generic supplier's headline.
 
-Use three recurring visual devices: a small place/process caption; an oversized
-editorial title; a fine ruled ledger for concrete information. They may recur,
-but adjacent chapters must not share the same layout. Avoid a uniform card grid,
-decorative badges, glass panels, pill-heavy labels and template icon rows.
+### 1. The four-material register
 
-## Proposed palette and scope
+A continuous strip of four **actual catalog photographs**, cropped to dry-leaf
+texture, with real names attached to each image edge: Mật / Khói / Mộc / Ngọc Lan.
+It first appears as the opening's lower boundary, then expands into the four-tea
+selector. This visual refrain belongs to these four tea lines, rather than a row
+of interchangeable feature cards. No duplicate invented leaf textures or rendered
+liquor colours. Do not call the crop a microscope image or an export-grade sample.
 
-Keep a recognizable connection to the House's paper/jade identity. Move the
-opening and manufacturing chapter toward a deeper photographic ink; alternate
-with spacious warm paper for products and reading. A small oxidised-brass accent
-can mark a current selection or a marginal number, not every border and heading.
+Desktop opening: four contiguous 360px-wide segments, each 114px high including
+the name edge. Product chapter: 338×164 photo segments plus 32px name controls;
+selected photograph expands to 536×408. Mobile opening: four 97.5×70 segments;
+product chapter switches to four 44px controls and one 346×282 actual photograph.
+The small opening strip is navigation/material context; it does **not** replace
+large product photography further down. See [product plate](concepts/round-2/b-four-teas-1440.png).
 
-| Proposed semantic role | Draft value / source | Intended use |
+### 2. The material seam
+
+Change scale from tree → handled leaf → four dry teas through an aligned physical
+image edge. The craft photograph meets a narrow oxidised-copper margin and an
+offset serif passage; the selected product plate meets a lighter material margin
+before the buyer fields. The device is a spatial cut, not a fake historic motif,
+an illustrated dragon or a decorative tracing line on a production photo.
+
+The layout can interrupt a conventional grid. In the opening a full-width title leads a three-scale photo spread and the buyer
+sheet crosses its last frame's foot; in craft, the photo reaches the left edge; in
+products, the horizontal register opens into a larger detail. These transitions
+can be entirely static. No animation pretending that a pictured leaf became the
+specific offered lot, and no pinned scroll sequence. See [craft plate](concepts/round-2/b-craft-1440.png).
+
+### 3. The buyer field sheet
+
+An attached information plane uses the same rhythm everywhere: **identity → basis
+→ qualification → next action**. In the hero it names PP/PE, EXW and the contact;
+in product selection it attaches notes/trial purpose, bulk formats and a direct
+sample link; in manufacturing it distinguishes declared total capacity from
+order-confirmed availability. These are functional evidence distinctions, not
+certification badges or fake live-system statuses.
+
+Use plain language: “Năng lực công bố,” “Xác nhận theo mẫu / đơn hàng,” “Điều kiện
+chào hàng.” No green checkmark suggesting an audit, invented lot number, stock
+counter, origin map coordinates or illustrated laboratory chart. EXW refers to
+the relevant export offer; domestic terms and retail shipping remain their own
+existing flows. See [industrial plate](concepts/round-2/b-industrial-1440.png).
+
+## Proposed home-only palette
+
+| Token candidate | Static comp value | Meaning |
 | --- | --- | --- |
-| Home paper | Existing `--color-paper` (`oklch(96% 0.012 82)`) | Reading/product canvas. |
-| Home ink | `oklch(20% 0.020 155)` | Deep opening/industrial plane and dark text. |
-| Home paper secondary | Existing `--color-paper-2` | Quiet transition/retail plane. |
-| Home brass | Existing `--color-accent` (`oklch(52% 0.115 72)`) | Nonessential selection accent; not assumed accessible for small text. |
-| Home text muted | Existing ink-2 on paper; paper-2 on ink | Supporting information, subject to measured contrast. |
-| Focus | Existing `--color-focus` | Clearly visible keyboard indication on both light/dark backgrounds; adjust home-specific treatment if contrast fails. |
+| `--home-mineral` | `#172D38` | Mineral-blue industrial reading plane and ink. A purposeful departure from the old jade field. |
+| `--home-chalk` | `#EFF2EA` | Neutral light product/reading field; distinct from the old warm cream. |
+| `--home-leaf` | `#DBE7A5` | Restrained high-contrast sample action/material edge. Do not turn the site into neon-green tech UI. |
+| `--home-seam` | `#A34B36` | Oxidised-copper craft margin and review marks; not default small text on dark. |
+| `--home-muted` | `#B9CCC7` | Supporting light text on mineral. |
+| `--home-pale` | `#D8E1DD` | Unselected product-control surface on chalk. |
 
-Values are candidates, not a passed contrast audit. In implementation, declare
-home-scoped variables consuming shared tokens where possible. Do not redefine
-`:root` or change staff semantic danger/success colours for a marketing effect.
-Provide solid backing for text over photographs; do not trust one gradient to
-work across every crop. Colour never substitutes for selected/error state labels.
+The material register, spatial cuts and buyer fields must still distinguish the
+page in greyscale. Palette alone is insufficient. Dark/light text contrast is
+measured for static candidates in the artifact verification report; full runtime,
+image crop, hover/focus and zoom accessibility remain later checks. Rust numeric
+pins/annotation strips are review markup outside or on the static plate, not
+proposed interactive controls.
 
-## Typography: change the scale and composition before changing the brand
+## Typography — deliberate change, scoped to home
 
-Recommend **Newsreader** as the editorial face and **Inter Tight** for functional
-copy initially: both already load and support the site's Vietnamese/English
-content. The familiar faces can behave very differently at editorial scale.
-Do not introduce a new Latin-only luxury font or a third display family solely
-to signal an upgrade. Preserve the existing seal/brand typography in its remit.
+**Be Vietnam Pro** (regular/bold) provides the confident Vietnamese display and
+usable commercial copy; **Noto Serif** gives craft passages a different cadence.
+This is an intentional alternative to keeping Newsreader/Inter Tight and merely
+increasing their size. Preserve the actual House wordmark/seal as brand artwork;
+the typographic brand labels in these static studies are not a replacement logo.
 
-| Role | 1440px proposal | 768px proposal | 390px proposal |
+Official font sources: [Be Vietnam Pro](https://github.com/google/fonts/tree/main/ofl/bevietnampro),
+[Noto Serif](https://github.com/google/fonts/tree/main/ofl/notoserif). Static SVGs
+outline text for faithful review without installing fonts; no font is added to
+production or the project's dependency set in this phase.
+
+| Role | 1440 static setting | 390 static setting | 768 proposal |
 | --- | --- | --- | --- |
-| Hero display | 96–120px; 0.98–1.08 line height | 64–80px; avoid narrow split column | 42–48px, about 3 lines when copy permits |
-| Chapter title | 56–72px | 44–56px | 32–40px |
-| Reading text | 18–20px, 1.55–1.65 line height | 18px | 16–18px, 1.55–1.65 |
-| Labels/captions | 12–14px, enough contrast | 12–14px | 12–14px; facts/qualifiers can use body size |
-| Actions/navigation | 14–16px with usable hit area | 14–16px | 16px with ≥44px target |
+| Atlas opening | Be Vietnam Pro bold 77px; EN 83px, independent two-line setting | Producer phrase 44px; market phrase 35px / EN39px | 52–64px with deliberate reflow |
+| Craft title | Noto Serif 62px | 32px | 40–48px |
+| Product title | Be Vietnam Pro bold 56px chapter / 40px product | 33px chapter / 25px product | 38–46px chapter |
+| Opening support | 18px | 16px | 17–18px |
+| Primary action | 16px bold, 58px target | 16px bold, 52px target | ≥48px target |
+| Caption / evidence label | 11–14px | 10–13px; supporting facts larger | 12–14px |
 
-These are ranges to test, not fixed inline values. Let Vietnamese diacritics
-breathe; display leading must not clip marks or descenders. Use restrained
-tracking, no forced all-caps paragraphs or letter-by-letter animation. Roman
-headlines, legible weight, and meaningful line breaks carry emphasis. Body text
-stays near 55–65 characters per line. Functional numbers keep units beside them.
+Some archive/review captions are small in the static plate; final accessibility
+review may require increasing them. Never shrink text to preserve a screenshot's
+fold. The headline's diacritics must remain intact. Do not force English into
+Vietnamese line breaks or replace functional labels with cryptic abbreviations.
 
-## Layout and spacing
+## Product selector appearance and behavior
 
-At 1440px, use a flexible 12-column editorial grid with about 48–72px outer
-gutters; text and pictures can occupy unequal spans and offset vertically.
-Do not align every section to an identical 50/50 split. A wide image can interrupt
-the grid, followed by a compact ledger. Content is allowed to be asymmetrical,
-not accidentally unbalanced.
+[Default, changed and mobile states](concepts/round-2/selector-states.png).
 
-At 768px, recompose deliberately: avoid shrinking a large desktop spread until
-its text becomes a tall narrow column. At 390px use 20–24px reading gutters,
-occasional edge-to-edge images, and 56–80px chapter breathing room where it serves
-the story. Preserve source order, reading order and meaningful captions.
+- Default: Mật active. Ink-filled name edge/control, contrasting text and a
+  selected dot/name. Other controls use pale fill; all four names stay visible.
+- Changed: Khói active. Photo, full name, confirmed notes, trial purpose and exact
+  sample destination update together. No automatic cycling or hover-only change.
+- Mobile-selected: Ngọc Lan active in a two-row control group, then one large
+  photograph and the same buyer fields. No horizontally hidden fourth tea.
+- Keyboard focus is **separate** from selection: proposed visible double outline
+  or outline with offset. Use buttons with an explicit selected state or a fully
+  implemented accessible tabs pattern; the static board does not prove behavior.
+- Future no-JS fallback retains ordinary product/profile/sample links. No new form,
+  CRM entity, catalog mapping or unapproved change to attribution.
 
-Use the existing named spacing scale for common gaps. Add home-scoped semantic
-sizes if needed after approval. Never hide horizontal overflow to conceal an
-oversized button, image or heading. Long labels wrap naturally; interactive
-targets retain enough vertical room. No fixed height that crops content at 200% zoom.
+## Exact precedence after a later approval
 
-## Photography and art direction
+1. Current user authorization and the dated phase record determine what may be
+   built or published. This concept phase still authorizes neither.
+2. After a Creative Director approves an exact revision/comp set, its **home-scoped**
+   layout, typography, palette and interaction decisions supersede corresponding
+   legacy design.md constraints **for that authorized homepage scope only**.
+3. Record explicitly that the approved home may replace Split Studio's family,
+   Newsreader/Inter Tight page typography, jade/paper sequencing and the ≤8px reveal
+   cap where the approved design specifies a different treatment. An old style
+   stamp must not silently veto that approved direction.
+4. Implement later via a home root class/data attribute and `--home-*` variables;
+   CSS module selectors stay within that root. Do not globally redefine `:root`,
+   body, h1, shared form/button classes or operations semantics.
+5. A header visual variant, if approved, must be opt-in for home and preserve its
+   default appearance/behavior elsewhere. Keep actual brand artwork and all
+   destinations, locale, focus and campaign/referral contracts.
+6. Unrelated public pages, retail/partner tasks and staff operations retain their
+   existing system until separately authorized. Do not “fix” protected business
+   workflows as part of an art-direction rollout.
 
-| Subject | Desired shot | Available first-edition choice / limitation |
-| --- | --- | --- |
-| Origin | Contextual landscape with real tea trees, human scale and accurate location | Portrait `/landing/1.jpg`, composed honestly within a wider canvas. Do not synthesize new surroundings. |
-| Craft | Hands performing a confirmed operation; texture before machinery abstraction | `/landing/2.jpg`, literal leaf-handling caption. No fabricated worker identity or technique. |
-| Manufacturing | Real operating line, medium/wide views and detail with dates/context | `/landing/3.jpg` is an archive collage. Keep that identity and resolution visible. New real photos are desirable. |
-| Products | Consistent light, leaf form and a reference scale, still showing the actual tea | Existing four catalog photos, uneven quality; crop/layout consistently without changing leaf colour or form. |
-| People | Named maker and export contact at work, with role and publication permission | No newly verified portrait available; typography-led contact and process detail instead. |
-| Supply | Actual bulk packing, lot label, loading and evidence context | No suitable photo yet. Use accurate specification typography, not a fake loading scene. |
+## Motion, access and cost
 
-Each future commissioned asset needs file provenance, permission, subject, place,
-date and a truthful caption; remove unnecessary metadata before public delivery.
-Use photo-specific focal points at all three widths. Avoid faces hidden behind
-navigation, ambiguous machine crops, text baked into images, faux film grain,
-dramatic filters that change tea appearance or an unlabelled stock photograph.
+The signatures work without movement. A later optional hero settle must not hide
+initial copy or block the CTA. A selected product may crossfade over 180–240ms;
+reduced motion changes immediately. Any displacement, including a proposed 8–12px
+chapter arrival, needs approval and can be removed without losing meaning.
+No scroll-jacking, autoplay selector, forced pinning, fake smooth-scroll layer,
+ambient sound, cursor gimmick, animated certificate or synthetic factory film.
 
-Public heritage must emerge from real materials and confirmed history. Do not
-add generic ethnic patterns, unverified regional dress or ceremonial imagery as
-shortcuts to “Vietnamese.” Do not present AI scenes as documentary evidence.
-
-## Interaction and motion
-
-The default is a fully readable page with native scroll. Sophistication means
-well-controlled states and continuity, not an animation library.
-
-| Interaction | Proposed behavior | Touch, keyboard and reduced-motion fallback |
-| --- | --- | --- |
-| Entry | Optional single 400–600ms image/text settle after content is already visible | No loader. Reduced motion is immediate; no opacity-zero dependency. |
-| Chapter arrival | At most one restrained opacity/8–12px reveal per chapter | No replay on every scroll. Static with reduced motion or JS unavailable. |
-| Tea selector | 180–240ms opacity transition; name, copy, image and destination update as one selection | Four labelled controls, visible state/focus, no auto-advance, no scroll jump. Reduced motion changes immediately. |
-| Image hover | Very subtle crop emphasis on capable pointers only | No information or CTA exists only on hover; no motion required on touch. |
-| Header/menu | Preserve existing open/close, outside click and Escape focus behavior | Explicit tap controls and visible focus; no hover-only menus. |
-| CTA | Immediate focus/active feedback, restrained underline/colour state | No cursor magnet, follower, bounce, or animated obstacle. |
-
-The 8–12px proposal intentionally relaxes the old system's 8px cap; the Creative
-Director must approve it before code. There is no requirement to use the maximum.
-No scroll-jacking, fake smooth-scroll layer, forced pinning, full-page snap, audio,
-autoplay carousel or WebGL background. A user-controlled real video could be a
-later edition after genuine footage, captions and a performance review exist.
-
-## Performance and accessibility budgets to validate later
-
-Start with static responsive images, correct dimensions and priority only for the
-actual LCP image. Proposed mobile hero transfer target ≤350KB; initial editorial
-image transfer target ≤700KB, excluding later lazy-loaded chapters. These are
-implementation budgets, not measured results. No new animation dependency planned;
-target no more than 25KB compressed additional homepage JavaScript.
-
-Aim for WCAG 2.2 AA: 4.5:1 ordinary text, 3:1 large text and applicable UI visual
-boundaries; visible focus, useful alt text, no colour-only state. Use ≥44px touch
-targets as a project usability target. Respect reduced motion and browser zoom.
-Measure, do not stamp “pass” into a CSS comment.
-
-Later local performance checks should compare the same device/network conditions
-with baseline. LCP ≤2.5s, CLS ≤0.1 and INP ≤200ms are desired field targets; local
-audits cannot establish production p75 field performance. Report the conditions
-and observed results, and investigate regressions rather than inventing a score.
-
-## Apply across the website in controlled slices
-
-| Later slice | Adapt the visual language | Preserve |
-| --- | --- | --- |
-| HL-001 home | Largest image/type contrast and narrative rhythm | Existing flows, IDs, navigation and attribution. |
-| Company and trade catalog, if separately authorized | Dossier-like readable product/specification layouts and clearer evidence | Four core profiles, broader catalog, PDF paths and commercial distinctions. |
-| B2B enquiry/campaign pages, if separately authorized | Calm commercial form hierarchy; shorter story | Focused intake, validation/consent and campaign attribution. |
-| Retail, if separately authorized | Material-focused photography and product character at a smaller scale | Package choices, accurate units, prices, stock, benefits and checkout. |
-| Staff/partner operations | No theatrical marketing reskin proposed | Task clarity, state semantics, permissions and financial integrity. |
-
-Do not standardize the whole app into one giant cinematic layout. A coherent
-brand can support an immersive homepage and a highly practical order screen.
+Use ordinary React/CSS and responsive real images after authorization; no new
+animation dependency is assumed. Budget and measure font/image payload rather
+than claiming performance from static PNGs. Future acceptance still requires
+WCAG 2.2 AA applicable contrast/semantics, visible focus, touch targets, native
+zoom, reduced motion and source/route regressions. Static designs cannot establish
+LCP, CLS, INP, keyboard behavior or working enquiry submission.

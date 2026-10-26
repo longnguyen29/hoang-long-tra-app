@@ -1,88 +1,106 @@
-# House of Hoàng Long — HL-001 working brief
+# House of Hoàng Long — Working policies
 
-**DRAFT · 26 October 2026 · Creative Director review pending.**
+**DRAFT v0.2 · 26 October 2026 · Policy proposal awaiting review.**
 
-This file records the current authorized scope and a proposed working agreement.
-The creative documents below are proposals, not an approved design or permission
-to implement, merge or deploy them. The user's current instructions take precedence.
+This document proposes durable brand, truthfulness and engineering policies.
+It does not authorize a task, implementation, merge, deployment or production-data
+change. The user's current instructions take precedence over this draft.
 
-## Current task
+## Resolve the current phase before acting
 
-Prepare the website audit and creative review packet on
-`codex/website-reinvention`. No redesign application code, migrations, production
-data changes, merge or deployment is authorized in this phase.
+Read the latest authorized task and its relevant dated decision record. For the
+HL-001 concept revision, see
+[26 October 2026 — concept revision](docs/vision/decisions/2026-10-26-hl-001-concept-revision.md).
+Dated records describe the authority and evidence at that time; they are not
+permanent bans on later explicitly approved work. Record a new decision when the
+phase changes rather than leaving a temporary no-code instruction in this file.
 
-The only hosting configuration change in this branch is an exact-branch Vercel
-deployment exclusion, needed to open a draft PR without an automatic preview.
-Keep other branches and existing cron configuration unchanged.
+## Brand and creative authority
 
-## Proposed roles and approval record
+The proposed brand idea is a living Vietnamese tea house with the credibility
+of a manufacturer and the utility of a procurement platform. Serious distributors,
+manufacturers, chains and importers are the primary commercial audience; the
+heritage retail collection remains accessible with supporting emphasis.
 
-- ChatGPT: Creative Director, responsible for reviewing and refining the vision,
-  storyboard, visual system and acceptance criteria.
-- Codex: audit, technical feasibility, implementation after authorization,
-  verification and a candid report of limitations.
-- The owner confirms company facts, image rights and commercial policy.
+ChatGPT serves as Creative Director for the vision, storyboard, visual system and
+design compositions. Codex owns execution, feasibility and verification. The owner
+confirms business facts, image permissions and commercial policy. Do not conflate
+these roles: creative approval is not factual verification, signing authority,
+permission to change financial logic or authorization to deploy.
 
-Do not describe the draft as approved because a PR exists, tests pass or an agent
-likes it. Record the reviewed document revision and the actual approval reference
-before implementation. Creative approval alone does not authorize a deployment.
+Use the latest explicitly approved, home-scoped vision for an authorized homepage
+implementation. Its recorded exceptions may supersede the legacy composition,
+type, palette and motion constraints in `design.md` for that scope. Until approval,
+new creative documents are proposals. Neither a skill's aesthetic defaults nor
+legacy Split Studio guidance may silently veto a later approved scoped direction.
+Existing global tokens and staff/commerce semantics remain the baseline outside
+the approved scope; do not replace them through an unreviewed global override.
 
-## Read in this order
+## Review snapshots and approval references
 
-1. [Current-state audit](docs/vision/current-state-audit.md).
-2. [Creative direction](docs/vision/creative-direction.md).
-3. [Homepage storyboard](docs/vision/homepage-storyboard.md).
-4. [Visual system](docs/vision/visual-system.md).
-5. [Visual acceptance](docs/qa/visual-acceptance.md).
+Before implementation, retain a review snapshot containing the exact commit,
+document versions, visual-composition filenames/dimensions, known asset gaps,
+factual limits and the Creative Director's verdict/reference. Link amendments to
+the review requirements they address. Keep before screenshots, static proposed
+compositions and screenshots of implemented UI unmistakably separate.
 
-Read `design.md`, `tokens.css` and the relevant source files as the current
-implementation baseline. The owner explicitly permits proposals beyond the old
-Split Studio layout and motion restrictions. Do not silently rewrite the old
-system or apply proposed global tokens to the running app in this draft phase.
+Approval must name what is approved and for which phase. A draft PR, a passing
+build, silence or Codex's self-rating is not approval. If the direction changes
+materially after approval, retain the old snapshot and obtain review of the new
+composition. Implementation completion, creative acceptance, merge and deployment
+are distinct events, each reported accurately against the authority available.
 
 ## Business contracts to preserve
 
 - Public routes, catalog IDs, live product availability, units and prices.
 - Vietnamese/English locale handling and sanitized campaign attribution.
-- Supabase clients, RPCs, RLS, consent, lead intake and existing sample/quote flows.
+- Supabase clients, RPCs, RLS, consent, lead intake and sample/quotation flows.
 - Retail cart, checkout, bundles, volume benefits and partner referral consent.
 - Partner access, ownership, commissions and private reconciliation information.
 - Staff authentication, orders, payments, costs, procedures, inventory,
   notifications, reminders and all financial operations.
 
-Never recreate these workflows in a decorative homepage form. Use existing
+Keep these boundaries unless the user specifically authorizes a change to them.
+Do not recreate a business workflow as a decorative homepage form. Reuse existing
 destinations and helpers. Never put service credentials, customer data or internal
 margins in public components, fixtures, screenshots or review documents.
 
-## Content and imagery
+## Truthful content and images
 
-Use `lib/export-product-profile.js` for the four core teas. Do not alias the older
-export-offer IDs or their prices to these catalog SKUs. Use the factual boundaries
-and asset inventory in the audit; an owner-supplied statement is not independent
-certification. Do not invent a founder biography, a person in a photograph,
-factory ownership, clients, awards, laboratory values or export markets.
+Reuse `lib/export-product-profile.js` for the four core teas. Do not alias the older
+export-offer IDs or their prices to the canonical catalog SKUs. Keep owner-supplied
+statements distinct from independent verification. Do not invent factory ownership,
+founder biographies, photo identities, clients, awards, laboratory values, capacity
+evidence, certifications or export markets.
 
-Photographs of leaves, equipment and people must be captioned for what they show.
+Caption photographs for what they actually show. A leaf-handling image is not a
+named portrait; an archive collage is not a single panoramic factory photograph.
 AI beverage concepts and third-party branded drink photographs are not evidence
-of Hoàng Long manufacturing. A missing portrait remains missing.
+of Hoàng Long manufacturing. A missing real asset stays missing, with an honest
+composition or explicit release limitation instead of synthetic proof.
 
-## Proposed implementation discipline, after approval
+## Engineering and verification
 
-Keep changes scoped to the homepage and additive public presentation components.
-List the exact files first. Shared navigation changes require checks on company,
-catalog, wholesale and retail pages. Global shell changes need a separate reason
-and explicit review; do not make the staff app inherit a theatrical marketing UI.
+List the intended files and contracts before implementation. Prefer scoped or
+additive presentation work. Shared navigation changes require regression checks
+on company, catalog, wholesale and retail pages; global-shell changes need an
+explicit reason and review. Do not make staff tools inherit theatrical home UI.
 
-Prefer existing React/CSS capabilities and real responsive images. Add a motion
-dependency only if an approved interaction cannot reasonably be built without it.
-Preserve native scrolling, keyboard access and reduced-motion behavior.
+Prefer existing React/CSS capabilities and responsive real images. Justify a new
+motion dependency against the approved interaction. Preserve native scrolling,
+keyboard access, useful focus states, touch usability and reduced motion.
 
-Run checks proportional to the change, once after the final meaningful edits:
-production build, relevant regression tests, navigation and accessibility checks,
-and actual screenshots at 390, 768 and 1440 CSS pixels. A build is not a creative
-review. Report failed or unavailable checks accurately; `npm run lint` currently
-uses obsolete `next lint`, so it cannot be reported as a passing linter.
+Run checks proportional to the change after final meaningful edits. Documentation
+needs document/link and scope checks; application changes need an appropriate
+production build, relevant regressions, navigation/accessibility checks and actual
+responsive screenshots. Report failed or unavailable checks; do not call a build
+a visual pass or an unsupported `next lint` command a passing linter.
 
-Current draft-only work needs document/link checks and review of the deployment
-exclusion, not repeated application builds. Keep the PR in draft until reviewed.
+## Publishing discipline
+
+Inspect actual branch/build automation before pushing or opening a PR. A draft PR
+does not inherently suppress previews. Preview and production publication require
+the applicable authorization; local-only review is the fallback when publication
+is not authorized. Keep deployment exclusions narrowly scoped and record their
+review/removal conditions in the relevant decision record. Do not disable unrelated
+branches, change existing crons or infer deployment permission from creative approval.
