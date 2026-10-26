@@ -34,3 +34,6 @@ npm-debug.log*
 
 # typescript
 *.tsbuildinfo
+.ai/runtime/
+__pycache__/
+*.pyc
