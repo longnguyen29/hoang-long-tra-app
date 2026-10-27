@@ -56,3 +56,26 @@ The Marketing API app is `Hoang Long Ads Manager` (ID `3426010064246807`).
 Ad-management token authorization is a separate step. Campaign objective, budget,
 duration and geography must be agreed before launch. Review existing enabled
 campaigns before changing funding or publishing ads.
+
+## Growth dashboard: read-only ad insights
+
+The manager-only section of `/admin/growth` can read a seven-day report for the
+selected Hoàng Long campaign through the server-side Meta Marketing API. It shows
+spend, impressions, link clicks and Meta-attributed Pixel leads per ad. Meta's
+attribution and consent rules mean these leads can differ from actual enquiries
+in the website CRM; a lead is not an order. A missing number is shown as `—`.
+
+The deployment administrator must securely configure `META_ADS_ACCESS_TOKEN`
+in the production hosting environment with read access to the selected ad account
+and `ads_read`. Add `META_APP_SECRET` there as well only when the Meta app requires
+app-secret proof. Never put either value in Git, a browser bundle, or a chat. A
+server restart/redeploy may be necessary for new environment variables. Until a
+working authorization is configured, the panel says it is not connected; no live
+Meta data or successful integration is implied. Only managers and admins can call
+the server endpoint. Requests stay scoped to the selected campaign, and incomplete
+or failed Meta responses are not displayed as complete reports.
+
+Run `node --test lib/meta-insights.test.mjs`; after configuration, verify the
+production panel with an authorized manager and compare each ad's figures and date
+range against Ads Manager. Do not log tokens or include customer information in
+test evidence.
