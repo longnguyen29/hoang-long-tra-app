@@ -2,6 +2,11 @@
 
 **DRAFT v0.2 · 26 October 2026 · Static proposals; not implemented or approved.**
 
+> **REJECTED / HISTORICAL — NOT IMPLEMENTATION AUTHORITY.** Concepts A/B/C are
+> NOT APPROVED; Working Tea Atlas is retired. Recommendations and review requests
+> below describe the rejected round, not the current plan. Await the Creative
+> Director's replacement reference; see the [current decision](decisions/hl-001-awaiting-creative-reference.md).
+
 Responds to R3/R6. [Review board index](concepts/round-2/README.md) and
 [three-concept comparison](concepts/round-2/concept-comparison.png).
 Numbers in rust circles and the white strips outside each viewport are review

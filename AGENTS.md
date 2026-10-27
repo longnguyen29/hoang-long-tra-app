@@ -1,6 +1,6 @@
 # House of Hoàng Long — Working policies
 
-**DRAFT v0.2 · 26 October 2026 · Policy proposal awaiting review.**
+**DRAFT v0.3 · Policy proposal; current task authority is recorded separately.**
 
 This document proposes durable brand, truthfulness and engineering policies.
 It does not authorize a task, implementation, merge, deployment or production-data
@@ -9,21 +9,22 @@ change. The user's current instructions take precedence over this draft.
 ## Resolve the current phase before acting
 
 Read the latest authorized task and its relevant dated decision record. For the
-HL-001 concept revision, see
-[26 October 2026 — concept revision](docs/vision/decisions/2026-10-26-hl-001-concept-revision.md).
+HL-001 status, see
+[Round 2 rejected — awaiting creative reference](docs/vision/decisions/hl-001-awaiting-creative-reference.md).
 Dated records describe the authority and evidence at that time; they are not
 permanent bans on later explicitly approved work. Record a new decision when the
 phase changes rather than leaving a temporary no-code instruction in this file.
 
 ## Brand and creative authority
 
-The proposed brand idea is a living Vietnamese tea house with the credibility
-of a manufacturer and the utility of a procurement platform. Serious distributors,
-manufacturers, chains and importers are the primary commercial audience; the
-heritage retail collection remains accessible with supporting emphasis.
+Serious distributors, manufacturers, chains and importers are the primary
+commercial audience; the heritage retail collection remains accessible with
+supporting emphasis. Retained business requirements are not an approved aesthetic.
 
-ChatGPT serves as Creative Director for the vision, storyboard, visual system and
-design compositions. Codex owns execution, feasibility and verification. The owner
+ChatGPT Creative Director supplies and owns the art direction, visual references
+and creative specifications. Codex implements, engineers, integrates, tests and
+refines against the approved reference; it does not independently choose the
+creative direction. The owner
 confirms business facts, image permissions and commercial policy. Do not conflate
 these roles: creative approval is not factual verification, signing authority,
 permission to change financial logic or authorization to deploy.

@@ -2,6 +2,11 @@
 
 **DRAFT v0.2 · 26 October 2026 · Proposed for review; not approved.**
 
+> **REJECTED / HISTORICAL — NOT IMPLEMENTATION AUTHORITY.** Concepts A/B/C are
+> NOT APPROVED; Working Tea Atlas is retired. Recommendations and review requests
+> below describe the rejected round, not the current plan. Await the Creative
+> Director's replacement reference; see the [current decision](decisions/hl-001-awaiting-creative-reference.md).
+
 This replaces the v0.1 creative proposal, responding to [R1–R9](https://github.com/longnguyen29/hoang-long-tra-app/pull/48#issuecomment-6409274323).
 The factual/source [audit](current-state-audit.md) remains the accepted baseline,
 not approval of the visual direction. Current authorization lives in the

@@ -1,25 +1,33 @@
 # HL-001 — Visual and functional acceptance
 
-**DRAFT v0.2 · 26 October 2026 · Round 2 proposal; not approved.**
+**DRAFT v0.3 · Engineering QA retained; Round 2 creative direction REJECTED.**
 
 This defines proposed checks for a later implementation. **No redesigned
 homepage exists yet and none of the implementation checks below is marked passed.**
-The current deliverable is a concept-phase revision with static design
-compositions. It is not application code or a finished-site preview. The
-[Creative Director's round 1 review](https://github.com/longnguyen29/hoang-long-tra-app/pull/48#issuecomment-6409274323)
-returned **REVISE** for commit `f7a19b959b8890e6df2351418f02178f993320c1`;
-it did not authorize implementation, merge or deployment.
+The [Round 2 decision](https://github.com/longnguyen29/hoang-long-tra-app/pull/48#issuecomment-6416522942)
+rejected the visual direction at commit `4720211e51e16cb28b3a71d4713120fb143cb68a`.
+A/B/C are NOT APPROVED and Working Tea Atlas is retired. The current action is to
+wait for ChatGPT Creative Director's replacement reference/specification; no new
+mockups, Homepage V2 implementation, merge or deployment are authorized.
+See the [active decision and readiness inputs](../vision/decisions/hl-001-awaiting-creative-reference.md).
 
-## 1. Concept approval gate — before implementation
+## 1. Historical Round 2 concept gate — superseded
 
-The review packet consists of root `AGENTS.md`, the dated authorization/decision
+**The quantity-based concept/board requirements below are historical, not current
+instructions.** Do not produce another multi-concept or chapter-board pack. The
+replacement starts with one specific Creative Director-supplied/approved opening
+at 1440px and390px whose pixels can be viewed by both reviewer and engineer.
+A second opening is not required. Resolve the visual north star before further
+chapter layouts; follow the active decision rather than these retired C01–C06 rows.
+
+The historical Round 2 packet consisted of root `AGENTS.md`, the authorization/decision
 record, current-state audit, creative direction, storyboard, visual system,
 static visual evidence and this document. State the reviewed source commit and
 artifact revision. Every proposed design choice remains DRAFT; owner-supplied
 facts, observed image content and unverified proposals must remain distinguishable.
 
-Written section descriptions are not sufficient for visual approval. Before
-requesting permission to implement, supply and inspect all of the following:
+The following were the old requested deliverables. They remain here only as a
+record of the rejected process; they are not a new production assignment:
 
 | ID | Required static evidence | Acceptance condition |
 | --- | --- | --- |
@@ -53,7 +61,7 @@ The Creative Director should return:
 
 Do not infer approval from silence, a green build, a draft PR or an assistant's
 self-rating. A new reviewer response must identify the **exact reviewed commit**
-and visual artifact revision. The current approval record is **pending**.
+and visual artifact revision. Round 2 was **REJECTED**. A replacement direction has not been supplied or approved.
 
 ### Qualitative rejection conditions
 
@@ -127,23 +135,18 @@ truthfulness, navigation or accessibility rows.
 | P01 | Hero assets/layout are stable and responsive. | Image dimensions, no avoidable CLS; correct priority, mobile transfer check, no accidental eager load of entire archive. |
 | P02 | Performance does not materially regress against the same baseline conditions. | Production build/local page measurement, stated device/network; real field metrics remain unverified until collected. |
 
-## 4. Proposed creative scoring rubric
+## 4. Creative acceptance belongs to the Creative Director
 
-Score each axis 1–5, with a written reason and screenshot reference:
+Do not self-grade or use numerical averages as a substitute for taste or approval.
+The Creative Director decides against the supplied visual reference, actual
+viewable pixels and intended producer identity. Codex reports fidelity differences,
+implementation defects, evidence limits and technical tradeoffs; it does not pick
+a new direction or pronounce creative success from link/hash/contrast/build checks.
 
-| Axis | A score of 4 or 5 requires |
-| --- | --- |
-| Specificity | Actual Vietnamese tea context, materials, products and company facts; no interchangeable brand template. |
-| Hierarchy | B2B offer/next action unmistakable while the story and retail path remain understandable. |
-| Composition | Deliberate image/type relationships and varied chapter rhythm at all three widths. |
-| Craft | Excellent spacing, crops, type, caption, focus and selected states; no unfinished details. |
-| Commercial clarity | Buyer understands range, supply basis, next step and contact; no fabricated claim or pricing ambiguity. |
-| Restraint | Every interaction/detail earns its place; no busy chrome or repetitive cards. |
-
-Proposed acceptance: all axes ≥4, all critical factual/functional/accessibility
-issues closed, and explicit Creative Director review. An average cannot hide a
-bad mobile experience or a critical misleading claim. Codex self-review and
-independent creative review must be labelled separately.
+After approval and separate implementation authority, retain exact-reference
+comparisons at the agreed viewport sizes, including VI/EN type, crop, hierarchy,
+one dominant trade action and placement of calm commercial details. Preserve
+engineering/accessibility checks separately from the Creative Director's verdict.
 
 ## 5. Future check commands and scope
 
@@ -197,16 +200,17 @@ links remain within their existing contracts. No checkout or commission mutation
 | --- | --- |
 | Source/route/asset and business-contract audit | Completed with scope/limits in `docs/vision/current-state-audit.md`. |
 | Round 1 before screenshots at requested widths | Captured locally; initial viewport only, unchanged UI at the baseline commit. Not design comps. |
-| Round 2 static design evidence | 14 annotated compositions exported as PNG + outlined SVG and visually inspected. Two responsive opening directions, four main chapters at both widths, EN opening, comparison and selector states are supplied. A text contrast, selected marker, EN labels and B opening composition were revised after inspection. No runtime pass implied. |
+| Round 2 static design evidence | Historical 14-board packet preserved unchanged. A/B/C NOT APPROVED; Working Tea Atlas rejected/retired. Engineering artifact checks did not establish creative quality or approval. |
 | Redesigned application UI, motion, after screenshots | Not implemented; intentionally not run. |
 | Application build/regression/automated accessibility | Not run for this documentation-only phase. No application behavior changed. |
-| Document references and changed-file scope | Ten Markdown documents and 99 local references checked; 14 board dimensions, embedded original-photo integrity, static palette contrast and artifact hashes verified. `git diff --check` passed. Application/protected source and prior deployment guard unchanged from f7a19b9. See artifact-verification.json in the visual evidence folder. |
+| Document references and changed-file scope | Round 2 artifact checks remain historical engineering evidence. This rejection/status update checks current document links and unchanged app/protected files, archived visual artifacts and deployment guard; it does not repeat application tests or certify design quality. |
 | Production database, merge, deployment | Not authorized. Exact-branch Vercel exclusion prevents automatic preview publishing. |
-| Creative Director approval | Round 1 verdict REVISE; round 2 approval pending. Draft PR and static compositions are the review handoff, not approval. |
+| Creative Director approval | Round 2 REJECTED / REVISE; replacement reference and creative sign-off withheld. No further visual production until supplied by the Creative Director. |
 
 ## 8. Review and release separation
 
-This PR is for reviewing the brief. After approval, implementation is a separate
+This PR remains DRAFT while awaiting the replacement reference. After its explicit
+approval, implementation is a separate
 authorized step with code, check results and visual evidence. Merge and deployment
 remain separate decisions. A public preview must not be created in the current
 no-deploy phase. Before any future branch publishing, inspect automatic deployment

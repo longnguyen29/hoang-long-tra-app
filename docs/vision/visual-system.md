@@ -2,6 +2,11 @@
 
 **DRAFT v0.2 · 26 October 2026 · Not approved. No application styling changed.**
 
+> **REJECTED / HISTORICAL — NOT IMPLEMENTATION AUTHORITY.** Concepts A/B/C are
+> NOT APPROVED; Working Tea Atlas is retired. Recommendations and review requests
+> below describe the rejected round, not the current plan. Await the Creative
+> Director's replacement reference; see the [current decision](decisions/hl-001-awaiting-creative-reference.md).
+
 R4 response. Read the [visual plates](concepts/round-2/README.md) and
 [composition specification](homepage-storyboard.md). The recommendation is B,
 Working Tea Atlas; A/C are alternatives, not extra themes to mix indiscriminately.

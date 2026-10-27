@@ -2,6 +2,11 @@
 
 **DRAFT v0.2 · 26 October 2026 · Revision delivered; not approved for implementation.**
 
+> **REJECTED / HISTORICAL — NOT IMPLEMENTATION AUTHORITY.** Concepts A/B/C are
+> NOT APPROVED; Working Tea Atlas is retired. Recommendations and review requests
+> below describe the rejected round, not the current plan. Await the Creative
+> Director's replacement reference; see the [current decision](decisions/hl-001-awaiting-creative-reference.md).
+
 Review reference: [PR48 comment6409274323](https://github.com/longnguyen29/hoang-long-tra-app/pull/48#issuecomment-6409274323).
 Reviewed round1 commit: `f7a19b959b8890e6df2351418f02178f993320c1`; verdict
 **REVISE**, no merge/deploy authority. The same PR/branch is updated; no redesign

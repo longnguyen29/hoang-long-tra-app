@@ -2,6 +2,11 @@
 
 **DRAFT v0.2 · 26 October 2026 · NOT APPROVED · STATIC DESIGN PROPOSALS.**
 
+> **REJECTED / HISTORICAL — NOT IMPLEMENTATION AUTHORITY.** Concepts A/B/C are
+> NOT APPROVED; Working Tea Atlas is retired. Recommendations and review requests
+> below describe the rejected round, not the current plan. Await the Creative
+> Director's replacement reference; see the [current decision](../../decisions/hl-001-awaiting-creative-reference.md).
+
 These are native vector design compositions and PNG exports using existing real
 Hoàng Long photographs. They are **not screenshots of a finished website**, an
 interactive prototype, application redesign code or a public deployment. The

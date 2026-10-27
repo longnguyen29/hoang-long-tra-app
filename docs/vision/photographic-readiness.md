@@ -2,6 +2,10 @@
 
 **DRAFT v0.2 · 26 October 2026 · Release planning, not an asset approval.**
 
+> Asset provenance and readiness remain useful technical material. Linked Round 2
+> compositions are a rejected archive, not an approved creative reference. See the
+> [current decision](decisions/hl-001-awaiting-creative-reference.md).
+
 Responds to R5. Read with the accepted [asset register](current-state-audit.md)
 and [round-2 static compositions](concepts/round-2/README.md).
 

@@ -2,6 +2,10 @@
 
 **DRAFT v0.2 · 26 October 2026 · Concept revision only; not approved for implementation.**
 
+> **SUPERSEDED TASK AUTHORITY:** Round 2 was rejected. A/B/C are NOT APPROVED;
+> Working Tea Atlas is retired. The creative-production permissions below are
+> historical. Follow the [current rejection/waiting decision](hl-001-awaiting-creative-reference.md).
+
 This is a dated task/decision record, not a permanent repository-wide no-code
 policy. A later explicitly authorized phase should receive its own record and
 approval reference. Stable working policies belong in [AGENTS.md](../../../AGENTS.md).
