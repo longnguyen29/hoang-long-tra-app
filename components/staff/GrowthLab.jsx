@@ -12,6 +12,7 @@ import {
 } from "@/lib/growth-judge";
 import { buildKnowledgeBrief, knowledgeMetric, normalizeKnowledgeSnapshot, safeKnowledgeUrl } from "@/lib/knowledge-centre";
 import LoadFailure from "./LoadFailure";
+import MetaInsights from "./MetaInsights";
 import styles from "./GrowthLab.module.css";
 
 const EMPTY_BRIEF = {
@@ -408,6 +409,7 @@ export default function GrowthLab({ supabase, email, role }) {
       <article><span>Nguyên tắc</span><b>Người duyệt</b><small>máy chỉ đề xuất thay đổi</small></article>
     </section>
 
+    {["admin", "manager"].includes(role) && <MetaInsights supabase={supabase}/>}
     <WebsiteFunnel snapshot={websiteFunnel}/>
 
     <nav className={styles.tabs} aria-label="Phòng tăng trưởng">
