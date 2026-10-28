@@ -47,16 +47,18 @@ candidate="$repo_root/docs/intelligence/gate0/candidate.sql"
 bootstrap="$repo_root/tests/intelligence/00_bootstrap_disposable.sql"
 assertions="$repo_root/tests/intelligence/20_assert_disposable.sql"
 normalized="$test_dir/candidate-transactionless.sql"
+patched_candidate="$repo_root/docs/intelligence/gate0/candidate-source-attribution-patched.sql"
+patched_normalized="$test_dir/patched-transactionless.sql"
 # The upstream candidate has its own BEGIN/COMMIT. Remove exactly those two
 # top-level lines only in the temp copy; otherwise they break psql -1 atomicity.
-python3 - "$candidate" "$normalized" <<'PY'
+python3 - "$candidate" "$normalized" "$patched_candidate" "$patched_normalized" <<'PY'
 import sys
 from pathlib import Path
-source = Path(sys.argv[1]).read_text()
-lines = source.splitlines(keepends=True)
-if sum(line.strip() == 'BEGIN;' for line in lines) != 1 or sum(line.strip() == 'COMMIT;' for line in lines) != 1:
-    raise SystemExit('REFUSED: candidate has unexpected transaction boundaries')
-Path(sys.argv[2]).write_text(''.join(line for line in lines if line.strip() not in ('BEGIN;', 'COMMIT;')))
+for src, dest in ((sys.argv[1],sys.argv[2]), (sys.argv[3],sys.argv[4])):
+    lines = Path(src).read_text().splitlines(keepends=True)
+    if sum(line.strip() == 'BEGIN;' for line in lines) != 1 or sum(line.strip() == 'COMMIT;' for line in lines) != 1:
+        raise SystemExit('REFUSED: candidate has unexpected transaction boundaries')
+    Path(dest).write_text(''.join(line for line in lines if line.strip() not in ('BEGIN;', 'COMMIT;')))
 PY
 
 connection=(-X -h 127.0.0.1 -p "$test_port" -U "$test_user")
@@ -93,5 +95,21 @@ sed '/^CREATE ROLE /d' "$bootstrap" > "$test_dir/bootstrap-reuse-test-roles.sql"
     cat "$test_dir/races-bootstrap.log" >&2
     exit 1
   }
-python3 "$repo_root/tests/intelligence/test-postgres-races.py" "$pg_bin/psql" "$test_port" "$test_user"
+python3 "$repo_root/tests/intelligence/test-postgres-races.py" "$pg_bin/psql" "$test_port" "$test_user" original
+
+"$pg_bin/createdb" -h 127.0.0.1 -p "$test_port" -U "$test_user" hl_intel_disposable_patched_fixture
+"$pg_bin/psql" "${connection[@]}" -d hl_intel_disposable_patched_fixture --single-transaction -v ON_ERROR_STOP=1 \
+  -f "$test_dir/bootstrap-reuse-test-roles.sql" -f "$patched_normalized" \
+  -f "$repo_root/tests/intelligence/21_assert_patched_disposable.sql" >"$test_dir/patched-fixture.log" 2>&1 || {
+    cat "$test_dir/patched-fixture.log" >&2
+    exit 1
+  }
+echo 'PASS: source-attribution patch fixture on disposable PostgreSQL'
+"$pg_bin/createdb" -h 127.0.0.1 -p "$test_port" -U "$test_user" hl_intel_disposable_patched_races
+"$pg_bin/psql" "${connection[@]}" -d hl_intel_disposable_patched_races --single-transaction -v ON_ERROR_STOP=1 \
+  -f "$test_dir/bootstrap-reuse-test-roles.sql" -f "$patched_normalized" >"$test_dir/patched-races.log" 2>&1 || {
+    cat "$test_dir/patched-races.log" >&2
+    exit 1
+  }
+python3 "$repo_root/tests/intelligence/test-postgres-races.py" "$pg_bin/psql" "$test_port" "$test_user" patched
 echo 'LIMIT: fixture uses stub schema and simulated roles; no current-schema, staging JWT or production checks'

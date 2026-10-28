@@ -1,7 +1,13 @@
 # Intelligence Gate 0 — candidate database proof
 
 **Status: research prototype, not a migration; do not deploy or apply to a live database.**
-This is the V6 candidate and fixture supplied in `HoangLong_Intelligence_System_V6.zip`, copied without modifying their contents. They do not create an application feature. No V3–V5 candidate is needed or should be applied alongside V6.
+`candidate.sql` and the original fixture are copied without modifying their contents from `HoangLong_Intelligence_System_V6.zip`. `candidate-source-attribution-patched.sql` is a separate local research patch, not an authorized migration; `21_assert_patched_disposable.sql` adapts the fixture to the new RPC signature. They do not create an application feature. No V3–V5 candidate is needed or should be applied alongside V6.
+
+## Source attribution research patch
+
+The patched candidate snapshots the prospect's URL and version when a job is requested. Its completion RPC accepts the observed URL, requires a **byte-exact** match with the snapshot, and checks the current prospect URL and version again before saving evidence. If the source changed, the job is canceled. The same idempotency key cannot be reused after the saved URL changes. This rejects all reported redirects, even same-origin ones, as well as missing URLs, cross-origin URLs and protocol downgrades. Exact comparison may reject harmless URL normalization; that is deliberate until a reviewed URL policy exists.
+
+The SQL guard is not a network guard: a privileged worker could misreport what it fetched, and the database does not validate DNS, robots, safe IP addresses or whether a redirect was contacted. **Before calling completion, the future runner must refuse to follow any redirect at the network boundary and must supply the actually observed URL.** No runner or production route is connected to this patched RPC here. A separate security review must verify that behavior end-to-end before enabling any feature.
 
 ## Reproduce the isolated test
 
@@ -13,9 +19,10 @@ The upstream candidate contains `BEGIN` and `COMMIT`. When combined with `psql -
 
 - Local PostgreSQL **17.11 (Homebrew)**: rollback check passed and supplied V6 disposable fixture passed.
 - Additional checks on that disposable cluster passed: concurrent distinct requests enforce the 10-request cap; concurrent duplicate requests create one job; two workers do not claim the same job; one observed cancellation/claim race has one winner; an in-flight DNC or version change suppresses evidence; stale evidence cannot be approved; and an exhausted lease becomes dead letter. These are focused test cases, not a proof of all possible interleavings.
+- Both the original and patched candidates passed those checks independently. With the patched candidate, cross-origin and same-origin substitutions, downgrades and NULL URLs produced no observation; exact-match evidence retained the supplied URL; a URL change without a version bump canceled in-flight work, invalidated reuse of its key and prevented later review of old evidence.
 - `bash -n tests/intelligence/run-disposable-postgres.sh`: passed.
 - This is a stub schema and simulated roles, not a sanitized current-schema clone or real Supabase JWT/RLS test. PostgreSQL 16, the actual migration ledger, staging authentication and integration with Next.js have **not** been verified by this fixture. A passing fixture is not permission to apply SQL to Supabase.
-- The V6 fetcher and worker are isolated prototypes under `tools/intelligence-fetch/`; they are not integrated into the app or activated. The supplied V6 version fetched redirected pages before checking their robots rules and lacked complete network deadlines. The isolated prototype adds checks and targeted tests; it is not yet approved for production. Its runner passes the final evidence URL to a mock repository, but the unchanged SQL candidate still stores the original URL and must be revised and re-tested before integration.
+- The V6 fetcher and worker are isolated prototypes under `tools/intelligence-fetch/`; they are not integrated into the app or activated. The supplied V6 version fetched redirected pages before checking their robots rules and lacked complete network deadlines. The isolated prototype adds checks and targeted tests; it is not yet approved for production. Its runner passes the final evidence URL to a mock repository; it is **not connected** to either SQL candidate. The unchanged original SQL candidate still stores the original URL without checking the observed URL.
 
 ## Upstream provenance
 

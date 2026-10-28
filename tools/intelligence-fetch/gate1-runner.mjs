@@ -33,9 +33,13 @@ export async function processResearchBatch(repo,{transport,now,workerId='hl-inte
      const eligibility=canResearch({status:prospect?.status,version:prospect?.version,
        expectedVersion:job.requested_version,sourceUrl:prospect?.source_url});
      if(!eligibility.allowed) throw new Error(eligibility.reason);
-     const evidence=await extractPublicEvidence(prospect.source_url,{transport,now});
+     const evidence=await extractPublicEvidence(prospect.source_url,{transport,now,allowPageRedirects:false});
+     // Gate 0 SQL can persist only the saved URL. Reject changed destinations
+     // before completion so a redirected page is never misattributed. Exact
+     // string comparison intentionally fails closed on canonicalization too.
+     if (evidence.source_url !== prospect.source_url) throw new Error('policy_blocked');
      const saved=await repo.completeResearch({jobId:job.id,claimToken:job.claim_token,
-       sha256:evidence.content_hash,excerpt:evidence.excerpt,sourceUrl:evidence.source_url});
+       sha256:evidence.content_hash,excerpt:evidence.excerpt});
      results.push({job_id:job.id,result:saved?'succeeded':'canceled'});
    }catch(err){
      // Some transient lease changes can cause failResearch to reject; do not

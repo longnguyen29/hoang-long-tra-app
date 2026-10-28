@@ -13,7 +13,7 @@ This is an engineering work-in-progress, not a production release. Base: `origin
 
 ## Critical integration gap
 
-The supplied SQL stores the saved prospect URL as the evidence URL and compares that value when reviewing. For a same-origin redirect, the actual evidence page may be different. A safe contract must keep both the originally saved URL and final observed URL, retain original-source/version checks to reject stale research, and validate the final URL server-side before accepting evidence. The isolated fetch prototype passes the final URL to a mock repository but does not modify the supplied candidate SQL. This gap must be resolved and tested before a real adapter or worker runs.
+The supplied SQL stores the saved prospect URL without checking the observed URL, so redirects can be misattributed. A separate unnumbered SQL research patch snapshots the requested URL and requires an exact observed match; the standalone runner refuses page redirects before following them. These two components are not connected to each other or the app. Exact matching also blocks harmless redirects and URL normalization. A reviewed end-to-end adapter, real-schema and staging tests are still required before activation; support for redirects requires a separate origin and attribution design.
 
 ## Gates still open
 
@@ -26,7 +26,7 @@ The supplied SQL stores the saved prospect URL as the evidence URL and compares 
 
 ## Local check results
 
-- The isolated V6 fetch/worker prototype: 86 Node tests passed, including redirected robots-denied paths, encoded paths, deadlines, local transport and malformed HTML; these tests do not establish production security.
+- The isolated V6 fetch/worker prototype: 88 Node tests passed, including redirected robots-denied paths, encoded paths, deadlines, local transport and malformed HTML; these tests do not establish production security.
 - Existing prospect unit and route tests: 7 passed.
 - Current app production build passed with inert placeholder public Supabase environment values after an initial build without those values failed at prerender. This is a build-only check; it does not verify connection to the real database or the new feature.
 - PostgreSQL 17 disposable tests and focused race checks passed; see [README](README.md) for scope and reproduction.

@@ -145,7 +145,7 @@ export function robotsAllowed(raw, pathname, agent = ROBOTS_AGENT) {
   return matching[0].allow;
 }
 
-export async function retrieveWithRedirects(url, transport=pinnedGet, {maxBytes=workerPolicy.maxBytes, timeoutMs=workerPolicy.timeoutMs, deadlineAt=Date.now()+45_000, beforeRequest}={}) {
+export async function retrieveWithRedirects(url, transport=pinnedGet, {maxBytes=workerPolicy.maxBytes, timeoutMs=workerPolicy.timeoutMs, deadlineAt=Date.now()+45_000, beforeRequest, allowRedirects=true}={}) {
   const initial=sourceURL(url);
   let current=initial.href;
   for (let redirects=0; redirects<=workerPolicy.maxRedirects; redirects++) {
@@ -155,6 +155,7 @@ export async function retrieveWithRedirects(url, transport=pinnedGet, {maxBytes=
     const result=await withDeadline(signal => transport(current,{maxBytes,timeoutMs:Math.min(timeoutMs,remaining),signal}),
       {deadlineAt:Math.min(deadlineAt,Date.now()+timeoutMs)});
     if ([301,302,303,307,308].includes(result.status)) {
+      if (!allowRedirects) throw new Error('policy_blocked');
       if (redirects===workerPolicy.maxRedirects) throw new Error('too_many_redirects');
       const location=result.headers?.location;
       if (typeof location!=='string') throw unsafeRedirect;
@@ -224,7 +225,7 @@ export function plainPage(raw){
   return decodedText(out.join('').replace(/\s+/g,' ').trim());
 }
 
-export async function extractPublicEvidence(rawUrl,{transport=pinnedGet,now=()=>new Date(),deadlineMs=45_000}={}){
+export async function extractPublicEvidence(rawUrl,{transport=pinnedGet,now=()=>new Date(),deadlineMs=45_000,allowPageRedirects=true}={}){
   const target=sourceURL(rawUrl);
   const robotsURL=`${target.origin}/robots.txt`;
   // Whole-job upper bound, including robots redirects AND target redirects.
@@ -243,7 +244,7 @@ export async function extractPublicEvidence(rawUrl,{transport=pinnedGet,now=()=>
   } else if (robots.status===200) {
     if (!robotsAllowed(robots.body, target.pathname+target.search)) throw new Error('robots_denied');
   } else {throw new Error('robots_unavailable');}
-  const page=await retrieveWithRedirects(target.href,transport,{deadlineAt,beforeRequest:url => {
+  const page=await retrieveWithRedirects(target.href,transport,{deadlineAt,allowRedirects:allowPageRedirects,beforeRequest:url => {
     const next=new URL(url);
     if (robots.status===200 && !robotsAllowed(robots.body,next.pathname+next.search)) throw new Error('robots_denied');
   }});

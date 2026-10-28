@@ -14,11 +14,32 @@ test('missing repo interface rejected',async()=>await assert.rejects(()=>process
 test('irrecoverable failure reports terminal result',async()=>{const r=repo();const bad=async url=>{if(url.endsWith('/robots.txt'))return{status:200,headers:{},body:'User-agent: *\nDisallow: /'};throw new Error('network_failure')}; const out=await processResearchBatch(r,{transport:bad});assert.equal(out[0].error_code,'robots_denied');});
 test('stale worker claim failure is marked unknown, never retried immediately',async()=>{const r=repo();r.completeResearch=async()=>{throw new Error('expired_claim')};r.failResearch=async()=>{throw new Error('invalid_claim_token')};const out=await processResearchBatch(r,{transport});assert.equal(out[0].result,'unknown');assert.equal(r.log.filter(x=>x[0]==='complete').length,0);});
 test('failure code maps HTTP errors to bounded value',()=>assert.equal(failureCode(new Error('http_404')),'http_error'));
-test('success passes the actual redirected source to persistence for attribution',async()=>{
+test('redirected evidence never completes under the saved original URL',async()=>{
  const r=repo();
- const redirect=async url=>url.endsWith('/robots.txt')?{status:404,headers:{},body:''}:
+ const calls=[];
+ const redirect=async url=>{calls.push(url);return url.endsWith('/robots.txt')?{status:404,headers:{},body:''}:
   url.endsWith('/menu')?{status:302,headers:{location:'/about'},body:''}:
-  {status:200,headers:{'content-type':'text/html'},body:'Tea wholesale'};
- await processResearchBatch(r,{transport:redirect});
- assert.equal(r.log.find(e=>e[0]==='complete')[1].sourceUrl,'https://tea.example.com/about');
+  {status:200,headers:{'content-type':'text/html'},body:'Tea wholesale'};};
+ const result=await processResearchBatch(r,{transport:redirect});
+ assert.deepEqual(calls,['https://tea.example.com/robots.txt','https://tea.example.com/menu']);
+ assert.equal(r.log.some(e=>e[0]==='complete'),false);
+ assert.equal(r.log.find(e=>e[0]==='fail')[1].code,'policy_blocked');
+ assert.deepEqual(result,[{job_id:'a',result:'dead_letter',error_code:'policy_blocked'}]);
+});
+test('canonicalized URL mismatch also fails closed rather than attributing incorrectly',async()=>{
+ const r=repo({status:'research',version:4,source_url:'https://tea.example.com'});
+ const out=await processResearchBatch(r,{transport});
+ assert.equal(out[0].error_code,'policy_blocked');
+ assert.equal(r.log.some(e=>e[0]==='complete'),false);
+});
+test('blocking page redirects does not disable same-origin robots redirects',async()=>{
+ const r=repo();const calls=[];
+ const t=async url=>{calls.push(url);
+  if(url.endsWith('/robots.txt'))return {status:302,headers:{location:'/rules.txt'},body:''};
+  if(url.endsWith('/rules.txt'))return {status:200,headers:{},body:'User-agent: *\nAllow: /'};
+  return {status:200,headers:{'content-type':'text/plain'},body:'Tea wholesale'};
+ };
+ const result=await processResearchBatch(r,{transport:t});
+ assert.equal(result[0].result,'succeeded');
+ assert.deepEqual(calls,['https://tea.example.com/robots.txt','https://tea.example.com/rules.txt','https://tea.example.com/menu']);
 });
