@@ -10,6 +10,8 @@ import RetailProductDetail from "./RetailProductDetail";
 import RetailVolumeOffer from "./RetailVolumeOffer";
 import RetailPartnerBanner from "./RetailPartnerBanner";
 import RetailTeaBundles from "./RetailTeaBundles";
+import CuratedTeaSelection from "./CuratedTeaSelection";
+import useCuratedTeas from "./useCuratedTeas";
 import PublicSiteHeader from "./PublicSiteHeader";
 import { retailOptions } from "@/lib/retail-catalog";
 import { RETAIL_CART_MAX } from "@/lib/retail-cart";
@@ -37,6 +39,7 @@ const COPY = {
     teaLink: "Xem trà sỉ cho quán và doanh nghiệp",
     chooseSingle: "Chọn từng loại trà",
     chooseBundle: "Chọn bộ trà theo dịp",
+    chooseCurated: "Trà đối tác tuyển chọn",
     goodsLink: "Gặp những người phía sau sản vật",
     loadError: "Chưa tải được danh mục mùa này. Vui lòng thử lại.",
     emptyTea: "Danh mục trà mùa này đang được chuẩn bị.",
@@ -89,6 +92,7 @@ const COPY = {
     teaLink: "Explore wholesale tea for cafés and businesses",
     chooseSingle: "Browse individual teas",
     chooseBundle: "Choose a tea set",
+    chooseCurated: "Selected partner teas",
     goodsLink: "Meet the people behind the House",
     loadError: "The seasonal catalogue could not be loaded. Please try again.",
     emptyTea: "The seasonal catalogue is being prepared.",
@@ -132,6 +136,7 @@ const COPY = {
 export default function TeaShop({ mode = "tea", product = null }) {
   const { locale } = useLocale();
   const t = COPY[locale];
+  const curated = useCuratedTeas(mode === "tea");
   const { retailPartner, partnerCandidate, referralStatus, clearRetailPartner, products: allProducts, vendors, cart, cartOpen, setCartOpen, catalogStatus, cartAdjusted, clearCart, changeQuantity } = useRetailCart();
   const products = allProducts.filter(item => mode === "goods" ? item.kind === "goods" : item.kind !== "goods" && item.line !== "sample");
   const loading = catalogStatus === "loading";
@@ -203,17 +208,17 @@ export default function TeaShop({ mode = "tea", product = null }) {
       </PublicSiteHeader>
 
       <RetailPartnerBanner locale={locale}/>
-      {product ? <RetailProductDetail key={product.id} product={product}/> : <>
+      {product ? <RetailProductDetail key={product.id} product={product} curatedSelection={curated.entries.find(entry => entry.productId === product.id)}/> : <>
         <section className={styles.intro}>
           <p>{isGoods ? t.goodsEyebrow : t.teaEyebrow}</p>
           <h1>{isGoods ? t.goodsTitle : t.teaTitle}</h1>
           <div><p>{isGoods ? t.goodsIntro : t.teaIntro}</p><Link href={isGoods ? "/story" : "/catalog"}>{isGoods ? t.goodsLink : t.teaLink} <ArrowRight size={16}/></Link></div>
           {!isGoods && <RetailVolumeOffer locale={locale}/>}
         </section>
-        {!isGoods && <nav className={styles.shopChoices} aria-label={locale === "vi" ? "Cách chọn trà" : "Ways to choose tea"}><a href="#tea-selection">{t.chooseSingle}</a><a href="#tea-bundles">{t.chooseBundle}<ArrowRight size={16} aria-hidden="true"/></a></nav>}
+        {!isGoods && <nav className={styles.shopChoices} aria-label={locale === "vi" ? "Cách chọn trà" : "Ways to choose tea"}><a href="#tea-selection">{t.chooseSingle}</a><a href="#tea-bundles">{t.chooseBundle}<ArrowRight size={16} aria-hidden="true"/></a><a href="#partner-teas">{t.chooseCurated}</a></nav>}
         {loading ? <section className={styles.loading} aria-label={locale === "vi" ? "Đang tải danh mục" : "Loading catalogue"} aria-live="polite"><i/><i/><i/></section>
           : catalogStatus === "error" ? <div className={styles.loadError} role="alert"><p>{t.loadError}</p><button type="button" onClick={() => window.location.reload()}>{locale === "vi" ? "Tải lại danh mục" : "Reload catalogue"}</button></div>
-          : <><div id={isGoods ? undefined : "tea-selection"}><RetailCatalogGrid products={products} vendors={vendors} locale={locale} cart={cart} quantity={quantity} mode={mode}/></div>{!isGoods && <RetailTeaBundles locale={locale}/>}</>}
+          : <><div id={isGoods ? undefined : "tea-selection"}><RetailCatalogGrid products={products} vendors={vendors} locale={locale} cart={cart} quantity={quantity} mode={mode}/></div>{!isGoods && <><CuratedTeaSelection products={products} state={curated} locale={locale}/><RetailTeaBundles locale={locale}/></>}</>}
       </>}
 
       {count > 0 && <button className={styles.cartRail} onClick={() => setCartOpen(true)}><span>{t.itemCount(count)}</span><b>{catalogStatus === "ready" ? money.format(total) : "…"}</b><span>{t.checkout} <ArrowRight size={16}/></span></button>}

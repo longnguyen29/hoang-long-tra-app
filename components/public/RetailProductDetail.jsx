@@ -15,6 +15,7 @@ import { tradeEnquiryHref } from "@/lib/trade-catalog";
 import { useRetailCart } from "./RetailCartProvider";
 import RetailTeaComparison from "./RetailTeaComparison";
 import RetailTeaBundles from "./RetailTeaBundles";
+import { CuratedTeaBadge } from "./CuratedTeaSelection";
 import styles from "./RetailProductDetail.module.css";
 
 const money = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
@@ -73,7 +74,7 @@ function ProductPhoto({ product, name, text, small = false }) {
   </div>;
 }
 
-export default function RetailProductDetail({ product }) {
+export default function RetailProductDetail({ product, curatedSelection = null }) {
   const { locale } = useLocale();
   const t = COPY[locale === "en" ? "en" : "vi"];
   const { cart, addOption, openCart, catalogStatus, products } = useRetailCart();
@@ -147,6 +148,7 @@ export default function RetailProductDetail({ product }) {
         <p className={styles.eyebrow}>{facts.groupLabel}</p>
         {stockBadge && <p className={styles.stockBadge} data-kind={stockBadge.kind}>{stockBadge.label}</p>}
         <h1>{facts.name}</h1>
+        <CuratedTeaBadge entry={curatedSelection} locale={locale}/>
         {facts.note && <p className={styles.note}>{facts.note}</p>}
         {!!signatureNotes.length && <div className={styles.flavorSection}><h2>{characteristics?.labels.signature || t.flavors}</h2><ul>{signatureNotes.map((flavor, index) => <li key={`${flavor}:${index}`}>{flavor}</li>)}</ul></div>}
 
