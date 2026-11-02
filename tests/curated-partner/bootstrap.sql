@@ -1,0 +1,16 @@
+create role anon nologin;
+create role authenticated nologin;
+create schema auth;
+create table auth.users(id uuid primary key);
+create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+grant usage on schema public,auth to anon,authenticated;
+grant execute on function auth.uid() to anon,authenticated;
+create function public.is_staff_manager() returns boolean language sql stable security definer as $$select auth.uid()='11111111-1111-4111-8111-111111111111'::uuid$$;
+create table public.vendors(id text primary key,name text not null,active boolean not null default true);
+create table public.catalog_products(id text primary key,kind text not null default 'tea',vendor_id text references public.vendors(id),batch text not null default '',available boolean not null default false,name jsonb not null default '{}');
+create table public.tea_batches(id text primary key,code text not null unique,product_id text references public.catalog_products(id),status text not null default 'draft',producer text not null default '',origin text not null default '',process text not null default '',cultivar text not null default '',harvest_date date,season text not null default '',grade text not null default '');
+grant select,insert,update,delete on public.catalog_products,public.vendors,public.tea_batches to authenticated;
+insert into auth.users values ('11111111-1111-4111-8111-111111111111'),('22222222-2222-4222-8222-222222222222');
+insert into public.vendors values ('v','Nha lam tra',true);
+insert into public.catalog_products(id,kind,vendor_id,batch,available,name) values ('house','tea',null,'',true,'{"vi":"Nha"}'),('partner','tea','v','B01',false,'{"vi":"Tra doi tac"}');
+insert into public.tea_batches(id,code,product_id,status,producer) values ('b1','B01','partner','released','Nha san xuat');
