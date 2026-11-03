@@ -47,20 +47,20 @@ function flattenProducts(products) {
   });
 }
 
-export default function NewOrderPanel({ supabase, onClose, onCreated, sourceOrder = null }) {
+export default function NewOrderPanel({ supabase, onClose, onCreated, sourceOrder = null, initialDraft = null }) {
   const submissionRef=useRef(null);
   const submissionBusyRef=useRef(false);
   const reorderLinkFailedRef=useRef(false);
   if(!submissionRef.current)submissionRef.current=createOrderSubmission();
   const [submissionState,setSubmissionState]=useState("idle");
   const [step, setStep] = useState("edit");
-  const [type, setType] = useState(sourceOrder?.type || "retail");
-  const [customerName, setCustomerName] = useState(sourceOrder?.customerName || "");
-  const [contact, setContact] = useState(sourceOrder?.contact || "");
-  const [address, setAddress] = useState(sourceOrder?.address || "");
+  const [type, setType] = useState(sourceOrder?.type || (initialDraft ? "" : "retail"));
+  const [customerName, setCustomerName] = useState(sourceOrder?.customerName || initialDraft?.customerName || "");
+  const [contact, setContact] = useState(sourceOrder?.contact || initialDraft?.contact || "");
+  const [address, setAddress] = useState(sourceOrder?.address || initialDraft?.address || "");
   const [taxNumber, setTaxNumber] = useState(sourceOrder?.taxNumber || "");
-  const [note, setNote] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState(sourceOrder?.paymentMethod || "qr");
+  const [note, setNote] = useState(initialDraft?.note || "");
+  const [paymentMethod, setPaymentMethod] = useState(sourceOrder?.paymentMethod || (initialDraft ? "" : "qr"));
   const [lines, setLines] = useState(() => {
     const copied = reorderLinesFromOrder(sourceOrder, () => crypto.randomUUID());
     return copied.length ? copied : [blankLine()];
@@ -131,7 +131,9 @@ export default function NewOrderPanel({ supabase, onClose, onCreated, sourceOrde
     ? selectedLines.reduce((total, line) => total + line.price * line.qty, 0)
     : null;
   const canReview = Boolean(
-    customerName.trim()
+    ["retail", "wholesale"].includes(type)
+    && ["qr", "cash"].includes(paymentMethod)
+    && customerName.trim()
     && contact.trim()
     && selectedLines.length === lines.length
     && lines.length > 0
@@ -274,6 +276,7 @@ export default function NewOrderPanel({ supabase, onClose, onCreated, sourceOrde
       <form onSubmit={submit}>
         {step === "edit" ? <>
           {sourceOrder && <p className={styles.reorderHint}>Đã lấy thông tin từ đơn {sourceOrder.id}. Kiểm tra lại địa chỉ, sản phẩm, số lượng và giá trước khi tạo đơn mới. Đơn cũ vẫn giữ nguyên.</p>}
+          {initialDraft && <p className={styles.reorderHint}>Thông tin từ trợ lý là bản nháp. Kiểm tra thông tin khách, chọn loại đơn, sản phẩm, giá và cách thanh toán trước khi tạo.</p>}
           <section className={styles.typeSwitch} aria-label="Loại đơn hàng">
             <button type="button" data-active={type === "retail"} onClick={() => changeType("retail")}>
               <ShoppingBag /><span><b>Đơn lẻ</b><small>Trừ tồn kho khi xác nhận tạo</small></span>{type === "retail" && <Check />}
@@ -289,7 +292,7 @@ export default function NewOrderPanel({ supabase, onClose, onCreated, sourceOrde
               <label>Điện thoại / liên hệ<input required value={contact} onChange={(event) => setContact(event.target.value)} placeholder="090…" /></label>
               <label className={styles.wide}>Địa chỉ giao hàng<input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Số nhà, đường, tỉnh thành" /></label>
               <label>Mã số thuế<input value={taxNumber} onChange={(event) => setTaxNumber(event.target.value)} placeholder="Không bắt buộc" /></label>
-              <label>Thanh toán<select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}><option value="qr">Chuyển khoản QR</option><option value="cash">Tiền mặt</option></select></label>
+              <label>Thanh toán<select required value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>{initialDraft && <option value="">Chọn hình thức thanh toán</option>}<option value="qr">Chuyển khoản QR</option><option value="cash">Tiền mặt</option></select></label>
             </div>
           </section>
           <section className={styles.section}>

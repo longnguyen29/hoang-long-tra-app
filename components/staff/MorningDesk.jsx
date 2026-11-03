@@ -21,6 +21,7 @@ import {
   RefreshCw,
   RotateCcw,
   Scale,
+  Sparkles,
   X,
 } from "lucide-react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
@@ -554,6 +555,8 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
             {MODES.map(([id, label]) => <button key={id} role="tab" aria-selected={mode === id} onClick={() => saveMode(id)}>{label}</button>)}
           </div>
         </section>
+
+        {canReview && <Link className={styles.assistantShortcut} href="/admin/assistant"><Sparkles size={18}/><span><b>Trợ lý Hoàng Long</b><small>Dán chat để chuẩn bị đơn và việc cần làm</small></span><ArrowRight size={18}/></Link>}
 
         {error && <p className={styles.error} role="alert"><AlertTriangle />{error}<button onClick={() => setError("")} aria-label="Đóng thông báo">×</button></p>}
 

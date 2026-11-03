@@ -80,3 +80,5 @@
 .focusEditorActions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--space-xs)}
 .focusEditorActions button:first-child{border:var(--rule-thin) solid var(--color-rule);background:var(--color-paper);color:var(--color-ink)}
 @media(max-width:39.99rem){.focusDialog{inset-block-start:calc(var(--focus-viewport-top,0px) + .5rem);width:calc(100% - 1rem);max-height:calc(var(--focus-viewport-height,100dvh) - 1rem)}.focusEditorActions>button{flex:1}}
+
+.assistantShortcut{display:flex;align-items:center;gap:.8rem;padding:1rem;margin:0 0 1.25rem;background:#ecf0e8;border:1px solid #b4c0b2;color:#17261e;text-decoration:none}.assistantShortcut>span{flex:1;display:grid;gap:.2rem}.assistantShortcut b{font-size:.95rem}.assistantShortcut small{color:#4c6253;line-height:1.35}.assistantShortcut>svg{flex:none}
