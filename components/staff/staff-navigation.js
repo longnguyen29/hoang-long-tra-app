@@ -67,9 +67,9 @@ export const STAFF_APPS = {
 };
 
 export const STAFF_APP_GROUPS = [
-  { label: "Bán hàng", keys: ["pipeline", "orders", "discovery", "partnerNetwork"] },
-  { label: "Vận hành", keys: ["work", "procedures", "operations"] },
-  { label: "Sản phẩm & phát triển", keys: ["house", "productDevelopment", "suppliers", "recipes"] },
+  { label: "Bán hàng", keys: ["orders", "pipeline", "discovery", "partnerNetwork"] },
+  { label: "Vận hành", keys: ["operations", "work", "procedures"] },
+  { label: "Sản phẩm & phát triển", keys: ["house", "recipes", "productDevelopment", "suppliers"] },
   { label: "Nội dung & quản lý", keys: ["knowledge", "growth", "documents", "control"] },
 ];
 
