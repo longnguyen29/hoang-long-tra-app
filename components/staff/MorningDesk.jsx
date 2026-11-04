@@ -558,6 +558,16 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
 
         {canReview && <Link className={styles.assistantShortcut} href="/admin/assistant"><Sparkles size={18}/><span><b>Trợ lý Hoàng Long</b><small>Dán chat để chuẩn bị đơn và việc cần làm</small></span><ArrowRight size={18}/></Link>}
 
+        <section className={styles.metrics} aria-label="Sự thật vận hành">
+          {metrics.map(([label, value, note]) => (
+            <article key={label}>
+              <span>{label}</span>
+              <b>{loading || dataIncomplete ? "—" : value}</b>
+              <small>{note}</small>
+            </article>
+          ))}
+        </section>
+
         {error && <p className={styles.error} role="alert"><AlertTriangle />{error}<button onClick={() => setError("")} aria-label="Đóng thông báo">×</button></p>}
 
 
@@ -729,15 +739,6 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
         {canReview && <DashboardPlanner supabase={supabase} />}
         <SampleFollowups supabase={supabase} role={role}/>
 
-        <section className={styles.metrics} aria-label="Sự thật vận hành">
-          {metrics.map(([label, value, note]) => (
-            <article key={label}>
-              <span>{label}</span>
-              <b>{loading || dataIncomplete ? "—" : value}</b>
-              <small>{note}</small>
-            </article>
-          ))}
-        </section>
 
         <footer className={styles.footer}>
           <span>Hoàng Long · Bảng điều khiển</span>
