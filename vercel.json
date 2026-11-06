@@ -1,4 +1,9 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "codex/website-reinvention": false
+    }
+  },
   "crons": [
     { "path": "/api/cron/recipe-radar", "schedule": "30 23 * * *" },
     { "path": "/api/cron/payment-reminders", "schedule": "0 3 * * *" },
