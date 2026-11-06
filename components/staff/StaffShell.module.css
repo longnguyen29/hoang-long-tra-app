@@ -22,3 +22,15 @@
 .content main h1{font-family:var(--font-body);font-size:clamp(1.6rem,2.5vw,2.2rem);line-height:1.2;letter-spacing:-.025em;max-width:none}.content main>section:first-of-type{scroll-margin-top:var(--space-sm)}
 
 .content :global(.hl-admin-state) button{display:inline-flex;align-items:center;gap:var(--space-xs);min-height:var(--control-height);padding:var(--space-xs) var(--space-sm);border:0;border-radius:var(--radius-control);background:var(--color-ink);color:var(--color-paper);font:inherit}
+
+/* Quick context across related work areas; preserves the underlying pages. */
+.contextBar{padding:16px clamp(16px,3vw,40px) 0;background:var(--color-paper);border-bottom:1px solid var(--color-rule)}
+.contextHeading{display:flex;align-items:baseline;gap:14px;min-width:0}
+.contextHeading>span{font-size:.75rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.contextHeading small{font-size:.75rem;opacity:.7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.contextLinks{display:flex;gap:5px;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:thin;padding:12px 0 10px}
+.contextLinks a{display:inline-flex;align-items:center;white-space:nowrap;min-height:38px;padding:0 14px;border-radius:99px;color:var(--color-ink);font-size:.8rem;text-decoration:none}
+.contextLinks a:hover{background:var(--color-paper-2)}
+.contextLinks a[aria-current=page]{background:var(--color-ink);color:var(--color-paper);font-weight:700}
+@media(max-width:40rem){.contextHeading small{display:none}.contextBar{padding-top:12px}.contextLinks{padding-top:8px}}
+@media (prefers-reduced-motion: no-preference){.contextLinks a{transition:background-color 150ms ease,color 150ms ease,transform 150ms ease}.contextLinks a:active{transform:scale(.97);transition-duration:0ms}}
