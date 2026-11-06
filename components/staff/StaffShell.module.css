@@ -34,3 +34,6 @@
 .contextLinks a[aria-current=page]{background:var(--color-ink);color:var(--color-paper);font-weight:700}
 @media(max-width:40rem){.contextHeading small{display:none}.contextBar{padding-top:12px}.contextLinks{padding-top:8px}}
 @media (prefers-reduced-motion: no-preference){.contextLinks a{transition:background-color 150ms ease,color 150ms ease,transform 150ms ease}.contextLinks a:active{transform:scale(.97);transition-duration:0ms}}
+
+/* Desktop already has a complete sidebar; keep the related-page rail for mobile. */
+@media(min-width:64rem){.contextBar{display:none}}

@@ -92,3 +92,16 @@
 .orderOnly{padding:16px 20px;border-top:1px solid var(--color-rule)}.orderOnly h3{font-size:.95rem;margin:0}.orderOnly>div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--color-rule)}.orderOnly strong,.orderOnly small{display:block}.orderOnly button,.orderOnly a{padding:9px;border:1px solid var(--color-rule);background:transparent;color:inherit;white-space:nowrap}
 .customerRowWrap{display:flex;align-items:stretch;border-top:1px solid var(--color-rule)}.customerRowWrap .customerRow{border-top:0;flex:1;min-width:0}.hideCustomer,.hiddenToggle,.hiddenSection button{border:1px solid var(--color-rule);background:transparent;color:inherit;padding:8px 12px;cursor:pointer}.hideCustomer{margin:10px}.hiddenToggle{margin:10px 20px}.hiddenSection{padding:12px 20px;border-top:1px solid var(--color-rule)}.hiddenSection>div{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0}.orderActions{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.orderActions select{max-width:210px;min-height:40px}.srOnly{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}@media(max-width:700px){.customerRowWrap{align-items:flex-start}.hideCustomer{margin:12px 8px}.orderOnly>div{align-items:flex-start;flex-direction:column}}
 .manualLink{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:.85rem}.manualLink button{border:1px solid var(--color-rule);background:transparent;color:inherit;padding:8px;white-space:nowrap}
+.contactHeading{display:flex;align-items:center;justify-content:space-between;gap:10px}.contactHeading button,.contactAdd button{padding:10px;border:1px solid var(--color-rule);background:var(--color-paper);color:inherit;white-space:nowrap}.contactAdd{display:flex;gap:8px}.contactAdd input{min-width:0;flex:1;padding:10px;border:1px solid var(--color-rule);background:var(--color-paper);color:inherit}
+
+/* A quiet customer workbench: the list and search lead; context opens on demand. */
+.summaryDisclosure{margin:0 var(--page-gutter);border-bottom:1px solid var(--color-rule-2)}
+.summaryDisclosure>summary{padding:var(--space-sm) 0;cursor:pointer;font-size:var(--text-sm);font-weight:700;list-style:none}
+.summaryDisclosure>summary::-webkit-details-marker{display:none}
+.summaryDisclosure>summary::before{content:'+';display:inline-block;width:1.4rem;color:var(--color-accent);font-size:1.1rem}
+.summaryDisclosure[open]>summary::before{content:'−'}
+.summaryDisclosure>summary span{font-weight:400;color:var(--color-muted)}
+.summaryDisclosure .summary{margin:0 0 var(--space-sm)}
+.enquiries{margin:var(--space-lg) var(--page-gutter)}
+@media(min-width:64rem){.hero{padding-block:var(--space-lg)}.hero h1{font-size:clamp(2rem,3vw,2.8rem);line-height:1.15}.top{position:static}.tools{padding-top:var(--space-xs)}}
+@media(max-width:47.99rem){.summaryDisclosure,.enquiries{margin-inline:var(--space-sm)}.hero h1{font-size:2rem;line-height:1.15}.hero>button{width:auto}}

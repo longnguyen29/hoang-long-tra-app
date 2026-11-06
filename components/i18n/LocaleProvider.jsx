@@ -219,9 +219,8 @@ export default function LocaleProvider({ children }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
   const isWorkBoard = pathname?.startsWith("/admin/work");
-  // Public pages open in Vietnamese. Admin keeps its established English default,
-  // while the low-tech staff work board remains Vietnamese-first.
-  const defaultLocale = isAdmin && !isWorkBoard ? "en" : "vi";
+  // Vietnamese is the starting language; an explicit saved preference still wins.
+  const defaultLocale = "vi";
   // Keep public preference separate from the old shared key. The previous key could
   // contain an admin-era English choice and made the public tea site reopen in English.
   const storageKey = isWorkBoard ? "hl-work-locale" : isAdmin ? "hl-admin-locale-v2" : "hl-public-locale-v2";
