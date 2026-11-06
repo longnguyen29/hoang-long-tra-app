@@ -13,7 +13,7 @@ export const metadata = {
   }
 };
 
-import HouseHome from "@/components/public/HouseHome";
+import HouseHome from "@/components/home-editorial/page";
 import IdleScreen from "@/components/IdleScreen";
 
 export default function HomePage() {
