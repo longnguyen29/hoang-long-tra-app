@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, BadgeDollarSign, Calculator, CalendarClock, Chec
 import { fromCatalogRow, fromVariantRow } from "@/lib/mappers";
 import { dateInput, money, normalizeContact, QUOTE_STATUS, quoteMessage, shortDate, stageLabel, TRADE_STAGES } from "@/lib/trade-pipeline";
 import { buildCustomerJourney } from "@/lib/customer-journey";
+import { CUSTOMER_CATEGORIES, customerOrderSummary } from "@/lib/customer-directory";
 import { useDialogFocus } from "./useDialogFocus";
 import LoadFailure from "./LoadFailure";
 import styles from "./TradePipeline.module.css";
@@ -111,6 +112,10 @@ export default function TradePipeline({ supabase, email }) {
   const [quoteDraft, setQuoteDraft] = useState(null);
   const [priceDraft, setPriceDraft] = useState(null);
   const [query, setQuery] = useState("");
+  const [viewMode, setViewMode] = useState("list");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [categorySaving, setCategorySaving] = useState(false);
+  const [categoryError, setCategoryError] = useState("");
   const [showLost, setShowLost] = useState(false);
   const [mobileStage, setMobileStage] = useState(TRADE_STAGES[0].id);
   const [loading, setLoading] = useState(true);
@@ -200,13 +205,35 @@ export default function TradePipeline({ supabase, email }) {
   const flash = (message) => { setNotice(message); setTimeout(() => setNotice(""), 2200); };
   const today = dateInput();
   const searchable = useMemo(() => opportunities.filter((item) => `${item.business_name} ${item.contact} ${item.owner}`.toLowerCase().includes(query.toLowerCase())), [opportunities, query]);
+  const directory = useMemo(() => searchable.filter(item => (showLost || item.stage !== "lost") && (categoryFilter === "all" || (item.customer_category || "uncategorized") === categoryFilter)).map(item => ({ item, summary: customerOrderSummary(item, opportunities, orders, quotes, partners) })).sort((a,b) => (Date.parse(b.summary.lastOrder) || 0) - (Date.parse(a.summary.lastOrder) || 0)), [searchable, opportunities, orders, quotes, partners, categoryFilter, showLost]);
+  const updateCategory = async (value) => {
+    if (!selected || categorySaving) return;
+    setCategorySaving(true); setCategoryError("");
+    const { data, error: updateError } = await supabase.from("trade_opportunities").update({customer_category: value || null}).eq("id", selected.id).select().single();
+    setCategorySaving(false);
+    if (updateError || !data) { setCategoryError("Chưa lưu được loại khách. Vui lòng thử lại hoặc kiểm tra cấu hình dữ liệu."); return; }
+    const updated = {...selected, customer_category: data.customer_category};
+    setSelected(updated); setOpportunities(rows => rows.map(row => row.id === updated.id ? {...row, customer_category: updated.customer_category} : row));
+    flash("Đã cập nhật loại khách hàng");
+  };
+  const orderOnly = useMemo(() => {
+    const assigned = new Set(opportunities.flatMap(item => customerOrderSummary(item, opportunities, orders, quotes, partners).orderIds));
+    const groups = new Map();
+    orders.filter(o => !assigned.has(o.id) && !o.deleted_at && !["cancelled", "canceled", "deleted"].includes(o.status)).forEach(order => {
+      const contact = normalizeContact(order.contact || "");
+      const key = contact ? `contact:${contact}` : `order:${order.id}`;
+      if (!groups.has(key)) groups.set(key, {key, name: order.customer_name || "Chưa có tên", contact: order.contact || "", orders: []});
+      groups.get(key).orders.push(order);
+    });
+    return [...groups.values()].filter(group => `${group.name} ${group.contact}`.toLowerCase().includes(query.toLowerCase())).sort((a,b) => (Date.parse(b.orders[0]?.ts) || 0) - (Date.parse(a.orders[0]?.ts) || 0));
+  }, [opportunities, orders, quotes, partners, query]);
   const overdue = opportunities.filter((item) => item.stage !== "lost" && item.next_action_at && item.next_action_at.slice(0, 10) < today);
   const dueToday = opportunities.filter((item) => item.stage !== "lost" && item.next_action_at?.slice(0, 10) === today);
   const openQuotes = quotes.filter((quote) => ["draft", "sent", "accepted"].includes(quote.status));
   const totalPotential = opportunities.filter((item) => item.stage !== "lost").reduce((sum, item) => sum + Number(item.monthly_potential_kg || 0), 0);
   const orderableProducts = useMemo(() => tradeProductOptions(products), [products]);
 
-  const openOpportunity = (item) => { setSelected(item); setEditing(null); setQuoteDraft(null); setPriceDraft(null); };
+  const openOpportunity = (item) => { setCategoryError(""); setSelected(item); setEditing(null); setQuoteDraft(null); setPriceDraft(null); };
   const saveOpportunity = async (event) => {
     event.preventDefault();
     if (!editing.business_name.trim() || !editing.contact.trim()) return;
@@ -343,8 +370,19 @@ export default function TradePipeline({ supabase, email }) {
       <article><FileText/><span>Báo giá đang mở</span><b>{openQuotes.length}</b><small>{quotes.filter((item) => item.status === "accepted").length} đã đồng ý</small></article>
       <article><Handshake/><span>Đối tác định kỳ</span><b>{opportunities.filter((item) => item.stage === "active").length}</b><small>{opportunities.filter((item) => item.stage === "won").length} đang ở đơn đầu</small></article>
     </section>
+    <div className={styles.viewSwitch} aria-label="Kiểu xem khách hàng"><button type="button" data-active={viewMode === "list"} onClick={() => setViewMode("list")}>Danh sách</button><button type="button" data-active={viewMode === "pipeline"} onClick={() => setViewMode("pipeline")}>Theo giai đoạn</button></div>
     <EventEnquiryInbox supabase={supabase} refreshKey={opportunities} onOpenOpportunity={openEventOpportunity}/>
     <section className={styles.tools}><label><Search/><input aria-label="Tìm khách hàng" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm doanh nghiệp, liên hệ, người phụ trách"/></label><button data-active={showLost} onClick={() => setShowLost(!showLost)}>Tạm dừng · {opportunities.filter((item) => item.stage === "lost").length}</button></section>
+    {viewMode === "list" && <section className={styles.directory} aria-label="Danh sách khách hàng">
+      <header><div><h2>Danh sách khách hàng</h2><p>{directory.length} hồ sơ CRM · Tổng đơn là giá trị dự kiến, không phải tiền đã thu.</p></div><label>Loại khách<select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}><option value="all">Tất cả</option><option value="uncategorized">Chưa phân loại</option>{CUSTOMER_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select></label></header>
+      <div className={styles.directoryHead} aria-hidden="true"><span>Khách hàng</span><span>Loại / giai đoạn</span><span>Số đơn</span><span>Tổng dự kiến</span><span>Đặt gần nhất</span></div>
+      {directory.map(({item, summary}) => <button type="button" className={styles.customerRow} key={item.id} onClick={() => openOpportunity(item)}><span className={styles.customerIdentity}><strong>{item.business_name}</strong><small>{item.contact || "Chưa có liên hệ"}</small></span><span><b>{CUSTOMER_CATEGORIES.find(c => c.id === item.customer_category)?.label || "Chưa phân loại"}</b><small>{stageLabel(item.stage)}</small></span><span><small>Số đơn</small>{summary.count}</span><span><small>Tổng dự kiến</small>{summary.total === null ? "—" : `${new Intl.NumberFormat("vi-VN").format(summary.total)} ₫`}</span><span><small>Đặt gần nhất</small>{summary.lastOrder ? shortDate(summary.lastOrder) : "Chưa có đơn"}</span></button>)}
+      {!directory.length && <p className={styles.emptyDirectory}>Chưa có khách phù hợp. Thử đổi bộ lọc hoặc thêm khách mới.</p>}
+      <p className={styles.directoryNote}>Đơn được nối qua báo giá, tài khoản sỉ hoặc liên hệ trùng duy nhất. Liên hệ dùng chung cần kiểm tra trong hồ sơ.</p>
+      {categoryFilter === "all" && orderOnly.length > 0 && <section className={styles.orderOnly}><h3>Khách có đơn chưa có hồ sơ CRM · {orderOnly.length}</h3><p>Kiểm tra liên hệ trước khi tạo hồ sơ; các đơn sẽ được đối chiếu theo liên hệ.</p>{orderOnly.map(group => <div key={group.key}><span><strong>{group.name}</strong><small>{group.contact || "Chưa có liên hệ"} · {group.orders.length} đơn · gần nhất {shortDate(group.orders[0]?.ts)}</small></span>{group.contact && !opportunities.some(item => normalizeContact(item.contact || "") === normalizeContact(group.contact)) ? <button type="button" onClick={() => setEditing({...newOpportunity(), business_name:group.name, contact:group.contact})}>Tạo hồ sơ</button> : <Link href="/admin/orders">Kiểm tra đơn</Link>}</div>)}</section>}
+
+    </section>}
+    {viewMode === "pipeline" && <>
     <label className={styles.mobileStagePicker}><span>Giai đoạn đang xem</span><select value={mobileStage} onChange={(event) => setMobileStage(event.target.value)}>{TRADE_STAGES.map((stage) => <option key={stage.id} value={stage.id}>{stage.label} · {searchable.filter((item) => item.stage === stage.id).length}</option>)}</select></label>
     <section className={styles.stageRail} aria-label="Hành trình đối tác">{TRADE_STAGES.map((stage, index) => <div key={stage.id}><span>{String(index + 1).padStart(2, "0")}</span><b>{stage.label}</b><small>{searchable.filter((item) => item.stage === stage.id).length}</small></div>)}</section>
     <section className={styles.board}>
@@ -355,8 +393,11 @@ export default function TradePipeline({ supabase, email }) {
     </section>
     {showLost && <section className={styles.lost}><header><h2>Cơ hội đang tạm dừng</h2><span>Giữ lại lịch sử; đưa về pipeline khi thời điểm phù hợp.</span></header>{searchable.filter((item) => item.stage === "lost").map((item) => <button key={item.id} onClick={() => openOpportunity(item)}><span><b>{item.business_name}</b><small>{item.lost_reason || "Chưa ghi lý do"}</small></span><ChevronRight/></button>)}</section>}
 
+    </>}
+
     {selected && <div className={styles.overlay} onPointerDown={(event) => { if (event.target === event.currentTarget) closeSelected(); }}><aside ref={dialogRef} tabIndex={-1} className={styles.drawer} aria-label="Chi tiết cơ hội" role="dialog" aria-modal="true">
       <header><div><p>{stageLabel(selected.stage)}</p><h2>{selected.business_name}</h2><span>{selected.contact}</span></div><button type="button" onClick={closeSelected} aria-label="Đóng"><X/></button></header>
+      <section className={styles.categoryEditor}><label>Loại khách hàng<select value={selected.customer_category || ""} disabled={categorySaving} onChange={e => updateCategory(e.target.value)}><option value="">Chưa phân loại</option>{CUSTOMER_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}{c.hint ? ` · ${c.hint}` : ""}</option>)}</select></label><small>Chọn theo thực tế; mức kg/tháng chỉ để tham khảo.</small>{categoryError && <p role="alert">{categoryError}</p>}</section>
       <PartnerReferralLink key={selected.id} opportunityId={selected.id}/>
       <section className={styles.next}><span>Bước tiếp theo</span><h3>{selected.next_action || "Chưa đặt bước tiếp theo"}</h3><time>{shortDate(selected.next_action_at)}</time><p>Phụ trách: {selected.owner || "Chưa phân công"}</p><div><button onClick={() => setEditing({ ...selected, next_action_at: selected.next_action_at?.slice(0, 10) || "" })}>Sửa nhịp làm việc</button><Link className={styles.recipeBridge} href={`/admin/recipes?view=lab&opportunity=${encodeURIComponent(selected.id)}`}><FlaskConical/>Mở phòng công thức</Link></div></section>
       <CustomerJourneyPanel primaryActionTitle={selected.prospect_suppressed?"Không liên hệ · chỉ xử lý giao dịch đã có":selected.next_action} journey={selectedJourney} onCommand={runJourneyCommand}/>
