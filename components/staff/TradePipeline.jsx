@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, BadgeDollarSign, Calculator, CalendarClock, Chec
 import { fromCatalogRow, fromVariantRow } from "@/lib/mappers";
 import { dateInput, money, normalizeContact, QUOTE_STATUS, quoteMessage, shortDate, stageLabel, TRADE_STAGES } from "@/lib/trade-pipeline";
 import { buildCustomerJourney } from "@/lib/customer-journey";
-import { CUSTOMER_CATEGORIES, customerOrderSummary } from "@/lib/customer-directory";
+import { CUSTOMER_CATEGORIES, customerOrderSummary, customerMatchRank } from "@/lib/customer-directory";
 import { useDialogFocus } from "./useDialogFocus";
 import LoadFailure from "./LoadFailure";
 import styles from "./TradePipeline.module.css";
@@ -104,6 +104,11 @@ export default function TradePipeline({ supabase, email }) {
   const [recipes, setRecipes] = useState([]);
   const [recipeVersions, setRecipeVersions] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [directoryHidden, setDirectoryHidden] = useState([]);
+  const [directoryLinks, setDirectoryLinks] = useState([]);
+  const [showHidden, setShowHidden] = useState(false);
+  const [linkChoice, setLinkChoice] = useState({});
+  const [directoryBusy, setDirectoryBusy] = useState(false);
   const [receivables, setReceivables] = useState([]);
   const [products, setProducts] = useState([]);
   const [selected, setSelectedRaw] = useState(null);
@@ -150,7 +155,7 @@ export default function TradePipeline({ supabase, email }) {
   const load = useCallback(async () => {
     setLoading(true); setError("");
     try {
-    const [o, q, a, p, v, w, s, r, rv, ord, rec] = await Promise.all([
+    const [o, q, a, p, v, w, s, r, rv, ord, rec, hidden, links] = await Promise.all([
       supabase.from("trade_opportunities").select("*").order("updated_at", { ascending: false }),
       supabase.from("trade_quotes").select("*").order("created_at", { ascending: false }),
       supabase.from("partner_price_agreements").select("*, partner_price_rules(*)").order("version", { ascending: false }),
@@ -162,8 +167,10 @@ export default function TradePipeline({ supabase, email }) {
       supabase.from("recipe_versions").select("*").order("created_at", { ascending: false }),
       supabase.from("orders").select("*").order("ts", { ascending: false }),
       supabase.from("receivables").select("*").order("created_at", { ascending: false }),
+      supabase.from("customer_directory_hidden").select("kind,entry_id"),
+      supabase.from("customer_directory_order_links").select("order_id,opportunity_id"),
     ]);
-    const failed = [o, q, a, p, v, w, s, r, rv, ord, rec].some(result => result.error);
+    const failed = [o, q, a, p, v, w, s, r, rv, ord, rec, hidden, links].some(result => result.error);
     setDataFailure(failed);
     if(failed) return;
     if (o.error || q.error) setError("Chưa tải được dữ liệu phát triển đối tác. Kiểm tra migration 0033.");
@@ -183,6 +190,7 @@ export default function TradePipeline({ supabase, email }) {
     if (!r.error) setRecipes(r.data || []);
     if (!rv.error) setRecipeVersions(rv.data || []);
     if (!ord.error) setOrders(ord.data || []);
+    setDirectoryHidden(hidden.data || []); setDirectoryLinks(links.data || []);
     if (!rec.error) setReceivables(rec.data || []);
     if (!p.error) {
       const byProduct = {};
@@ -205,7 +213,8 @@ export default function TradePipeline({ supabase, email }) {
   const flash = (message) => { setNotice(message); setTimeout(() => setNotice(""), 2200); };
   const today = dateInput();
   const searchable = useMemo(() => opportunities.filter((item) => `${item.business_name} ${item.contact} ${item.owner}`.toLowerCase().includes(query.toLowerCase())), [opportunities, query]);
-  const directory = useMemo(() => searchable.filter(item => (showLost || item.stage !== "lost") && (categoryFilter === "all" || (item.customer_category || "uncategorized") === categoryFilter)).map(item => ({ item, summary: customerOrderSummary(item, opportunities, orders, quotes, partners) })).sort((a,b) => (Date.parse(b.summary.lastOrder) || 0) - (Date.parse(a.summary.lastOrder) || 0)), [searchable, opportunities, orders, quotes, partners, categoryFilter, showLost]);
+  const isHidden = (kind, id) => directoryHidden.some(entry => entry.kind === kind && entry.entry_id === id);
+  const directory = useMemo(() => searchable.filter(item => !isHidden("opportunity", item.id) && (showLost || item.stage !== "lost") && (categoryFilter === "all" || (item.customer_category || "uncategorized") === categoryFilter)).map(item => ({ item, summary: customerOrderSummary(item, opportunities, orders, quotes, partners, directoryLinks) })).sort((a,b) => (Date.parse(b.summary.lastOrder) || 0) - (Date.parse(a.summary.lastOrder) || 0)), [searchable, opportunities, orders, quotes, partners, directoryLinks, directoryHidden, categoryFilter, showLost]);
   const updateCategory = async (value) => {
     if (!selected || categorySaving) return;
     setCategorySaving(true); setCategoryError("");
@@ -217,16 +226,45 @@ export default function TradePipeline({ supabase, email }) {
     flash("Đã cập nhật loại khách hàng");
   };
   const orderOnly = useMemo(() => {
-    const assigned = new Set(opportunities.flatMap(item => customerOrderSummary(item, opportunities, orders, quotes, partners).orderIds));
+    const assigned = new Set(opportunities.flatMap(item => customerOrderSummary(item, opportunities, orders, quotes, partners, directoryLinks).orderIds));
     const groups = new Map();
-    orders.filter(o => !assigned.has(o.id) && !o.deleted_at && !["cancelled", "canceled", "deleted"].includes(o.status)).forEach(order => {
+    orders.filter(o => !assigned.has(o.id) && !isHidden("order", o.id) && !o.deleted_at && !["cancelled", "canceled", "deleted"].includes(o.status)).forEach(order => {
       const contact = normalizeContact(order.contact || "");
       const key = contact ? `contact:${contact}` : `order:${order.id}`;
       if (!groups.has(key)) groups.set(key, {key, name: order.customer_name || "Chưa có tên", contact: order.contact || "", orders: []});
       groups.get(key).orders.push(order);
     });
     return [...groups.values()].filter(group => `${group.name} ${group.contact}`.toLowerCase().includes(query.toLowerCase())).sort((a,b) => (Date.parse(b.orders[0]?.ts) || 0) - (Date.parse(a.orders[0]?.ts) || 0));
-  }, [opportunities, orders, quotes, partners, query]);
+  }, [opportunities, orders, quotes, partners, directoryLinks, directoryHidden, query]);
+  const setDirectoryVisibility = async (kind, ids, hide) => {
+    if (directoryBusy || !ids.length) return;
+    setDirectoryBusy(true); setError("");
+    const result = hide ? await supabase.from("customer_directory_hidden").upsert(ids.map(entry_id => ({kind, entry_id})), {onConflict:"kind,entry_id",ignoreDuplicates:true}) : await supabase.from("customer_directory_hidden").delete().eq("kind",kind).in("entry_id",ids);
+    setDirectoryBusy(false);
+    if (result.error) { setError("Chưa thay đổi được danh sách. Thử lại."); return; }
+    setDirectoryHidden(rows => hide ? [...rows, ...ids.filter(id => !rows.some(r => r.kind === kind && r.entry_id === id)).map(entry_id => ({kind,entry_id}))] : rows.filter(r => r.kind !== kind || !ids.includes(r.entry_id)));
+    flash(hide ? "Đã ẩn khỏi danh sách; có thể khôi phục." : "Đã khôi phục vào danh sách.");
+  };
+  const linkOrders = async (group) => {
+    const target = linkChoice[group.key];
+    if (!target || directoryBusy) return;
+    setDirectoryBusy(true); setError("");
+    const records = group.orders.map(order => ({order_id:order.id, opportunity_id:target}));
+    const {data,error:linkError} = await supabase.from("customer_directory_order_links").upsert(records,{onConflict:"order_id"}).select("order_id,opportunity_id");
+    setDirectoryBusy(false);
+    if (linkError || !data || data.length !== records.length) { setError("Chưa nối được đơn vào hồ sơ. Thử lại."); return; }
+    setDirectoryLinks(rows => [...rows.filter(row => !records.some(record => record.order_id === row.order_id)), ...data]);
+    flash("Đã nối đơn vào hồ sơ đã chọn.");
+  };
+  const unlinkOrder = async (orderId) => {
+    if (directoryBusy) return;
+    setDirectoryBusy(true); setError("");
+    const {error: unlinkError} = await supabase.from("customer_directory_order_links").delete().eq("order_id",orderId).eq("opportunity_id",selected.id);
+    setDirectoryBusy(false);
+    if (unlinkError) { setCategoryError("Chưa gỡ được liên kết. Thử lại."); return; }
+    setDirectoryLinks(rows => rows.filter(row => row.order_id !== orderId));
+    flash("Đã gỡ liên kết thủ công; đơn gốc vẫn được giữ.");
+  };
   const overdue = opportunities.filter((item) => item.stage !== "lost" && item.next_action_at && item.next_action_at.slice(0, 10) < today);
   const dueToday = opportunities.filter((item) => item.stage !== "lost" && item.next_action_at?.slice(0, 10) === today);
   const openQuotes = quotes.filter((quote) => ["draft", "sent", "accepted"].includes(quote.status));
@@ -347,7 +385,7 @@ export default function TradePipeline({ supabase, email }) {
   const selectedAgreements = selected ? agreements.filter((agreement) => agreement.opportunity_id === selected.id) : [];
   const latestAgreement = selectedAgreements.find((agreement) => agreement.status === "active") || null;
   const activeAgreement = latestAgreement && latestAgreement.effective_from <= today && (!latestAgreement.valid_until || latestAgreement.valid_until >= today) ? latestAgreement : null;
-  const selectedJourney = useMemo(() => selected ? buildCustomerJourney({ opportunity: selected, samples, recipes, recipeVersions, quotes, orders, receivables, partners }) : null, [selected, samples, recipes, recipeVersions, quotes, orders, receivables, partners]);
+  const selectedJourney = useMemo(() => selected ? buildCustomerJourney({ opportunity: selected, samples, recipes, recipeVersions, quotes, orders, receivables, partners, directoryLinks }) : null, [selected, samples, recipes, recipeVersions, quotes, orders, receivables, partners, directoryLinks]);
   const runJourneyCommand = (action) => {
     if (action.command === "edit-rhythm") setEditing({ ...selected, next_action_at: selected.next_action_at?.slice(0, 10) || "" });
     if (action.command === "create-quote") setQuoteDraft(newQuote(selected, activeAgreement));
@@ -376,10 +414,12 @@ export default function TradePipeline({ supabase, email }) {
     {viewMode === "list" && <section className={styles.directory} aria-label="Danh sách khách hàng">
       <header><div><h2>Danh sách khách hàng</h2><p>{directory.length} hồ sơ CRM · Tổng đơn là giá trị dự kiến, không phải tiền đã thu.</p></div><label>Loại khách<select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}><option value="all">Tất cả</option><option value="uncategorized">Chưa phân loại</option>{CUSTOMER_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select></label></header>
       <div className={styles.directoryHead} aria-hidden="true"><span>Khách hàng</span><span>Loại / giai đoạn</span><span>Số đơn</span><span>Tổng dự kiến</span><span>Đặt gần nhất</span></div>
-      {directory.map(({item, summary}) => <button type="button" className={styles.customerRow} key={item.id} onClick={() => openOpportunity(item)}><span className={styles.customerIdentity}><strong>{item.business_name}</strong><small>{item.contact || "Chưa có liên hệ"}</small></span><span><b>{CUSTOMER_CATEGORIES.find(c => c.id === item.customer_category)?.label || "Chưa phân loại"}</b><small>{stageLabel(item.stage)}</small></span><span><small>Số đơn</small>{summary.count}</span><span><small>Tổng dự kiến</small>{summary.total === null ? "—" : `${new Intl.NumberFormat("vi-VN").format(summary.total)} ₫`}</span><span><small>Đặt gần nhất</small>{summary.lastOrder ? shortDate(summary.lastOrder) : "Chưa có đơn"}</span></button>)}
+      {directory.map(({item, summary}) => <div className={styles.customerRowWrap} key={item.id}><button type="button" className={styles.customerRow} onClick={() => openOpportunity(item)}><span className={styles.customerIdentity}><strong>{item.business_name}</strong><small>{item.contact || "Chưa có liên hệ"}</small></span><span><b>{CUSTOMER_CATEGORIES.find(c => c.id === item.customer_category)?.label || "Chưa phân loại"}</b><small>{stageLabel(item.stage)}</small></span><span><small>Số đơn</small>{summary.count}</span><span><small>Tổng dự kiến</small>{summary.total === null ? "—" : `${new Intl.NumberFormat("vi-VN").format(summary.total)} ₫`}</span><span><small>Đặt gần nhất</small>{summary.lastOrder ? shortDate(summary.lastOrder) : "Chưa có đơn"}</span></button><button type="button" className={styles.hideCustomer} disabled={directoryBusy} onClick={() => setDirectoryVisibility("opportunity",[item.id],true)} aria-label={`Ẩn ${item.business_name} khỏi danh sách`}>Ẩn</button></div>)}
       {!directory.length && <p className={styles.emptyDirectory}>Chưa có khách phù hợp. Thử đổi bộ lọc hoặc thêm khách mới.</p>}
+      <button className={styles.hiddenToggle} type="button" onClick={() => setShowHidden(!showHidden)} aria-expanded={showHidden}>Đã ẩn · {directoryHidden.length}</button>
+      {showHidden && <section className={styles.hiddenSection}><h3>Đã ẩn khỏi danh sách</h3><p>Có thể khôi phục; đơn hàng và hồ sơ vẫn được giữ.</p>{directoryHidden.map(entry => { const item = entry.kind === "opportunity" ? opportunities.find(o => o.id === entry.entry_id) : orders.find(o => o.id === entry.entry_id); return <div key={`${entry.kind}:${entry.entry_id}`}><span>{item?.business_name || item?.customer_name || "Không còn dữ liệu"} <small>· {entry.kind === "order" ? "Đơn" : "Hồ sơ"}</small></span><button type="button" disabled={directoryBusy} onClick={() => setDirectoryVisibility(entry.kind,[entry.entry_id],false)}>Khôi phục</button></div>; })}</section>}
       <p className={styles.directoryNote}>Đơn được nối qua báo giá, tài khoản sỉ hoặc liên hệ trùng duy nhất. Liên hệ dùng chung cần kiểm tra trong hồ sơ.</p>
-      {categoryFilter === "all" && orderOnly.length > 0 && <section className={styles.orderOnly}><h3>Khách có đơn chưa có hồ sơ CRM · {orderOnly.length}</h3><p>Kiểm tra liên hệ trước khi tạo hồ sơ; các đơn sẽ được đối chiếu theo liên hệ.</p>{orderOnly.map(group => <div key={group.key}><span><strong>{group.name}</strong><small>{group.contact || "Chưa có liên hệ"} · {group.orders.length} đơn · gần nhất {shortDate(group.orders[0]?.ts)}</small></span>{group.contact && !opportunities.some(item => normalizeContact(item.contact || "") === normalizeContact(group.contact)) ? <button type="button" onClick={() => setEditing({...newOpportunity(), business_name:group.name, contact:group.contact})}>Tạo hồ sơ</button> : <Link href="/admin/orders">Kiểm tra đơn</Link>}</div>)}</section>}
+      {categoryFilter === "all" && orderOnly.length > 0 && <section className={styles.orderOnly}><h3>Khách có đơn chưa có hồ sơ CRM · {orderOnly.length}</h3><p>Kiểm tra liên hệ trước khi tạo hồ sơ; các đơn sẽ được đối chiếu theo liên hệ.</p>{orderOnly.map(group => <div key={group.key}><span><strong>{group.name}</strong><small>{group.contact || "Chưa có liên hệ"} · {group.orders.length} đơn · gần nhất {shortDate(group.orders[0]?.ts)}</small></span><span className={styles.orderActions}>{group.contact && !opportunities.some(item => normalizeContact(item.contact || "") === normalizeContact(group.contact)) && <button type="button" onClick={() => setEditing({...newOpportunity(), business_name:group.name, contact:group.contact})}>Tạo hồ sơ</button>}<label><span className={styles.srOnly}>Chọn hồ sơ để nối {group.name}</span><select value={linkChoice[group.key] || ""} onChange={e => setLinkChoice({...linkChoice,[group.key]:e.target.value})}><option value="">Chọn hồ sơ để nối</option>{[...opportunities].sort((a,b) => customerMatchRank(group,b)-customerMatchRank(group,a)).map(item => <option key={item.id} value={item.id}>{customerMatchRank(group,item) ? "Gợi ý · " : ""}{item.business_name} · {item.contact}</option>)}</select></label><button type="button" disabled={!linkChoice[group.key] || directoryBusy} onClick={() => linkOrders(group)}>Nối đơn</button><button type="button" disabled={directoryBusy} onClick={() => setDirectoryVisibility("order",group.orders.map(order => order.id),true)}>Ẩn</button></span></div>)}</section>}
 
     </section>}
     {viewMode === "pipeline" && <>
@@ -398,6 +438,7 @@ export default function TradePipeline({ supabase, email }) {
     {selected && <div className={styles.overlay} onPointerDown={(event) => { if (event.target === event.currentTarget) closeSelected(); }}><aside ref={dialogRef} tabIndex={-1} className={styles.drawer} aria-label="Chi tiết cơ hội" role="dialog" aria-modal="true">
       <header><div><p>{stageLabel(selected.stage)}</p><h2>{selected.business_name}</h2><span>{selected.contact}</span></div><button type="button" onClick={closeSelected} aria-label="Đóng"><X/></button></header>
       <section className={styles.categoryEditor}><label>Loại khách hàng<select value={selected.customer_category || ""} disabled={categorySaving} onChange={e => updateCategory(e.target.value)}><option value="">Chưa phân loại</option>{CUSTOMER_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}{c.hint ? ` · ${c.hint}` : ""}</option>)}</select></label><small>Chọn theo thực tế; mức kg/tháng chỉ để tham khảo.</small>{categoryError && <p role="alert">{categoryError}</p>}</section>
+      {directoryLinks.some(link => link.opportunity_id === selected.id) && <section className={styles.categoryEditor}><strong>Đơn đã nối thủ công</strong>{directoryLinks.filter(link => link.opportunity_id === selected.id).map(link => {const order=orders.find(o => o.id === link.order_id); return <div className={styles.manualLink} key={link.order_id}><span>{order?.customer_name || "Đơn hàng"} · {shortDate(order?.ts)} · {order?.contact || ""}</span><button type="button" disabled={directoryBusy} onClick={() => unlinkOrder(link.order_id)}>Gỡ nối</button></div>;})}<small>Gỡ nối không xóa đơn; hệ thống vẫn có thể ghép theo liên hệ hoặc báo giá.</small></section>}
       <PartnerReferralLink key={selected.id} opportunityId={selected.id}/>
       <section className={styles.next}><span>Bước tiếp theo</span><h3>{selected.next_action || "Chưa đặt bước tiếp theo"}</h3><time>{shortDate(selected.next_action_at)}</time><p>Phụ trách: {selected.owner || "Chưa phân công"}</p><div><button onClick={() => setEditing({ ...selected, next_action_at: selected.next_action_at?.slice(0, 10) || "" })}>Sửa nhịp làm việc</button><Link className={styles.recipeBridge} href={`/admin/recipes?view=lab&opportunity=${encodeURIComponent(selected.id)}`}><FlaskConical/>Mở phòng công thức</Link></div></section>
       <CustomerJourneyPanel primaryActionTitle={selected.prospect_suppressed?"Không liên hệ · chỉ xử lý giao dịch đã có":selected.next_action} journey={selectedJourney} onCommand={runJourneyCommand}/>
