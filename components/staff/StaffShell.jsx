@@ -21,6 +21,14 @@ export default function StaffShell({ children, partnerNetworkEnabled = false }) 
   const current = Object.values(STAFF_APPS).find(app => active(app.href));
   const currentGroup = STAFF_APP_GROUPS.find(group => group.keys.includes(current?.key));
   const related = currentGroup?.keys.filter(key => key !== "partnerNetwork" || partnerNetworkEnabled).map(key => STAFF_APPS[key]) || [];
+  function prefetchOnIntent(event) {
+    const anchor = event.target.closest("a[href]");
+    if (!anchor || navigator.connection?.saveData) return;
+    const url = new URL(anchor.href, window.location.origin);
+    if (url.origin === window.location.origin && url.pathname.startsWith("/admin") && url.pathname !== pathname) {
+      router.prefetch(url.pathname + url.search);
+    }
+  }
   const navigation = <>
     <Link href="/admin" aria-current={active("/admin") ? "page" : undefined}><CalendarDays/><span>Hôm nay</span></Link>
     {STAFF_APP_GROUPS.map(group => <section key={group.label}>
@@ -39,7 +47,7 @@ export default function StaffShell({ children, partnerNetworkEnabled = false }) 
       router.replace("/admin/login"); router.refresh();
     } catch { setError("Chưa đăng xuất được. Hãy thử lại."); setLeaving(false); }
   }
-  return <StaffFeaturesContext.Provider value={{ partnerNetworkEnabled }}><div className={styles.shell} data-staff-shell>
+  return <StaffFeaturesContext.Provider value={{ partnerNetworkEnabled }}><div className={styles.shell} data-staff-shell onPointerOver={prefetchOnIntent} onFocus={prefetchOnIntent}>
     <a href="#staff-content" className={styles.skip}>Đến nội dung công việc</a>
     <aside className={styles.sidebar} data-staff-navigation>
       <Link href="/admin" className={styles.brand}><span aria-hidden="true">皇龍</span><b>Hoàng Long<small>Bàn làm việc</small></b></Link>
