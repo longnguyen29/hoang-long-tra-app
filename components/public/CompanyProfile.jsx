@@ -18,7 +18,7 @@ const LABELS = {
   vi: {
     download: "Tải hồ sơ sản phẩm", explore: "Khám phá bốn dòng trà", contents: "Nội dung hồ sơ xuất khẩu",
     products: "Sản phẩm", supply: "Quy cách & cung ứng", specifications: "Thông số & hồ sơ", company: "Doanh nghiệp", documents: "Tài liệu PDF", contact: "Liên hệ xuất khẩu",
-    productTitle: "Bốn dòng trà chủ lực.", productIntro: "Hai dòng hồng trà Shan, một dòng lục trà Shan và một dòng trà xanh hương hoa. Mỗi sản phẩm được chào theo mẫu, phẩm cấp và lượng đặt cụ thể.",
+    productTitle: "Danh mục trà chủ lực.", productIntro: "Từ hồng trà hương mật, hương khói đến trà xanh thanh dịu và trà ướp hoa ngọc lan: mỗi dòng trà được giới thiệu theo mẫu, phẩm cấp và nhu cầu của từng đối tác.",
     fullCatalog: "Xem toàn bộ danh mục trà", sampleReference: "Mẫu & phẩm cấp", sampleNote: "Yêu cầu mẫu và bảng thông số theo phẩm cấp, khối lượng và thị trường nhập khẩu.",
     documentIntro: "Hồ sơ sản phẩm để trao đổi với người mua; hồ sơ doanh nghiệp và bản giới thiệu chào hàng để chuẩn bị cuộc gặp.",
     documentTypes: [
