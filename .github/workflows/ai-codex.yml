@@ -1,0 +1,82 @@
+name: Autonomous Codex (approved low-risk tasks)
+
+on:
+  workflow_dispatch:
+    inputs:
+      task_id:
+        description: 'Optional approved task ID; blank selects the next task'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: autonomous-codex-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  implement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Prepare one approved task (fail closed on GitHub API errors)
+        id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_TASK: ${{ inputs.task_id }}
+        run: |
+          if [ -n "$REQUESTED_TASK" ]; then
+            python3 scripts/ai_bridge.py prepare --task-id "$REQUESTED_TASK" --check-prs
+          else
+            python3 scripts/ai_bridge.py prepare --check-prs
+          fi
+      - name: Snapshot trusted policy, task and verifier outside agent workspace
+        if: steps.prepare.outputs.selected == 'true'
+        env:
+          TASK_ID: ${{ steps.prepare.outputs.task_id }}
+        run: |
+          cp scripts/ai_bridge.py "$RUNNER_TEMP/ai_bridge_guard.py"
+          cp .ai/policy.json "$RUNNER_TEMP/ai_bridge_policy.json"
+          cp ".ai/tasks/$TASK_ID.json" "$RUNNER_TEMP/$TASK_ID.json"
+      - name: Run Codex in a restricted workspace
+        if: steps.prepare.outputs.selected == 'true'
+        id: codex
+        continue-on-error: true
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: .ai/runtime/prompt.md
+          output-file: .ai/runtime/codex-final.txt
+          permission-profile: ':workspace'
+          safety-strategy: drop-sudo
+      - name: Enforce file scope and run configured local checks
+        if: steps.prepare.outputs.selected == 'true'
+        id: finish
+        env:
+          TASK_ID: ${{ steps.prepare.outputs.task_id }}
+          CODEX_OUTCOME: ${{ steps.codex.outcome }}
+          BASE_SHA: ${{ github.sha }}
+          BRIDGE_REPO_ROOT: ${{ github.workspace }}
+          BRIDGE_TRUSTED_POLICY: ${{ runner.temp }}/ai_bridge_policy.json
+          BRIDGE_TRUSTED_TASK: ${{ runner.temp }}/${{ steps.prepare.outputs.task_id }}.json
+        run: python3 "$RUNNER_TEMP/ai_bridge_guard.py" finish --task-id "$TASK_ID" --codex-outcome "$CODEX_OUTCOME" --baseline-sha "$BASE_SHA"
+      - name: Open a human-review-only draft PR
+        if: steps.prepare.outputs.selected == 'true' && steps.finish.outcome == 'success'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ github.token }}
+          branch: codex/${{ steps.prepare.outputs.task_id }}
+          commit-message: 'codex: attempt ${{ steps.prepare.outputs.task_id }}'
+          title: '[Codex] ${{ steps.prepare.outputs.task_id }} (${{ steps.finish.outputs.result }})'
+          body: |
+            Autonomous low-risk task attempt: `${{ steps.prepare.outputs.task_id }}`
+            Result: `${{ steps.finish.outputs.result }}`
+            See `.ai/results/${{ steps.prepare.outputs.task_id }}.json` for scoped changes and checks.
+            **No auto-merge or auto-deployment. Human review required.**
+          draft: always-true
+          delete-branch: false
