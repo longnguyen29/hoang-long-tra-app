@@ -19,6 +19,8 @@ export default function StaffShell({ children, partnerNetworkEnabled = false }) 
   if (pathname === "/admin/login" || pathname === "/admin/legacy") return children;
   const active = (href) => href === "/admin" ? pathname === href : pathname.startsWith(href.split("?")[0]);
   const current = Object.values(STAFF_APPS).find(app => active(app.href));
+  const currentGroup = STAFF_APP_GROUPS.find(group => group.keys.includes(current?.key));
+  const related = currentGroup?.keys.filter(key => key !== "partnerNetwork" || partnerNetworkEnabled).map(key => STAFF_APPS[key]) || [];
   const navigation = <>
     <Link href="/admin" aria-current={active("/admin") ? "page" : undefined}><CalendarDays/><span>Hôm nay</span></Link>
     {STAFF_APP_GROUPS.map(group => <section key={group.label}>
@@ -48,6 +50,14 @@ export default function StaffShell({ children, partnerNetworkEnabled = false }) 
       </details>
       <div className={styles.account}><button onClick={logout} disabled={leaving} aria-label="Đăng xuất"><LogOut/><span>{leaving ? "Đang đăng xuất…" : "Đăng xuất"}</span></button>{error && <p role="alert">{error}</p>}</div>
     </aside>
-    <div id="staff-content" tabIndex={-1} className={styles.content}>{children}</div>
+    <div id="staff-content" tabIndex={-1} className={styles.content}>
+      {currentGroup && <div className={styles.contextBar}>
+        <div className={styles.contextHeading}><span>{currentGroup.label}</span><small>{current?.description}</small></div>
+        <nav className={styles.contextLinks} aria-label={`Các mục ${currentGroup.label}`}>
+          {related.map(app => <Link key={app.key} href={app.href} aria-current={active(app.href) ? "page" : undefined}>{app.short}</Link>)}
+        </nav>
+      </div>}
+      {children}
+    </div>
   </div></StaffFeaturesContext.Provider>;
 }
