@@ -1,0 +1,35 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { isPublicIPv4,sourceURL,sameOriginRedirect,researchKey,redactEvidence,workerPolicy,canResearch,nextStatus } from './research-gate.mjs';
+const id='11111111-1111-4111-8111-111111111111';
+const good={status:'research',version:3,expectedVersion:3,sourceUrl:'https://example.com/tea'};
+test('public IPv4 accepted, private and documentation ranges blocked',()=>{
+ assert.equal(isPublicIPv4('8.8.8.8'),true);
+ for(const ip of ['127.0.0.1','169.254.169.254','10.0.0.5','172.20.8.1','192.168.1.1','0.0.0.0','100.64.0.1','198.18.0.1','192.0.2.3','203.0.113.2']) assert.equal(isPublicIPv4(ip),false,ip);
+});
+test('public HTTPS source accepted',()=>assert.equal(sourceURL('https://example.com/menu').hostname,'example.com'));
+test('credentialed URL refused',()=>assert.throws(()=>sourceURL('https://user:pass@example.com'),/invalid_source_url/));
+test('javascript and file schemes refused',()=>{for(const u of ['file:///etc/passwd','javascript:alert(1)']) assert.throws(()=>sourceURL(u))});
+test('internal and metadata endpoints refused',()=>{for(const u of ['http://localhost','http://metadata.google.internal','http://127.0.0.1','http://169.254.169.254','https://db.internal']) assert.throws(()=>sourceURL(u))});
+test('unusual port refused',()=>assert.throws(()=>sourceURL('http://example.com:8080'),/blocked_port/));
+test('URL fragments refused',()=>assert.throws(()=>sourceURL('https://example.com/#admin'),/invalid_source_url/));
+test('same-origin redirect allowed',()=>assert.equal(sameOriginRedirect('https://example.com/tea','https://example.com/contact'),true));
+test('cross-origin redirect refused',()=>assert.equal(sameOriginRedirect('https://example.com','https://evil.example.com'),false));
+test('https downgrade redirect refused',()=>assert.equal(sameOriginRedirect('https://example.com','http://example.com'),false));
+test('suppressed prospect refused',()=>{for(const status of ['do_not_contact','not_fit']) assert.deepEqual(canResearch({...good,status}),{allowed:false,reason:'prospect_suppressed'})});
+test('stale prospect refused',()=>assert.equal(canResearch({...good,expectedVersion:2}).reason,'stale_prospect'));
+test('valid saved research allowed',()=>assert.equal(canResearch(good).allowed,true));
+test('same job key stable',()=>assert.equal(researchKey({prospectId:id,version:3,actorId:id}),researchKey({prospectId:id,version:3,actorId:id})));
+test('changed version changes job key',()=>assert.notEqual(researchKey({prospectId:id,version:3,actorId:id}),researchKey({prospectId:id,version:4,actorId:id})));
+test('key is sha256 hex',()=>assert.match(researchKey({prospectId:id,version:3,actorId:id}),/^[a-f0-9]{64}$/));
+test('evidence does not preserve contact email',()=>assert.equal(redactEvidence('Wholesale mail sales@tea.com available'),'Wholesale mail [email] available'));
+test('evidence does not preserve phone',()=>assert.equal(redactEvidence('Phone 0903333841 today'),'Phone [phone] today'));
+test('evidence does not preserve HTML',()=>assert.equal(redactEvidence('<h1>Tea supplier</h1>'),'Tea supplier'));
+test('empty evidence refused',()=>assert.throws(()=>redactEvidence(''),/invalid_excerpt/));
+test('too long excerpt refused',()=>assert.throws(()=>redactEvidence('a'.repeat(501)),/invalid_excerpt/));
+test('permanent crawler failures dead-letter',()=>assert.equal(nextStatus({state:'claimed',attemptCount:1,failureCode:'robots_denied'}),'dead_letter'));
+test('transient errors retry below maximum',()=>assert.equal(nextStatus({state:'claimed',attemptCount:2,failureCode:'timeout'}),'failed'));
+test('max attempt is dead-letter',()=>assert.equal(nextStatus({state:'claimed',attemptCount:4,failureCode:'timeout'}),'dead_letter'));
+test('non-claimed job cannot transition',()=>assert.throws(()=>nextStatus({state:'pending',attemptCount:1,failureCode:'timeout'}),/illegal_job_transition/));
+test('Gate 1 worker never sends, submits or runs browser agent',()=>{assert.deepEqual(workerPolicy.allowedKinds,['source_extract']);assert.equal(workerPolicy.allowOutboundMessages,false);assert.equal(workerPolicy.allowBrowserAgent,false);assert.equal(workerPolicy.allowForms,false)});
+// V4 reserved address policy regression.
