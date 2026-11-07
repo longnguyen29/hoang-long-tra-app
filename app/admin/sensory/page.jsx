@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { flushSync } from "react-dom";
 import Link from "next/link";
-import { ArrowLeft, Check, ClipboardCopy, Minus, Plus, Printer, Search, X } from "lucide-react";
+import { ArrowLeft, Check, ClipboardCopy, FileText, Minus, Plus, Printer, Search, X } from "lucide-react";
 import { TEA_SENSORY_WHEELS, TEA_SENSORY_ENTRIES, SENSORY_REFERENCE_RULES } from "@/lib/tea-sensory-reference";
 import styles from "./Sensory.module.css";
 
@@ -47,8 +48,8 @@ function SensoryWheel({ entries, groups, activeCategory, chosen, onCategory, onD
           <title>{entry.en} / {entry.vi}</title>
         </path>
         <g transform={"translate(900 900) rotate(" + center + ") translate(640 0) rotate(" + (flip ? 180 : 0) + ")"} pointerEvents="none">
-          <text textAnchor="middle" y="-6" fontSize="12.5" fontWeight="700" fill="#1c2b24">{short(entry.en, 30)}</text>
-          <text textAnchor="middle" y="10" fontSize="11.8" fill="#33493e">{short(entry.vi, 30)}</text>
+          <text textAnchor="middle" y="-6" fontSize={entry.en.length > 29 ? 10 : 12.5} fontWeight="700" fill="#1c2b24">{entry.en}</text>
+          <text textAnchor="middle" y="10" fontSize={entry.vi.length > 29 ? 9.5 : 11.8} fill="#33493e">{entry.vi}</text>
         </g>
       </g>;
     })}
@@ -63,8 +64,8 @@ function SensoryWheel({ entries, groups, activeCategory, chosen, onCategory, onD
         className={styles.categoryArc} role="button" tabIndex={0}
         onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onCategory(group.name === activeCategory ? "all" : group.name); } }}>
         <path d={sector(first, last, 190, 429)} fill={PALETTE[index % PALETTE.length]} fillOpacity={activeCategory === group.name ? 0.95 : 0.73} stroke="#faf7f0" strokeWidth="3"/>
-        <text x={x} y={y - 5} textAnchor="middle" fontSize="19" fontWeight="700" fill="#17291f">{short(en, 20)}</text>
-        <text x={x} y={y + 18} textAnchor="middle" fontSize="16" fill="#17291f">{short(vi, 22)}</text>
+        <text x={x} y={y - 5} textAnchor="middle" fontSize={en.length > 20 ? 14 : 19} fontWeight="700" fill="#17291f">{en}</text>
+        <text x={x} y={y + 18} textAnchor="middle" fontSize={vi.length > 22 ? 12 : 16} fill="#17291f">{vi}</text>
       </g>;
     })}
     <circle cx="900" cy="900" r="183" fill="#f7f3ea" stroke="#b08d57" strokeWidth="4"/>
@@ -122,6 +123,10 @@ export default function SensoryPage() {
       return { ...prev, [wheel]: current.includes(id) ? current.filter(x => x !== id) : [...current, id] };
     });
   }
+  function printWheel() {
+    flushSync(() => { setQuery(""); setCategory("all"); });
+    window.print();
+  }
   async function copyNotes() {
     const text = entries.filter(row => chosen.includes(row.n)).map(row => row.en + " — " + row.vi).join("\n");
     if (!text) return;
@@ -135,7 +140,7 @@ export default function SensoryPage() {
     <div className={styles.eyebrow}>HOUSE OF HOÀNG LONG · MANUFACTURING & LAB</div>
     <header className={styles.header}>
       <div><h1>Thư viện cảm quan trà</h1><p>Tea Sensory Library · 357 English–Vietnamese descriptors, shown in full on four wheels.</p></div>
-      <Link href="/admin/product-development" className={styles.back}><ArrowLeft size={17}/>Phát triển sản phẩm</Link>
+      <div className={styles.headerLinks}><Link href="/admin/sensory/forms" className={styles.back}><FileText size={17}/>Phiếu thử nếm A4</Link><Link href="/admin/product-development" className={styles.back}><ArrowLeft size={17}/>Phát triển sản phẩm</Link></div>
     </header>
     <div className={styles.toolbar} aria-label="Chọn bánh xe cảm quan">
       {WHEELS.map(id => <button type="button" key={id} className={wheel === id ? styles.tabActive : ""} aria-pressed={wheel === id}
@@ -149,7 +154,7 @@ export default function SensoryPage() {
         <button type="button" onClick={() => setZoom(z => Math.max(1, z - 0.5))} disabled={zoom === 1} aria-label="Thu nhỏ"><Minus size={17}/></button>
         <span>{Math.round(zoom * 100)}%</span>
         <button type="button" onClick={() => setZoom(z => Math.min(3, z + 0.5))} disabled={zoom === 3} aria-label="Phóng to"><Plus size={17}/></button>
-        <button type="button" className={styles.printButton} onClick={() => window.print()}><Printer size={17}/>In / Save PDF</button>
+        <button type="button" className={styles.printButton} onClick={printWheel}><Printer size={17}/>In / Save PDF</button>
       </div>
     </div>
     <div className={styles.workspace}>
