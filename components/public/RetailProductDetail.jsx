@@ -15,6 +15,7 @@ import { tradeEnquiryHref } from "@/lib/trade-catalog";
 import { useRetailCart } from "./RetailCartProvider";
 import RetailTeaComparison from "./RetailTeaComparison";
 import RetailTeaBundles from "./RetailTeaBundles";
+import TeaSensoryWheel from "@/components/sensory/TeaSensoryWheel";
 import { CuratedTeaBadge } from "./CuratedTeaSelection";
 import styles from "./RetailProductDetail.module.css";
 
@@ -217,6 +218,8 @@ export default function RetailProductDetail({ product, curatedSelection = null }
         </section>
       </div>
     </div>
+
+    {!!signatureNotes.length && <TeaSensoryWheel mode="product" locale={locale} notes={signatureNotes}/>}
 
     <div className={styles.detailsGrid}>
       {selectedBrew && <section className={styles.brewing} aria-labelledby={`${groupName}-brew`}>
