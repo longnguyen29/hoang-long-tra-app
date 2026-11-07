@@ -15,7 +15,8 @@ import { tradeEnquiryHref } from "@/lib/trade-catalog";
 import { useRetailCart } from "./RetailCartProvider";
 import RetailTeaComparison from "./RetailTeaComparison";
 import RetailTeaBundles from "./RetailTeaBundles";
-import TeaSensoryWheel from "@/components/sensory/TeaSensoryWheel";
+import ProductSensoryProfile from "@/components/sensory/ProductSensoryProfile";
+import {readSensoryProfile,presentSensoryNotes} from "@/lib/tea-sensory-profile";
 import { CuratedTeaBadge } from "./CuratedTeaSelection";
 import styles from "./RetailProductDetail.module.css";
 
@@ -83,7 +84,10 @@ export default function RetailProductDetail({ product, curatedSelection = null }
   const currentProduct = liveProduct || product;
   const facts = retailProductFacts(currentProduct, locale);
   const characteristics = retailTeaCharacteristics(currentProduct, locale);
-  const signatureNotes = characteristics?.signatureNotes || facts.flavors;
+  const publishedSensoryProfile = readSensoryProfile(currentProduct.flavors);
+  const signatureNotes = publishedSensoryProfile
+    ? presentSensoryNotes(publishedSensoryProfile,locale).slice(0,3).map(item=>item.label)
+    : characteristics?.signatureNotes || facts.flavors;
   const options = retailOptions(currentProduct);
   const hasVariants = currentProduct.variants?.length > 0;
   const kilogramBasis = !hasVariants && options[0]?.unit === "kg";
@@ -219,7 +223,7 @@ export default function RetailProductDetail({ product, curatedSelection = null }
       </div>
     </div>
 
-    {!!signatureNotes.length && <TeaSensoryWheel mode="product" locale={locale} notes={signatureNotes}/>}
+    {currentProduct.kind !== "goods" && currentProduct.line !== "sample" && <ProductSensoryProfile flavors={currentProduct.flavors} locale={locale} productName={facts.name}/>}
 
     <div className={styles.detailsGrid}>
       {selectedBrew && <section className={styles.brewing} aria-labelledby={`${groupName}-brew`}>
