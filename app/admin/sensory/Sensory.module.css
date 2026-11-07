@@ -63,9 +63,9 @@
 .disclaimer p a{color:#315b43;text-decoration:underline}
 @media(max-width:1050px){.workspace{grid-template-columns:minmax(0,1fr)}.dictionary{max-height:none}.wordList{overflow:visible}.toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:620px){.page{padding:14px}.header,.intro,.selection{flex-direction:column;align-items:start}.header h1{font-size:32px}.headerLinks{justify-content:flex-start}.toolbar button{padding:9px;min-height:70px}.toolbar button span{font-size:10px}.utilities{flex-wrap:wrap}.dictionary{padding:9px}.disclaimer ul{grid-template-columns:1fr}}
-@page{size:A0 landscape;margin:12mm}
+@page sensory-wheel-poster{size:A0 landscape;margin:12mm}
 @media print{
- .page{padding:0!important;margin:0!important;print-color-adjust:exact;-webkit-print-color-adjust:exact;background:#fff!important;font-size:12pt}
+ .page{page:sensory-wheel-poster;padding:0!important;margin:0!important;print-color-adjust:exact;-webkit-print-color-adjust:exact;background:#fff!important;font-size:12pt}
  .eyebrow,.back,.toolbar,.utilities,.wheelHint,.searchBar,.categories,.selection,.disclaimer{display:none!important}
  .header{margin:0 0 8mm}.header h1{font-size:24pt}.header p{font-size:9pt}
  .intro{margin:0 0 6mm}.intro h2{font-size:21pt}.intro p{font-size:9pt}
