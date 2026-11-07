@@ -8,6 +8,10 @@ export const STAFF_APPS = {
     key: "productDevelopment", label: "Phát triển sản phẩm", short: "Phát triển", href: "/admin/product-development",
     description: "Ý tưởng, thông số, nguồn gia công và bước tiếp theo; liên kết catalog và kho hiện có.", icon: FlaskConical,
   },
+  sensory: {
+    key: "sensory", label: "Bánh xe cảm quan trà", short: "Cảm quan", href: "/admin/sensory",
+    description: "357 thuật ngữ Anh–Việt, bánh xe hương vị và biểu mẫu thử nếm để in.", icon: Beaker,
+  },
   suppliers: {
     key: "suppliers", label: "Nguồn gia công", short: "Gia công", href: "/admin/suppliers",
     description: "Đầu mối, khả năng nhận trà Hoàng Long và theo dõi việc thẩm định.", icon: Handshake,
@@ -69,7 +73,7 @@ export const STAFF_APPS = {
 export const STAFF_APP_GROUPS = [
   { label: "Bán hàng", keys: ["orders", "pipeline", "discovery", "partnerNetwork"] },
   { label: "Vận hành", keys: ["operations", "work", "procedures"] },
-  { label: "Sản phẩm & phát triển", keys: ["house", "recipes", "productDevelopment", "suppliers"] },
+  { label: "Sản phẩm & phát triển", keys: ["house", "recipes", "productDevelopment", "sensory", "suppliers"] },
   { label: "Nội dung & quản lý", keys: ["knowledge", "growth", "documents", "control"] },
 ];
 
