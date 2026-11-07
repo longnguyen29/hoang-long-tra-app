@@ -7,6 +7,7 @@
 .header{display:flex;align-items:end;justify-content:space-between;gap:24px;margin:13px 0 27px}
 .header h1{margin:0;font-family:var(--font-display,Georgia,serif);font-size:clamp(32px,3.5vw,54px);font-weight:500;line-height:1.12}
 .header p{color:#617166;font-size:14px;line-height:1.6}
+.headerLinks{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:20px}
 .back{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;color:#1c2b24;font-size:13px;font-weight:700;text-decoration:underline;text-underline-offset:4px}
 .toolbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:24px}
 .toolbar button{min-height:75px;display:grid;align-content:center;gap:7px;text-align:left;padding:14px 17px;border:1px solid #dbd2c3;background:#fcfaf5;color:#1c2b24;border-radius:4px}
@@ -61,7 +62,7 @@
 .disclaimer ul{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 20px;padding-left:19px}
 .disclaimer p a{color:#315b43;text-decoration:underline}
 @media(max-width:1050px){.workspace{grid-template-columns:minmax(0,1fr)}.dictionary{max-height:none}.wordList{overflow:visible}.toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:620px){.page{padding:14px}.header,.intro,.selection{flex-direction:column;align-items:start}.header h1{font-size:32px}.toolbar button{padding:9px;min-height:70px}.toolbar button span{font-size:10px}.utilities{flex-wrap:wrap}.dictionary{padding:9px}.disclaimer ul{grid-template-columns:1fr}}
+@media(max-width:620px){.page{padding:14px}.header,.intro,.selection{flex-direction:column;align-items:start}.header h1{font-size:32px}.headerLinks{justify-content:flex-start}.toolbar button{padding:9px;min-height:70px}.toolbar button span{font-size:10px}.utilities{flex-wrap:wrap}.dictionary{padding:9px}.disclaimer ul{grid-template-columns:1fr}}
 @page{size:A0 landscape;margin:12mm}
 @media print{
  .page{padding:0!important;margin:0!important;print-color-adjust:exact;-webkit-print-color-adjust:exact;background:#fff!important;font-size:12pt}
