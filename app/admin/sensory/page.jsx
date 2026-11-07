@@ -16,7 +16,6 @@ const pair = (value) => {
   const sep = value.indexOf(" / ");
   return sep < 0 ? [value, ""] : [value.slice(0, sep), value.slice(sep + 3)];
 };
-const short = (value, n = 19) => value.length > n ? value.slice(0, n - 1) + "…" : value;
 
 function point(angle, radius) {
   const rad = (angle * Math.PI) / 180;
@@ -42,14 +41,15 @@ function SensoryWheel({ entries, groups, activeCategory, chosen, onCategory, onD
       const active = chosen.includes(entry.n);
       const dim = activeCategory !== "all" && activeCategory !== key;
       const flip = Math.cos(((angle + step / 2) * Math.PI) / 180) < 0;
+      const dense = entries.length > 120;
       const center = angle + step / 2;
       return <g key={entry.n} opacity={dim ? 0.25 : 1}>
         <path d={sector(angle, angle + step, 434, 850)} fill={style.color} fillOpacity={active ? 0.85 : index % 2 ? 0.35 : 0.53} stroke="#faf7f0" strokeWidth="1.3" className={styles.slice} onClick={() => onDescriptor(entry.n)}>
           <title>{entry.en} / {entry.vi}</title>
         </path>
-        <g transform={"translate(900 900) rotate(" + center + ") translate(640 0) rotate(" + (flip ? 180 : 0) + ")"} pointerEvents="none">
-          <text textAnchor="middle" y="-6" fontSize={entry.en.length > 29 ? 10 : 12.5} fontWeight="700" fill="#1c2b24">{entry.en}</text>
-          <text textAnchor="middle" y="10" fontSize={entry.vi.length > 29 ? 9.5 : 11.8} fill="#33493e">{entry.vi}</text>
+        <g transform={"translate(900 900) rotate(" + center + ") translate(680 0) rotate(" + (flip ? 180 : 0) + ")"} pointerEvents="none">
+          <text textAnchor="middle" y="-5" fontSize={dense ? 10.5 : 12.5} fontWeight="700" fill="#1c2b24">{entry.en}</text>
+          <text textAnchor="middle" y="8" fontSize={dense ? 9.8 : 11.8} fill="#33493e">{entry.vi}</text>
         </g>
       </g>;
     })}
@@ -60,12 +60,15 @@ function SensoryWheel({ entries, groups, activeCategory, chosen, onCategory, onD
       const angle = (first + last) / 2;
       const [x, y] = point(angle, 320);
       const [en, vi] = pair(group.name);
+      const arcWidth = (group.rows.length / entries.length) * 2 * Math.PI * 320;
+      const enSize = Math.min(19, Math.max(10, arcWidth / (Math.max(en.length, 1) * 0.62)));
+      const viSize = Math.min(16, Math.max(10, arcWidth / (Math.max(vi.length, 1) * 0.62)));
       return <g key={group.name} onClick={() => onCategory(group.name === activeCategory ? "all" : group.name)}
         className={styles.categoryArc} role="button" tabIndex={0}
         onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onCategory(group.name === activeCategory ? "all" : group.name); } }}>
         <path d={sector(first, last, 190, 429)} fill={PALETTE[index % PALETTE.length]} fillOpacity={activeCategory === group.name ? 0.95 : 0.73} stroke="#faf7f0" strokeWidth="3"/>
-        <text x={x} y={y - 5} textAnchor="middle" fontSize={en.length > 20 ? 14 : 19} fontWeight="700" fill="#17291f">{en}</text>
-        <text x={x} y={y + 18} textAnchor="middle" fontSize={vi.length > 22 ? 12 : 16} fill="#17291f">{vi}</text>
+        <text x={x} y={y - 5} textAnchor="middle" fontSize={enSize} fontWeight="700" fill="#17291f">{en}</text>
+        <text x={x} y={y + 18} textAnchor="middle" fontSize={viSize} fill="#17291f">{vi}</text>
       </g>;
     })}
     <circle cx="900" cy="900" r="183" fill="#f7f3ea" stroke="#b08d57" strokeWidth="4"/>
