@@ -26,11 +26,11 @@ function WheelGraphic({locale,active,onCategory,highlight,compact=false}){
    const chosen=active===family.id;
    const [tx,ty]=polar(170,170,125,index*30+15);
    return <g key={family.id} className={styles.wedge} data-active={chosen} data-dimmed={dimmed}>
-    <path d={segment(start,end)} fill={family.color} stroke={chosen?"#3a4b40":"#fbf8f1"} strokeWidth={chosen?3:1.5} opacity={dimmed?.3:1}
+    <path d={segment(start,end)} fill={family.color} stroke={chosen?"#3a4b40":"#fbf8f1"} strokeWidth={chosen?3:1.5} opacity={dimmed ? 0.3 : 1}
       tabIndex={onCategory?0:undefined} role={onCategory?"button":undefined} aria-label={onCategory?(locale==="en"?family.en:family.vi):undefined}
       onClick={onCategory?()=>onCategory(family.id):undefined}
       onKeyDown={onCategory?e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onCategory(family.id);}}:undefined}/>
-    <text x={tx} y={ty} textAnchor="middle" dominantBaseline="central" fill="#27352b" fontSize="11" fontWeight="600" pointerEvents="none" opacity={dimmed?.25:1}>{String(index+1).padStart(2,"0")}</text>
+    <text x={tx} y={ty} textAnchor="middle" dominantBaseline="central" fill="#27352b" fontSize="11" fontWeight="600" pointerEvents="none" opacity={dimmed ? 0.25 : 1}>{String(index+1).padStart(2,"0")}</text>
    </g>;
   })}
   <circle cx="170" cy="170" r="75" fill="#20352b" stroke="#efe9dc" strokeWidth="3"/>
