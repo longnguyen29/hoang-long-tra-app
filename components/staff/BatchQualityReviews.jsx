@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { ClipboardCheck, Plus, RefreshCw, Save } from "lucide-react";
 import { BATCH_SCORE_FIELDS, BATCH_REVIEW_RESULTS, emptyBatchReview, normalizeBatchReview, batchReviewAverage, batchReviewSummary } from "@/lib/batch-quality";
 import styles from "./BatchQualityReviews.module.css";
@@ -140,7 +141,7 @@ export default function BatchQualityReviews({ supabase, batch, userEmail = "", r
       <div><p>Hồ sơ chất lượng nội bộ</p><h2>{batch.code || batchId} · Đánh giá lô</h2><span>{batch.name?.vi || batch.name?.en || (typeof batch.name === "string" ? batch.name : "")}</span></div>
       <div><button type="button" onClick={() => setReload(value => value + 1)} disabled={loading || saving || loadingMore} aria-label="Tải lại lịch sử đánh giá"><RefreshCw size={17}/></button>{canReview && <button type="button" onClick={() => setOpen(value => !value)} disabled={saving} aria-expanded={open}><Plus size={17}/>{open ? "Thu gọn biểu mẫu" : dirty ? "Tiếp tục bản nháp" : "Ghi đánh giá"}</button>}</div>
     </header>
-    <p className={styles.guardrail}>Đánh giá này lưu nhận xét của người thử trà. Kết luận Đạt không tự phát hành lô; Cần kiểm tra thêm / Không đạt cũng không tự đổi trạng thái lô hoặc passport công khai.</p>
+    <p className={styles.guardrail}>Đánh giá này lưu nhận xét của người thử trà. Kết luận Đạt không tự phát hành lô; Cần kiểm tra thêm / Không đạt cũng không tự đổi trạng thái lô hoặc passport công khai.</p><p className={styles.help}>Tham chiếu thuật ngữ trước khi ghi nhận: <Link href="/admin/sensory">Bánh xe cảm quan trà Anh–Việt ↗</Link> · <Link href="/admin/sensory/forms">Phiếu thử nếm để in ↗</Link>. Thư viện không tự thay đổi điểm số hoặc kết luận QC.</p>
     {error && <p className={styles.error} role="alert">{error}</p>}
     {notice && <p className={styles.notice} role="status">{notice}</p>}
 
