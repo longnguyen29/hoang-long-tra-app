@@ -1,0 +1,53 @@
+.page{background:#eee9de;min-height:100vh;padding:20px;color:#1c2b24}
+.controls{max-width:1100px;margin:0 auto 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.controls :is(button,a){display:inline-flex;align-items:center;gap:7px;padding:10px 14px;background:#fff;border:1px solid #c7c1b4;border-radius:4px;color:#1c2b24;min-height:44px;font-size:13px;font-weight:700;text-decoration:none;cursor:pointer}
+.controls div{display:flex;gap:6px}
+.controls .active,.controls button:last-child{background:#1c2b24;color:#fff;border-color:#1c2b24}
+.paper{width:min(100%,210mm);min-height:297mm;margin:0 auto;padding:15mm 14mm 12mm;background:#fff;box-shadow:0 5px 24px #0002;font-family:Arial,sans-serif;display:flex;flex-direction:column;font-size:11px;color:#1c2b24}
+.paper *{box-sizing:border-box}
+.header{display:flex;align-items:center;gap:14px;border-bottom:2px solid #1c2b24;padding-bottom:13px;margin-bottom:16px}
+.mark{width:44px;height:44px;border:1px solid #b08d57;display:flex;align-items:center;justify-content:center;color:#9b7c4b;font-size:22px}
+.header>div:nth-child(2){flex:1}
+.header p{color:#b08d57;font-size:10px;letter-spacing:1px;font-weight:800;margin:0 0 5px}
+.header h1{font-family:Georgia,serif;font-size:25px;font-weight:500;line-height:1;margin:0}
+.header h2{font-size:12px;letter-spacing:.03em;font-weight:600;margin:6px 0 0}
+.header>span{text-align:right;font-size:9px;line-height:1.6;color:#67776b}
+.metadata{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;margin-bottom:15px}
+.field{display:grid;gap:4px;font-size:10px;font-weight:700}
+.field>span{white-space:normal}
+.field>input{width:100%;background:#faf9f4;padding:5px 6px;border:1px solid #cecfc6;border-radius:0;min-height:27px;font-size:11px;color:#1c2b24}
+.paper h3{margin:8px 0 10px;border-left:3px solid #b08d57;padding:5px 10px;background:#f2f1e9;font-size:10px;letter-spacing:.07em}
+.legend{margin:0 0 9px;font-size:9px;color:#566c5d}
+.scoreTable,.compareTable{border-collapse:collapse;width:100%;table-layout:fixed;margin-bottom:14px}
+.scoreTable :is(td,th),.compareTable :is(td,th){border:1px solid #cfd5cd;padding:5px 6px;font-size:10px;line-height:1.35}
+.scoreTable thead th,.compareTable thead th{background:#e8ebe5}
+.scoreTable th:first-child{text-align:left;width:155px}
+.scoreTable th:last-child{width:100px}
+.scoreTable th:not(:first-child):not(:last-child){width:31px}
+.scoreTable tbody th,.compareTable tbody th{font-weight:700;text-align:left}
+.scoreTable tbody th small,.compareTable tbody th small{display:block;color:#536456;font-weight:400;font-size:9px}
+.scoreTable td{text-align:center}
+.circle{display:inline-block;width:13px;height:13px;border:1px solid #9eaca2;border-radius:50%}
+.noteLine{border-bottom:1px solid #aeb6aa}
+.noteGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:13px}
+.noteGrid label,.compareNotes label{display:grid;gap:5px;font-weight:700}
+.noteGrid textarea,.compareNotes textarea{width:100%;min-height:56px;border:1px solid #cbd2ca;background:repeating-linear-gradient(to bottom,#fff 0,#fff 18px,#edf0ed 19px);resize:vertical;font:inherit;padding:5px}
+.bottomFields{display:grid;gap:11px}
+.bottomFields label{font-weight:700;display:block}
+.ruled{height:27px;border-bottom:1px solid #b3bbb3}
+.compareTable{margin-bottom:13px}
+.compareTable th:first-child{width:42%}
+.compareTable tbody td{text-align:center;height:31px}
+.compareNotes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.compareNotes textarea{height:74px}
+.decision{padding:9px 7px;font-size:11px}
+.footer{margin-top:auto;border-top:1px solid #deded6;padding-top:9px;color:#718074;font-size:9px;line-height:1.5}
+@media(max-width:650px){.page{padding:9px}.controls{justify-content:center}.paper{padding:18px 12px}.header h1{font-size:17px}.metadata{gap:7px}.scoreTable :is(td,th),.compareTable :is(td,th){padding:3px;font-size:9px}.scoreTable th:first-child{width:100px}.scoreTable th:last-child{width:60px}.scoreTable th:not(:first-child):not(:last-child){width:20px}}
+@page sensory-cupping-form{size:A4 portrait;margin:0}
+@media print{
+ html,body{margin:0!important;padding:0!important;background:white!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+ .page{page:sensory-cupping-form;padding:0!important;margin:0!important;background:white!important;min-height:0}
+ .controls{display:none!important}
+ .paper{width:210mm!important;height:297mm!important;min-height:0!important;margin:0!important;padding:15mm 14mm 12mm!important;box-shadow:none!important;break-inside:avoid;page-break-inside:avoid}
+ .noteGrid textarea,.compareNotes textarea{resize:none}
+}
