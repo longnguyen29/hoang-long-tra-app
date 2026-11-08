@@ -9,7 +9,6 @@ import { recordPublicConversion } from "@/lib/public-attribution";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import styles from "./HouseHome.module.css";
 import PublicSiteHeader from "./PublicSiteHeader";
-import { EXPORT_DEVELOPMENT_CONTACT } from "@/lib/export-sales-profiles";
 import { PROFILE_LEGAL } from "@/lib/company-profile";
 import { CORE_EXPORT_PRODUCTS } from "@/lib/export-product-profile";
 
@@ -214,7 +213,7 @@ export default function HouseHome() {
         <p>{t.closing}</p>
         <div>
           <span>{PROFILE_LEGAL.name}<br/>{lang === "vi" ? "Mã số thuế" : "Tax ID"}: {PROFILE_LEGAL.taxNumber}<br/>Hà Giang / Hà Nội · Việt Nam</span>
-          <a href={`tel:${EXPORT_DEVELOPMENT_CONTACT.phone}`}>{EXPORT_DEVELOPMENT_CONTACT.name} · {lang === "vi" ? EXPORT_DEVELOPMENT_CONTACT.role : EXPORT_DEVELOPMENT_CONTACT.roleEn} · {EXPORT_DEVELOPMENT_CONTACT.phoneLabel}</a><a href="https://zalo.me/0903333841" target="_blank" rel="noreferrer">{t.contact} · 0903 333 841</a>
+          <a href="https://zalo.me/0903333841" target="_blank" rel="noreferrer">{t.contact} · 0903 333 841</a>
           <Link href="/meet">{lang === "vi" ? "Trang liên hệ" : "Contact card"}</Link>
           <Link href="/privacy">{lang === "vi" ? "Quyền riêng tư & cookie" : "Privacy & cookies"}</Link>
         </div>
