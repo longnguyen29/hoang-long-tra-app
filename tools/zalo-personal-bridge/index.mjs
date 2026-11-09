@@ -6,13 +6,14 @@ import {createHash} from "node:crypto";
 const endpoint=process.env.CUSTOMER_MEMORY_INGEST_URL?.trim();
 const secret=process.env.CUSTOMER_MEMORY_BRIDGE_TOKEN?.trim();
 const allowed=new Set((process.env.ALLOWED_ZALO_CHAT_IDS||"").split(",").map(x=>x.trim()).filter(Boolean));
+const discovery=process.env.BRIDGE_DISCOVER_CONTACT_IDS==="1";
 if(!/^https:\/\/[^\s]+\/api\/webhooks\/customer-memory\/personal-zalo$/.test(endpoint||"") ||
   !/^hlzb_[A-Za-z0-9_-]{43}$/.test(secret||"")) {
   console.error("Configure a HTTPS ingest URL and a one-time pairing token in the local .env.");
   process.exit(1);
 }
-if(!allowed.size) {
-  console.error("Set at least one explicitly allowed direct-contact Zalo ID. No unrestricted inbox collection.");
+if(!allowed.size && !discovery) {
+  console.error("Set at least one explicitly allowed direct-contact Zalo ID, or use BRIDGE_DISCOVER_CONTACT_IDS=1 to see IDs locally without forwarding any messages.");
   process.exit(1);
 }
 const queue=[];
@@ -63,6 +64,7 @@ api.listener.on("message",message=>{
   if(message?.isSelf || message?.type!==ThreadType.User ||
       typeof message?.data?.content!=="string") return;
   const id=String(message.threadId||"");
+  if(discovery){notice("Direct contact ID observed locally (no message forwarded)",id);return;}
   if(!allowed.has(id))return;
   const text=message.data.content;
   if(!text.trim()||text.length>12000)return;
