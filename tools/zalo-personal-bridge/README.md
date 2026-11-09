@@ -13,7 +13,7 @@
 
 ## Start (on your own Mac — not in ChatGPT's cloud)
 1. On the live admin dashboard `/admin/customer-memory`, create an admin-only **Zalo personal bridge** pairing token; record it once, then close the pairing panel.
-2. In this folder, `cp .env.example .env` and insert the token; keep `.env` only on your Mac. Set `ALLOWED_ZALO_CHAT_IDS` to **one known test contact ID**. Do not enable all contacts by default.
+2. In this folder, `cp .env.example .env` and insert the token; keep `.env` only on your Mac. To discover one contact's ID, first set `BRIDGE_DISCOVER_CONTACT_IDS=1` and run the listener. Ask that contact to send a harmless test text: the terminal prints the contact ID locally **without forwarding message content**. Stop the listener, set `BRIDGE_DISCOVER_CONTACT_IDS=0`, then put the ID into `ALLOWED_ZALO_CHAT_IDS`. Do not enable all contacts by default.
 3. With Node.js 22+, run `npm install --save-exact` and then `npm start`. Run `npm audit` and examine the dependency tree before you accept the risk.
 4. A QR sign-in is initiated locally by zca-js. You must complete it yourself on the phone.
 5. With one allowed test contact, send a harmless test message. Check the admin dashboard for a new `zalo_personal` thread and a draft. No outgoing customer message will be sent.
