@@ -1,6 +1,6 @@
 import {
   BarChart3, Beaker, ClipboardCheck, ClipboardList, FlaskConical,
-  Handshake, Settings2, Sprout, Search, ListChecks, Network, Files,
+  Handshake, Settings2, Sprout, Search, ListChecks, Network, Files, BrainCircuit,
 } from "lucide-react";
 
 export const STAFF_APPS = {
@@ -19,6 +19,10 @@ export const STAFF_APPS = {
   partnerNetwork: {
     key: "partnerNetwork", label: "Đối tác giới thiệu", short: "Đối tác", href: "/admin/partner-network",
     description: "Duyệt đối tác, kiểm tra khách giới thiệu và đối soát hoa hồng theo tiền đã thu.", icon: Handshake,
+  },
+  customerMemory: {
+    key: "customerMemory", label: "Trí nhớ khách hàng", short: "Trí nhớ", href: "/admin/customer-memory",
+    description: "Lưu hội thoại Zalo và Messenger, nhớ khẩu vị, giá đã báo và đề xuất trả lời để duyệt.", icon: BrainCircuit,
   },
   discovery: {
     key: "discovery", label: "Tìm khách hàng", short: "Tìm khách", href: "/admin/discovery",
@@ -67,7 +71,7 @@ export const STAFF_APPS = {
 };
 
 export const STAFF_APP_GROUPS = [
-  { label: "Bán hàng", keys: ["orders", "pipeline", "discovery", "partnerNetwork"] },
+  { label: "Bán hàng", keys: ["orders", "pipeline", "customerMemory", "discovery", "partnerNetwork"] },
   { label: "Vận hành", keys: ["operations", "work", "procedures"] },
   { label: "Sản phẩm & phát triển", keys: ["house", "recipes", "productDevelopment", "suppliers"] },
   { label: "Nội dung & quản lý", keys: ["knowledge", "growth", "documents", "control"] },
