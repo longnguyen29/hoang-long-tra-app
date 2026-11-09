@@ -1,0 +1,38 @@
+name: Customer Memory safety checks
+on:
+  pull_request:
+    paths:
+      - "app/admin/customer-memory/**"
+      - "app/api/staff/customer-memory/**"
+      - "app/api/webhooks/customer-memory/**"
+      - "app/api/cron/customer-memory/**"
+      - "lib/customer-memory*"
+      - "supabase/migrations/0103_customer_memory_inbox.sql"
+      - ".github/workflows/customer-memory-check.yml"
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci --ignore-scripts
+      - run: node --test lib/customer-memory-core.test.mjs
+      - run: |
+          node --check lib/customer-memory-core.js
+          node --check lib/customer-memory-server.js
+          node --check app/api/staff/customer-memory/route.js
+          node --check app/api/cron/customer-memory/route.js
+          node --check app/api/webhooks/customer-memory/meta/route.js
+          node --check app/api/webhooks/customer-memory/telegram/route.js
+      - name: Build application
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-example-key
+        run: npm run build
