@@ -32,7 +32,7 @@ This is a real, database-backed feature, not the static prototype.
    The bot saves the conversation as a new personal-Zalo memory and returns a draft. Use /them <thread-UUID> followed by a newline and new transcript to add to an existing record. /help shows the commands. This is manual copy/paste, **not Zalo auto-reading**.
 6. Inline **Duyệt nháp** means internal approval only. It does **not** send a Facebook or Zalo reply. The owner copies/sends using the original channel after reviewing.
 
-If you already use the main TELEGRAM_BOT_TOKEN, notifications will fall back to that token/chat, but do not set a webhook on it unless it is safe to replace any existing webhook.
+If you already use the main TELEGRAM_BOT_TOKEN, a minimal notification without customer identity or conversation text can fall back to that token/chat. Detailed contextual drafts and inline approval need a dedicated bot and private chat. Never set a webhook on the shared order-notification bot.
 
 ## Facebook Page Messenger webhook (optional)
 1. Create/configure a Meta Developer App with Messenger Webhooks for the **business Page**. Enable the required app permissions and review/advanced access where needed.
@@ -52,4 +52,4 @@ If you already use the main TELEGRAM_BOT_TOKEN, notifications will fall back to 
 - The existing website repository is **public**, so the only acceptable place for credentials and real customer records is server-side encrypted configuration and the secured database, never Git.
 
 ## Daily follow-up reminders and catch-up
-Vercel Cron runs at 02:00 UTC (09:00 Vietnam). Follow-up snooze sets a due timestamp 24 hours later; notification occurs on the **next** scheduled daily run after that due time, not precisely at the due timestamp. The cron also retries a small number of interrupted AI drafts. With Telegram not configured, due tasks remain in the staff inbox.
+Vercel Cron runs at 02:00 UTC (09:00 Vietnam). Follow-up snooze sets a due timestamp 24 hours later; notification occurs on the **next** scheduled daily run after that due time, not precisely at the due timestamp. The cron also retries a small number of interrupted AI drafts. This is the only customer-memory reminder cron. With Telegram not configured, due tasks remain in the staff inbox.
