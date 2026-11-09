@@ -17,8 +17,9 @@ export async function GET(request) {
   ]);
   if(dueResult.error || pendingResult.error) return Response.json({ok:false,error:"database_unavailable"},{status:503});
   let sent=0,failed=0,recovered=0;
-  const botToken=process.env.CUSTOMER_MEMORY_TELEGRAM_BOT_TOKEN?.trim() || process.env.TELEGRAM_BOT_TOKEN?.trim();
-  const chatId=process.env.CUSTOMER_MEMORY_TELEGRAM_CHAT_ID?.trim() || process.env.TELEGRAM_CHAT_ID?.trim();
+  const dedicated=Boolean(process.env.CUSTOMER_MEMORY_TELEGRAM_BOT_TOKEN?.trim() && process.env.CUSTOMER_MEMORY_TELEGRAM_CHAT_ID?.trim());
+  const botToken=dedicated?process.env.CUSTOMER_MEMORY_TELEGRAM_BOT_TOKEN?.trim():process.env.TELEGRAM_BOT_TOKEN?.trim();
+  const chatId=dedicated?process.env.CUSTOMER_MEMORY_TELEGRAM_CHAT_ID?.trim():process.env.TELEGRAM_CHAT_ID?.trim();
   for(const t of dueResult.data || []) {
     if(t.last_reminded_at && t.last_reminded_at>=t.next_action_at) continue;
     if(!botToken || !chatId) break;
@@ -29,10 +30,10 @@ export async function GET(request) {
     if(claimed.error || !claimed.data) continue;
     const url=process.env.CUSTOMER_MEMORY_SITE_URL?.trim();
     const link=url && /^https:\/\/[^ ]+$/.test(url)?url.replace(/\/$/,"")+"/admin/customer-memory?thread="+t.id:"";
-    const message="⏰ HOÀNG LONG · Nhắc chăm sóc khách\n"+
+    const message=dedicated ? "⏰ HOÀNG LONG · Nhắc chăm sóc khách\n"+
       (t.display_name||"Khách hàng")+" · "+t.channel+
       "\nViệc cần làm: "+(t.next_action||"Kiểm tra lại hội thoại, quyết định bước tiếp theo")+
-      (link?"\nMở hồ sơ: "+link:"");
+      (link?"\nMở hồ sơ: "+link:"") : "⏰ HOÀNG LONG · Có khách đến hạn chăm sóc. Mở mục Trí nhớ khách hàng trong bàn quản trị để xem chi tiết.";
     const result=await telegramCall("sendMessage",{chat_id:chatId,text:message,disable_web_page_preview:true});
     if(result.ok) sent++;
     else {
