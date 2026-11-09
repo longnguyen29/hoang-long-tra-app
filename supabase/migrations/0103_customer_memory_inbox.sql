@@ -11,6 +11,7 @@ create table public.customer_memory_threads (
   facts jsonb not null default '[]'::jsonb check (jsonb_typeof(facts)='array' and octet_length(facts::text)<60000),
   next_action text not null default '' check (length(next_action)<=300),
   next_action_at timestamptz,
+  reminder_notified_at timestamptz,
   status text not null default 'open' check (status in ('open','waiting_customer','waiting_us','done')),
   last_message_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
