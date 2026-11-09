@@ -22,10 +22,15 @@ This is a real, database-backed feature, not the static prototype.
 2. A dedicated bot is recommended because each Telegram bot has only one webhook. Existing order alerts can continue using TELEGRAM_BOT_TOKEN independently.
 3. For inline approvals/snooze: generate a long random secret (letters/digits/_/- only), set CUSTOMER_MEMORY_TELEGRAM_WEBHOOK_SECRET, then configure:
    POST https://api.telegram.org/bot<BOT_TOKEN>/setWebhook
-   JSON: {"url":"https://hoanglongtra.com/api/webhooks/customer-memory/telegram","secret_token":"<SECRET>","allowed_updates":["callback_query"]}
+   JSON: {"url":"https://hoanglongtra.com/api/webhooks/customer-memory/telegram","secret_token":"<SECRET>","allowed_updates":["callback_query","message"]}
    This request should be made only in a secure terminal/private API client, never in GitHub.
 4. Telegram callbacks require the configured chat ID. For a private DM they also require the user ID to equal the chat ID. For a group set CUSTOMER_MEMORY_TELEGRAM_USER_ID to restrict approvals to the owner.
-5. Inline **Duyệt nháp** means internal approval only. It does **not** send a Facebook or Zalo reply. The owner copies/sends using the original channel after reviewing.
+5. In a **private chat** with the dedicated bot, send:
+   /khach Anh Minh
+   Khách: Mẫu trà hôm trước...
+   Mình: Đã báo ...
+   The bot saves the conversation as a new personal-Zalo memory and returns a draft. Use /them <thread-UUID> followed by a newline and new transcript to add to an existing record. /help shows the commands. This is manual copy/paste, **not Zalo auto-reading**.
+6. Inline **Duyệt nháp** means internal approval only. It does **not** send a Facebook or Zalo reply. The owner copies/sends using the original channel after reviewing.
 
 If you already use the main TELEGRAM_BOT_TOKEN, notifications will fall back to that token/chat, but do not set a webhook on it unless it is safe to replace any existing webhook.
 
