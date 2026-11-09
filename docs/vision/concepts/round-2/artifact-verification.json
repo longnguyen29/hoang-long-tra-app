@@ -1,0 +1,230 @@
+{
+  "status": "DRAFT v0.2 / static artifact checks only",
+  "reviewedParent": "f7a19b959b8890e6df2351418f02178f993320c1",
+  "artboards": [
+    {
+      "name": "b-opening-1440",
+      "png": [
+        1440,
+        1162
+      ],
+      "ui": [
+        1440,
+        930
+      ],
+      "embeddedOriginalJpegs": 7
+    },
+    {
+      "name": "b-opening-390",
+      "png": [
+        390,
+        1146
+      ],
+      "ui": [
+        390,
+        844
+      ],
+      "embeddedOriginalJpegs": 5
+    },
+    {
+      "name": "b-opening-en-1440",
+      "png": [
+        1440,
+        1162
+      ],
+      "ui": [
+        1440,
+        930
+      ],
+      "embeddedOriginalJpegs": 7
+    },
+    {
+      "name": "b-opening-en-390",
+      "png": [
+        390,
+        1146
+      ],
+      "ui": [
+        390,
+        844
+      ],
+      "embeddedOriginalJpegs": 5
+    },
+    {
+      "name": "b-craft-1440",
+      "png": [
+        1440,
+        1082
+      ],
+      "ui": [
+        1440,
+        850
+      ],
+      "embeddedOriginalJpegs": 1
+    },
+    {
+      "name": "b-craft-390",
+      "png": [
+        390,
+        1252
+      ],
+      "ui": [
+        390,
+        950
+      ],
+      "embeddedOriginalJpegs": 1
+    },
+    {
+      "name": "b-four-teas-1440",
+      "png": [
+        1440,
+        1132
+      ],
+      "ui": [
+        1440,
+        900
+      ],
+      "embeddedOriginalJpegs": 5
+    },
+    {
+      "name": "b-four-teas-390",
+      "png": [
+        390,
+        1362
+      ],
+      "ui": [
+        390,
+        1060
+      ],
+      "embeddedOriginalJpegs": 1
+    },
+    {
+      "name": "b-industrial-1440",
+      "png": [
+        1440,
+        1132
+      ],
+      "ui": [
+        1440,
+        900
+      ],
+      "embeddedOriginalJpegs": 1
+    },
+    {
+      "name": "b-industrial-390",
+      "png": [
+        390,
+        1412
+      ],
+      "ui": [
+        390,
+        1110
+      ],
+      "embeddedOriginalJpegs": 1
+    },
+    {
+      "name": "a-opening-1440",
+      "png": [
+        1440,
+        1132
+      ],
+      "ui": [
+        1440,
+        900
+      ],
+      "embeddedOriginalJpegs": 1
+    },
+    {
+      "name": "a-opening-390",
+      "png": [
+        390,
+        1146
+      ],
+      "ui": [
+        390,
+        844
+      ],
+      "embeddedOriginalJpegs": 1
+    },
+    {
+      "name": "concept-comparison",
+      "png": [
+        1800,
+        1292
+      ],
+      "ui": [
+        1800,
+        1060
+      ],
+      "embeddedOriginalJpegs": 10
+    },
+    {
+      "name": "selector-states",
+      "png": [
+        1440,
+        1252
+      ],
+      "ui": [
+        1440,
+        1020
+      ],
+      "embeddedOriginalJpegs": 3
+    }
+  ],
+  "paletteContrast": [
+    {
+      "pair": "chalk/mineral",
+      "ratio": 12.63,
+      "normalTextAA": true
+    },
+    {
+      "pair": "muted/mineral",
+      "ratio": 8.53,
+      "normalTextAA": true
+    },
+    {
+      "pair": "mineral/leaf",
+      "ratio": 10.88,
+      "normalTextAA": true
+    },
+    {
+      "pair": "mineral/pale",
+      "ratio": 10.71,
+      "normalTextAA": true
+    },
+    {
+      "pair": "annotation white/rust",
+      "ratio": 5.81,
+      "normalTextAA": true
+    }
+  ],
+  "markdownDocuments": 10,
+  "localLinksResolved": 99,
+  "originalPhotosEmbeddedUnmodified": true,
+  "v1DeploymentGuardUnchanged": true,
+  "applicationAndProtectedSourceUnchanged": true,
+  "runtimeChecks": "NOT RUN — no redesign application code",
+  "creativeApproval": "PENDING / prior verdict REVISE",
+  "limitations": [
+    "Four primary chapters + alternate opening; supporting chapters specified, not full-page rendered.",
+    "768px recomposition notes only; no runtime reflow, keyboard, screen-reader or performance claim."
+  ],
+  "errors": [],
+  "visualReview": "14 boards inspected; A contrast, geometric selection marker, state labels, EN utility labels and B opening composition revised. Creative approval pending.",
+  "staticFold": {
+    "artboard": [
+      390,
+      844
+    ],
+    "reviewHeaderOutsideUi": 72,
+    "cta": {
+      "x": 22,
+      "y": 542,
+      "width": 346,
+      "height": 52
+    },
+    "ctaBottom": 594,
+    "marginBeforeFold": 250,
+    "isRuntimeResult": false
+  }
+}

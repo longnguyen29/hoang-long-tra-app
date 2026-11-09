@@ -1,0 +1,216 @@
+{
+  "status": "DRAFT v0.2 / NOT APPROVED / STATIC ONLY",
+  "sourceBaseline": "f7a19b959b8890e6df2351418f02178f993320c1",
+  "renderer": "native SVG; outlined text; PNG raster export",
+  "fonts": [
+    "Be Vietnam Pro",
+    "Noto Serif"
+  ],
+  "assets": {
+    "tree": "public/landing/1.jpg",
+    "hand": "public/landing/2.jpg",
+    "factory": "public/landing/3.jpg",
+    "mat": "public/export/core-hong-tra-shan-mat.jpeg",
+    "khoi": "public/export/core-hong-tra-shan-khoi.jpeg",
+    "moc": "public/export/core-luc-tra-shan-moc.jpeg",
+    "hoa": "public/export/core-luc-tra-ngoc-lan.jpeg"
+  },
+  "boards": [
+    {
+      "name": "b-opening-1440",
+      "title": "B / Working Tea Atlas — opening",
+      "width": 1440,
+      "height": 1162,
+      "viewportHeight": 930,
+      "kind": "static-design-proposal",
+      "photos": [
+        "tree",
+        "hand",
+        "mat",
+        "khoi",
+        "moc",
+        "hoa"
+      ],
+      "textBoxes": 27
+    },
+    {
+      "name": "b-opening-390",
+      "title": "B / Opening — mobile fold",
+      "width": 390,
+      "height": 1146,
+      "viewportHeight": 844,
+      "kind": "static-design-proposal",
+      "photos": [
+        "tree",
+        "mat",
+        "khoi",
+        "moc",
+        "hoa"
+      ],
+      "textBoxes": 26
+    },
+    {
+      "name": "b-opening-en-1440",
+      "title": "B / English opening — independent type setting",
+      "width": 1440,
+      "height": 1162,
+      "viewportHeight": 930,
+      "kind": "static-design-proposal",
+      "photos": [
+        "tree",
+        "hand",
+        "mat",
+        "khoi",
+        "moc",
+        "hoa"
+      ],
+      "textBoxes": 26
+    },
+    {
+      "name": "b-opening-en-390",
+      "title": "B / English opening — mobile",
+      "width": 390,
+      "height": 1146,
+      "viewportHeight": 844,
+      "kind": "static-design-proposal",
+      "photos": [
+        "tree",
+        "mat",
+        "khoi",
+        "moc",
+        "hoa"
+      ],
+      "textBoxes": 27
+    },
+    {
+      "name": "b-craft-1440",
+      "title": "B / Craft — material seam",
+      "width": 1440,
+      "height": 1082,
+      "viewportHeight": 850,
+      "kind": "static-design-proposal",
+      "photos": [
+        "hand"
+      ],
+      "textBoxes": 12
+    },
+    {
+      "name": "b-craft-390",
+      "title": "B / Craft — material seam / mobile",
+      "width": 390,
+      "height": 1252,
+      "viewportHeight": 950,
+      "kind": "static-design-proposal",
+      "photos": [
+        "hand"
+      ],
+      "textBoxes": 13
+    },
+    {
+      "name": "b-four-teas-1440",
+      "title": "B / Four teas — Mật selected",
+      "width": 1440,
+      "height": 1132,
+      "viewportHeight": 900,
+      "kind": "static-design-proposal",
+      "photos": [
+        "mat",
+        "khoi",
+        "moc",
+        "hoa"
+      ],
+      "textBoxes": 19
+    },
+    {
+      "name": "b-four-teas-390",
+      "title": "B / Four teas — Mật selected / mobile",
+      "width": 390,
+      "height": 1362,
+      "viewportHeight": 1060,
+      "kind": "static-design-proposal",
+      "photos": [
+        "mat"
+      ],
+      "textBoxes": 21
+    },
+    {
+      "name": "b-industrial-1440",
+      "title": "B / Industrial evidence — archival context",
+      "width": 1440,
+      "height": 1132,
+      "viewportHeight": 900,
+      "kind": "static-design-proposal",
+      "photos": [
+        "factory"
+      ],
+      "textBoxes": 18
+    },
+    {
+      "name": "b-industrial-390",
+      "title": "B / Industrial evidence — archival context / mobile",
+      "width": 390,
+      "height": 1412,
+      "viewportHeight": 1110,
+      "kind": "static-design-proposal",
+      "photos": [
+        "factory"
+      ],
+      "textBoxes": 17
+    },
+    {
+      "name": "a-opening-1440",
+      "title": "A / Living Tea Monograph — alternative opening",
+      "width": 1440,
+      "height": 1132,
+      "viewportHeight": 900,
+      "kind": "static-design-proposal",
+      "photos": [
+        "hand"
+      ],
+      "textBoxes": 17
+    },
+    {
+      "name": "a-opening-390",
+      "title": "A / Alternative opening — mobile",
+      "width": 390,
+      "height": 1146,
+      "viewportHeight": 844,
+      "kind": "static-design-proposal",
+      "photos": [
+        "hand"
+      ],
+      "textBoxes": 15
+    },
+    {
+      "name": "concept-comparison",
+      "title": "HL-001 / Three art-direction concepts",
+      "width": 1800,
+      "height": 1292,
+      "viewportHeight": 1060,
+      "kind": "static-design-proposal",
+      "photos": [
+        "tree",
+        "hand",
+        "mat",
+        "khoi",
+        "moc",
+        "hoa"
+      ],
+      "textBoxes": 77
+    },
+    {
+      "name": "selector-states",
+      "title": "B / Product selector — default, changed, mobile selection",
+      "width": 1440,
+      "height": 1252,
+      "viewportHeight": 1020,
+      "kind": "static-design-proposal",
+      "photos": [
+        "mat",
+        "khoi",
+        "hoa"
+      ],
+      "textBoxes": 32
+    }
+  ]
+}
