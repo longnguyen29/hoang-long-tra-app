@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "id": "DEMO-20261023-001",
+  "title": "Clarify local developer setup documentation",
+  "type": "docs",
+  "state": "approved",
+  "risk": "low",
+  "summary": "Improve the README local setup section with correct, repo-verified development instructions. Do not claim a command works without verifying it.",
+  "acceptance_criteria": [
+    "README local setup is actionable and concise",
+    "Any unavailable setup steps are clearly identified",
+    "No unrelated files are changed"
+  ],
+  "allowed_paths": ["README.md"],
+  "max_files": 1,
+  "priority": 3,
+  "notes": "Example only. Rename and place in .ai/tasks/ after review."
+}
