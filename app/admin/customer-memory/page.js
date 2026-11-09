@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Bell, BookOpen, Check, ClipboardCopy, Clock3, MessageSquareText, Plus, RefreshCw, Send, Sparkles } from "lucide-react";
+import { Bell, BookOpen, Check, ClipboardCopy, Clock3, MessageSquareText, Plus, RefreshCw, Send, Sparkles, KeyRound, ShieldAlert } from "lucide-react";
 import styles from "./page.module.css";
 
 const CHANNEL={manual:"Ghi chú",zalo_personal:"Zalo cá nhân",zalo_oa:"Zalo OA",facebook:"Messenger"};
@@ -27,6 +27,12 @@ export default function CustomerMemoryPage() {
   const [busy,setBusy]=useState("");
   const [loading,setLoading]=useState(true);
   const [notice,setNotice]=useState("");
+  const [pairOpen,setPairOpen]=useState(false);
+  const [bridges,setBridges]=useState([]);
+  const [pairLabel,setPairLabel]=useState("Mac mini — Zalo cá nhân");
+  const [pairToken,setPairToken]=useState("");
+  const [pairBusy,setPairBusy]=useState(false);
+  const [pairError,setPairError]=useState("");
   const [error,setError]=useState("");
 
   const api=useCallback(async (method,payload,threadId="")=>{
@@ -60,6 +66,44 @@ export default function CustomerMemoryPage() {
   useEffect(()=>{
     if(!selected && threads.length && !loading) load(threads[0].id);
   },[selected,threads,loading,load]);
+
+
+  const bridgeApi=useCallback(async (method,payload)=>{
+    const {data:{session}}=await supabase.auth.getSession();
+    if(!session?.access_token) throw new Error("not_authenticated");
+    const response=await fetch("/api/staff/customer-memory/bridge",{
+      method,headers:{Authorization:"Bearer "+session.access_token,...(method!=="GET"?{"Content-Type":"application/json"}:{})},
+      ...(payload?{body:JSON.stringify(payload)}:{}),cache:"no-store"
+    });
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(result.error || "bridge_unavailable");
+    return result;
+  },[supabase]);
+  async function openBridgePairing(){
+    setPairOpen(v=>!v);setPairError("");setPairToken("");
+    try {
+      const result=await bridgeApi("GET");
+      setBridges(result.bridges || []);
+    }catch(e){
+      setPairError(e.message==="admin_required"?"Chỉ tài khoản admin mới được quản lý kết nối.":"Chưa đọc được trạng thái kết nối; kiểm tra migration 0104.");
+    }
+  }
+  async function createBridge(){
+    setPairBusy(true);setPairError("");setPairToken("");
+    try {
+      const result=await bridgeApi("POST",{label:pairLabel});
+      setPairToken(result.token);
+      const list=await bridgeApi("GET");setBridges(list.bridges||[]);
+    }catch(e){setPairError(e.message==="admin_required"?"Cần quyền admin.":"Không tạo được mã kết nối. Vui lòng thử lại.");}
+    finally{setPairBusy(false);}
+  }
+  async function revokeBridge(id){
+    if(!window.confirm("Thu hồi mã kết nối Mac này? Bridge sẽ ngừng gửi dữ liệu ngay."))return;
+    setPairBusy(true);setPairError("");
+    try {await bridgeApi("DELETE",{id});const list=await bridgeApi("GET");setBridges(list.bridges||[]);setPairToken("");}
+    catch{setPairError("Không thu hồi được mã kết nối.");}
+    finally{setPairBusy(false);}
+  }
 
   const thread=threads.find(t=>t.id===selected);
   const latest=drafts[0];
@@ -104,6 +148,41 @@ export default function CustomerMemoryPage() {
       </div>
       <button className={styles.primary} type="button" onClick={()=>{setAttach(false);setOpenCapture(x=>!x);}}><Plus size={17}/> Ghi hội thoại</button>
     </header>
+    <section className={styles.capture} aria-label="Kết nối Zalo cá nhân thử nghiệm">
+      <div className={styles.captureHead}>
+        <h2><KeyRound size={17} style={{verticalAlign:"middle",marginRight:8}}/>Kết nối Zalo cá nhân — thử nghiệm</h2>
+        <button type="button" onClick={openBridgePairing}>{pairOpen?"Đóng":"Thiết lập"}</button>
+      </div>
+      <p><ShieldAlert size={14} style={{verticalAlign:"middle",marginRight:6}}/>
+        Không chính thức: có nguy cơ tài khoản Zalo bị khóa. Không cần nâng cấp Zalo cá nhân.
+        Cài bridge trên Mac, chỉ đọc các hội thoại B2B được bạn cho phép; không tự động gửi khách.</p>
+      {pairOpen && <>
+        {pairError && <div className={styles.error} role="alert">{pairError}</div>}
+        <div className={styles.formRow}>
+          <label>Tên Mac / kết nối
+            <input value={pairLabel} maxLength={100} onChange={e=>setPairLabel(e.target.value)}/>
+          </label>
+          <div style={{alignSelf:"end"}}>
+            <button type="button" className={styles.primary} disabled={pairBusy||!pairLabel.trim()} onClick={createBridge}>
+              Tạo mã kết nối một lần
+            </button>
+          </div>
+        </div>
+        {pairToken && <div className={styles.nextAction}>
+          <strong>Mã kết nối (chỉ hiển thị lần này)</strong>
+          <p style={{overflowWrap:"anywhere",fontFamily:"monospace"}}>{pairToken}</p>
+          <button type="button" onClick={()=>navigator.clipboard?.writeText(pairToken)}><ClipboardCopy size={14}/> Sao chép</button>
+          <p>Chỉ lưu mã vào file .env trên Mac. Đừng gửi trong chat, Zalo hoặc đưa lên GitHub.</p>
+        </div>}
+        {bridges.map(b=><div className={styles.fact} key={b.id} style={{marginTop:12}}>
+          <strong>{b.label} · {b.active?"Đang cấp quyền":"Đã thu hồi"}</strong>
+          <small>Hoạt động gần nhất: {b.last_used_at?displayDate(b.last_used_at):"Chưa nhận dữ liệu"}</small>
+          {b.active && <button type="button" disabled={pairBusy} onClick={()=>revokeBridge(b.id)}>Thu hồi kết nối</button>}
+        </div>)}
+        <p>Hướng dẫn trên Mac: <a href="https://github.com/longnguyen29/hoang-long-tra-app/tree/main/tools/zalo-personal-bridge"
+         target="_blank" rel="noopener noreferrer">Local Zalo Bridge</a>. Cần cài, quét QR và chọn ID khách trước khi có tin nhắn.</p>
+      </>}
+    </section>
     {error && <div className={styles.error} role="alert">{error}</div>}
     {notice && <div className={styles.notice} role="status">{notice}</div>}
     <section className={styles.kpis} aria-label="Tổng quan">
