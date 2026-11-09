@@ -14,6 +14,7 @@ create table public.customer_memory_threads (
   reminder_notified_at timestamptz,
   status text not null default 'open' check (status in ('open','waiting_customer','waiting_us','done')),
   last_message_at timestamptz not null default now(),
+  last_reminded_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique(channel, external_id)
