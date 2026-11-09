@@ -1,0 +1,11 @@
+# Gate 1 manager API — isolated prototype
+
+This directory is a standalone Node research prototype adapted from the user's V6 bundle. It is **not** a Next.js route, not imported by the app, not connected to Supabase, and it has no network client, worker, cron or outbound messaging. It creates no feature in production or staging.
+
+`core.mjs` retains the V6 API operations and adds a bounded per-prospect observations list missing from the reference contract. `facade.mjs` demonstrates fail-closed flags, injected manager authentication, then creation of a separate user-JWT-scoped client; it applies explicit response projections. The mocks model the intended shape only: they do not authenticate real tokens, query Postgres, prove row-level security, guarantee safe field types, or replace actual server-side Supabase checks. Never pass a service-role client as the manager-scoped client.
+
+`attempt.mjs` demonstrates retaining an opaque idempotency key in caller-provided storage for a single manager/prospect/version, so retries and same-tab reloads reuse it. Clear only after a known terminal outcome or an intentional new attempt; do not clear on timeout. This Node module uses `node:crypto` and is not browser code. Its storage injection cannot guarantee atomicity across tabs/devices or protect against compromised script execution. A future browser implementation must define cross-tab behavior and never persist JWTs or personal contact data in this storage.
+
+Before integration: verify the actual schema and real JWT/RLS on isolated staging, implement and independently review the real scoped query adapters and safe RPC projection, validate the changed source-attribution SQL signature, apply HTTP request size limits and test real Next routes, retention/locking of idempotency across browser sessions and accurate suppression of DNC/not-fit results. All feature flags remain off and real source fetches are forbidden until individually approved. An observation source URL may be present but its excerpt remains untrusted content; never interpret it as instructions.
+
+Run `node --test tools/intelligence-api/*.test.mjs`. Mock tests are evidence of the code paths tested, not integration or deployment readiness.
