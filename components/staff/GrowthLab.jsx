@@ -252,14 +252,14 @@ export default function GrowthLab({ supabase, email, role }) {
   const requests = experiments.flatMap((item) => item.variants || []).reduce((sum, item) => sum + Number(item.outcomes?.qualified_requests || 0), 0);
   const orders = experiments.flatMap((item) => item.variants || []).reduce((sum, item) => sum + Number(item.outcomes?.first_orders || 0), 0);
 
-  const requestAiVariants = async (generatedPrompt) => {
+  const requestAiVariants = async () => {
     setGenerationStage("OpenAI đang viết ba cách mở bài…");
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) throw new Error("not_authenticated");
     const response = await fetch("/api/staff/growth/generate", {
       method: "POST",
       headers: { "Authorization": `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ brief, prompt: generatedPrompt }),
+      body: JSON.stringify({ brief }),
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || "openai_failed");
@@ -312,7 +312,7 @@ export default function GrowthLab({ supabase, email, role }) {
     const generatedPrompt = buildGrowthPrompt(brief);
     try {
       const generated = useAi
-        ? await requestAiVariants(generatedPrompt)
+        ? await requestAiVariants()
         : { model: "Mẫu có sẵn v1", variants: starterVariants(brief).map((variant) => ({ ...variant, rationale: "Mẫu dự phòng theo brief; chưa qua OpenAI." })) };
       const { experiment, linkFailures } = await persistExperiment({
         generatedPrompt, generatedVariants: generated.variants, generationModel: generated.model,

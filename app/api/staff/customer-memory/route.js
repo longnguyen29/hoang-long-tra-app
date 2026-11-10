@@ -15,9 +15,14 @@ export async function GET(request) {
   if(!staff) return fail("not_authenticated",401);
   try{
     const threadId=new URL(request.url).searchParams.get("thread") || "";
-    const data=await readCustomerMemory(staff.admin,threadId);
+    if (threadId && !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(threadId)) {
+      return fail("thread_not_found",404);
+    }
+    const data=await readCustomerMemory(staff.admin,threadId.toLowerCase());
     return Response.json(data,{headers:{"Cache-Control":"no-store"}});
-  } catch(e) {return fail(e.message==="thread_not_found"?"thread_not_found":"memory_unavailable",503);}
+  } catch(e) {
+    return e.message==="thread_not_found" ? fail("thread_not_found",404) : fail("memory_unavailable",503);
+  }
 }
 
 export async function POST(request) {

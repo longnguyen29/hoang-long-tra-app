@@ -5,14 +5,14 @@ This is a real, database-backed feature, not the static prototype.
 ## What works after deploy and migration
 - Visit /admin/customer-memory as an admin/manager (existing Supabase Auth role).
 - Paste a Zalo personal chat, Facebook exchange, call notes, or tasting feedback. Add later messages to the same customer from the right page.
-- The server stores each message in a private Supabase table, generates a suggested reply with OPENAI_API_KEY, and remembers customer preferences, historical quoted prices, sample feedback and commitments **only when it can show a literal quote from the message**.
+- The server stores each message in a private Supabase table, generates a suggested reply with OPENAI_API_KEY, and remembers customer preferences, historical quoted prices, sample feedback and commitments with a literal quote that the app checks against the conversation. Staff still verify that the quote supports the AI’s interpretation.
 - Suggested replies are drafts, NOT external customer messages. Editing, approval, copy and snooze work in the CRM. Telegram can notify with an inline approve/snooze button.
 - Messenger Page inbound events can arrive automatically when the Meta webhook is subscribed. Personal Zalo cannot be monitored with the Zalo OA API.
 
 ## Database and deployment
 1. Deploy from a reviewed pull request. Do not commit real conversations, page IDs, tokens or bot credentials to this public repository.
 2. Apply **supabase/migrations/0103_customer_memory_inbox.sql** to the same Supabase project as the main Hoàng Long app. It uses manager-only SELECT RLS; only server/service_role writes.
-3. Deploy to Vercel, preserving existing server env NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY.
+3. For the optional Mac bridge, also apply `supabase/migrations/0104_customer_memory_personal_bridge.sql`. Deploy to Vercel, preserving existing server env NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY.
 4. Reuse OPENAI_API_KEY already configured for /admin/assistant, or set it as a server-only Vercel environment variable. Optionally set CUSTOMER_MEMORY_MODEL (defaults to gpt-5-mini). Never put credentials in NEXT_PUBLIC_ variables.
 5. Confirm /admin/customer-memory opens for an admin/manager. Start with a fictional customer (no personal data) and test a copy/approve flow. Then add a real conversation with the customer's ordinary business communications under the business's data/privacy policy.
 6. Verify customer records do not appear to unauthenticated users. Check mobile layout.
@@ -39,11 +39,11 @@ If you already use the main TELEGRAM_BOT_TOKEN, a minimal notification without c
 2. Set server-only: META_APP_SECRET, META_MESSENGER_VERIFY_TOKEN (random), META_MESSENGER_PAGE_ID.
 3. Configure callback URL: https://hoanglongtra.com/api/webhooks/customer-memory/meta. Use META_MESSENGER_VERIFY_TOKEN for GET challenge verification.
 4. Subscribe the Page to relevant **messages** events. Confirm a real Page message creates one private thread and one draft. Verify duplicate webhook deliveries are ignored.
-5. This pilot stores every verified event up to the bounded webhook batch limit and creates AI drafts for the first three immediately; further messages are queued for manual regeneration in the staff UI. High-traffic asynchronous processing requires a durable queue before scaling.
+5. Each delivery can ingest up to 50 eligible text events. The webhook attempts up to three drafts immediately. Further drafts stay pending for the daily cron or manual regeneration in the staff UI.
 6. Existing Page access controls and Meta platform messaging policy still apply. The pilot does not send messages outward via Meta APIs.
 
 ## Limitations and guardrails
-- **No personal Zalo automatic ingestion.** Paste/forward conversations manually for now. Do not scrape personal Zalo or share login credentials.
+- **Personal Zalo.** Manual paste or forwarding works without a bridge. An optional Mac listener can forward inbound text from selected chats using an unofficial client. Review the [bridge setup and account risks](../tools/zalo-personal-bridge/README.md) before enabling it. Use the OA webhook for an authorized Zalo Official Account.
 - **No automatic customer send.** Internal approval is not proof that the customer has received a message.
 - Historical prices are evidence only; do not assume they apply to new quantities. Human approval of offers is required.
 - Webhook and API errors are designed to avoid secrets in error payloads and logs.

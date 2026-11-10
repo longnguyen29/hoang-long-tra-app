@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Bell, BookOpen, Check, ClipboardCopy, Clock3, MessageSquareText, Plus, RefreshCw, Send, Sparkles, KeyRound, ShieldAlert } from "lucide-react";
@@ -34,6 +34,7 @@ export default function CustomerMemoryPage() {
   const [pairBusy,setPairBusy]=useState(false);
   const [pairError,setPairError]=useState("");
   const [error,setError]=useState("");
+  const loadSequence=useRef(0);
 
   const api=useCallback(async (method,payload,threadId="")=>{
     const {data:{session}}=await supabase.auth.getSession();
@@ -48,15 +49,20 @@ export default function CustomerMemoryPage() {
   },[supabase]);
 
   const load=useCallback(async (id)=>{
+    const sequence=++loadSequence.current;
     setLoading(true);setError("");
     try{
       const data=await api("GET",null,id);
+      if(sequence!==loadSequence.current) return;
       setThreads(data.threads||[]);setMessages(data.messages||[]);setDrafts(data.drafts||[]);
-      if(id) setSelected(id);
+      setSelected(id?.toLowerCase() || "");
     }catch(e){
+      if(sequence!==loadSequence.current) return;
       setError(errLabel[e.message] || e.message);
       if(e.message==="not_authenticated") router.replace("/admin/login");
-    }finally{setLoading(false);}
+    }finally{
+      if(sequence===loadSequence.current) setLoading(false);
+    }
   },[api,router]);
 
   useEffect(()=>{
@@ -64,8 +70,8 @@ export default function CustomerMemoryPage() {
     load(params.get("thread")||"");
   },[load]);
   useEffect(()=>{
-    if(!selected && threads.length && !loading) load(threads[0].id);
-  },[selected,threads,loading,load]);
+    if(!selected && threads.length && !loading && !error) load(threads[0].id);
+  },[selected,threads,loading,error,load]);
 
 
   const bridgeApi=useCallback(async (method,payload)=>{
@@ -205,7 +211,7 @@ export default function CustomerMemoryPage() {
       <label className={styles.field}>Nội dung<textarea rows={6} value={intake.text} maxLength={12000}
         onChange={e=>setIntake(v=>({...v,text:e.target.value}))}
         placeholder={"Khách: Mẫu Hồng Trà Khói rất thơm...\nMình: Trước đã báo 85k/kg cho 100kg...\nKhách: Lấy 300kg thì thế nào?"} required/></label>
-      <button className={styles.primary} type="submit" disabled={!!busy||!intake.text.trim()}><Sparkles size={17}/> {busy==="capture"?"Đang xử lý...":"Lưu và đề xuất trả lời"}</button>
+      <button className={styles.primary} type="submit" disabled={loading||!!busy||!intake.text.trim()}><Sparkles size={17}/> {busy==="capture"?"Đang xử lý...":"Lưu và đề xuất trả lời"}</button>
     </form>}
     <div className={styles.workspace}>
       <aside className={styles.sidebar}>
@@ -214,7 +220,7 @@ export default function CustomerMemoryPage() {
         <div className={styles.threadList}>
           {filtered.length===0 && <p className={styles.muted}>Chưa có hồ sơ. Nhấn “Ghi hội thoại” để bắt đầu bằng Zalo cá nhân.</p>}
           {filtered.map(t=><button type="button" className={selected===t.id?styles.activeThread:styles.thread}
-            key={t.id} onClick={()=>{setSelected(t.id);load(t.id);history.replaceState(null,"","?thread="+t.id);}}>
+            key={t.id} disabled={!!busy} onClick={()=>{load(t.id);history.replaceState(null,"","?thread="+t.id);}}>
             <div><strong>{t.display_name||"Chưa có tên"}</strong><small>{displayDate(t.last_message_at)}</small></div>
             <span>{CHANNEL[t.channel]} · {STATUS[t.status]||t.status}</span>
             <p>{t.summary||t.next_action||"Chưa có tóm tắt"}</p>
@@ -222,7 +228,7 @@ export default function CustomerMemoryPage() {
         </div>
       </aside>
       <section className={styles.conversation}>
-        {!thread ? <div className={styles.empty}><BookOpen size={30}/><h2>Trí nhớ bắt đầu từ một hội thoại</h2>
+        {loading ? <p className={styles.muted} role="status">Đang tải hội thoại…</p> : !thread ? <div className={styles.empty}><BookOpen size={30}/><h2>Trí nhớ bắt đầu từ một hội thoại</h2>
           <p>Chọn một khách hoặc thêm tin nhắn mới để AI lưu lại thông tin quan trọng.</p></div> : <>
           <div className={styles.convoHeader}><div><strong>{thread.display_name}</strong><span>{CHANNEL[thread.channel]} · {STATUS[thread.status]}</span></div>
             <button type="button" onClick={()=>{setAttach(true);setOpenCapture(true);window.scrollTo({top:0,behavior:"smooth"});}}><Plus size={15}/> Thêm tin</button></div>
@@ -259,13 +265,13 @@ export default function CustomerMemoryPage() {
           {(thread.facts||[]).length ? <div className={styles.facts}>{[...thread.facts].reverse().map((f,i)=><div key={i} className={styles.fact}>
             <small>{FACT[f.category]||f.category} · {displayDate(f.at)}</small><strong>{f.detail}</strong>
             <blockquote>“{f.quote}”</blockquote>
-          </div>)}</div>:<p className={styles.muted}>Chưa có dữ kiện được xác thực bằng câu trích từ hội thoại.</p>}
+          </div>)}</div>:<p className={styles.muted}>Chưa có dữ kiện kèm trích dẫn hội thoại.</p>}
           <h3>Đang chờ</h3><div className={styles.nextAction}>{thread.next_action||"Chưa xác định việc tiếp theo."}
             {thread.next_action_at && <small>Hẹn: {displayDate(thread.next_action_at)}</small>}</div>
           <p className={styles.warning}>Mức giá cũ là lịch sử báo giá, không phải giá áp dụng tự động cho đơn hàng mới.</p>
         </>:<p className={styles.muted}>Chọn một hồ sơ để xem nội dung AI đã lưu cùng nguồn bằng chứng.</p>}
       </aside>
     </div>
-    <footer className={styles.footer}><Send size={15}/> Telegram sẽ chỉ thông báo khi bot và chat riêng được cấu hình; bản nháp cần người duyệt.</footer>
+    <footer className={styles.footer}><Send size={15}/> Bot Telegram riêng nhận nội dung bản nháp. Bot dùng chung chỉ nhận báo có tin mới. Bản nháp cần người duyệt.</footer>
   </main>;
 }

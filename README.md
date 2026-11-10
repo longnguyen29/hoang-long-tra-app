@@ -1,88 +1,53 @@
 # House of Hoàng Long — web app
 
-Next.js + Supabase production port of the `tra-hoang-long-app.jsx` prototype.
-Public site (Our Story, Wholesale ordering, Shop, support chat) plus a
-staff-only `/admin` console (Front Desk: orders, leads, messages, payment
-settings, catalog, reviews, promo codes).
+Next.js and Supabase power the public tea catalogue, B2B enquiries and retail
+orders, the staff console at `/admin` and the partner portal at `/partners`.
 
-## 1. Prerequisites
+## Local development
 
-- [Node.js LTS](https://nodejs.org) (20.x or newer) + npm
-- A Supabase project (already created — URL and anon key are in `.env.local`)
-- A Vercel account with the `hoanglongtra.com` domain already attached to it
-
-## 2. Local setup
+Use Node.js 22.15+ (CI uses Node 22) and npm.
 
 ```bash
-npm install
+npm ci
+cp .env.example .env.local  # for a new checkout with no existing .env.local
 npm run dev
 ```
 
-Open http://localhost:3000 for the public site, http://localhost:3000/admin for
-the staff console (will redirect to `/admin/login` until you've created a staff
-account — see step 4).
-
-`.env.local` already contains `NEXT_PUBLIC_SUPABASE_URL` and
-`NEXT_PUBLIC_SUPABASE_ANON_KEY`. Never commit this file (it's git-ignored).
-
-## 3. Set up the Supabase database
-
-In the Supabase dashboard, open **SQL Editor** and run these three files **in
-order**, each as its own query:
-
-1. `supabase/migrations/0001_schema.sql` — tables
-2. `supabase/migrations/0002_rls.sql` — Row Level Security policies
-3. `supabase/migrations/0003_functions.sql` — RPC functions used by the public
-   site (order tracking, promo codes, chat, payment QR, reorder)
-
-Then seed the starter content (wiki articles + tea catalog copied from the
-prototype):
+Point the Supabase settings at a development or staging project. Read-only
+public pages can render without live integrations, but checkout, staff sign-in
+and other database-backed flows need a correctly configured database.
 
 ```bash
-# add this line to .env.local first (Supabase dashboard > Settings > API > service_role)
-# SUPABASE_SERVICE_ROLE_KEY=...
-npm run seed
+npm test
+npm run lint
+npm run build
 ```
 
-`SUPABASE_SERVICE_ROLE_KEY` bypasses RLS — only ever use it locally for this
-script, never in the deployed app, and remove it from `.env.local` again once
-you're done seeding if you want to be extra safe.
+`npm test` includes the existing payment-reversal SQL test on an isolated
+PGlite database. See [Partner Network QA](docs/partner-network-qa.md) for the
+standalone database checks. Tests use fixtures or local database engines.
 
-## 4. Create the first admin account
+## Database and staff access
 
-Supabase Auth is for internal staff only — customers never sign in.
+`supabase/migrations/` is the ordered schema history. The initial three files
+only cover the original schema. For a fresh test database, use the current
+migration sequence in order and check the project-specific setup for integrations
+that need credentials, extensions or schedules. Compare the applied migration
+history before changing an existing project.
 
-1. In the Supabase dashboard, go to **Authentication > Providers** and turn
-   **off** "Allow new users to sign up" (internal accounts should only be
-   created by you, from the dashboard).
-2. Go to **Authentication > Users > Add user**, create an account with an
-   email + password for the first admin.
-3. Copy that user's UUID, then in **SQL Editor** run:
-   ```sql
-   insert into staff_roles (user_id, role) values ('<paste-uuid-here>', 'admin');
-   ```
-4. That person can now sign in at `/admin/login`. Repeat step 2–3 for each
-   additional staff member (manager/employee — the `role` value is stored for
-   your own reference; every row in `staff_roles` currently gets the same
-   full Front Desk access, see "Notes & deviations" below).
+Staff sign in through Supabase Auth. Provision staff accounts deliberately,
+then assign their documented role in `staff_roles`. Test with a staff user and a
+partner user. Partner registration is controlled separately by the settings in
+`.env.example`. For optional starter data, inspect `scripts/seed.mjs` before
+running `npm run seed` against an isolated database.
 
-## 5. Deploy to Vercel
+## Deployment and integrations
 
-```bash
-git add -A
-git commit -m "Initial commit"
-```
-
-Then either push to a new GitHub repo and import it in the Vercel dashboard,
-or run `vercel` from this folder if you have the Vercel CLI installed. Set the
-same two `NEXT_PUBLIC_SUPABASE_*` environment variables in the Vercel
-project's **Settings > Environment Variables** (Production + Preview). Set
-`SUPABASE_SERVICE_ROLE_KEY` as a server-only variable as well; the staff and
-carrier webhook API routes need it, but it is never exposed to browser code.
-
-Once the Vercel project is live and building successfully, go to **Settings >
-Domains** and move `hoanglongtra.com` from the old project to this new one.
-**This replaces the live site — confirm you're ready before doing it.**
+Set the public Supabase URL and anon key for the intended project. The service
+role key is used by trusted server code and seed tooling. Keep it server-only
+and out of Git, along with integration credentials. See `.env.example` for the
+environment variables and [Customer Memory setup](docs/customer-memory-live-setup.md)
+for its messaging channels and reminders.
 
 ### Carrier delivery updates
 
@@ -120,7 +85,7 @@ The initial refresh token is used once; every replacement refresh/access token i
 the service-role-only `zalo_oauth_tokens` table. Delivery attempts and provider message IDs
 are recorded in `customer_notifications`.
 
-## 6. Test checklist before announcing the new site
+## Manual smoke checks
 
 - [ ] Place a test wholesale order and a test retail order
 - [ ] Sign in at `/admin` and confirm the orders show up in Front Desk
@@ -136,11 +101,9 @@ are recorded in `customer_notifications`.
 
 ## Idle screen
 
-After 30 seconds without a touch, click, key or scroll, the screen fades to warm
-paper carrying a public-domain Chinese or Japanese painting, sunk in mist. Over
-the next 80 seconds the mist thins and the picture comes into focus, then holds
-until someone touches it. This runs for **every visitor on every page of the
-public site** — it is not limited to the tea-room tablet.
+Enable the idle screen on a tea-room device with `?kiosk=1`. After 30 seconds
+without input, it shows a public-domain painting and gradually brings it into
+focus. The screen stays off on a device until enabled there.
 
 Nothing travels across the screen and the picture is never assembled. Earlier
 versions built it from dots, and later painted it in with brush strokes sweeping
@@ -174,12 +137,8 @@ The painting changes daily — day-of-year modulo the twelve works in
 rotation, edit that list; each entry is a Met object ID or a Cleveland accession
 number, and titles and artists come from the museums' own APIs.
 
-Images are fetched live from the museums through `/api/artwork-image` and never
-stored. That relay exists because the particle effect must read the real pixels
-(`getImageData`), which browsers block on cross-origin images unless the host
-sends `Access-Control-Allow-Origin` on the GET — and neither museum does.
-Note that Met images *do* send it on HEAD, so `curl -I` suggests they would
-work; they don't. Verify CORS in a browser, not with `curl -I`.
+Museum images are served through `/api/artwork-image`, with upstream fetch
+revalidation managed by the route. The idle screen animates image sharpness.
 
 ## Notes & deviations from the original brief
 
@@ -212,7 +171,6 @@ work; they don't. Verify CORS in a browser, not with `curl -I`.
   feature in the original prototype; if that's a concern, consider removing
   the "Ordered before?" box (`components/ReorderBox.jsx`) from the public
   pages, or gating it behind a one-time code sent to the customer.
-- **Staff roles aren't differentiated yet.** `staff_roles.role` is stored
-  (`admin` / `manager` / `employee`) but every row currently grants the same
-  full Front Desk access. Add role checks in `is_staff()` or in the UI later
-  if you want e.g. employees to see orders but not edit payment settings.
+- **Staff roles differ.** Admin and manager are recognized by `is_staff()`.
+  Employees use the work area and its dedicated access rules. Some sensitive
+  actions require admin specifically.

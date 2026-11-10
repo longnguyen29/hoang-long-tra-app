@@ -13,7 +13,8 @@
 .env.local
 .c2c.json
 .c2c-canary.txt
-.env.*.local
+.env.*
+!.env.example
 
 # claude code local settings
 .claude/settings.local.json
@@ -34,3 +35,6 @@ npm-debug.log*
 
 # typescript
 *.tsbuildinfo
+
+# Supabase CLI local metadata
+/supabase/.temp/

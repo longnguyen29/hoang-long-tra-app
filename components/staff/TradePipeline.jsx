@@ -160,50 +160,47 @@ export default function TradePipeline({ supabase, email }) {
   const load = useCallback(async () => {
     setLoading(true); setError("");
     try {
-    const [o, q, a, p, v, w, s, r, rv, ord, rec, hidden, links] = await Promise.all([
-      supabase.from("trade_opportunities").select("*").order("updated_at", { ascending: false }),
-      supabase.from("trade_quotes").select("*").order("created_at", { ascending: false }),
-      supabase.from("partner_price_agreements").select("*, partner_price_rules(*)").order("version", { ascending: false }),
-      supabase.from("catalog_products").select("*").eq("available", true).order("line"),
-      supabase.from("catalog_variants").select("*"),
-      supabase.from("wholesale_accounts").select("id, opportunity_id, contact, business_name, reorder_cadence_days, created_at"),
-      supabase.from("sample_requests").select("*").order("ts", { ascending: false }),
-      supabase.from("recipes").select("*").order("updated_at", { ascending: false }),
-      supabase.from("recipe_versions").select("*").order("created_at", { ascending: false }),
-      supabase.from("orders").select("*").order("ts", { ascending: false }),
-      supabase.from("receivables").select("*").order("created_at", { ascending: false }),
-      supabase.from("customer_directory_hidden").select("kind,entry_id"),
-      supabase.from("customer_directory_order_links").select("order_id,opportunity_id"),
-    ]);
-    const failed = [o, q, a, p, v, w, s, r, rv, ord, rec, hidden, links].some(result => result.error);
-    setDataFailure(failed);
-    if(failed) return;
-    if (o.error || q.error) setError("Chưa tải được dữ liệu phát triển đối tác. Kiểm tra migration 0033.");
-    else if (a.error) setError("Chưa tải được sổ giá đối tác. Kiểm tra migration 0034.");
-    if (!o.error) {
-      const enriched=await Promise.all((o.data||[]).map(async item=>{
-        if(!item.discovery_prospect_id)return item;
-        const result=await supabase.rpc('pipeline_prospect_suppressed',{p_opportunity_id:item.id});
-        return {...item,prospect_suppressed:result.error?true:result.data};
+      const [o, q, a, p, v, w, s, r, rv, ord, rec, hidden, links] = await Promise.all([
+        supabase.from("trade_opportunities").select("*").order("updated_at", { ascending: false }),
+        supabase.from("trade_quotes").select("*").order("created_at", { ascending: false }),
+        supabase.from("partner_price_agreements").select("*, partner_price_rules(*)").order("version", { ascending: false }),
+        supabase.from("catalog_products").select("*").eq("available", true).order("line"),
+        supabase.from("catalog_variants").select("*"),
+        supabase.from("wholesale_accounts").select("id, opportunity_id, contact, business_name, reorder_cadence_days, created_at"),
+        supabase.from("sample_requests").select("*").order("ts", { ascending: false }),
+        supabase.from("recipes").select("*").order("updated_at", { ascending: false }),
+        supabase.from("recipe_versions").select("*").order("created_at", { ascending: false }),
+        supabase.from("orders").select("*").order("ts", { ascending: false }),
+        supabase.from("receivables").select("*").order("created_at", { ascending: false }),
+        supabase.from("customer_directory_hidden").select("kind,entry_id"),
+        supabase.from("customer_directory_order_links").select("order_id,opportunity_id"),
+      ]);
+      const failed = [o, q, a, p, v, w, s, r, rv, ord, rec, hidden, links].some(result => result.error);
+      setDataFailure(failed);
+      if(failed) return;
+      const enriched = await Promise.all((o.data || []).map(async item => {
+        if (!item.discovery_prospect_id) return item;
+        const result = await supabase.rpc("pipeline_prospect_suppressed", { p_opportunity_id: item.id });
+        return { ...item, prospect_suppressed: result.error ? true : result.data };
       }));
       setOpportunities(enriched);
-    }
-    if (!q.error) setQuotes(q.data || []);
-    if (!a.error) setAgreements((a.data || []).map((agreement) => ({ ...agreement, partner_price_rules: [...(agreement.partner_price_rules || [])].sort((left, right) => left.sort_order - right.sort_order) })));
-    if (!w.error) setPartners(w.data || []);
-    if (!s.error) setSamples(s.data || []);
-    if (!r.error) setRecipes(r.data || []);
-    if (!rv.error) setRecipeVersions(rv.data || []);
-    if (!ord.error) setOrders(ord.data || []);
-    setDirectoryHidden(hidden.data || []); setDirectoryLinks(links.data || []);
-    if (!rec.error) setReceivables(rec.data || []);
-    if (!p.error) {
-      const byProduct = {};
-      (v.data || []).forEach((row) => (byProduct[row.product_id] ||= []).push(fromVariantRow(row)));
-      setProducts((p.data || []).map((row) => ({ ...fromCatalogRow(row), variants: byProduct[row.id] || [] })));
-    }
-    setLoading(false);
+      setQuotes(q.data || []);
+      setAgreements((a.data || []).map(agreement => ({
+        ...agreement,
+        partner_price_rules: [...(agreement.partner_price_rules || [])].sort((left, right) => left.sort_order - right.sort_order),
+      })));
+      setPartners(w.data || []);
+      setSamples(s.data || []);
+      setRecipes(r.data || []);
+      setRecipeVersions(rv.data || []);
+      setOrders(ord.data || []);
+      setDirectoryHidden(hidden.data || []);
+      setDirectoryLinks(links.data || []);
+      setReceivables(rec.data || []);
 
+      const byProduct = {};
+      (v.data || []).forEach(row => (byProduct[row.product_id] ||= []).push(fromVariantRow(row)));
+      setProducts((p.data || []).map(row => ({ ...fromCatalogRow(row), variants: byProduct[row.id] || [] })));
     } catch { setDataFailure(true); } finally { setLoading(false); }
   }, [supabase]);
 

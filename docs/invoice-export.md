@@ -1,6 +1,6 @@
 # Invoice export
 
-In `/admin/orders`, open an order and expand **Xuất hóa đơn** below its recorded total. **Hiện giá gốc** adds an optional original-price column; it defaults off. **In / lưu PDF** opens a separate printable document and the browser print dialog. The legacy order list and payment confirmation use the same exporter, in the current locale.
+In `/admin/orders`, open an order and expand **Xuất hóa đơn tạm tính** below its recorded total. **Hiện giá gốc** adds an optional original-price column; it defaults off. **In / lưu PDF** opens a separate printable document and the browser print dialog. The legacy order list and payment confirmation use the same exporter, in the current locale.
 
 Original price means the sale price before the first tracked per-order manual adjustment, saved in `lines[].priceBeforeEdit`. The authenticated price-edit API captures the existing price only on an actual change, in the same write as the new price. Further edits preserve this snapshot, including an explicit unknown (`null`) or zero. Unchanged lines do not invent a historical baseline. Client input cannot supply this snapshot; the API compares the saved line array before updating so concurrent changes return `409 order_lines_changed`.
 

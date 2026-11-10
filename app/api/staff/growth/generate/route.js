@@ -13,9 +13,9 @@ export async function POST(request) {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) return NextResponse.json({ error: "openai_not_configured" }, { status: 503 });
 
-  let input;
+  let brief;
   try {
-    input = normalizeGrowthAiInput(await request.json());
+    brief = normalizeGrowthAiInput(await request.json());
   } catch {
     return NextResponse.json({ error: "invalid_brief" }, { status: 400 });
   }
@@ -34,7 +34,7 @@ export async function POST(request) {
     openAiResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify(buildGrowthAiRequest({ prompt: input.prompt, model, safetyIdentifier })),
+      body: JSON.stringify(buildGrowthAiRequest({ brief, model, safetyIdentifier })),
       signal: AbortSignal.timeout(45000),
     });
   } catch {
