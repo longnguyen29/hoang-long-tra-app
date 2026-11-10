@@ -113,3 +113,14 @@
 .interestChips span{display:inline-flex;align-items:center;gap:var(--space-2xs);padding:var(--space-3xs) var(--space-xs);background:var(--color-paper-2);font-size:var(--text-sm)}
 .interestChips button{border:0;background:transparent;color:inherit;font-size:1.2rem;min-width:2rem;min-height:2rem;cursor:pointer}
 @media(max-width:47.99rem){.interestEditor{margin-inline:var(--space-md)}}
+
+/* A soft light shows the relative value of open quotes, without hiding the numbers. */
+.boardHint{margin:var(--space-xs) var(--page-gutter);color:var(--color-muted);font-size:var(--text-xs);line-height:1.5}
+.column{--stage-glow:#99bda5;border-radius:14px;overflow:hidden;background:radial-gradient(ellipse 125% 85% at 50% 105%,color-mix(in srgb,var(--stage-glow) var(--glow-percent),transparent),transparent 75%),color-mix(in srgb,var(--color-paper) 86%,transparent);border-color:color-mix(in srgb,var(--color-ink) 12%,transparent)}
+.column[data-stage=quoted]{--stage-glow:#d5b07b}.column[data-stage=won],.column[data-stage=active]{--stage-glow:#b9b66d}
+.column>header{height:auto;min-height:5.2rem;align-items:flex-start;padding:var(--space-sm);gap:var(--space-xs)}
+.column>header>div{display:grid;gap:var(--space-3xs);min-width:0}.column>header b{font-family:var(--font-body);font-size:var(--text-sm)}.column>header small{color:var(--color-muted);font-size:.68rem;line-height:1.4;overflow-wrap:anywhere}
+.column>header>span{display:grid;place-items:center;min-width:1.7rem;height:1.7rem;padding:0 var(--space-3xs);border-radius:50%;background:color-mix(in srgb,var(--color-ink) 7%,transparent);font-size:var(--text-xs);font-weight:700}
+.column>div>button{border-radius:9px;background:color-mix(in srgb,var(--color-paper) 82%,transparent);box-shadow:0 4px 16px color-mix(in srgb,var(--color-ink) 6%,transparent)}
+.column .addCard{border-radius:9px;background:transparent;box-shadow:none}
+@media(max-width:47.99rem){.boardHint{margin-inline:var(--space-sm)}.column>header{min-height:4.5rem}}
