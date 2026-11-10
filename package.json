@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test:pricing": "node --test lib/pricing.test.mjs",
     "test:order-flow": "node --test lib/order-flow.test.mjs",
     "test:order-costs": "node --test lib/order-costs.test.mjs",
@@ -26,14 +26,22 @@
     "test:partners": "node --test lib/partner-network.test.mjs lib/partner-network-draft.test.mjs tests/partner-network-routes.test.mjs",
     "test:partners:db": "node tests/partner-network-db.mjs",
     "test:retail": "node --test lib/retail-cart.test.mjs lib/retail-catalog.test.mjs lib/retail-checkout.test.mjs tests/retail-order-route.test.mjs",
-    "test:bundles": "node --test lib/retail-bundles.test.mjs tests/retail-bundle-enquiry-route.test.mjs"
+    "test:bundles": "node --test lib/retail-bundles.test.mjs tests/retail-bundle-enquiry-route.test.mjs",
+    "test": "node --test lib/*.test.mjs tests/*.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.4",
     "lucide-react": "^0.454.0",
-    "next": "^16.2.12",
+    "next": "^16.4.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
-  }
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.16",
+    "@next/eslint-plugin-next": "16.4.6",
+    "eslint": "10.14.0",
+    "eslint-plugin-react-hooks": "7.1.1"
+  },
+  "type": "module"
 }

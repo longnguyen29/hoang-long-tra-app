@@ -48,7 +48,7 @@ export default function InvoiceExport({ order, locale = 'vi', disabled = false, 
     }
   };
   return <details className={styles.export}>
-    <summary><Printer size={16} aria-hidden="true"/>{en ? 'Export invoice' : 'Xuất hóa đơn'}</summary>
+    <summary><Printer size={16} aria-hidden="true"/>{en ? 'Export preliminary invoice' : 'Xuất hóa đơn tạm tính'}</summary>
     <div className={styles.options}>
       <label><input type="checkbox" checked={showOriginalPrice} disabled={disabled} aria-describedby={helpId} onChange={event => setShowOriginalPrice(event.target.checked)}/><span>{en ? 'Show original price' : 'Hiện giá gốc'}</span></label>
       <p id={helpId}>{en ? 'The saved price before a per-order price adjustment. Missing originals display “—”. The payable total stays unchanged.' : 'Giá trước khi sửa giá riêng cho đơn, đã được lưu. Chưa lưu sẽ hiện “—”. Tổng thanh toán giữ nguyên.'}</p>

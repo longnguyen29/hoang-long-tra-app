@@ -1,17 +1,6 @@
-name: Customer Memory safety checks
+name: Application checks
 on:
   pull_request:
-    paths:
-      - "app/admin/customer-memory/**"
-      - "app/api/staff/customer-memory/**"
-      - "app/api/webhooks/customer-memory/**"
-      - "app/api/cron/customer-memory/**"
-      - "app/api/webhooks/customer-memory/personal-zalo/**"
-      - "app/api/webhooks/customer-memory/zalo-oa/**"
-      - "tools/zalo-personal-bridge/**"
-      - "lib/customer-memory*"
-      - "supabase/migrations/0103_customer_memory_inbox.sql"
-      - ".github/workflows/customer-memory-check.yml"
   workflow_dispatch:
 
 jobs:
@@ -26,20 +15,9 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci --ignore-scripts
-      - run: node --test lib/customer-memory-core.test.mjs lib/customer-memory-personal-bridge.test.mjs lib/customer-memory-zalo-oa.test.mjs
-      - run: |
-          node --check lib/customer-memory-core.js
-          node --check lib/customer-memory-server.js
-          node --check lib/customer-memory-personal-bridge.js
-          node --check lib/customer-memory-zalo-oa.js
-          node --check tools/zalo-personal-bridge/index.mjs
-          node --check app/api/staff/customer-memory/bridge/route.js
-          node --check app/api/webhooks/customer-memory/personal-zalo/route.js
-          node --check app/api/webhooks/customer-memory/zalo-oa/route.js
-          node --check app/api/staff/customer-memory/route.js
-          node --check app/api/cron/customer-memory/route.js
-          node --check app/api/webhooks/customer-memory/meta/route.js
-          node --check app/api/webhooks/customer-memory/telegram/route.js
+      - run: npm test
+      - run: npm run lint
+      - run: node --check tools/zalo-personal-bridge/index.mjs
       - name: Build application
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co

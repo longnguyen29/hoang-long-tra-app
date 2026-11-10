@@ -102,7 +102,7 @@ export async function POST(request) {
       bot,
       chats,
     });
-  } catch (e) {
-    return Response.json({ ok: false, reason: "network", description: e?.message || "" });
+  } catch {
+    return Response.json({ ok: false, reason: "network" });
   }
 }
