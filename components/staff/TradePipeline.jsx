@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, BadgeDollarSign, Calculator, CalendarClock, Check, ChevronRight, Clipboard, FileText, FlaskConical, Handshake, History, Plus, RefreshCw, Save, Search, Send, Target, X } from "lucide-react";
 import { fromCatalogRow, fromVariantRow } from "@/lib/mappers";
 import { dateInput, money, normalizeContact, QUOTE_STATUS, quoteMessage, shortDate, stageLabel, TRADE_STAGES } from "@/lib/trade-pipeline";
+import { latestOpenQuoteValues, stageQuoteTotal } from "@/lib/crm-stage-values";
 import { buildCustomerJourney } from "@/lib/customer-journey";
 import { CUSTOMER_CATEGORIES, customerOrderSummary, customerMatchRank } from "@/lib/customer-directory";
 import { contactCandidates, searchCustomer, interestItems, addInterest, removeInterest } from "@/lib/customer-contacts";
@@ -291,6 +292,8 @@ export default function TradePipeline({ supabase, email }) {
   const dueToday = opportunities.filter((item) => item.stage !== "lost" && item.next_action_at?.slice(0, 10) === today);
   const openQuotes = quotes.filter((quote) => ["draft", "sent", "accepted"].includes(quote.status));
   const totalPotential = opportunities.filter((item) => item.stage !== "lost").reduce((sum, item) => sum + Number(item.monthly_potential_kg || 0), 0);
+  const stageQuoteValues = useMemo(() => latestOpenQuoteValues(quotes), [quotes]);
+  const stageMaxQuote = Math.max(0, ...TRADE_STAGES.map(stage => stageQuoteTotal(searchable.filter(item => item.stage === stage.id), stageQuoteValues)?.total || 0));
   const orderableProducts = useMemo(() => tradeProductOptions(products), [products]);
 
   const openOpportunity = (item) => { setCategoryError(""); setContactFeedback(""); setContactDraft(""); setSelected(item); setEditing(null); setQuoteDraft(null); setPriceDraft(null); };
@@ -446,11 +449,12 @@ export default function TradePipeline({ supabase, email }) {
     {viewMode === "pipeline" && <>
     <label className={styles.mobileStagePicker}><span>Giai đoạn đang xem</span><select value={mobileStage} onChange={(event) => setMobileStage(event.target.value)}>{TRADE_STAGES.map((stage) => <option key={stage.id} value={stage.id}>{stage.label} · {searchable.filter((item) => item.stage === stage.id).length}</option>)}</select></label>
     <section className={styles.stageRail} aria-label="Hành trình đối tác">{TRADE_STAGES.map((stage, index) => <div key={stage.id}><span>{String(index + 1).padStart(2, "0")}</span><b>{stage.label}</b><small>{searchable.filter((item) => item.stage === stage.id).length}</small></div>)}</section>
+    <p className={styles.boardHint}>Mỗi cột là một giai đoạn. Giá trị là báo giá đang mở mới nhất của mỗi khách, chưa phải doanh thu đã thu.</p>
     <section className={styles.board}>
-      {TRADE_STAGES.map((stage) => <section className={styles.column} data-mobile-active={mobileStage === stage.id} key={stage.id}><header><b>{stage.short}</b><span>{searchable.filter((item) => item.stage === stage.id).length}</span></header><div>{searchable.filter((item) => item.stage === stage.id).map((item) => {
+      {TRADE_STAGES.map((stage) => { const stageItems = searchable.filter(item => item.stage === stage.id); const quoted = stageQuoteTotal(stageItems, stageQuoteValues); return <section className={styles.column} data-stage={stage.id} data-has-value={Boolean(quoted)} style={{"--glow-percent": `${quoted && stageMaxQuote ? 9 + Math.round(22 * quoted.total / stageMaxQuote) : 3}%`}} data-mobile-active={mobileStage === stage.id} key={stage.id}><header><div><b>{stage.label}</b><small>{quoted ? `${new Intl.NumberFormat("vi-VN").format(quoted.total)} ₫ · ${quoted.count} báo giá` : "Chưa có báo giá mở"}</small></div><span aria-label={`${stageItems.length} khách`}>{stageItems.length}</span></header><div>{stageItems.map((item) => {
         const isOverdue = item.next_action_at && item.next_action_at.slice(0, 10) < today;
         return <button key={item.id} onClick={() => openOpportunity(item)} data-overdue={isOverdue}><span className={styles.source}>{item.source_type === "partner_referral" ? "Đối tác giới thiệu" : item.source_type}</span><h3>{item.business_name}</h3><p>{item.next_action || "Chưa có bước tiếp theo"}</p><footer><span>{item.monthly_potential_kg ? `${formatMassKg(item.monthly_potential_kg)}/tháng` : item.contact}</span><time>{shortDate(item.next_action_at)}</time></footer></button>;
-      })}<button className={styles.addCard} onClick={() => setEditing({ ...newOpportunity(), stage: stage.id })}><Plus/>Thêm tại đây</button></div></section>)}
+      })}<button className={styles.addCard} onClick={() => setEditing({ ...newOpportunity(), stage: stage.id })}><Plus/>Thêm tại đây</button></div></section>})}
     </section>
     {showLost && <section className={styles.lost}><header><h2>Cơ hội đang tạm dừng</h2><span>Giữ lại lịch sử; đưa về pipeline khi thời điểm phù hợp.</span></header>{searchable.filter((item) => item.stage === "lost").map((item) => <button key={item.id} onClick={() => openOpportunity(item)}><span><b>{item.business_name}</b><small>{item.lost_reason || "Chưa ghi lý do"}</small></span><ChevronRight/></button>)}</section>}
 
