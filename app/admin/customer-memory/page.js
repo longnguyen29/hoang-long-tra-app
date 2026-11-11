@@ -125,6 +125,20 @@ export default function CustomerMemoryPage() {
     finally{setBusy("");}
   }
 
+  async function deleteThread(){
+    if(!thread || busy) return;
+    if(!window.confirm(`Xóa vĩnh viễn hội thoại “${thread.display_name}” cùng tin nhắn, bản nháp và dữ kiện đã lưu? Tin nhắn mới từ cùng người có thể tạo lại hội thoại.`)) return;
+    setBusy("delete");setError("");setNotice("");
+    try {
+      await api("DELETE",{threadId:thread.id,confirmation:"delete"});
+      setSelected("");setMessages([]);setDrafts([]);
+      history.replaceState(null,"",window.location.pathname);
+      await load("");
+      setNotice("Đã xóa hội thoại và dữ liệu liên quan khỏi Trí nhớ khách hàng.");
+    }catch(e){setError(errLabel[e.message] || "Chưa xóa được hội thoại. Hãy tải lại và thử lại.");}
+    finally{setBusy("");}
+  }
+
   async function act(action){
     if(!latest) return;
     setBusy(action);setError("");setNotice("");
@@ -225,7 +239,7 @@ export default function CustomerMemoryPage() {
         {!thread ? <div className={styles.empty}><BookOpen size={30}/><h2>Trí nhớ bắt đầu từ một hội thoại</h2>
           <p>Chọn một khách hoặc thêm tin nhắn mới để AI lưu lại thông tin quan trọng.</p></div> : <>
           <div className={styles.convoHeader}><div><strong>{thread.display_name}</strong><span>{CHANNEL[thread.channel]} · {STATUS[thread.status]}</span></div>
-            <button type="button" onClick={()=>{setAttach(true);setOpenCapture(true);window.scrollTo({top:0,behavior:"smooth"});}}><Plus size={15}/> Thêm tin</button></div>
+            <div><button type="button" onClick={()=>{setAttach(true);setOpenCapture(true);window.scrollTo({top:0,behavior:"smooth"});}}><Plus size={15}/> Thêm tin</button> <button type="button" disabled={!!busy} onClick={deleteThread}>Xóa hội thoại</button></div></div>
           <div className={styles.messages}>
             {messages.map(m=><article className={m.direction==="inbound"?styles.inbound:styles.outbound} key={m.id}>
               <span>{m.direction==="inbound"?"Khách / Hội thoại":"Mình"} · {displayDate(m.occurred_at)}</span>

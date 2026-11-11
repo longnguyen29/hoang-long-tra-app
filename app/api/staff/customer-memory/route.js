@@ -59,3 +59,16 @@ export async function PATCH(request) {
     return fail(bad?e.message:"memory_unavailable",bad?409:503);
   }
 }
+
+// Explicit manager action; related messages, drafts and facts cascade with the thread.
+export async function DELETE(request) {
+  const staff=await auth(request);
+  if(!staff) return fail("not_authenticated",401);
+  let payload;
+  try { payload=await request.json(); } catch { return fail("invalid_input"); }
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload?.threadId || "") || payload?.confirmation!=="delete") return fail("invalid_input");
+  const {data,error}=await staff.admin.from("customer_memory_threads").delete().eq("id",payload.threadId).select("id").maybeSingle();
+  if(error) return fail("memory_unavailable",503);
+  if(!data) return fail("thread_not_found",404);
+  return Response.json({ok:true},{headers:{"Cache-Control":"no-store"}});
+}
