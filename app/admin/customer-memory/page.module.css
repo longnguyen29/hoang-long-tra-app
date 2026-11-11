@@ -17,6 +17,10 @@
 .sideTitle button,.convoHeader button,.captureHead button{display:inline-flex;align-items:center;gap:5px;background:none;border:0;color:#46604f;font-size:12px}
 .search{margin:0 12px 15px;width:calc(100% - 24px);border:1px solid #dddcd2;border-radius:8px;padding:10px;font-size:12px;background:#fff}
 .threadList{max-height:690px;overflow:auto}
+.pageThreads,.pageMessages{padding:8px 16px;text-align:center}
+.pageThreads{border-top:1px solid #e7e7de}
+.pageMessages{border-bottom:1px solid #ecece7}
+.main .pageButton{background:#fff;border:1px solid #d8dfd7;border-radius:8px;padding:7px 11px;color:#46604f;font-size:12px}
 .thread,.activeThread{border:0;border-bottom:1px solid #ecece7;background:none;text-align:left;width:100%;padding:14px 16px;display:block}
 .activeThread{background:#eaf0e9;border-left:3px solid #527862;padding-left:13px}
 .thread>div,.activeThread>div{display:flex;justify-content:space-between;gap:6px}
@@ -28,7 +32,7 @@
 .convoHeader{padding:17px 19px;border-bottom:1px solid #e7e7de}
 .convoHeader div{display:flex;flex-direction:column;gap:4px}
 .convoHeader strong{font-size:15px}.convoHeader span{color:#69786f;font-size:11px}
-.messages{flex:1;min-height:220px;max-height:425px;overflow:auto;padding:20px;background:#fff}
+.messages{flex:1;min-height:220px;max-height:425px;overflow:auto;overflow-anchor:none;padding:20px;background:#fff}
 .inbound,.outbound{padding:12px 14px;border-radius:11px;background:#f2f4ef;max-width:93%;margin:0 0 12px;white-space:pre-wrap}
 .outbound{margin-left:auto;background:#e4ede3}
 .inbound span,.outbound span{color:#718076;font-size:10px}
@@ -65,3 +69,6 @@
 .footer{display:flex;gap:7px;align-items:center;color:#8c9589;font-size:11px;margin-top:17px}
 @media(max-width:1150px){.workspace{grid-template-columns:minmax(190px,230px) minmax(280px,1fr)}.memory{grid-column:1/-1;border-left:0;border-top:1px solid #ddd;}.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-height:none}}
 @media(max-width:650px){.main{padding:14px 10px 35px}.header{align-items:flex-start;gap:9px}.header h1{font-size:27px}.header>button{font-size:11px;padding:10px}.kpis{gap:5px}.kpis>div{padding:9px 7px;gap:5px;flex-wrap:wrap}.kpis strong{font-size:20px}.kpis span{font-size:9px}.workspace{display:block}.sidebar{border-right:0;border-bottom:1px solid #ddd}.threadList{display:flex;overflow:auto;max-height:145px}.thread,.activeThread{min-width:180px;max-width:210px;border-right:1px solid #eee}.conversation{min-height:500px}.messages{max-height:320px}.memory{border-top:1px solid #ddd}.formRow{grid-template-columns:1fr}.replyActions{gap:5px}.replyActions button{font-size:11px}.facts{display:block}}
+
+.historySummary{cursor:pointer;color:#284735;font-weight:700}
+.historySummary svg{vertical-align:middle;margin-right:5px}

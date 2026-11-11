@@ -14,10 +14,16 @@ export async function GET(request) {
   const staff=await auth(request);
   if(!staff) return fail("not_authenticated",401);
   try{
-    const threadId=new URL(request.url).searchParams.get("thread") || "";
-    const data=await readCustomerMemory(staff.admin,threadId);
-    return Response.json(data,{headers:{"Cache-Control":"no-store"}});
-  } catch(e) {return fail(e.message==="thread_not_found"?"thread_not_found":"memory_unavailable",503);}
+    const params=new URL(request.url).searchParams;
+    const data=await readCustomerMemory(staff.admin,params.get("thread") || "",{
+      threadBefore:params.get("threadBefore"),messageBefore:params.get("messageBefore"),
+    });
+    return Response.json({...data,canImportHistory:staff.role==="admin"},{headers:{"Cache-Control":"no-store"}});
+  } catch(e) {
+    if(e.message==="invalid_input") return fail("invalid_input",400);
+    if(e.message==="thread_not_found") return fail("thread_not_found",404);
+    return fail("memory_unavailable",503);
+  }
 }
 
 export async function POST(request) {
@@ -67,7 +73,7 @@ export async function DELETE(request) {
   let payload;
   try { payload=await request.json(); } catch { return fail("invalid_input"); }
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload?.threadId || "") || payload?.confirmation!=="delete") return fail("invalid_input");
-  const {data,error}=await staff.admin.from("customer_memory_threads").delete().eq("id",payload.threadId).select("id").maybeSingle();
+  const {data,error}=await staff.admin.rpc("delete_customer_memory_zalo_history_thread",{p_thread_id:payload.threadId});
   if(error) return fail("memory_unavailable",503);
   if(!data) return fail("thread_not_found",404);
   return Response.json({ok:true},{headers:{"Cache-Control":"no-store"}});

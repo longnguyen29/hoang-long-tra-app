@@ -4,3 +4,4 @@ session.json
 *.session
 node_modules/
 .DS_Store
+/qr.png

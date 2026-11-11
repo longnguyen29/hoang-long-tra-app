@@ -42,8 +42,19 @@ If you already use the main TELEGRAM_BOT_TOKEN, a minimal notification without c
 5. This pilot stores every verified event up to the bounded webhook batch limit and creates AI drafts for the first three immediately; further messages are queued for manual regeneration in the staff UI. High-traffic asynchronous processing requires a durable queue before scaling.
 6. Existing Page access controls and Meta platform messaging policy still apply. The pilot does not send messages outward via Meta APIs.
 
+## Import personal Zalo text history
+
+1. Apply `0105_customer_memory_zalo_history.sql` before deploying the application revision that uses it. Existing threads and messages remain readable.
+2. Open **Trí nhớ khách hàng → Nhập lịch sử Zalo cá nhân** as an administrator. Download the sample, prepare a UTF-8 CSV locally, and remove the fictional sample row. Use one row per text message.
+3. Keep `conversation_id` stable across all rows and reimports of the same conversation. Use a local identifier such as `local:nhom-mau` if you do not have a native thread ID. Use the exact direct thread ID to link to an existing bridge conversation, and prefix native group IDs with `group:`. `conversation_name` is the label shown for a new conversation.
+4. Use an ISO timestamp with timezone for `sent_at` (for example, `2026-11-01T19:30:00+07:00`) and either `inbound` or `outbound` for `direction`. `sender_name` is optional and identifies the sender of an inbound group message. Supply the stable source `message_id` if available. Without it, identical text, sender, direction and timestamp are treated as one message within a conversation. Use the same identifiers and message metadata when retrying.
+5. Select the CSV, review the count and click **Nhập vào CRM**. Each file can be up to 16 MB. The server accepts the last three calendar months in Vietnam time and skips future timestamps. Historical text is visible to CRM admins and managers. Importing it does not generate drafts, send Telegram alerts, trigger reminders or send Zalo messages. Historical message text is excluded from automatic AI draft prompts.
+6. Review the saved, duplicate and excluded counts, then use **Tải hồ sơ cũ hơn** and **Tải tin nhắn cũ hơn** to inspect the full list. **Xóa hội thoại** deletes its CRM contents. Later imports for the same ID skip history dated on or before deletion. A new live message from an allowed contact can still open a new conversation.
+
+Zalo's desktop backup and zCloud are documented for restoration in Zalo. A text export that can be converted to this CSV across all personal conversations has not been verified. The import accepts structured text and does not read Zalo's backup ZIP or internal database. Keep real CSV and backup files outside the public repository and avoid uploading them to chat or third-party converters.
+
 ## Limitations and guardrails
-- **No personal Zalo automatic ingestion.** Paste/forward conversations manually for now. Do not scrape personal Zalo or share login credentials.
+- The optional personal Zalo bridge listens for new inbound text from explicitly allowed direct contacts. It does not supply a complete history. Do not share login credentials.
 - **No automatic customer send.** Internal approval is not proof that the customer has received a message.
 - Historical prices are evidence only; do not assume they apply to new quantities. Human approval of offers is required.
 - Webhook and API errors are designed to avoid secrets in error payloads and logs.

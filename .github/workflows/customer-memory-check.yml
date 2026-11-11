@@ -26,12 +26,14 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci --ignore-scripts
-      - run: node --test lib/customer-memory-core.test.mjs lib/customer-memory-personal-bridge.test.mjs lib/customer-memory-zalo-oa.test.mjs
+      - run: node --test lib/customer-memory-core.test.mjs lib/customer-memory-personal-bridge.test.mjs lib/customer-memory-zalo-oa.test.mjs lib/customer-memory-zalo-history.test.mjs
       - run: |
           node --check lib/customer-memory-core.js
           node --check lib/customer-memory-server.js
           node --check lib/customer-memory-personal-bridge.js
           node --check lib/customer-memory-zalo-oa.js
+          node --check lib/customer-memory-zalo-history.js
+          node --check app/api/staff/customer-memory/zalo-history/route.js
           node --check tools/zalo-personal-bridge/index.mjs
           node --check app/api/staff/customer-memory/bridge/route.js
           node --check app/api/webhooks/customer-memory/personal-zalo/route.js

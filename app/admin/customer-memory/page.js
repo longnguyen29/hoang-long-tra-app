@@ -1,24 +1,40 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Bell, BookOpen, Check, ClipboardCopy, Clock3, MessageSquareText, Plus, RefreshCw, Send, Sparkles, KeyRound, ShieldAlert } from "lucide-react";
+import ZaloHistoryImport from "./ZaloHistoryImport";
 import styles from "./page.module.css";
 
 const CHANNEL={manual:"Ghi chú",zalo_personal:"Zalo cá nhân",zalo_oa:"Zalo OA",facebook:"Messenger"};
 const FACT={preference:"Khẩu vị",quoted_price:"Giá đã báo",feedback:"Phản hồi",quantity:"Sản lượng",promise:"Cam kết",relationship:"Quan hệ"};
 const STATUS={open:"Đang theo dõi",waiting_us:"Cần mình trả lời",waiting_customer:"Chờ khách",done:"Đã xong"};
 const displayDate=value=>value?new Intl.DateTimeFormat("vi-VN",{timeZone:"Asia/Ho_Chi_Minh",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}).format(new Date(value)):"";
-const errLabel={not_authenticated:"Bạn cần đăng nhập quyền quản lý.",memory_unavailable:"Chưa truy cập được kho dữ liệu. Có thể migration chưa được áp dụng.",openai_not_configured:"Chưa đặt OPENAI_API_KEY trên máy chủ.",ai_unavailable:"AI chưa tạo được bản nháp. Hội thoại đã lưu an toàn.",stale_draft:"Bản nháp đã thay đổi, tải lại để tiếp tục.",invalid_input:"Nội dung chưa hợp lệ.",action_not_allowed:"Không thể thực hiện với trạng thái hiện tại."};
+const errLabel={not_authenticated:"Bạn cần đăng nhập quyền quản lý.",memory_unavailable:"Chưa truy cập được kho dữ liệu. Có thể migration chưa được áp dụng.",thread_not_found:"Không tìm thấy hội thoại này.",openai_not_configured:"Chưa đặt OPENAI_API_KEY trên máy chủ.",ai_unavailable:"AI chưa tạo được bản nháp. Hội thoại đã lưu an toàn.",stale_draft:"Bản nháp đã thay đổi, tải lại để tiếp tục.",invalid_input:"Nội dung chưa hợp lệ.",action_not_allowed:"Không thể thực hiện với trạng thái hiện tại."};
+
+function appendUniqueRows(rows, additionalRows) {
+  const ids = new Set(rows.map(row => row.id));
+  return [...rows, ...additionalRows.filter(row => !ids.has(row.id))];
+}
 
 export default function CustomerMemoryPage() {
   const router=useRouter();
   const supabase=useMemo(()=>createClient(),[]);
   const [threads,setThreads]=useState([]);
   const [selected,setSelected]=useState("");
+  const [thread,setThread]=useState(null);
   const [messages,setMessages]=useState([]);
   const [drafts,setDrafts]=useState([]);
+  const [canImportHistory,setCanImportHistory]=useState(false);
+  const [nextThreadCursor,setNextThreadCursor]=useState(null);
+  const [nextMessageCursor,setNextMessageCursor]=useState(null);
+  const [loadingThreads,setLoadingThreads]=useState(false);
+  const [loadingMessages,setLoadingMessages]=useState(false);
+  const requestVersion=useRef(0);
+  const selectedId=useRef("");
+  const messageList=useRef(null);
+  const messageScrollAnchor=useRef(null);
   const [query,setQuery]=useState("");
   const [intake,setIntake]=useState({channel:"zalo_personal",name:"",text:""});
   const [attach,setAttach]=useState(false);
@@ -35,10 +51,11 @@ export default function CustomerMemoryPage() {
   const [pairError,setPairError]=useState("");
   const [error,setError]=useState("");
 
-  const api=useCallback(async (method,payload,threadId="")=>{
+  const api=useCallback(async (method,payload,params={})=>{
     const {data:{session}}=await supabase.auth.getSession();
     if(!session?.access_token) throw new Error("not_authenticated");
-    const res=await fetch("/api/staff/customer-memory"+(threadId?"?thread="+encodeURIComponent(threadId):""),{
+    const search=new URLSearchParams(params).toString();
+    const res=await fetch("/api/staff/customer-memory"+(search?"?"+search:""),{
       method,headers:{"Authorization":"Bearer "+session.access_token,...(method!=="GET"?{"Content-Type":"application/json"}:{})},
       ...(payload?{body:JSON.stringify(payload)}:{}),cache:"no-store"
     });
@@ -47,25 +64,93 @@ export default function CustomerMemoryPage() {
     return data;
   },[supabase]);
 
-  const load=useCallback(async (id)=>{
-    setLoading(true);setError("");
+  const showLoadError=useCallback(e=>{
+    setError(errLabel[e.message] || errLabel.memory_unavailable);
+    if(e.message==="not_authenticated") router.replace("/admin/login");
+  },[router]);
+
+  const load=useCallback(async (id,refreshThreads=true)=>{
+    const version=++requestVersion.current;
+    if(id!==selectedId.current){
+      setThread(null);setMessages([]);setDrafts([]);setNextMessageCursor(null);
+    }
+    selectedId.current=id;
+    setSelected(id);setLoading(true);setError("");
+    setLoadingThreads(false);setLoadingMessages(false);
+    messageScrollAnchor.current=null;
     try{
-      const data=await api("GET",null,id);
-      setThreads(data.threads||[]);setMessages(data.messages||[]);setDrafts(data.drafts||[]);
-      if(id) setSelected(id);
+      let data=await api("GET",null,id?{thread:id}:{});
+      if(version!==requestVersion.current) return;
+      setCanImportHistory(data.canImportHistory===true);
+      if(refreshThreads){
+        setThreads(data.threads||[]);
+        setNextThreadCursor(data.nextThreadCursor||null);
+      }
+      if(!id && data.threads?.length){
+        id=data.threads[0].id;
+        selectedId.current=id;
+        setSelected(id);
+        data=await api("GET",null,{thread:id});
+        if(version!==requestVersion.current) return;
+      }
+      if(id && !data.thread) setError(errLabel.thread_not_found);
+      setThread(data.thread||null);
+      setMessages(data.messages||[]);
+      setDrafts(data.drafts||[]);
+      setNextMessageCursor(data.nextMessageCursor||null);
     }catch(e){
-      setError(errLabel[e.message] || e.message);
-      if(e.message==="not_authenticated") router.replace("/admin/login");
-    }finally{setLoading(false);}
-  },[api,router]);
+      if(version===requestVersion.current) showLoadError(e);
+    }finally{
+      if(version===requestVersion.current) setLoading(false);
+    }
+  },[api,showLoadError]);
 
   useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
     load(params.get("thread")||"");
+    return ()=>{requestVersion.current++;};
   },[load]);
-  useEffect(()=>{
-    if(!selected && threads.length && !loading) load(threads[0].id);
-  },[selected,threads,loading,load]);
+
+  async function loadMoreThreads(){
+    if(loading || loadingThreads || !nextThreadCursor) return;
+    const version=requestVersion.current;
+    setLoadingThreads(true);setError("");
+    try{
+      const data=await api("GET",null,{threadBefore:nextThreadCursor});
+      if(version!==requestVersion.current) return;
+      setThreads(rows=>appendUniqueRows(rows,data.threads||[]));
+      setNextThreadCursor(data.nextThreadCursor||null);
+    }catch(e){
+      if(version===requestVersion.current) showLoadError(e);
+    }finally{
+      if(version===requestVersion.current) setLoadingThreads(false);
+    }
+  }
+
+  async function loadMoreMessages(){
+    if(loading || loadingMessages || !thread || !nextMessageCursor) return;
+    const version=requestVersion.current;
+    setLoadingMessages(true);setError("");
+    try{
+      const data=await api("GET",null,{thread:thread.id,messageBefore:nextMessageCursor});
+      if(version!==requestVersion.current) return;
+      const list=messageList.current;
+      if(list) messageScrollAnchor.current={height:list.scrollHeight,top:list.scrollTop};
+      setMessages(rows=>appendUniqueRows(data.messages||[],rows));
+      setNextMessageCursor(data.nextMessageCursor||null);
+    }catch(e){
+      if(version===requestVersion.current) showLoadError(e);
+    }finally{
+      if(version===requestVersion.current) setLoadingMessages(false);
+    }
+  }
+
+  useLayoutEffect(()=>{
+    const anchor=messageScrollAnchor.current;
+    const list=messageList.current;
+    if(anchor && list) list.scrollTop=anchor.top+list.scrollHeight-anchor.height;
+    messageScrollAnchor.current=null;
+  },[messages]);
 
 
   const bridgeApi=useCallback(async (method,payload)=>{
@@ -105,8 +190,8 @@ export default function CustomerMemoryPage() {
     finally{setPairBusy(false);}
   }
 
-  const thread=threads.find(t=>t.id===selected);
   const latest=drafts[0];
+  const hasImportedHistory=messages.some(message=>message.historical);
   const pending=threads.filter(t=>t.status==="waiting_us").length;
   const due=threads.filter(t=>t.next_action_at && new Date(t.next_action_at)<=new Date() && t.status!=="done").length;
   const filtered=threads.filter(t=>[t.display_name,t.channel,t.summary,(t.facts||[]).map(f=>f.detail).join(" ")].join(" ").toLowerCase().includes(query.toLowerCase()));
@@ -131,9 +216,9 @@ export default function CustomerMemoryPage() {
     setBusy("delete");setError("");setNotice("");
     try {
       await api("DELETE",{threadId:thread.id,confirmation:"delete"});
-      setSelected("");setMessages([]);setDrafts([]);
-      history.replaceState(null,"",window.location.pathname);
-      await load("");
+      const deletingSelected=selectedId.current===thread.id;
+      if(deletingSelected) history.replaceState(null,"",window.location.pathname);
+      await load(deletingSelected?"":selectedId.current);
       setNotice("Đã xóa hội thoại và dữ liệu liên quan khỏi Trí nhớ khách hàng.");
     }catch(e){setError(errLabel[e.message] || "Chưa xóa được hội thoại. Hãy tải lại và thử lại.");}
     finally{setBusy("");}
@@ -148,7 +233,7 @@ export default function CustomerMemoryPage() {
         action==="snooze"?"Đã hẹn nhắc lại sau 24 giờ.":
         action==="regenerate"?"Đã yêu cầu tạo lại bản nháp.":"Đã lưu bản sửa.");
       if(result.error) setNotice(errLabel[result.error]||result.error);
-      await load(selected);
+      await load(selectedId.current);
     }catch(e){setError(errLabel[e.message] || e.message);}
     finally{setBusy("");}
   }
@@ -197,10 +282,11 @@ export default function CustomerMemoryPage() {
          target="_blank" rel="noopener noreferrer">Local Zalo Bridge</a>. Cần cài, quét QR và chọn ID khách trước khi có tin nhắn.</p>
       </>}
     </section>
+    {canImportHistory && <ZaloHistoryImport supabase={supabase} onImported={()=>load(selectedId.current)}/>}
     {error && <div className={styles.error} role="alert">{error}</div>}
     {notice && <div className={styles.notice} role="status">{notice}</div>}
-    <section className={styles.kpis} aria-label="Tổng quan">
-      <div><MessageSquareText size={18}/><strong>{threads.length}</strong><span>Hồ sơ đang lưu</span></div>
+    <section className={styles.kpis} aria-label="Tổng quan các hồ sơ đã tải">
+      <div><MessageSquareText size={18}/><strong>{threads.length}</strong><span>Hồ sơ đã tải</span></div>
       <div><Bell size={18}/><strong>{pending}</strong><span>Cần phản hồi</span></div>
       <div><Clock3 size={18}/><strong>{due}</strong><span>Đến hạn nhắc</span></div>
     </section>
@@ -224,25 +310,35 @@ export default function CustomerMemoryPage() {
     <div className={styles.workspace}>
       <aside className={styles.sidebar}>
         <div className={styles.sideTitle}><strong>Hộp thư khách</strong><button aria-label="Tải lại" onClick={()=>load(selected)}><RefreshCw size={15}/></button></div>
-        <input className={styles.search} value={query} placeholder="Tìm khách, khẩu vị, giá..." onChange={e=>setQuery(e.target.value)}/>
+        <input className={styles.search} value={query} aria-label="Tìm trong các hồ sơ đã tải" placeholder="Tìm trong hồ sơ đã tải…" onChange={e=>setQuery(e.target.value)}/>
         <div className={styles.threadList}>
-          {filtered.length===0 && <p className={styles.muted}>Chưa có hồ sơ. Nhấn “Ghi hội thoại” để bắt đầu bằng Zalo cá nhân.</p>}
+          {filtered.length===0 && <p className={styles.muted}>{loading?"Đang tải hồ sơ…":query?"Chưa thấy kết quả trong các hồ sơ đã tải.":"Chưa có hồ sơ. Nhấn “Ghi hội thoại” để bắt đầu bằng Zalo cá nhân."}</p>}
           {filtered.map(t=><button type="button" className={selected===t.id?styles.activeThread:styles.thread}
-            key={t.id} onClick={()=>{setSelected(t.id);load(t.id);history.replaceState(null,"","?thread="+t.id);}}>
+            key={t.id} onClick={()=>{load(t.id,false);history.replaceState(null,"","?thread="+t.id);}}>
             <div><strong>{t.display_name||"Chưa có tên"}</strong><small>{displayDate(t.last_message_at)}</small></div>
             <span>{CHANNEL[t.channel]} · {STATUS[t.status]||t.status}</span>
             <p>{t.summary||t.next_action||"Chưa có tóm tắt"}</p>
           </button>)}
         </div>
+        {nextThreadCursor && <div className={styles.pageThreads}>
+          <button className={styles.pageButton} type="button" onClick={loadMoreThreads} disabled={loading||loadingThreads}>
+            {loadingThreads?"Đang tải…":"Tải hồ sơ cũ hơn"}
+          </button>
+        </div>}
       </aside>
       <section className={styles.conversation}>
-        {!thread ? <div className={styles.empty}><BookOpen size={30}/><h2>Trí nhớ bắt đầu từ một hội thoại</h2>
+        {!thread ? loading ? <div className={styles.empty} role="status">Đang tải hội thoại…</div> : <div className={styles.empty}><BookOpen size={30}/><h2>Trí nhớ bắt đầu từ một hội thoại</h2>
           <p>Chọn một khách hoặc thêm tin nhắn mới để AI lưu lại thông tin quan trọng.</p></div> : <>
           <div className={styles.convoHeader}><div><strong>{thread.display_name}</strong><span>{CHANNEL[thread.channel]} · {STATUS[thread.status]}</span></div>
             <div><button type="button" onClick={()=>{setAttach(true);setOpenCapture(true);window.scrollTo({top:0,behavior:"smooth"});}}><Plus size={15}/> Thêm tin</button> <button type="button" disabled={!!busy} onClick={deleteThread}>Xóa hội thoại</button></div></div>
-          <div className={styles.messages}>
+          {nextMessageCursor && <div className={styles.pageMessages}>
+            <button className={styles.pageButton} type="button" onClick={loadMoreMessages} disabled={loading||loadingMessages}>
+              {loadingMessages?"Đang tải…":"Tải tin nhắn cũ hơn"}
+            </button>
+          </div>}
+          <div className={styles.messages} ref={messageList}>
             {messages.map(m=><article className={m.direction==="inbound"?styles.inbound:styles.outbound} key={m.id}>
-              <span>{m.direction==="inbound"?"Khách / Hội thoại":"Mình"} · {displayDate(m.occurred_at)}</span>
+              <span>{m.direction==="inbound"?(m.sender_name||"Khách / Hội thoại"):"Mình"} · {displayDate(m.occurred_at)}</span>
               <p>{m.body}</p>
             </article>)}
           </div>
@@ -262,7 +358,7 @@ export default function CustomerMemoryPage() {
                 <button disabled={!!busy} onClick={()=>act("snooze")}><Clock3 size={15}/> Nhắc mai</button>
               </div>
               <p className={styles.warning}>Không tự gửi Zalo hay Facebook. Duyệt chỉ là xác nhận nội bộ; cần gửi qua kênh gốc.</p>
-            </>:<p className={styles.muted}>Chưa có đề xuất. AI sẽ dùng lịch sử khách và dữ kiện có chứng cứ để soạn.</p>}
+            </>:<p className={styles.muted}>{!latest && hasImportedHistory?"Lịch sử Zalo đã lưu. Bạn có thể dùng “Thêm tin” để ghi nội dung mới và tạo bản nháp.":"Chưa có đề xuất. AI sẽ dùng lịch sử khách và dữ kiện có chứng cứ để soạn."}</p>}
           </section>
         </>}
       </section>
