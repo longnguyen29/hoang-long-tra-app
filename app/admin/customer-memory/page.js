@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Bell, BookOpen, Check, ClipboardCopy, Clock3, MessageSquareText, Plus, RefreshCw, Send, Sparkles, KeyRound, ShieldAlert } from "lucide-react";
 import ZaloHistoryImport from "./ZaloHistoryImport";
+import { deleteSelectedConversations } from "@/lib/customer-memory-bulk-delete";
 import styles from "./page.module.css";
 
 const CHANNEL={manual:"Ghi chú",zalo_personal:"Zalo cá nhân",zalo_oa:"Zalo OA",facebook:"Messenger"};
@@ -22,6 +23,8 @@ export default function CustomerMemoryPage() {
   const router=useRouter();
   const supabase=useMemo(()=>createClient(),[]);
   const [threads,setThreads]=useState([]);
+  const [selectionMode,setSelectionMode]=useState(false);
+  const [selectedThreads,setSelectedThreads]=useState([]);
   const [selected,setSelected]=useState("");
   const [thread,setThread]=useState(null);
   const [messages,setMessages]=useState([]);
@@ -245,12 +248,41 @@ export default function CustomerMemoryPage() {
     finally{setBusy("");}
   }
 
+  function toggleThreadSelection(id){
+    setSelectedThreads(ids=>ids.includes(id)?ids.filter(item=>item!==id):[...ids,id]);
+  }
+
+  function toggleVisibleSelection(){
+    const visibleIds=filtered.map(item=>item.id);
+    const allSelected=visibleIds.every(id=>selectedThreads.includes(id));
+    setSelectedThreads(ids=>allSelected
+      ?ids.filter(id=>!visibleIds.includes(id))
+      :[...new Set([...ids,...visibleIds])]);
+  }
+
+  async function deleteSelectedThreads(){
+    if(!selectedThreads.length || busy) return;
+    const ids=[...selectedThreads];
+    if(!window.confirm(`Xóa vĩnh viễn ${ids.length} hội thoại đã chọn cùng tin nhắn, bản nháp và dữ kiện trong Customer Memory? Hội thoại gốc trên Zalo và các kênh khác vẫn giữ nguyên.`)) return;
+    setBusy("bulkDelete");setError("");setNotice("");
+    const {removed,failed}=await deleteSelectedConversations(ids,
+      id=>api("DELETE",{threadId:id,confirmation:"delete"}));
+    setSelectedThreads(failed);
+    if(!failed.length) setSelectionMode(false);
+    const currentDeleted=removed.includes(selectedId.current);
+    if(currentDeleted) history.replaceState(null,"",window.location.pathname);
+    await load(currentDeleted?"":selectedId.current);
+    setNotice(`Đã xóa ${removed.length} hội thoại.`+(failed.length?` Chưa xóa được ${failed.length} hội thoại, vẫn đang được chọn để thử lại.`:""));
+    setBusy("");
+  }
+
   async function deleteThread(){
     if(!thread || busy) return;
     if(!window.confirm(`Xóa vĩnh viễn hội thoại “${thread.display_name}” cùng tin nhắn, bản nháp và dữ kiện đã lưu? Tin nhắn mới từ cùng người có thể tạo lại hội thoại.`)) return;
     setBusy("delete");setError("");setNotice("");
     try {
       await api("DELETE",{threadId:thread.id,confirmation:"delete"});
+      setSelectedThreads(ids=>ids.filter(id=>id!==thread.id));
       const deletingSelected=selectedId.current===thread.id;
       if(deletingSelected) history.replaceState(null,"",window.location.pathname);
       await load(deletingSelected?"":selectedId.current);
@@ -348,17 +380,34 @@ export default function CustomerMemoryPage() {
       <aside className={styles.sidebar}>
         <div className={styles.sideTitle}><strong>Hộp thư khách</strong><button aria-label="Tải lại" onClick={()=>load(selected)}><RefreshCw size={15}/></button></div>
         <input className={styles.search} value={query} aria-label="Tìm trong các hồ sơ đã tải" placeholder="Tìm trong hồ sơ đã tải…" onChange={e=>setQuery(e.target.value)}/>
+        <div className={styles.bulkActions}>
+          {!selectionMode ? <button type="button" disabled={!!busy||!threads.length} onClick={()=>setSelectionMode(true)}>Chọn nhiều</button> : <>
+            <button type="button" disabled={!!busy||!filtered.length} onClick={toggleVisibleSelection}>
+              {filtered.length>0 && filtered.every(t=>selectedThreads.includes(t.id))?"Bỏ chọn hồ sơ hiển thị":"Chọn hồ sơ hiển thị"}
+            </button>
+            <button type="button" disabled={!!busy||!selectedThreads.length} onClick={deleteSelectedThreads}>
+              {busy==="bulkDelete"?"Đang xóa…":`Xóa đã chọn (${selectedThreads.length})`}
+            </button>
+            <button type="button" disabled={!!busy} onClick={()=>{setSelectionMode(false);setSelectedThreads([]);}}>Hủy</button>
+          </>}
+        </div>
         <div className={styles.threadList}>
           {filtered.length===0 && <p className={styles.muted}>{loading?"Đang tải hồ sơ…":query?"Chưa thấy kết quả trong các hồ sơ đã tải.":"Chưa có hồ sơ. Nhấn “Ghi hội thoại” để bắt đầu bằng Zalo cá nhân."}</p>}
-          {filtered.map(t=><button type="button" className={selected===t.id?styles.activeThread:styles.thread}
-            key={t.id} onClick={()=>{load(t.id,false);history.replaceState(null,"","?thread="+t.id);}}>
-            <div><strong>{t.display_name||"Chưa có tên"}</strong><small>{displayDate(t.last_message_at)}</small></div>
-            <span>{CHANNEL[t.channel]} · {STATUS[t.status]||t.status}</span>
-            <p>{t.summary||t.next_action||"Chưa có tóm tắt"}</p>
-          </button>)}
+          {filtered.map(t=><div className={styles.threadEntry} key={t.id}>
+            {selectionMode && <label className={styles.threadSelect}>
+              <input type="checkbox" checked={selectedThreads.includes(t.id)} disabled={!!busy}
+                onChange={()=>toggleThreadSelection(t.id)} aria-label={`Chọn ${t.display_name||"hội thoại"}`}/>
+            </label>}
+            <button type="button" className={selected===t.id?styles.activeThread:styles.thread} disabled={busy==="bulkDelete"}
+              onClick={()=>{load(t.id,false);history.replaceState(null,"","?thread="+t.id);}}>
+              <div><strong>{t.display_name||"Chưa có tên"}</strong><small>{displayDate(t.last_message_at)}</small></div>
+              <span>{CHANNEL[t.channel]} · {STATUS[t.status]||t.status}</span>
+              <p>{t.summary||t.next_action||"Chưa có tóm tắt"}</p>
+            </button>
+          </div>)}
         </div>
         {nextThreadCursor && <div className={styles.pageThreads}>
-          <button className={styles.pageButton} type="button" onClick={loadMoreThreads} disabled={loading||loadingThreads}>
+          <button className={styles.pageButton} type="button" onClick={loadMoreThreads} disabled={loading||loadingThreads||busy==="bulkDelete"}>
             {loadingThreads?"Đang tải…":"Tải hồ sơ cũ hơn"}
           </button>
         </div>}

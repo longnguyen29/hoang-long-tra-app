@@ -72,3 +72,10 @@
 
 .historySummary{cursor:pointer;color:#284735;font-weight:700}
 .historySummary svg{vertical-align:middle;margin-right:5px}
+
+.bulkActions{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 10px}
+.bulkActions button{border:1px solid #d8dfd7;border-radius:8px;background:#fff;color:#46604f;padding:7px 9px;font-size:12px}
+.threadEntry{display:flex;align-items:stretch}
+.threadEntry>button{flex:1;min-width:0}
+.threadSelect{display:flex;align-items:center;padding:0 10px;border-bottom:1px solid #ecece7;cursor:pointer}
+.threadSelect input{width:17px;height:17px;accent-color:#527862}
