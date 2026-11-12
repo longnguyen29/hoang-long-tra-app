@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Bell, BookOpen, Check, ClipboardCopy, Clock3, MessageSquareText, Plus, RefreshCw, Send, Sparkles, KeyRound, ShieldAlert } from "lucide-react";
 import ZaloHistoryImport from "./ZaloHistoryImport";
+import LocalFactsImport from "./LocalFactsImport";
 import { deleteSelectedConversations } from "@/lib/customer-memory-bulk-delete";
 import styles from "./page.module.css";
 
@@ -350,6 +351,7 @@ export default function CustomerMemoryPage() {
       </>}
     </section>
     {canImportHistory && <ZaloHistoryImport supabase={supabase} onImported={()=>load(selectedId.current)}/>}
+    {canImportHistory && <LocalFactsImport supabase={supabase} onImported={()=>load(selectedId.current)}/>}
     <button type="button" onClick={checkAi}>Kiểm tra AI</button>
     {aiCheck && <p role="status">{aiCheck}</p>}
     {error && <div className={styles.error} role="alert">{error}</div>}
