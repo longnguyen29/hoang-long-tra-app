@@ -176,7 +176,10 @@ export default function CustomerMemoryPage() {
       const result=await response.json();
       if(!response.ok) throw new Error(result.error);
       setAiCheck(result.status==="ok"?"AI đã trả lời dữ liệu thử nghiệm.":
-        result.status==="provider_error"?`Dịch vụ AI trả mã ${result.http_status}.`:
+        result.status==="provider_error"?(
+          result.code==="insufficient_quota"?"Tài khoản API đã hết hạn mức hoặc chưa có thanh toán.":
+          result.code==="rate_limit_exceeded"?"Dịch vụ AI đang giới hạn số yêu cầu, hãy thử lại sau.":
+          `Dịch vụ AI trả mã ${result.http_status}.`):
         result.status==="invalid_response"?`AI chưa trả lời đầy đủ (${result.incomplete_reason || result.response_status}).`:
         result.status==="not_configured"?"Chưa cấu hình kết nối AI.":"Chưa kết nối hoặc nhận được câu trả lời AI.");
     }catch{setAiCheck("Chưa kiểm tra được AI. Cần đăng nhập bằng tài khoản admin.");}
