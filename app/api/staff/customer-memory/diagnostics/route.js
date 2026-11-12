@@ -21,7 +21,8 @@ export async function POST(request) {
     });
     if(!response.ok) {
       const failure=await response.json().catch(()=>({}));
-      const code=["insufficient_quota","rate_limit_exceeded"].includes(failure?.error?.code) ? failure.error.code : "other";
+      const known=["insufficient_quota","rate_limit_exceeded","requests","tokens"];
+      const code=known.find(value=>value===failure?.error?.code || value===failure?.error?.type) || "other";
       return reply({status:"provider_error",http_status:response.status,code});
     }
     const data=await response.json();
