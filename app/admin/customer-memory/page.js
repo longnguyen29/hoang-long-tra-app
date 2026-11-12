@@ -43,6 +43,7 @@ export default function CustomerMemoryPage() {
   const [busy,setBusy]=useState("");
   const [loading,setLoading]=useState(true);
   const [notice,setNotice]=useState("");
+  const [aiCheck,setAiCheck]=useState("");
   const [pairOpen,setPairOpen]=useState(false);
   const [bridges,setBridges]=useState([]);
   const [pairLabel,setPairLabel]=useState("Mac mini — Zalo cá nhân");
@@ -164,6 +165,23 @@ export default function CustomerMemoryPage() {
     if(!response.ok) throw new Error(result.error || "bridge_unavailable");
     return result;
   },[supabase]);
+  async function checkAi(){
+    setAiCheck("Đang kiểm tra…");
+    try {
+      const {data:{session}}=await supabase.auth.getSession();
+      if(!session?.access_token) throw new Error("not_authenticated");
+      const response=await fetch("/api/staff/customer-memory/diagnostics",{
+        method:"POST",headers:{Authorization:"Bearer "+session.access_token},cache:"no-store"
+      });
+      const result=await response.json();
+      if(!response.ok) throw new Error(result.error);
+      setAiCheck(result.status==="ok"?"AI đã trả lời dữ liệu thử nghiệm.":
+        result.status==="provider_error"?`Dịch vụ AI trả mã ${result.http_status}.`:
+        result.status==="invalid_response"?`AI chưa trả lời đầy đủ (${result.incomplete_reason || result.response_status}).`:
+        result.status==="not_configured"?"Chưa cấu hình kết nối AI.":"Chưa kết nối hoặc nhận được câu trả lời AI.");
+    }catch{setAiCheck("Chưa kiểm tra được AI. Cần đăng nhập bằng tài khoản admin.");}
+  }
+
   async function openBridgePairing(){
     setPairOpen(v=>!v);setPairError("");setPairToken("");
     try {
@@ -207,6 +225,20 @@ export default function CustomerMemoryPage() {
       setIntake(v=>({...v,text:""}));setOpenCapture(false);
       await load(data.thread_id);
     }catch(e){setError(errLabel[e.message] || e.message);}
+    finally{setBusy("");}
+  }
+
+  async function renameThread(){
+    if(!thread || busy) return;
+    const name=window.prompt("Tên hiển thị của hội thoại",thread.display_name || "");
+    if(name===null) return;
+    if(!name.trim() || name.trim().length>160){setError(errLabel.invalid_input);return;}
+    setBusy("rename");setError("");setNotice("");
+    try {
+      await api("PATCH",{action:"rename_thread",threadId:thread.id,name:name.trim()});
+      await load(selectedId.current);
+      setNotice("Đã cập nhật tên hội thoại.");
+    }catch(e){setError(errLabel[e.message] || errLabel.memory_unavailable);}
     finally{setBusy("");}
   }
 
@@ -283,6 +315,8 @@ export default function CustomerMemoryPage() {
       </>}
     </section>
     {canImportHistory && <ZaloHistoryImport supabase={supabase} onImported={()=>load(selectedId.current)}/>}
+    <button type="button" onClick={checkAi}>Kiểm tra AI</button>
+    {aiCheck && <p role="status">{aiCheck}</p>}
     {error && <div className={styles.error} role="alert">{error}</div>}
     {notice && <div className={styles.notice} role="status">{notice}</div>}
     <section className={styles.kpis} aria-label="Tổng quan các hồ sơ đã tải">
@@ -330,7 +364,7 @@ export default function CustomerMemoryPage() {
         {!thread ? loading ? <div className={styles.empty} role="status">Đang tải hội thoại…</div> : <div className={styles.empty}><BookOpen size={30}/><h2>Trí nhớ bắt đầu từ một hội thoại</h2>
           <p>Chọn một khách hoặc thêm tin nhắn mới để AI lưu lại thông tin quan trọng.</p></div> : <>
           <div className={styles.convoHeader}><div><strong>{thread.display_name}</strong><span>{CHANNEL[thread.channel]} · {STATUS[thread.status]}</span></div>
-            <div><button type="button" onClick={()=>{setAttach(true);setOpenCapture(true);window.scrollTo({top:0,behavior:"smooth"});}}><Plus size={15}/> Thêm tin</button> <button type="button" disabled={!!busy} onClick={deleteThread}>Xóa hội thoại</button></div></div>
+            <div><button type="button" disabled={!!busy} onClick={renameThread}>Đổi tên</button> <button type="button" onClick={()=>{setAttach(true);setOpenCapture(true);window.scrollTo({top:0,behavior:"smooth"});}}><Plus size={15}/> Thêm tin</button> <button type="button" disabled={!!busy} onClick={deleteThread}>Xóa hội thoại</button></div></div>
           {nextMessageCursor && <div className={styles.pageMessages}>
             <button className={styles.pageButton} type="button" onClick={loadMoreMessages} disabled={loading||loadingMessages}>
               {loadingMessages?"Đang tải…":"Tải tin nhắn cũ hơn"}
