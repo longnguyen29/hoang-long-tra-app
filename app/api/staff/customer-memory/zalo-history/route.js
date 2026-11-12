@@ -57,7 +57,16 @@ export async function POST(request) {
     const {data,error} = await staff.admin.rpc("import_customer_memory_zalo_history",{
       p_external_id:batch.id, p_name:batch.name.trim(), p_messages:messages.map(message => messageForDatabase(message,batch.id)),
     });
-    if (!error && data) return reply(data);
+    if (!error && data) {
+      const defaultName = (batch.id.startsWith("group:") ? "Nhóm Zalo · " : "Zalo cá nhân · ") + batch.id.slice(-5);
+      const name = batch.name.trim();
+      if (name !== defaultName && data.inserted + data.duplicate > 0) {
+        const updated = await staff.admin.from("customer_memory_threads").update({display_name:name})
+          .eq("channel","zalo_personal").eq("external_id",batch.id).eq("display_name",defaultName);
+        if (updated.error) return reply({error:"memory_unavailable"},503);
+      }
+      return reply(data);
+    }
   } catch { /* Return a generic response without including conversation data. */ }
   return reply({error:"memory_unavailable"},503);
 }
