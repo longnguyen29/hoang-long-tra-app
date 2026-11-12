@@ -19,7 +19,11 @@ export async function POST(request) {
         facts:[],summary:"",messages:[{direction:"inbound",body:"Xin chào, tôi muốn hỏi về trà.",occurred_at:"2026-01-01T00:00:00Z"}]
       })),signal:AbortSignal.timeout(45000)
     });
-    if(!response.ok) return reply({status:"provider_error",http_status:response.status});
+    if(!response.ok) {
+      const failure=await response.json().catch(()=>({}));
+      const code=["insufficient_quota","rate_limit_exceeded"].includes(failure?.error?.code) ? failure.error.code : "other";
+      return reply({status:"provider_error",http_status:response.status,code});
+    }
     const data=await response.json();
     try {
       const result=parseAiJson(data);
