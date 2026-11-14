@@ -8,3 +8,19 @@
 .contact{padding:1rem 0;border-bottom:1px solid #d5d9d1;overflow-wrap:anywhere}.contact a{display:inline-block;margin:.5rem 1rem .25rem 0}.draft form{display:grid;gap:.75rem}.draft button{justify-self:start}.detail small{overflow-wrap:anywhere}
 .contactActions{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem}.contactActions a{min-height:44px;display:inline-flex;align-items:center}.contactActions button{border:1px solid #84968a;border-radius:5px;background:white;color:inherit;padding:.6rem .9rem}
 .accountFields{display:grid;gap:1rem;min-width:0;margin:0;padding:1rem;border:1px solid #84968a;border-radius:5px}.accountFields legend{font-weight:700;padding:0 .4rem}.accountFields summary{cursor:pointer;min-height:44px;display:flex;align-items:center}.tagOptions{display:grid;gap:.4rem}.tagOptions label{min-height:44px}.chips{display:flex;flex-wrap:wrap;gap:.35rem}.chips>span{padding:.2rem .45rem;border-radius:4px;background:#e6eee7}.row,.filters,.manual{min-width:0;overflow-wrap:anywhere}.page select{min-width:0;max-width:100%}.detail p{overflow-wrap:anywhere}.accountFields small{line-height:1.6}
+
+.loadingNote {
+  margin: 0;
+  padding: .5rem 1rem;
+  color: var(--color-muted);
+  font-size: .8rem;
+}
+
+.loadingRows .row > span {
+  height: 1.2rem;
+  border-radius: var(--radius-control);
+}
+
+.loadingRows .row > .loadingName { width: 65%; height: 1.5rem; }
+.loadingLine { width: 50%; }
+.loadingMeta { width: 38%; }
