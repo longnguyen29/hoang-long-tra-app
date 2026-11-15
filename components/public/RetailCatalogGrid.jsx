@@ -8,6 +8,7 @@ import { RETAIL_CART_MAX } from "@/lib/retail-cart";
 import { matchesRetailSearch, retailOptions, retailProductFacts, retailProductHref, retailStockBadge } from "@/lib/retail-catalog";
 import { retailTeaCharacteristics } from "@/lib/retail-tea-characteristics";
 import RetailTeaComparison from "./RetailTeaComparison";
+import Skeleton from "@/components/ui/Skeleton";
 import styles from "./RetailCatalogGrid.module.css";
 
 const money = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
@@ -76,6 +77,25 @@ function ProductCard({ product, locale, cart, quantity, vendors, isGoods, index 
       {totalQty > 0 && <small className={styles.cartNote} aria-live="polite">{t.added}: {totalQty}</small>}
     </div>
   </article>;
+}
+
+export function RetailCatalogSkeleton({ label }) {
+  return <section className={styles.catalog}>
+    <p role="status" className={styles.loadingStatus}>{label}</p>
+    <div className={styles.toolbar} aria-hidden="true">
+      <Skeleton className={styles.loadingSearch}/>
+    </div>
+    <div className={styles.grid} aria-hidden="true">
+      {[0, 1, 2].map(index => <div className={styles.card} key={index}>
+        <Skeleton className={styles.photo}/>
+        <div className={styles.copy}>
+          <Skeleton className={styles.loadingTitle}/>
+          <Skeleton className={styles.loadingLine}/>
+          <Skeleton className={styles.loadingLine}/>
+        </div>
+      </div>)}
+    </div>
+  </section>;
 }
 
 export default function RetailCatalogGrid({ products = [], locale = "vi", cart = {}, quantity, vendors = [], mode = "tea" }) {

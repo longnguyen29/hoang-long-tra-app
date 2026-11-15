@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { useRetailCart } from "./RetailCartProvider";
-import RetailCatalogGrid from "./RetailCatalogGrid";
+import RetailCatalogGrid, { RetailCatalogSkeleton } from "./RetailCatalogGrid";
 import RetailProductDetail from "./RetailProductDetail";
 import RetailVolumeOffer from "./RetailVolumeOffer";
 import RetailPartnerBanner from "./RetailPartnerBanner";
@@ -216,9 +216,12 @@ export default function TeaShop({ mode = "tea", product = null }) {
           {!isGoods && <RetailVolumeOffer locale={locale}/>}
         </section>
         {!isGoods && <nav className={styles.shopChoices} aria-label={locale === "vi" ? "Cách chọn trà" : "Ways to choose tea"}><a href="#tea-selection">{t.chooseSingle}</a><a href="#tea-bundles">{t.chooseBundle}<ArrowRight size={16} aria-hidden="true"/></a><a href="#partner-teas">{t.chooseCurated}</a></nav>}
-        {loading ? <section className={styles.loading} aria-label={locale === "vi" ? "Đang tải danh mục" : "Loading catalogue"} aria-live="polite"><i/><i/><i/></section>
-          : catalogStatus === "error" ? <div className={styles.loadError} role="alert"><p>{t.loadError}</p><button type="button" onClick={() => window.location.reload()}>{locale === "vi" ? "Tải lại danh mục" : "Reload catalogue"}</button></div>
-          : <><div id={isGoods ? undefined : "tea-selection"}><RetailCatalogGrid products={products} vendors={vendors} locale={locale} cart={cart} quantity={quantity} mode={mode}/></div>{!isGoods && <><CuratedTeaSelection products={products} state={curated} locale={locale}/><RetailTeaBundles locale={locale}/></>}</>}
+        <div id={isGoods ? undefined : "tea-selection"}>
+          {loading ? <RetailCatalogSkeleton label={locale === "vi" ? "Đang tải danh mục…" : "Loading catalogue…"}/>
+            : catalogStatus === "error" ? <div className={styles.loadError} role="alert"><p>{t.loadError}</p><button type="button" onClick={() => window.location.reload()}>{locale === "vi" ? "Tải lại danh mục" : "Reload catalogue"}</button></div>
+            : <RetailCatalogGrid products={products} vendors={vendors} locale={locale} cart={cart} quantity={quantity} mode={mode}/>}
+        </div>
+        {catalogStatus === "ready" && !isGoods && <><CuratedTeaSelection products={products} state={curated} locale={locale}/><RetailTeaBundles locale={locale}/></>}
       </>}
 
       {count > 0 && <button className={styles.cartRail} onClick={() => setCartOpen(true)}><span>{t.itemCount(count)}</span><b>{catalogStatus === "ready" ? money.format(total) : "…"}</b><span>{t.checkout} <ArrowRight size={16}/></span></button>}

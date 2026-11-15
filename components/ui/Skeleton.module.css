@@ -1,0 +1,13 @@
+.block {
+  display: block;
+  background: var(--color-paper-3, #ecebe5);
+  animation: pulse 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  to { opacity: .55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .block { animation: none; }
+}
