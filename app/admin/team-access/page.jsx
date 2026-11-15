@@ -133,7 +133,7 @@ export default function TeamAccessPage() {
             {selected.role === "admin" && <p>Quản trị viên có đầy đủ quyền quản lý khu vực admin.</p>}
           </div>
           {editable && <label className={styles.preset}>Vai trò
-            <select value={draftRole} disabled={saving} onChange={event => {
+            <select aria-describedby="role-description" value={draftRole} disabled={saving} onChange={event => {
               const role = event.target.value;
               setDraftRole(role);
               setDraft(role === selected.role ? selected.workspace_modules : role === "manager" ? ["work"] : null);
@@ -143,10 +143,10 @@ export default function TeamAccessPage() {
               <option value="employee">Nhân viên</option>
               <option value="manager">Quản lý</option>
             </select>
-            <small>{hasModules
-              ? "Quản lý có quyền xử lý dữ liệu và giao việc theo vai trò. Mẫu quyền giới hạn các mục và API trong admin."
-              : "Nhân viên mở Giao việc để xem các việc được giao."}</small>
           </label>}
+          {editable && <p id="role-description" className={styles.roleDescription}>{hasModules
+            ? "Quản lý có quyền xử lý dữ liệu và giao việc theo vai trò. Mẫu quyền giới hạn các mục và API trong admin."
+            : "Nhân viên mở Giao việc để xem các việc được giao."}</p>}
           {editable && hasModules && <>
             <label className={styles.preset}>Mẫu quyền
               <select value={preset?.id || "custom"} disabled={saving} onChange={event => {
