@@ -1,5 +1,6 @@
 "use client";
 
+import { useStaffFeatures } from "./StaffFeatures";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -45,6 +46,7 @@ const timeLabel = (value) => new Intl.DateTimeFormat("vi-VN", {
 const sameDay = (value, comparison = new Date()) => value && dateKey(new Date(value)) === dateKey(comparison);
 
 export default function WorkBoard({ supabase, userId, email, role, onLogout }) {
+  const { allowedModules } = useStaffFeatures();
   const canAssign = role === "admin" || role === "manager";
   const [tasks, setTasks] = useState([]);
   const [profiles, setProfiles] = useState([]);
@@ -211,7 +213,7 @@ export default function WorkBoard({ supabase, userId, email, role, onLogout }) {
   return <main className={styles.shell} data-no-translate>
     <header className={styles.topbar}>
       <div className={styles.brand}><span aria-hidden="true">皇龍</span><b>Hoàng Long</b></div>
-      <nav aria-label="Công việc"><Link href={canAssign ? "/admin" : "/admin/work"}><ArrowLeft/> {canAssign ? "Bảng điều khiển" : "Việc của tôi"}</Link></nav>
+      <nav aria-label="Công việc"><Link href={canAssign && allowedModules === null ? "/admin" : "/admin/work"}><ArrowLeft/> {canAssign && allowedModules === null ? "Bảng điều khiển" : "Việc của tôi"}</Link></nav>
       <div className={styles.identity}><span><b>{profileById[userId]?.display_name || email}</b><small>{canAssign ? "Quản lý" : "Nhân viên"}</small></span><button onClick={load} disabled={loading} aria-label="Làm mới"><RefreshCw className={loading ? styles.spin : ""}/></button></div>
     </header>
 

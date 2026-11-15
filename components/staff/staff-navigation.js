@@ -1,6 +1,6 @@
 import {
   BarChart3, Beaker, ClipboardCheck, ClipboardList, FlaskConical,
-  Handshake, Settings2, Sprout, Search, ListChecks, Network, Files, BrainCircuit,
+  Handshake, Settings2, Sprout, Search, ListChecks, Network, Files, BrainCircuit, Sparkles,
 } from "lucide-react";
 
 export const STAFF_APPS = {
@@ -64,6 +64,10 @@ export const STAFF_APPS = {
     key: "growth", label: "Công cụ nội dung", short: "Công cụ", href: "/admin/growth",
     description: "Tạo, chấm và đo nội dung dẫn khách tới bộ mẫu cho quán.", icon: FlaskConical,
   },
+  assistant: {
+    key: "assistant", label: "Trợ lý Hoàng Long", short: "Trợ lý", href: "/admin/assistant",
+    description: "Đọc đoạn hội thoại để chuẩn bị đơn, việc cần làm và bản nháp trả lời.", icon: Sparkles,
+  },
   knowledge: {
     key: "knowledge", label: "Trung tâm kiến thức", short: "Kiến thức", href: "/admin/knowledge",
     description: "Kiến thức trà và kinh doanh, góc nội dung, bài đã làm và kết quả theo chủ đề.", icon: Network,
@@ -74,7 +78,7 @@ export const STAFF_APP_GROUPS = [
   { label: "Bán hàng", keys: ["orders", "pipeline", "customerMemory", "discovery", "partnerNetwork"] },
   { label: "Vận hành", keys: ["operations", "work", "procedures"] },
   { label: "Sản phẩm & phát triển", keys: ["house", "recipes", "productDevelopment", "suppliers"] },
-  { label: "Nội dung & quản lý", keys: ["knowledge", "growth", "documents", "control"] },
+  { label: "Nội dung & quản lý", keys: ["knowledge", "growth", "assistant", "documents", "control"] },
 ];
 
 export const STAFF_APP_LIST = STAFF_APP_GROUPS.flatMap((group) => group.keys.map((key) => STAFF_APPS[key]));
