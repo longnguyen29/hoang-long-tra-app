@@ -35,8 +35,9 @@ export default function HeroStudy() {
     recordPublicConversion(supabase, 'home_view', {once:true,placement:'home'}).catch(() => {});
   }, [supabase, locale]);
   if (locale === 'en') return <HouseHome />;
-  return <main className={styles.page}>
+  return <div className={styles.page}>
   <PublicSiteHeader/>
+  <main>
 
   <section className={styles.hero}>
     <div className={styles.heroImage}/><div className={styles.heroShade}/><div className={styles.heroTop}><span>NHÀ TRÀ HOÀNG LONG</span><span>VIỆT NAM · TEA HOUSE</span></div>
@@ -46,7 +47,9 @@ export default function HeroStudy() {
   <section id="collection" className={styles.collection}><div className={styles.sectionHead}><div><p className={styles.label}>TUYỂN CHỌN HOÀNG LONG <span>02 — 04</span></p><h2>Bốn dòng trà,<br/><em>bốn nét riêng.</em></h2></div><p>Từ hương mật êm dịu đến nét khói trầm sâu, mỗi dòng trà mở ra một cách thưởng thức và sáng tạo riêng.</p></div><div className={styles.teas}>{teas.map(t => <Link href={`/catalog${campaign}`} className={styles.tea} key={t.no}><div className={styles.teaPhoto}><img src={t.image} alt={t.name} loading="lazy" decoding="async"/><span aria-hidden="true"><ArrowRight className={styles.arrow}/></span></div><div className={styles.teaTitle}><h3>{t.name}</h3><span>{t.no}</span></div><p>{t.note}</p></Link>)}</div><Link className={styles.textLink} href={`/catalog${campaign}`}>Xem danh mục trà <ArrowRight className={styles.arrow} aria-hidden="true"/></Link></section>
   <section className={styles.trade}><div className={styles.tradeImage}><img loading="lazy" decoding="async" src="/landing/3.jpg" alt="Dây chuyền chế biến trà trong bộ ảnh Hoàng Long"/><figure><img loading="lazy" decoding="async" src="/cafe/serving-20260910/tea-trio-1200.webp" alt="Minh họa các cách dùng trà trong đồ uống cho quán"/><figcaption>Gợi ý ứng dụng pha chế</figcaption></figure></div><div className={styles.tradeContent}><p className={styles.label}>DÀNH CHO ĐỐI TÁC <span>03 — 04</span></p><h2>Một nguồn trà phù hợp.<br/><em>Một khởi đầu<br/>vững vàng.</em></h2><p>Từ quán đồ uống đến nhà phân phối và đối tác xuất khẩu, chúng tôi trao đổi nhu cầu, gửi mẫu và xây dựng báo giá theo từng đơn hàng.</p><div className={styles.steps}><span>01 &nbsp; Trao đổi nhu cầu</span><span>02 &nbsp; Chọn trà &amp; thử mẫu</span><span>03 &nbsp; Báo giá &amp; hợp tác</span></div><Link className={styles.lightButton} href={`/wholesale${campaign}`}>Bắt đầu cuộc trao đổi <ArrowRight className={styles.arrow} aria-hidden="true"/></Link></div></section>
   <section className={styles.retail}><div className={styles.retailCopy}><p className={styles.label}>DÀNH CHO BẠN <span>04 — 04</span></p><h2>Chọn trà cho<br/><em>những ngày thường.</em></h2><p>Tìm một hương trà hợp gu, dành cho bàn trà của bạn hoặc làm quà cho người thân.</p><Link className={styles.textLink} href="/shop">Ghé cửa hàng trà <ArrowRight className={styles.arrow} aria-hidden="true"/></Link></div><figure className={styles.retailImage}><img loading="lazy" decoding="async" src="/hero-study/tea-moment-illustration.jpg" alt="Minh họa khoảnh khắc rót trà bên bàn gỗ"/></figure></section>
-  <section className={styles.closing}><p>HOUSE OF HOÀNG LONG · VIETNAM</p><h2>Cùng trò chuyện<br/><em>về trà.</em></h2><Link href={`/wholesale${campaign}`}>Liên hệ hợp tác <ArrowRight className={styles.arrow} aria-hidden="true"/></Link></section><footer className={styles.footer}>
+  <section className={styles.closing}><p>HOUSE OF HOÀNG LONG · VIETNAM</p><h2>Cùng trò chuyện<br/><em>về trà.</em></h2><Link href={`/wholesale${campaign}`}>Liên hệ hợp tác <ArrowRight className={styles.arrow} aria-hidden="true"/></Link></section>
+  </main>
+  <footer className={styles.footer}>
     <div className={styles.footerBrand}>
       <b>HOUSE OF HOÀNG LONG</b>
       <p>Trà Việt, cho những cuộc gặp gỡ.</p>
@@ -65,4 +68,4 @@ export default function HeroStudy() {
       <PolicyLinks className={styles.footerPolicies}/>
     </div>
   </footer>
-</main>; }
+</div>; }
