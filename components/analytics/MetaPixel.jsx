@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { canTrackMeta, canShowCookiePreferences, META_CONSENT_KEY, META_PIXEL_ID } from "@/lib/meta-pixel";
@@ -34,6 +35,7 @@ export default function MetaPixel() {
   const [ready, setReady] = useState(false);
   const [editing, setEditing] = useState(false);
   const [eligible, setEligible] = useState(false);
+  const [footerTarget, setFooterTarget] = useState(null);
   const lastPage = useRef(null);
   const vi = locale === "vi";
 
@@ -66,6 +68,10 @@ export default function MetaPixel() {
     }
   }, [pathname, choice, ready]);
 
+  useEffect(() => {
+    setFooterTarget(pathname === "/" ? document.getElementById("home-cookie-preferences") : null);
+  }, [pathname, locale]);
+
   function choose(value) {
     try { localStorage.setItem(META_CONSENT_KEY, value); } catch { /* Session choice still works. */ }
     if (value !== "granted") window.fbq?.("consent", "revoke");
@@ -74,7 +80,10 @@ export default function MetaPixel() {
   }
 
   if (!ready || !eligible) return null;
-  if (choice && !editing) return <button className={styles.preferences} onClick={() => setEditing(true)}>{vi ? "Tuỳ chọn cookie" : "Cookie preferences"}</button>;
+  if (choice && !editing) {
+    const button = <button type="button" className={pathname === "/" && footerTarget ? styles.inlinePreferences : styles.preferences} onClick={() => setEditing(true)}>{vi ? "Tuỳ chọn cookie" : "Cookie preferences"}</button>;
+    return pathname === "/" && footerTarget ? createPortal(button, footerTarget) : button;
+  }
   return (
     <section className={styles.notice} aria-label={vi ? "Tuỳ chọn cookie quảng cáo" : "Advertising cookie preferences"}>
       <p>{vi ? "Cho phép cookie Meta để đo hiệu quả quảng cáo qua lượt xem trang và yêu cầu tư vấn? Bạn vẫn dùng được toàn bộ website khi từ chối." : "Allow Meta cookies to measure ads through page views and enquiries? You can use the whole website if you decline."} <a href="/privacy">{vi ? "Quyền riêng tư" : "Privacy"}</a></p>

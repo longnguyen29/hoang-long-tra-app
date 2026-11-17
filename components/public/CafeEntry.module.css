@@ -93,3 +93,8 @@
 @media print{.header,.choices,.shareActions,.cta,.proof,.footer,.noGate{display:none}.hero{display:block}.intro{padding:0}.photo{position:static;float:right;width:36%;margin:0}.result{margin:var(--space-sm) 0}.brewDetails{display:block}.brewDetails>*{display:block!important}.page{background:white;color:black}.note{color:inherit}}
 
 .photo img.servingPhoto{position:static;inset:auto;width:100%;height:auto;aspect-ratio:4/5;object-fit:cover;object-position:center}
+
+.sampleTeas { display:grid; gap:.4rem; padding-inline-start:1.25rem; margin-block:1rem; }
+.sampleTeas li { margin:0; padding:0; border:0; }
+.proof a { white-space:normal; }
+.proof a svg { flex:none; }

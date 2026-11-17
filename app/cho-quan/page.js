@@ -1,7 +1,7 @@
 import CafeEntry from "@/components/public/CafeEntry";
 
-const title = "Trà pha chế cho quán: chọn nền trà & tính chi phí mỗi ly | Hoàng Long";
-const description = "Chọn nền trà Shan Tuyết cho trà sữa, trà trái cây và cold brew. Xem lượng trà, chi phí trà khô mỗi ly và chọn bộ mẫu để thử tại quán.";
+const title = "Trà pha chế và bộ mẫu trà cho quán | Hoàng Long";
+const description = "Chọn nền trà Shan Tuyết Hà Giang cho trà sữa, trà trái cây và cold brew. Tính chi phí trà mỗi ly và xem bộ mẫu 4 loại trà để pha thử trước khi đặt sỉ.";
 const url = "https://www.hoanglongtra.com/cho-quan";
 
 export const metadata = {
