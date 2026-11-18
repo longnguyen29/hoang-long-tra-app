@@ -304,7 +304,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
     ]);
     setActivity({
       opportunities: opportunitiesResult.data || [], quotes: quotesResult.data || [],
-      recipes: recipesResult.data || [], recipeVersions: versionsResult.data || [], orders: ordersResult.data || [], ordersUnavailable: Boolean(ordersResult.error),
+      recipes: recipesResult.data || [], recipeVersions: versionsResult.data || [], orders: ordersResult.data || [],
     });
     const incomplete = [deskResult, budgetResult, radarResult, opportunitiesResult, samplesResult, recipesResult, versionsResult, quotesResult, ordersResult, receivablesResult, partnersResult, carryResult].some(result => result.error);
     setDataIncomplete(incomplete);
@@ -331,7 +331,6 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
         setError("Bảng điều khiển đã tải, nhưng chưa đọc được ngân sách từ migration 0037.");
     }
     } catch {
-      setActivity(previous => ({ ...previous, ordersUnavailable: true }));
       setDataIncomplete(true);
       setError("Chưa tải được dữ liệu hôm nay. Kiểm tra kết nối rồi thử lại.");
     } finally { setLoading(false); }
@@ -612,8 +611,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
         </div>
 
         {(allowedModules === null || allowedModules.includes("orders")) && <OrderJourneyMap
-          orders={activity.orders} loading={loading}
-          unavailable={activity.ordersUnavailable} />}
+          supabase={supabase} allowedModules={allowedModules} />}
 
         <details className={styles.todayDetails}>
           <summary>Ưu tiên, số liệu và công cụ</summary>
