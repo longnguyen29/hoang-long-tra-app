@@ -8,7 +8,7 @@ import styles from "./page.module.css";
 
 const money = value => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value);
 
-export default function PrivateCheckout({ token, name, items, revision }) {
+export default function PrivateCheckout({ token, name, items, revision, deliveryContact, deliveryAddress }) {
   const [quantities, setQuantities] = useState({});
   const [payment, setPayment] = useState("");
   const [receipt, setReceipt] = useState(null);
@@ -80,8 +80,8 @@ export default function PrivateCheckout({ token, name, items, revision }) {
         <p className={styles.hint}>Hoàng Long xác nhận phí giao hàng và số tiền thanh toán khi liên hệ.</p>
         <fieldset disabled={busy} className={styles.details}>
           <legend>Thông tin giao hàng</legend>
-          <label>Số điện thoại hoặc email<input name="contact" required maxLength={240}/></label>
-          <label>Địa chỉ giao hàng<textarea name="address" rows={2} required maxLength={1000} autoComplete="street-address"/></label>
+          <label>Số điện thoại hoặc email<input name="contact" required maxLength={240} defaultValue={deliveryContact}/></label>
+          <label>Địa chỉ giao hàng<textarea name="address" rows={2} required maxLength={1000} autoComplete="street-address" defaultValue={deliveryAddress}/></label>
           <label>Ghi chú <small>(không bắt buộc)</small><textarea name="note" rows={2} maxLength={1000}/></label>
         </fieldset>
         <fieldset disabled={busy} className={styles.payment}>
