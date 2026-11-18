@@ -13,6 +13,10 @@ import styles from "./CompanyDocuments.module.css";
 
 const DRAFT_FORMAT = "hoang-long-company-document";
 const MAX_DRAFT_BYTES = 512 * 1024;
+const partnerDraftFields = [...new Set(DOCUMENT_TEMPLATES.filter(template => !template.group).flatMap(template => template.fields))];
+const draftFields = (template, input) => Object.fromEntries(
+  (template.group ? template.fields : partnerDraftFields).filter(name => Object.hasOwn(input, name)).map(name => [name, input[name]])
+);
 const fieldByName = new Map(DOCUMENT_FIELDS.map(field => [field.name, field]));
 const sectionLabels = {
   document: "Thông tin văn bản", general: "Thông tin văn bản", company: "Bên Hoàng Long",
@@ -65,7 +69,10 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", p
 
   function update(name, value) {
     importVersion.current += 1;
-    setDraft(previous => ({ ...previous, [name]: value }));
+    setDraft(previous => ({
+      ...previous, [name]: value,
+      ...(name === "employment_type" && value === "indefinite" ? { employment_end: "" } : {}),
+    }));
     setReviewed(false); setDirty(true); setNotice(""); setFileError("");
     if (["first_order_rate_percent", "repeat_rate_percent", "repeat_order_limit", "partner_role", "commission_basis"].includes(name)) setCommissionTier("custom");
   }
@@ -116,10 +123,10 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", p
     setNotice("Đã tải nội dung để chỉnh tiếp bằng trình soạn thảo. Đây là bản chưa ký.");
   }
   function saveDraft() {
-    const fields = template.group ? Object.fromEntries(template.fields.map(name => [name, draft[name]])) : draft;
+    const fields = draftFields(template, draft);
     const result = normalizeDocumentDraft({ ...fields, template_id: templateId });
     if (Object.keys(result.errors || {}).length) { setFileError("Có dữ liệu sai định dạng. Kiểm tra các ô đã nhập trước khi tải bản nháp."); setShowErrors(true); return; }
-    const exportFields = template.group ? Object.fromEntries(template.fields.map(name => [name, result.data[name]])) : result.data;
+    const exportFields = draftFields(template, result.data);
     const content = JSON.stringify({ format: DRAFT_FORMAT, version: 1, template_id: templateId, fields: exportFields }, null, 2);
     if (new Blob([content]).size > MAX_DRAFT_BYTES) { setFileError("Bản nháp vượt 512 KB. Rút gọn nội dung trước khi tải xuống."); return; }
     downloadFile(content, `${fileName(templateId, draft)}.json`, "application/json");
@@ -133,9 +140,12 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", p
       if (file.size > MAX_DRAFT_BYTES) throw new Error("size");
       const input = JSON.parse(await file.text());
       if (version !== importVersion.current) return;
-      if (input?.format !== DRAFT_FORMAT || input.version !== 1 || !DOCUMENT_TEMPLATES.some(item => item.id === input.template_id)
+      const importedTemplate = DOCUMENT_TEMPLATES.find(item => item.id === input?.template_id);
+      if (input?.format !== DRAFT_FORMAT || input.version !== 1 || !importedTemplate
         || !input.fields || typeof input.fields !== "object" || Array.isArray(input.fields)) throw new Error("format");
-      const result = normalizeDocumentDraft({ ...input.fields, commission_basis: input.fields.commission_basis ?? "revenue", template_id: input.template_id });
+      const fields = draftFields(importedTemplate, input.fields);
+      if (!importedTemplate.group) fields.commission_basis ??= "revenue";
+      const result = normalizeDocumentDraft({ ...fields, template_id: input.template_id });
       if (!result.data || Object.keys(result.errors || {}).length) throw new Error("fields");
       setDraft(result.data); setTemplateId(input.template_id); setSelectedPartner(""); setCommissionTier(getMatchingCommissionTier(result.data)); setReviewed(false);
       setShowErrors(false); setFileError(""); setDirty(false); setNotice("Đã mở bản nháp trên thiết bị này. Các số liệu không được ghi ngược vào Partner Network.");
@@ -170,7 +180,8 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", p
         {templateId === "partner_agreement" && <div className={styles.picker}><button type="button" onClick={chooseClassic}>Điền bản nháp Classic 1% / 2%</button><label htmlFor="document-commission-tier">Mức hoa hồng mẫu</label><select id="document-commission-tier" value={commissionTier} onChange={event => chooseTier(event.target.value)}>{PARTNER_COMMISSION_TIERS.map(tier => <option key={tier.id} value={tier.id}>{tier.label}</option>)}</select><p>{PARTNER_COMMISSION_TIERS.find(tier => tier.id === commissionTier)?.description}</p><p>Điền mẫu để hai bên thống nhất, có thể sửa các tỷ lệ ở mục Hoa hồng. Không thay đổi điều kiện đã lưu trong Partner Network.</p></div>}
         {groups.map(([section, fields], index) => <details key={`${templateId}-${section}`} className={styles.group} open={index === 0 || (showErrors && fields.some(field => validation.errors?.[field.name] || validation.missing?.includes(field.name)))}><summary><span><small>0{index + 1}</small>{template.oneParty && section === "Bên A · Hoàng Long" ? "Công ty và chủ sở hữu" : sectionLabels[section] || section}</span><ChevronDown size={18} aria-hidden="true" /></summary><div className={styles.fields}>{fields.map(field => {
           if (field.name === "repeat_order_limit" && draft.commission_policy === "classic") return null;
-          const required = template.required?.includes(field.name) || (field.name === "repeat_rate_percent" && draft.commission_policy === "classic");
+          if (field.name === "employment_end" && draft.employment_type !== "fixed" && !draft.employment_end) return null;
+          const required = template.required?.includes(field.name) || (field.name === "employment_end" && draft.employment_type === "fixed") || (field.name === "repeat_rate_percent" && draft.commission_policy === "classic");
           const fieldLabel = draft.commission_policy === "classic" && field.name === "first_order_rate_percent" ? "Hoa hồng hai đơn đủ điều kiện đầu (%)" : draft.commission_policy === "classic" && field.name === "repeat_rate_percent" ? "Hoa hồng từ đơn đủ điều kiện thứ ba (%)" : field.label;
           const error = showErrors && (validation.errors?.[field.name] || (validation.missing?.includes(field.name) ? "Vui lòng bổ sung trước khi xuất." : ""));
           const common = { id: `doc-${field.name}`, value: draft[field.name] ?? "", onChange: event => update(field.name, event.target.value), "aria-invalid": error ? true : undefined, "aria-describedby": error ? `err-${field.name}` : undefined };
