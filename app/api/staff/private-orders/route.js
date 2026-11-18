@@ -25,14 +25,21 @@ export async function GET(request) {
   const staff = await authenticateManagerRequest(request);
   if (!staff) return reply({ error: "forbidden" }, 403);
   if (new URL(request.url).searchParams.get("activity") === "recent") {
-    const [pages, events] = await Promise.all([
+    const [savedPages, newPages, events] = await Promise.all([
       staff.admin.from("private_order_pages").select("id,customer_name,created_at,updated_at")
-        .order("updated_at", { ascending: false }).order("created_at", { ascending: false }).limit(24),
+        .not("updated_at", "is", null).order("updated_at", { ascending: false }).limit(24),
+      staff.admin.from("private_order_pages").select("id,customer_name,created_at,updated_at")
+        .is("updated_at", null).order("created_at", { ascending: false }).limit(24),
       staff.admin.from("order_events").select("order_id,kind,created_at")
         .in("kind", ["stage_change", "health_change", "price_change", "tracking_change", "type_change"])
         .order("created_at", { ascending: false }).limit(72),
     ]);
-    return reply({ pages: pages.data || [], orderEvents: events.data || [], incomplete: Boolean(pages.error || events.error) });
+    const pages = new Map([...(newPages.data || []), ...(savedPages.data || [])].map(page => [page.id, page]));
+    return reply({
+      pages: [...pages.values()],
+      orderEvents: events.data || [],
+      incomplete: Boolean(savedPages.error || newPages.error || events.error),
+    });
   }
   const [pages, profiles, accounts, catalog] = await Promise.all([
     staff.admin.from("private_order_pages").select(PRIVATE_PAGE_FIELDS).order("created_at", { ascending: false }),
