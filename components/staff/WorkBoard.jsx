@@ -56,6 +56,7 @@ export default function WorkBoard({ supabase, userId, email, role, onLogout }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [view, setView] = useState("today");
+  const [linkedTaskId, setLinkedTaskId] = useState("");
   const [drawer, setDrawer] = useState("");
   const [draft, setDraft] = useState(nowDraft);
   const [invite, setInvite] = useState({ displayName: "", email: "", phone: "" });
@@ -89,6 +90,9 @@ export default function WorkBoard({ supabase, userId, email, role, onLogout }) {
   }, [canAssign, supabase, userId]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    setLinkedTaskId(new URLSearchParams(window.location.search).get("task") || "");
+  }, []);
 
   const profileById = useMemo(() => Object.fromEntries(profiles.map((profile) => [profile.user_id, profile])), [profiles]);
   const now = new Date();
@@ -98,7 +102,8 @@ export default function WorkBoard({ supabase, userId, email, role, onLogout }) {
   const todayTasks = openTasks.filter((task) => new Date(task.due_at) <= endToday);
   const upcoming = openTasks.filter((task) => new Date(task.due_at) > endToday);
   const completedToday = tasks.filter((task) => task.status === "completed" && sameDay(task.completed_at));
-  const visibleTasks = view === "today" ? todayTasks : view === "upcoming" ? upcoming : completedToday;
+  const linkedTask = tasks.find(task => task.id === linkedTaskId);
+  const visibleTasks = linkedTask ? [linkedTask] : view === "today" ? todayTasks : view === "upcoming" ? upcoming : completedToday;
 
   const flash = (message) => {
     setNotice(message);
@@ -234,7 +239,7 @@ export default function WorkBoard({ supabase, userId, email, role, onLogout }) {
 
     <section className={styles.workArea}>
       <section className={styles.ledger}>
-        <header><div><p>Sổ việc</p><h2>{view === "today" ? "Cần làm trước khi hết ngày" : view === "upcoming" ? "Việc sắp tới" : "Đã hoàn tất hôm nay"}</h2></div><div className={styles.views} role="tablist" aria-label="Chọn nhóm công việc">{[["today","Hôm nay",todayTasks.length],["upcoming","Sắp tới",upcoming.length],["done","Đã xong",completedToday.length]].map(([id,label,count])=><button key={id} role="tab" aria-selected={view===id} onClick={()=>setView(id)}>{label}<b>{count}</b></button>)}</div></header>
+        <header><div><p>Sổ việc</p><h2>{linkedTask ? "Công việc đã chọn" : view === "today" ? "Cần làm trước khi hết ngày" : view === "upcoming" ? "Việc sắp tới" : "Đã hoàn tất hôm nay"}</h2></div><div className={styles.views} role="tablist" aria-label="Chọn nhóm công việc">{[["today","Hôm nay",todayTasks.length],["upcoming","Sắp tới",upcoming.length],["done","Đã xong",completedToday.length]].map(([id,label,count])=><button key={id} role="tab" aria-selected={!linkedTask && view===id} onClick={()=>{setLinkedTaskId("");setView(id)}}>{label}<b>{count}</b></button>)}</div></header>
         <div className={styles.taskList}>{loading ? <div className={styles.loading}><i/><i/><i/></div> : visibleTasks.length ? visibleTasks.map((task) => <TaskSlip key={task.id} task={task} assignee={profileById[task.assigned_to]} canAssign={canAssign} saving={saving} blockingId={blockingId} blockNote={blockNote} setBlockNote={setBlockNote} setBlockingId={setBlockingId} onStatus={changeStatus} onChecklist={toggleChecklist} onShare={shareTask}/>) : <div className={styles.clear}><CheckCircle2/><h3>{view === "done" ? "Chưa có việc nào hoàn tất hôm nay." : "Nhóm này đang trống."}</h3><p>{view === "today" ? "Không có phiếu việc nào đang chờ trong hôm nay." : "Công việc mới sẽ xuất hiện ở đây."}</p></div>}</div>
       </section>
 
