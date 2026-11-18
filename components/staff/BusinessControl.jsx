@@ -1,4 +1,5 @@
 "use client";
+import { useSearchParams } from "next/navigation";
 import { formatMassKg } from "@/lib/format-mass";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -146,10 +147,19 @@ export default function BusinessControl({ supabase, email, role, onLogout }) {
   useEffect(() => {
     load();
   }, [load]);
+  const requestedTab = useSearchParams().get("tab");
   useEffect(() => {
-    const requested = new URLSearchParams(window.location.search).get("tab");
-    if (["reports", "metrics", "rankings", "updates", "partners", "offers", "reviews", "payment", "connections", "bin"].includes(requested)) setTab(requested);
-  }, []);
+    setTab(["reports", "metrics", "rankings", "updates", "partners", "offers", "reviews", "payment", "connections", "bin"].includes(requestedTab) ? requestedTab : "reports");
+  }, [requestedTab]);
+  function openTab(id) {
+    if (window.location.pathname === "/admin/control") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", id);
+      window.history.replaceState(null, "", url);
+    }
+    setTab(id);
+  }
+
   const loadHealth = useCallback(async () => {
     setHealthLoading(true);
     const { data: { session } } = await supabase.auth.getSession();
@@ -417,7 +427,7 @@ export default function BusinessControl({ supabase, email, role, onLogout }) {
           <button
             key={id}
             className={tab === id ? styles.active : ""}
-            onClick={() => setTab(id)}
+            onClick={() => openTab(id)}
           >
             <Icon />
             {label}

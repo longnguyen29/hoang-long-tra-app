@@ -82,3 +82,55 @@ export const STAFF_APP_GROUPS = [
 ];
 
 export const STAFF_APP_LIST = STAFF_APP_GROUPS.flatMap((group) => group.keys.map((key) => STAFF_APPS[key]));
+
+export const STAFF_WORK_AREAS = [
+  { id: "sales", label: "Bán hàng", icon: Handshake, links: [
+    { module: "pipeline" }, { module: "orders" },
+    { module: "orders", label: "Trang mua riêng", href: "/admin/orders/private" },
+    { module: "customerMemory" }, { module: "discovery" }, { module: "partnerNetwork" },
+    { module: "assistant" }, { module: "growth" },
+  ] },
+  { id: "operations", label: "Vận hành", icon: ClipboardCheck, links: [
+    { module: "work" }, { module: "operations", label: "Kho & sản xuất" }, { module: "procedures" },
+    { module: "recipes" }, { module: "productDevelopment" }, { module: "suppliers" },
+    { module: "knowledge" }, { module: "documents" },
+  ] },
+  { id: "finance", label: "Tài chính", icon: BarChart3, links: [
+    { module: "operations", label: "Công nợ", href: "/admin/operations?tab=finance" },
+    { module: "operations", label: "Giá vốn & định giá", href: "/admin/operations/pricing" },
+    { module: "operations", label: "Chi phí", href: "/admin/operations/expenses" },
+    { module: "operations", label: "Ngân sách", href: "/admin/operations/budget" },
+    { module: "control", label: "Báo cáo kinh doanh", href: "/admin/control?tab=reports" },
+    { module: "control", label: "Thanh toán", href: "/admin/control?tab=payment" },
+  ] },
+  { id: "system", label: "Quản trị hệ thống", icon: Settings2, links: [
+    { module: "house" },
+    { module: "control", label: "Tích hợp & kết nối", href: "/admin/control?tab=connections" },
+    { label: "Quyền thành viên", href: "/admin/team-access", accessAdminOnly: true },
+    { label: "Xem website", href: "/", external: true },
+  ] },
+];
+
+export function visibleStaffWorkAreas(allowedModules, partnerNetworkEnabled, canManageAccess) {
+  return STAFF_WORK_AREAS.map(area => ({
+    ...area,
+    links: area.links.filter(item => {
+      if (item.accessAdminOnly) return canManageAccess;
+      if (!item.module) return allowedModules === null;
+      return (allowedModules === null || allowedModules.includes(item.module)) &&
+        (item.module !== "partnerNetwork" || partnerNetworkEnabled);
+    }).map(item => ({ ...STAFF_APPS[item.module], ...item })),
+  })).filter(area => area.links.length);
+}
+
+export function activeStaffWorkLink(areas, pathname, search) {
+  const actualTab = search.get("tab") || (pathname === "/admin/control" ? "reports" : null);
+  const items = areas.flatMap(area => area.links.map(item => ({ ...item, area: area.id })));
+  const candidates = items.filter(item => {
+    if (item.external) return false;
+    const [path, query] = item.href.split("?");
+    if (query?.startsWith("tab=")) return pathname === path && actualTab === query.slice(4);
+    return pathname === path || pathname.startsWith(path + "/");
+  });
+  return candidates.sort((a, b) => b.href.length - a.href.length)[0];
+}
