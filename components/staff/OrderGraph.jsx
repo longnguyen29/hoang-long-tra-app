@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import styles from "./OrderJourneyMap.module.css";
 
-const hubs = [
+export const orderHubs = [
   { xyz: [-3.15, -0.9, 0.8], color: "#7edec3" },
   { xyz: [-0.95, 1.0, -0.75], color: "#f2b76d" },
   { xyz: [1.15, -0.78, 0.65], color: "#80c7fc" },
@@ -38,7 +38,7 @@ function dot(ctx, { x, y }, radius, color) {
   ctx.fill();
 }
 
-function paint(ctx, width, height, camera, phases, current, time, labels) {
+function paint(ctx, width, height, camera, phases, current, time, labels, hubs, edges) {
   const toScreen = point => project(point, width, height, camera.yaw, camera.pitch, camera.zoom);
   const centers = hubs.map(hub => toScreen(hub.xyz));
   ctx.clearRect(0, 0, width, height);
@@ -47,14 +47,15 @@ function paint(ctx, width, height, camera, phases, current, time, labels) {
     dot(ctx, point, index % 9 === 0 ? 1.2 : 0.65, index % 9 === 0 ? "#8ac8c27a" : "#97c6cc2d");
   }
 
-  for (let index = 0; index < hubs.length - 1; index += 1) {
-    const start = hubs[index];
-    const end = hubs[index + 1];
-    const gradient = ctx.createLinearGradient(centers[index].x, centers[index].y, centers[index + 1].x, centers[index + 1].y);
+  for (const [index, { from, to, tentative }] of edges.entries()) {
+    const start = hubs[from];
+    const end = hubs[to];
+    const gradient = ctx.createLinearGradient(centers[from].x, centers[from].y, centers[to].x, centers[to].y);
     gradient.addColorStop(0, start.color + "a8");
     gradient.addColorStop(1, end.color + "a8");
     ctx.strokeStyle = gradient;
     ctx.lineWidth = 1.2;
+    ctx.setLineDash(tentative ? [4, 5] : []);
     ctx.beginPath();
     for (let segment = 0; segment <= 26; segment += 1) {
       const point = toScreen(route(start.xyz, end.xyz, segment / 26));
@@ -62,6 +63,8 @@ function paint(ctx, width, height, camera, phases, current, time, labels) {
       else ctx.lineTo(point.x, point.y);
     }
     ctx.stroke();
+    ctx.setLineDash([]);
+    if (tentative) continue;
     // These moving points show direction along the workflow, never individual orders.
     for (let particle = 0; particle < 4; particle += 1) {
       const point = toScreen(route(start.xyz, end.xyz, (time / 5400 + particle / 4 + index * .12) % 1));
@@ -107,18 +110,21 @@ function paint(ctx, width, height, camera, phases, current, time, labels) {
   }
 }
 
-export default function OrderGraph({ phases, current, snapshot, controls, onCameraChange, onSelect, detailId, onUnavailable }) {
+const orderEdges = [{ from: 0, to: 1 }, { from: 1, to: 2 }, { from: 2, to: 3 }];
+
+export default function OrderGraph({ phases, current, snapshot, controls, onCameraChange, onSelect, detailId, onUnavailable,
+  hubs = orderHubs, edges = orderEdges }) {
   const canvasRef = useRef(null);
   const viewportRef = useRef(null);
-  const model = useRef({ phases, current });
+  const model = useRef({ phases, current, hubs, edges });
   const drag = useRef(null);
   const camera = useRef({ yaw: -0.27, pitch: .16, zoom: 1 });
   const redraw = useRef(() => {});
 
   useEffect(() => {
-    model.current = { phases, current };
+    model.current = { phases, current, hubs, edges };
     redraw.current();
-  }, [phases, current]);
+  }, [phases, current, hubs, edges]);
 
   useEffect(() => {
     camera.current = { yaw: controls.yaw, pitch: controls.pitch, zoom: controls.zoom };
@@ -141,8 +147,8 @@ export default function OrderGraph({ phases, current, snapshot, controls, onCame
 
     const draw = time => {
       if (width > 0 && height > 0) {
-        const { phases, current } = model.current;
-        paint(ctx, width, height, camera.current, phases, current, reduced.matches ? 0 : time, viewport);
+        const { phases, current, hubs, edges } = model.current;
+        paint(ctx, width, height, camera.current, phases, current, reduced.matches ? 0 : time, viewport, hubs, edges);
       }
     };
     const tick = time => {
@@ -216,7 +222,8 @@ export default function OrderGraph({ phases, current, snapshot, controls, onCame
     {phases.map((phase, index) => <button className={styles.graphNode} type="button" key={phase.id}
       data-node={phase.id} aria-pressed={phase.id === current} aria-controls={detailId} onClick={() => onSelect(phase.id)}
       style={{ "--node-color": phase.blocked ? "#ff907c" : hubs[index].color }}>
-      <span>{phase.zone}</span> <b>{snapshot ? phase.count : "—"}</b>
+      <span>{phase.zone}</span> <b>{snapshot && phase.count != null ? phase.count : "—"}</b>
+      {phase.caption && <small>{phase.caption}</small>}
       {snapshot && phase.blocked > 0 && <small>{phase.blocked} bị vướng</small>}
     </button>)}
   </div>;

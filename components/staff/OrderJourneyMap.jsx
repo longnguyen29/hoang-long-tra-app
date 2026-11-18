@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, CircleCheck, ClipboardCheck, Layers3, Leaf, Minus, Plus, RotateCcw, RotateCw, Truck } from "lucide-react";
 import { orderStageMeta, reconcileOrderStage } from "@/lib/order-flow";
 import OrderGraph from "./OrderGraph";
+import SystemMap from "./SystemMap";
 import styles from "./OrderJourneyMap.module.css";
 
 const phases = [
@@ -50,6 +51,7 @@ const workspaceLinks = [
 
 export default function OrderJourneyMap({ supabase, allowedModules }) {
   const id = useId();
+  const [view, setView] = useState("orders");
   const [snapshot, setSnapshot] = useState(null);
   const [unavailable, setUnavailable] = useState(false);
   const [camera, setCamera] = useState(initialCamera);
@@ -112,6 +114,11 @@ export default function OrderJourneyMap({ supabase, allowedModules }) {
       <dl className={styles.totals}>{totals.map(({ label, key, value }) =>
         <div key={key} data-kind={key}><dt>{label}</dt><dd>{snapshot ? value : "—"}</dd></div>)}</dl>
     </header>
+    <div className={styles.viewSwitch} role="group" aria-label="Chế độ toàn cảnh">
+      <button type="button" aria-pressed={view === "orders"} onClick={() => setView("orders")}>Luồng đơn</button>
+      <button type="button" aria-pressed={view === "system"} onClick={() => setView("system")}>Bản đồ hệ thống</button>
+    </div>
+    {view === "system" ? <SystemMap supabase={supabase} allowedModules={allowedModules} /> : <>
     {snapshot && snapshot.total > snapshot.orders.length && <p className={styles.coverage}>Số liệu từ {snapshot.orders.length.toLocaleString("vi-VN")} đơn mới nhất trên tổng {snapshot.total.toLocaleString("vi-VN")} đơn.</p>}
     <div className={styles.scene} data-flat={flatView}>
       <div className={styles.controls}>
@@ -152,5 +159,6 @@ export default function OrderJourneyMap({ supabase, allowedModules }) {
     </div>
     {links.length > 0 && <nav className={styles.shortcuts} aria-label="Công cụ vận hành">{links.map(([key, href, label]) =>
       <Link key={key} href={href}>{label}<ArrowRight size={14} aria-hidden="true" /></Link>)}</nav>}
+    </>}
   </section>;
 }
