@@ -31,16 +31,18 @@ function downloadFile(content, name, type) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export default function CompanyDocuments({ partners = [], initialPartner = "", partnersUnavailable = false, partnersTruncated = false }) {
+export default function CompanyDocuments({ partners = [], initialPartner = "", initialTemplate = "partner_agreement", orderFields = {}, orderUnavailable = false, partnersUnavailable = false, partnersTruncated = false }) {
   const initial = partners.find(partner => partner.id === initialPartner);
-  const [templateId, setTemplateId] = useState("partner_agreement");
-  const [draft, setDraft] = useState(() => createDocumentDraft("partner_agreement", initial ? prefillPartner(initial) : {}));
+  const [templateId, setTemplateId] = useState(initialTemplate);
+  const [draft, setDraft] = useState(() => createDocumentDraft(initialTemplate, initialTemplate === "partner_agreement" && initial ? prefillPartner(initial) : orderFields));
   const [selectedPartner, setSelectedPartner] = useState(initial?.id || "");
   const [commissionTier, setCommissionTier] = useState(() => initial ? getMatchingCommissionTier(prefillPartner(initial)) : "custom");
   const [reviewed, setReviewed] = useState(false);
   const [view, setView] = useState("edit");
   const [showErrors, setShowErrors] = useState(false);
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState(() => orderUnavailable
+    ? "Không tải được đơn hàng. Có thể điền bản nháp thủ công."
+    : orderFields.tea_order_ref ? "Đã lấy dữ liệu từ đơn hàng. Kiểm tra lại thông tin và điền các điều kiện còn thiếu trước khi xuất." : "");
   const [fileError, setFileError] = useState("");
   const [dirty, setDirty] = useState(false);
   const fileInput = useRef(null);

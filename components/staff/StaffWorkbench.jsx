@@ -362,6 +362,10 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
   </section>}
   <button type="button" className={styles.smsQuickStatus} onClick={()=>document.getElementById("tracking-sms-preview")?.scrollIntoView({behavior:"smooth",block:"start"})}><MessageCircle/><span><small>SMS vận đơn</small><b>{smsQuickStatus}</b></span><ChevronRight/></button>
   {order.reorderOfOrderId&&<p className={styles.reorderOrigin}>Đặt lại từ đơn {order.reorderOfOrderId}. Đơn này có lịch sử và trạng thái xử lý riêng.</p>}
+  {canRemoveLines && (allowedModules === null || allowedModules.includes("documents")) && <div className={styles.documentActions}>
+    <Link className={styles.reorderAction} href={`/admin/documents?template=tea_order_confirmation&order=${encodeURIComponent(order.id)}`}>Soạn xác nhận đơn hàng</Link>
+    <Link className={styles.reorderAction} href={`/admin/documents?template=tea_lot_receipt&order=${encodeURIComponent(order.id)}`}>Soạn biên bản giao nhận</Link>
+  </div>}
   <button type="button" className={styles.reorderAction} onClick={onReorder} disabled={saving}><RotateCcw/> Đặt lại đơn này</button>
   {showProcedures && <ProcedureOrderLink order={order} role={role}/>}
   {order.type === "wholesale" && <PartnerReferralLink orderId={order.id}/>}
