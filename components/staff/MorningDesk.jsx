@@ -31,6 +31,7 @@ import { dashboardTextError, FOCUS_TITLE_LIMIT } from "@/lib/dashboard-task-inpu
 import { STAFF_APPS as APPS, STAFF_APP_GROUPS, STAFF_APP_LIST as APP_LIST } from "./staff-navigation";
 import DashboardPlanner from "./DashboardPlanner";
 import SampleFollowups from "./SampleFollowups";
+import RecentStaffActivity from "./RecentStaffActivity";
 import styles from "./MorningDesk.module.css";
 import { useStaffFeatures } from "./StaffFeatures";
 
@@ -270,6 +271,8 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
   const { locale } = useLocale();
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activity, setActivity] = useState({});
+  const [activityExtras, setActivityExtras] = useState({ loading: true });
   const [saving, setSaving] = useState(false);
   const [moving, setMoving] = useState("");
   const [error, setError] = useState("");
@@ -300,6 +303,10 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
       supabase.from("wholesale_accounts").select("id,opportunity_id,contact,business_name,reorder_cadence_days,created_at"),
       supabase.from("morning_focus_items").select("id,title,app_key,href,status,work_date").eq("status", "planned").lt("work_date", houseDateKey()).order("work_date", { ascending: true }),
     ]);
+    setActivity({
+      opportunities: opportunitiesResult.data || [], quotes: quotesResult.data || [],
+      recipes: recipesResult.data || [], recipeVersions: versionsResult.data || [], orders: ordersResult.data || [],
+    });
     const incomplete = [deskResult, budgetResult, radarResult, opportunitiesResult, samplesResult, recipesResult, versionsResult, quotesResult, ordersResult, receivablesResult, partnersResult, carryResult].some(result => result.error);
     setDataIncomplete(incomplete);
     if (incomplete) {
@@ -330,9 +337,29 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
     } finally { setLoading(false); }
   }, [supabase]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const loadActivityExtras = useCallback(async () => {
+    setActivityExtras(previous => ({ ...previous, loading: true }));
+    const [tasks, orderActivity] = await Promise.allSettled([
+      supabase.from("work_tasks").select("id,title,status,created_at,updated_at,completed_at")
+        .order("updated_at", { ascending: false }).limit(24),
+      (async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error("auth_required");
+        const response = await fetch("/api/staff/private-orders?activity=recent", {
+          cache: "no-store", headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (!response.ok) throw new Error("activity_unavailable");
+        return response.json();
+      })(),
+    ]);
+    setActivityExtras({
+      loading: false,
+      incomplete: tasks.status === "rejected" || Boolean(tasks.value?.error) || orderActivity.status === "rejected" || Boolean(orderActivity.value?.incomplete),
+      orderEvents: orderActivity.value?.orderEvents || [], tasks: tasks.value?.data || [], privatePages: orderActivity.value?.pages || [],
+    });
+  }, [supabase]);
+
+  useEffect(() => { load(); loadActivityExtras(); }, [load, loadActivityExtras]);
 
   useEffect(() => {
     if (!editingFocus) return;
@@ -542,7 +569,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
           </div>
           <div className={styles.identity}>
             <span><b>{email}</b><small>{role}</small></span>
-            <button onClick={load} disabled={loading} aria-label="Làm mới bàn ngày"><RefreshCw className={loading ? styles.spin : ""} /></button>
+            <button onClick={() => { load(); loadActivityExtras(); }} disabled={loading || activityExtras.loading} aria-label="Làm mới bàn ngày"><RefreshCw className={loading ? styles.spin : ""} /></button>
           </div>
         </header>
 
@@ -571,6 +598,9 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
         {error && <p className={styles.error} role="alert"><AlertTriangle />{error}<button onClick={() => setError("")} aria-label="Đóng thông báo">×</button></p>}
 
 
+
+        <RecentStaffActivity records={{ ...activity, ...activityExtras }}
+          loading={loading || activityExtras.loading} incomplete={dataIncomplete || activityExtras.incomplete} />
 
         <div className={styles.workGrid}>
           <div className={styles.primaryColumn}>

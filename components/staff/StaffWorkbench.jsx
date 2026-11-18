@@ -121,6 +121,15 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
   }finally{smsBusy.current=false;setSmsSaving(false)}
  };
  const selectOrder=async(order)=>{setTask(null);setActiveThread(null);setCustomer(null);setFlowBlock(null);const next=order.unread?{...order,unread:false}:order;setSelected(next);setHealthDraft(next.health||"on_track");setWaitingDraft(next.waitingOn||"us");setHealthNoteDraft(next.healthNote||"");setTrackingDraft(next.trackingCode||"");setCarrierDraft(next.shippingCarrier||"");setOrderEvents([]);setTrackingSms(null);setSmsHistory({items:[],unavailable:false});loadEvents(next.id);if(order.unread){await supabase.from("orders").update({unread:false}).eq("id",order.id);setOrders(current=>current.map(o=>o.id===order.id?next:o))}};
+ const openedOrderLink=useRef("");
+ useEffect(()=>{
+  if(loading || openedOrderLink.current)return;
+  const id=new URLSearchParams(window.location.search).get("order");
+  const order=orders.find(item=>item.id===id);
+  if(!order)return;
+  openedOrderLink.current=id;
+  selectOrder(order);
+ },[loading,orders]);
  const openThread=async(thread)=>{setSelected(null);setTask(null);setCustomer(null);setActiveThread(thread);if(thread.unreadForAdmin){await supabase.from("support_threads").update({unread_for_admin:false}).eq("id",thread.id);const next={...thread,unreadForAdmin:false};setThreads(current=>current.map(item=>item.id===thread.id?next:item));setActiveThread(next)}};
  const openTask=(item)=>{if(item.kind==="order"){selectOrder(item.record);return}if(item.kind==="message"){openThread(item.record);return}setActiveThread(null);setCustomer(null);setSelected(null);setTask(item)};
  const updateOrderFlow=async(patch)=>{

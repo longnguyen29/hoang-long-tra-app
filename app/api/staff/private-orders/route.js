@@ -24,6 +24,23 @@ async function catalogOptions(admin) {
 export async function GET(request) {
   const staff = await authenticateManagerRequest(request);
   if (!staff) return reply({ error: "forbidden" }, 403);
+  if (new URL(request.url).searchParams.get("activity") === "recent") {
+    const [savedPages, newPages, events] = await Promise.all([
+      staff.admin.from("private_order_pages").select("id,customer_name,created_at,updated_at")
+        .not("updated_at", "is", null).order("updated_at", { ascending: false }).limit(24),
+      staff.admin.from("private_order_pages").select("id,customer_name,created_at,updated_at")
+        .is("updated_at", null).order("created_at", { ascending: false }).limit(24),
+      staff.admin.from("order_events").select("order_id,kind,created_at")
+        .in("kind", ["stage_change", "health_change", "price_change", "tracking_change", "type_change"])
+        .order("created_at", { ascending: false }).limit(72),
+    ]);
+    const pages = new Map([...(newPages.data || []), ...(savedPages.data || [])].map(page => [page.id, page]));
+    return reply({
+      pages: [...pages.values()],
+      orderEvents: events.data || [],
+      incomplete: Boolean(savedPages.error || newPages.error || events.error),
+    });
+  }
   const [pages, profiles, accounts, catalog] = await Promise.all([
     staff.admin.from("private_order_pages").select(PRIVATE_PAGE_FIELDS).order("created_at", { ascending: false }),
     staff.admin.from("trade_opportunities").select("id,business_name,contact,preferred_contact,delivery_address").order("business_name"),
@@ -71,7 +88,7 @@ export async function POST(request) {
     }
   }
   const query = body.id
-    ? table.update({ ...page, revision: body.revision + 1 }).eq("id", body.id).eq("revision", body.revision)
+    ? table.update({ ...page, revision: body.revision + 1, updated_at: new Date().toISOString() }).eq("id", body.id).eq("revision", body.revision)
     : table.insert(page);
   const { data, error } = await query.select(PRIVATE_PAGE_FIELDS).maybeSingle();
   if (error) return reply({ error: error.code === "23503" ? "profile_unavailable" : "save_failed" }, error.code === "23503" ? 409 : 500);

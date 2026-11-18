@@ -36,6 +36,8 @@ export default function PrivateOrderAdmin() {
   useEffect(() => {
     request().then(({ pages: rows, customers: profiles, catalog: options }) => {
       setPages(rows); setCustomers(profiles); setCatalog(options);
+      const pageId = new URLSearchParams(window.location.search).get("page");
+      setDraft(rows.find(page => page.id === pageId) || blank);
     }).catch(() => setError("Chưa tải được danh sách trang mua riêng."))
       .finally(() => setLoading(false));
   }, []);
