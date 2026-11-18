@@ -7,15 +7,12 @@ import {
   AlertTriangle,
   ArrowRight,
   BookOpenCheck,
-  Brain,
   Check,
   CheckCircle2,
   ChevronRight,
   Circle,
   FlaskConical,
   Leaf,
-  LogOut,
-  Menu,
   PencilLine,
   Plus,
   RefreshCw,
@@ -28,7 +25,7 @@ import { useLocale } from "@/components/i18n/LocaleProvider";
 import { buildJourneyQueue, relativeDueLabel } from "@/lib/customer-journey";
 import { houseDateKey } from "@/lib/dashboard-calendar";
 import { dashboardTextError, FOCUS_TITLE_LIMIT } from "@/lib/dashboard-task-input";
-import { STAFF_APPS as APPS, STAFF_APP_GROUPS, STAFF_APP_LIST as APP_LIST } from "./staff-navigation";
+import { STAFF_APPS as APPS, STAFF_APP_LIST as APP_LIST } from "./staff-navigation";
 import DashboardPlanner from "./DashboardPlanner";
 import SampleFollowups from "./SampleFollowups";
 import RecentStaffActivity from "./RecentStaffActivity";
@@ -114,7 +111,7 @@ function buildExceptions(snapshot, mode) {
     title: `${actions.overdue_invoices} công nợ đã quá hạn`,
     detail: "Ưu tiên xác nhận tình trạng thanh toán và ngày thu dự kiến.",
     appKey: "operations",
-    href: "/admin/operations",
+    href: "/admin/operations?tab=finance",
     level: "critical",
     rank: mode === "owner" ? 1 : 3,
   });
@@ -272,6 +269,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activity, setActivity] = useState({});
+  const [showAllExceptions, setShowAllExceptions] = useState(false);
   const [activityExtras, setActivityExtras] = useState({ loading: true });
   const [saving, setSaving] = useState(false);
   const [moving, setMoving] = useState("");
@@ -565,7 +563,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
         <header className={styles.topbar}>
           <div>
             <p>{dayLabel(locale)}</p>
-            <h1>Bảng điều khiển</h1>
+            <h1>Hôm nay</h1>
           </div>
           <div className={styles.identity}>
             <span><b>{email}</b><small>{role}</small></span>
@@ -573,10 +571,49 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
           </div>
         </header>
 
+        {error && <p className={styles.error} role="alert"><AlertTriangle />{error}<button onClick={() => setError("")} aria-label="Đóng thông báo">×</button></p>}
+
+
+
+        <div className={styles.todayOverview}>
+          <section className={styles.exceptions}>
+            <header className={styles.sectionHeader}>
+              <div><h2>Cần xử lý</h2></div>
+              <span>{exceptions.length} {locale === "en" ? (exceptions.length === 1 ? "item" : "items") : "mục"}</span>
+            </header>
+            {loading ? (
+              <div className={styles.skeleton} aria-label="Đang tải ngoại lệ"><i /><i /><i /></div>
+            ) : dataIncomplete ? (<p role="status">Chưa thể xác nhận danh sách công việc. <button onClick={load}>Thử tải lại</button></p>) : exceptions.length ? (
+              <div id="today-exceptions" className={styles.exceptionRows}>
+                {(showAllExceptions ? exceptions : exceptions.slice(0, 3)).map((item) => {
+                  const app = APPS[item.appKey];
+                  return (
+                    <article key={item.id} data-level={item.level}>
+                      <span className={styles.signal}>{item.level === "critical" ? <AlertTriangle /> : item.level === "attention" ? <Scale /> : <Circle />}</span>
+                      <div><b>{item.title}</b><p>{item.detail}</p><small>{app.label}</small></div>
+                      <button onClick={() => pinException(item)} disabled={saving || focus.length >= 3}><Plus />Ghim</button>
+                      <Link href={item.href} onClick={(event) => openApp(event, { ...app, href: item.href }, { exception: item.id })} aria-label={`Mở ${item.title}`}><ChevronRight /></Link>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className={styles.clearState}><CheckCircle2 /><div><b>Chưa có việc nào cần xử lý trong góc nhìn này.</b></div></div>
+            )}
+            {!loading && !dataIncomplete && exceptions.length > 3 &&
+              <button type="button" className={styles.moreToday} aria-expanded={showAllExceptions} aria-controls="today-exceptions"
+                onClick={() => setShowAllExceptions(value => !value)}>{showAllExceptions ? "Thu gọn" : `Xem đủ ${exceptions.length} việc`}</button>}
+          </section>
+          <RecentStaffActivity records={{ ...activity, ...activityExtras }}
+            loading={loading || activityExtras.loading} incomplete={dataIncomplete || activityExtras.incomplete} />
+
+        </div>
+
+        <details className={styles.todayDetails}>
+          <summary>Ưu tiên, số liệu và công cụ</summary>
         <section className={styles.brief}>
           <div className={styles.briefCopy}>
-            <p>Chọn góc nhìn trước khi mở công việc</p>
-            <h2>Việc cần làm hôm nay</h2>
+            <h2>Góc nhìn</h2>
           </div>
           <div className={styles.modeTabs} role="tablist" aria-label="Góc nhìn buổi sáng">
             {MODES.map(([id, label]) => <button key={id} role="tab" aria-selected={mode === id} onClick={() => saveMode(id)}>{label}</button>)}
@@ -594,13 +631,6 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
             </article>
           ))}
         </section>
-
-        {error && <p className={styles.error} role="alert"><AlertTriangle />{error}<button onClick={() => setError("")} aria-label="Đóng thông báo">×</button></p>}
-
-
-
-        <RecentStaffActivity records={{ ...activity, ...activityExtras }}
-          loading={loading || activityExtras.loading} incomplete={dataIncomplete || activityExtras.incomplete} />
 
         <div className={styles.workGrid}>
           <div className={styles.primaryColumn}>
@@ -647,31 +677,6 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
               </div>}
             </section>
 
-            <section className={styles.exceptions}>
-              <header className={styles.sectionHeader}>
-                <div><h2>Ngoại lệ cần quyết định</h2><p>Chỉ những gì lệch nhịp hoặc đang chờ người chịu trách nhiệm.</p></div>
-                <span>{exceptions.length} {locale === "en" ? (exceptions.length === 1 ? "item" : "items") : "mục"}</span>
-              </header>
-              {loading ? (
-                <div className={styles.skeleton} aria-label="Đang tải ngoại lệ"><i /><i /><i /></div>
-              ) : dataIncomplete ? (<p role="status">Chưa thể xác nhận danh sách công việc. <button onClick={load}>Thử tải lại</button></p>) : exceptions.length ? (
-                <div className={styles.exceptionRows}>
-                  {exceptions.map((item) => {
-                    const app = APPS[item.appKey];
-                    return (
-                      <article key={item.id} data-level={item.level}>
-                        <span className={styles.signal}>{item.level === "critical" ? <AlertTriangle /> : item.level === "attention" ? <Scale /> : <Circle />}</span>
-                        <div><b>{item.title}</b><p>{item.detail}</p><small>{app.label}</small></div>
-                        <button onClick={() => pinException(item)} disabled={saving || focus.length >= 3}><Plus />Ghim</button>
-                        <Link href={item.href} onClick={(event) => openApp(event, { ...app, href: item.href }, { exception: item.id })} aria-label={`Mở ${item.title}`}><ChevronRight /></Link>
-                      </article>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className={styles.clearState}><CheckCircle2 /><div><b>Không có ngoại lệ đang mở.</b><p>Chọn một việc chủ động cho vị trí còn trống, hoặc tiếp tục phiên gần nhất.</p></div></div>
-              )}
-            </section>
           </div>
 
           <aside className={styles.contextColumn}>
@@ -768,6 +773,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
 
         {canReview && <DashboardPlanner supabase={supabase} />}
         <SampleFollowups supabase={supabase} role={role}/>
+        </details>
 
 
         <footer className={styles.footer}>

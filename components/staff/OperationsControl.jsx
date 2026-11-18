@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -99,9 +100,19 @@ export default function OperationsControl({ supabase, email, role, onLogout }) {
     [allocation, setAllocation] = useState(null);
   const [dataFailure, setDataFailure] = useState(false);
   const [qualityBatchId, setQualityBatchId] = useState("");
+  const requestedTab = useSearchParams().get("tab");
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("tab") === "batches") setTab("batches");
-  }, []);
+    setTab(["finance", "batches", "planning", "materials"].includes(requestedTab) ? requestedTab : "owner");
+  }, [requestedTab]);
+  function openTab(id) {
+    if (window.location.pathname === "/admin/operations") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", id);
+      window.history.replaceState(null, "", url);
+    }
+    setTab(id);
+  }
+
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -371,7 +382,7 @@ export default function OperationsControl({ supabase, email, role, onLogout }) {
       </section>
       <nav className={styles.tabs}>
         {tabs.map(([id, label, Icon]) => (
-          <button key={id} data-active={tab === id} onClick={() => setTab(id)}>
+          <button key={id} data-active={tab === id} onClick={() => openTab(id)}>
             <Icon />
             {label}
           </button>
@@ -470,7 +481,7 @@ export default function OperationsControl({ supabase, email, role, onLogout }) {
                   CalendarClock,
                 ],
               ].map(([label, value, target, Icon]) => (
-                <button key={label} onClick={() => setTab(target)}>
+                <button key={label} onClick={() => openTab(target)}>
                   <Icon />
                   <span>{label}</span>
                   <b>{value}</b>
