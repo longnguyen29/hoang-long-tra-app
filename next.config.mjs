@@ -16,6 +16,12 @@ const nextConfig = {
   // Deliberately not redirecting /admin: Shopify's own /admin meant something else, but this
   // app's /admin is real and already correct (the staff login) — redirecting it would break
   // the one path here that doesn't need fixing.
+  async headers() {
+    return [{
+      source: "/mua-rieng/:path*",
+      headers: [{ key: "Referrer-Policy", value: "no-referrer" }, { key: "Cache-Control", value: "private, no-store" }],
+    }];
+  },
   async redirects() {
     const toHome = (source) => ({ source, destination: "/", permanent: true });
     return [

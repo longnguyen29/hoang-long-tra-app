@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -45,5 +46,8 @@ export default function AdminOrdersPage() {
   if (status === "denied") {
     return <main className="hl-admin-state hl-admin-state--denied"><section><span className="hl-auth__seal">皇龍</span><h1>Tài khoản không có quyền nhân viên.</h1></section></main>;
   }
-  return <StaffWorkbench supabase={supabase} email={email} role={role} onLogout={logout} />;
+  return <>
+    {(role === "admin" || role === "manager") && <Link className="hl-button hl-button--secondary" style={{ margin: "1rem var(--page-gutter)" }} href="/admin/orders/private">Trang mua riêng</Link>}
+    <StaffWorkbench supabase={supabase} email={email} role={role} onLogout={logout}/>
+  </>;
 }
