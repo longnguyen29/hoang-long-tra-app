@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CircleCheck, ClipboardCheck, Layers3, Leaf, RotateCcw, RotateCw, Truck } from "lucide-react";
+import { ArrowRight, CircleCheck, ClipboardCheck, Layers3, Leaf, Minus, Plus, RotateCcw, RotateCw, Truck } from "lucide-react";
 import { orderStageMeta, reconcileOrderStage } from "@/lib/order-flow";
+import OrderGraph from "./OrderGraph";
 import styles from "./OrderJourneyMap.module.css";
 
 const phases = [
@@ -39,7 +40,7 @@ function summarize(orders) {
 }
 
 const refreshMs = 30000;
-const cameraAngles = [-14, 0, 14];
+const initialCamera = { yaw: -0.27, pitch: 0.16, zoom: 1 };
 const workspaceLinks = [
   ["pipeline", "/admin/pipeline", "Khách & báo giá"],
   ["operations", "/admin/operations", "Vận hành & tài chính"],
@@ -51,9 +52,12 @@ export default function OrderJourneyMap({ supabase, allowedModules }) {
   const id = useId();
   const [snapshot, setSnapshot] = useState(null);
   const [unavailable, setUnavailable] = useState(false);
-  const [angle, setAngle] = useState(1);
+  const [camera, setCamera] = useState(initialCamera);
+  const [graphUnavailable, setGraphUnavailable] = useState(false);
+  const useFlatFallback = useCallback(() => setGraphUnavailable(true), []);
   const [flat, setFlat] = useState(false);
   const [selection, setSelection] = useState(null);
+  const flatView = flat || graphUnavailable;
 
   useEffect(() => {
     let stopped = false;
@@ -109,25 +113,33 @@ export default function OrderJourneyMap({ supabase, allowedModules }) {
         <div key={key} data-kind={key}><dt>{label}</dt><dd>{snapshot ? value : "—"}</dd></div>)}</dl>
     </header>
     {snapshot && snapshot.total > snapshot.orders.length && <p className={styles.coverage}>Số liệu từ {snapshot.orders.length.toLocaleString("vi-VN")} đơn mới nhất trên tổng {snapshot.total.toLocaleString("vi-VN")} đơn.</p>}
-    <div className={styles.scene} data-flat={flat}>
-      <div className={styles.controls} role="group" aria-label="Điều khiển góc nhìn">
-        <button type="button" disabled={flat || angle === 0} onClick={() => setAngle(value => value - 1)} aria-label="Xoay trái"><RotateCcw size={16} /></button>
-        <button type="button" disabled={flat || angle === 2} onClick={() => setAngle(value => value + 1)} aria-label="Xoay phải"><RotateCw size={16} /></button>
-        <button type="button" aria-pressed={flat} onClick={() => setFlat(value => !value)}><Layers3 size={16} aria-hidden="true" />{flat ? "Mở góc 3D" : "Xem dạng phẳng"}</button>
+    <div className={styles.scene} data-flat={flatView}>
+      <div className={styles.controls}>
+        {!flatView && <div role="group" className={styles.cameraButtons} aria-label="Điều khiển góc nhìn">
+          <button type="button" onClick={() => setCamera(value => ({ ...value, yaw: value.yaw - 0.24 }))} aria-label="Xoay trái"><RotateCcw size={16} /></button>
+          <button type="button" onClick={() => setCamera(value => ({ ...value, yaw: value.yaw + 0.24 }))} aria-label="Xoay phải"><RotateCw size={16} /></button>
+          <button type="button" disabled={camera.zoom <= 0.8} aria-label="Thu nhỏ"
+            onClick={() => setCamera(value => ({ ...value, zoom: Math.max(0.8, value.zoom - 0.15) }))}><Minus size={17} /></button>
+          <button type="button" disabled={camera.zoom >= 1.45} aria-label="Phóng to"
+            onClick={() => setCamera(value => ({ ...value, zoom: Math.min(1.45, value.zoom + 0.15) }))}><Plus size={17} /></button>
+        </div>}
+        {!graphUnavailable && <button type="button" aria-pressed={flat} onClick={() => setFlat(value => !value)}>
+          <Layers3 size={16} aria-hidden="true" />{flat ? "Mở đồ thị 3D" : "Xem dạng phẳng"}
+        </button>}
       </div>
-      <div className={styles.camera}>
-        <div className={styles.track} style={{ "--turn": `${cameraAngles[angle]}deg` }} role="group" aria-label="Các khu xử lý đơn trà">
-          {journey.map(({ id: phaseId, zone, label, icon: Icon, count, blocked }) =>
-            <button key={phaseId} type="button" data-phase={phaseId} data-busy={Boolean(snapshot && count)}
-              aria-pressed={phaseId === current.id} aria-controls={id + "-detail"} className={styles.stop} onClick={() => setSelection(phaseId)}>
-              <span className={styles.zone}>{zone}</span>
-              <span className={styles.icon}><Icon size={23} aria-hidden="true" /></span>
-              <span className={styles.count}>{snapshot ? count : "—"} <small>đơn</small></span>
-              <span className={styles.label}>{label}</span>
-              {snapshot && blocked > 0 && <span className={styles.blocked}>{blocked} bị vướng</span>}
-            </button>)}
-        </div>
-      </div>
+      {flatView ? <div className={styles.track} role="group" aria-label="Các khu xử lý đơn trà">
+        {journey.map(({ id: phaseId, zone, label, icon: Icon, count, blocked }) =>
+          <button key={phaseId} type="button" data-phase={phaseId}
+            aria-pressed={phaseId === current.id} aria-controls={id + "-detail"} className={styles.stop} onClick={() => setSelection(phaseId)}>
+            <span className={styles.zone}>{zone}</span><span className={styles.icon}><Icon size={23} aria-hidden="true" /></span>
+            <span className={styles.count}>{snapshot ? count : "—"} <small>đơn</small></span><span className={styles.label}>{label}</span>
+            {snapshot && blocked > 0 && <span className={styles.blocked}>{blocked} bị vướng</span>}
+          </button>)}
+      </div> : <>
+        <OrderGraph phases={journey} current={current.id} snapshot={snapshot} controls={camera}
+          onCameraChange={setCamera} onSelect={setSelection} detailId={id + "-detail"} onUnavailable={useFlatFallback} />
+        <p className={styles.graphHint}>Kéo để xoay · Chọn cụm để xem đơn</p>
+      </>}
     </div>
     <div className={styles.detail} id={id + "-detail"}>
       <div><h3>{current.zone} · {current.label}</h3><p>{current.detail}</p></div>
