@@ -28,6 +28,7 @@ import { dashboardTextError, FOCUS_TITLE_LIMIT } from "@/lib/dashboard-task-inpu
 import { STAFF_APPS as APPS, STAFF_APP_LIST as APP_LIST } from "./staff-navigation";
 import DashboardPlanner from "./DashboardPlanner";
 import SampleFollowups from "./SampleFollowups";
+import OrderJourneyMap from "./OrderJourneyMap";
 import RecentStaffActivity from "./RecentStaffActivity";
 import styles from "./MorningDesk.module.css";
 import { useStaffFeatures } from "./StaffFeatures";
@@ -263,7 +264,7 @@ function buildMetrics(snapshot, mode) {
 }
 
 export default function MorningDesk({ supabase, email, role, onLogout }) {
-  const { partnerNetworkEnabled } = useStaffFeatures();
+  const { partnerNetworkEnabled, allowedModules } = useStaffFeatures();
   const router = useRouter();
   const { locale } = useLocale();
   const [snapshot, setSnapshot] = useState(null);
@@ -303,7 +304,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
     ]);
     setActivity({
       opportunities: opportunitiesResult.data || [], quotes: quotesResult.data || [],
-      recipes: recipesResult.data || [], recipeVersions: versionsResult.data || [], orders: ordersResult.data || [],
+      recipes: recipesResult.data || [], recipeVersions: versionsResult.data || [], orders: ordersResult.data || [], ordersUnavailable: Boolean(ordersResult.error),
     });
     const incomplete = [deskResult, budgetResult, radarResult, opportunitiesResult, samplesResult, recipesResult, versionsResult, quotesResult, ordersResult, receivablesResult, partnersResult, carryResult].some(result => result.error);
     setDataIncomplete(incomplete);
@@ -330,6 +331,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
         setError("Bảng điều khiển đã tải, nhưng chưa đọc được ngân sách từ migration 0037.");
     }
     } catch {
+      setActivity(previous => ({ ...previous, ordersUnavailable: true }));
       setDataIncomplete(true);
       setError("Chưa tải được dữ liệu hôm nay. Kiểm tra kết nối rồi thử lại.");
     } finally { setLoading(false); }
@@ -608,6 +610,10 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
             loading={loading || activityExtras.loading} incomplete={dataIncomplete || activityExtras.incomplete} />
 
         </div>
+
+        {(allowedModules === null || allowedModules.includes("orders")) && <OrderJourneyMap
+          orders={activity.orders} loading={loading}
+          unavailable={activity.ordersUnavailable} />}
 
         <details className={styles.todayDetails}>
           <summary>Ưu tiên, số liệu và công cụ</summary>
