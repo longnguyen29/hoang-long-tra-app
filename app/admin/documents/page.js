@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { partnerNetworkEnabled } from "@/lib/partner-network-server";
 import { getCompanyDocumentsContext } from "@/lib/company-documents-server";
 
+import { TEA_ORDER_DOCUMENTS, prefillTeaOrderDocument } from "@/lib/tea-document-order";
+
 export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Tài liệu công ty | Hoàng Long",
@@ -27,6 +29,18 @@ export default async function CompanyDocumentsPage({ searchParams }) {
   }
   const query = await searchParams;
   const initialPartner = typeof query?.partner === "string" && /^[0-9a-f-]{36}$/i.test(query.partner) ? query.partner : "";
-  return <CompanyDocuments partners={context.partners} initialPartner={initialPartner}
+  const initialTemplate = TEA_ORDER_DOCUMENTS.includes(query?.template) ? query.template : "partner_agreement";
+  const orderId = typeof query?.order === "string" && /^[a-z0-9._-]{1,160}$/i.test(query.order) ? query.order : "";
+  let orderFields = {};
+  if (initialTemplate !== "partner_agreement" && orderId) {
+    const columns = initialTemplate === "tea_order_confirmation"
+      ? "id,customer_name,address,lines,estimated_total,payment_method"
+      : "id,lines";
+    const { data } = await supabase.from("orders").select(columns).eq("id", orderId).maybeSingle();
+    orderFields = prefillTeaOrderDocument(initialTemplate, data);
+  }
+  return <CompanyDocuments key={JSON.stringify([initialTemplate, orderId, initialPartner])}
+    initialTemplate={initialTemplate} orderFields={orderFields} orderUnavailable={Boolean(orderId && initialTemplate !== "partner_agreement" && !orderFields.tea_order_ref)}
+    partners={context.partners} initialPartner={initialPartner}
     partnersUnavailable={context.partnersUnavailable} partnersTruncated={context.partnersTruncated} />;
 }

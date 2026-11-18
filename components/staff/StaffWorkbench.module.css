@@ -80,3 +80,6 @@
 
 /* The follow-up panel must span the workbench grid, like the order book. */
 .workspace > [id="sample-followups"]{grid-column:1 / -1;min-width:0}
+
+.documentActions{display:flex;flex-wrap:wrap;gap:var(--space-xs);margin-block:var(--space-sm)}
+.documentActions a{text-decoration:none}
