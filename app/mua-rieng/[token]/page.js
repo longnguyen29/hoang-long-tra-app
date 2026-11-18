@@ -14,9 +14,9 @@ export default async function PrivateOrderPage({ params }) {
   const { token } = await params;
   if (!validPrivateId(token)) notFound();
   const { data, error } = await createAdminClient().from("private_order_pages")
-    .select("customer_name,items,revision").eq("token", token).eq("active", true).maybeSingle();
+    .select("customer_name,items,revision,delivery_contact,delivery_address").eq("token", token).eq("active", true).maybeSingle();
   if (error) throw new Error("Could not load private order page");
   if (!data) notFound();
-  return <PrivateCheckout token={token} name={data.customer_name} revision={data.revision}
+  return <PrivateCheckout token={token} name={data.customer_name} revision={data.revision} deliveryContact={data.delivery_contact} deliveryAddress={data.delivery_address}
     items={data.items.map(({ id, name, weight, unit, price }) => ({ id, name, weight, unit, price }))}/>;
 }
