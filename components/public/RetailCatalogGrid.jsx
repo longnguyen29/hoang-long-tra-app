@@ -47,8 +47,8 @@ function ProductCard({ product, locale, cart, quantity, vendors, isGoods, index 
   const hasPrice = options.some((option) => Number(option.price) > 0);
   // Packing descriptions can list several formats without defining a priced
   // variant. Only a recorded variant changes the selectable sale package.
-  const packLabel = (option) => option.weight || `1 ${sellingUnitLabel(option.unit, locale)}`;
-  const priceBasis = (option) => `${sellingUnitLabel(option.unit, locale)}${option.weight ? ` · ${option.weight}` : ""}`;
+  const packLabel = (option) => option.displayWeight || `1 ${sellingUnitLabel(option.unit, locale)}`;
+  const priceBasis = (option) => `${sellingUnitLabel(option.unit, locale)}${option.weight ? ` · ${option.displayWeight}` : ""}`;
   const selectedQty = selected ? Number(cart?.[selected.key] || 0) : 0;
   const canAdd = selected?.orderable && selectedQty < RETAIL_CART_MAX && (selected.stock === null || selectedQty < selected.stock);
   const totalQty = options.reduce((sum, option) => sum + Number(cart?.[option.key] || 0), 0);
@@ -67,7 +67,7 @@ function ProductCard({ product, locale, cart, quantity, vendors, isGoods, index 
       {facts.note && <p className={styles.note}>{facts.note}</p>}
       {signatureNotes.length > 0 && <ul className={styles.flavors} aria-label={characteristics?.labels.signature || (locale === "vi" ? "Hương vị" : "Taste notes")}>{signatureNotes.slice(0, 3).map((flavor, index) => <li key={`${flavor}:${index}`}>{flavor}</li>)}</ul>}
       <p className={styles.price}>{lowest ? <>{differentPrices && <small>{t.from} </small>}<strong>{money.format(lowest.price)}</strong><span> / {priceBasis(lowest)}</span></> : <span>{hasPrice ? t.soldOut : t.request}</span>}</p>
-      {options.length > 0 && !options.some((option) => option.weight) && facts.packing && facts.packing !== packLabel(options[0]) && <p className={styles.packing}>{t.packing}: {facts.packing}</p>}
+      {options.length > 0 && options.some((option) => !option.weight) && facts.packing && facts.packing !== packLabel(options[0]) && <p className={styles.packing}>{t.packing}: {facts.packing}</p>}
     </div>
     <div className={styles.buy}>
       {options.length > 1 ? <label className={styles.packLabel} htmlFor={`${id}-pack`}><span>{t.pack}</span><select id={`${id}-pack`} value={selected?.key || ""} onChange={(event) => setSelectedKey(event.target.value)}>{options.map((option) => <option key={option.key} value={option.key}>{packLabel(option)}{Number(option.price) > 0 ? ` · ${money.format(option.price)}` : ` · ${t.request}`}{!option.orderable && Number(option.price) > 0 ? ` · ${t.soldOut}` : ""}</option>)}</select></label> : selected && <div className={styles.singlePack}><span>{t.pack}</span><strong>{packLabel(selected)}</strong></div>}

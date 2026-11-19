@@ -175,14 +175,14 @@ export default function RetailProductDetail({ product, curatedSelection = null }
               const optionHasPrice = Number.isFinite(Number(option.price)) && Number(option.price) > 0;
               return <label key={option.key} className={`${styles.package}${selected?.key === option.key ? ` ${styles.selectedPackage}` : ""}`}>
                 <input type="radio" name={groupName} value={option.key} checked={selected?.key === option.key} onChange={() => selectOption(option.key)}/>
-                <span><strong>{option.weight || (kilogramBasis ? "1 kg" : facts.packing || t.defaultPack)}</strong><small>{optionHasPrice ? `${money.format(option.price)} / ${sellingUnitLabel(option.unit, locale)}` : t.requestPrice}</small></span>
+                <span><strong>{option.displayWeight || (option.unit === "kg" ? "1 kg" : facts.packing || t.defaultPack)}</strong><small>{optionHasPrice ? `${money.format(option.price)} / ${sellingUnitLabel(option.unit, locale)}` : t.requestPrice}</small></span>
                 {unavailableStock && <span className={styles.stockLabel}>{t.soldOut}</span>}
               </label>;
             })}
             {!options.length && <p className={styles.availability}>{t.unavailable}</p>}
           </fieldset>
 
-          {kilogramBasis && facts.packing && <div className={styles.recordedPacking}><span>{t.recordedPacking}</span><p>{facts.packing}</p></div>}
+          {options.some(option => !option.weight && option.unit === "kg") && facts.packing && <div className={styles.recordedPacking}><span>{t.recordedPacking}</span><p>{facts.packing}</p></div>}
 
           {hasPrice && <div className={styles.price}><span>{kilogramBasis ? t.unitPrice : t.selectedPrice}</span><strong>{money.format(price)}<small> / {unit}</small></strong></div>}
 
