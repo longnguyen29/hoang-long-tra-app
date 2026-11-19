@@ -68,3 +68,13 @@
 .systemLookup input,.systemLookup button{width:100%;min-height:44px;background:#122b25;color:#eff6ec;border:1px solid #456860;font:inherit;padding:.3rem .55rem}
 .systemLookup button{width:auto;font-size:.8rem;cursor:pointer}
 .systemLookup button:disabled{opacity:.55;cursor:default}
+
+.mapQuests{display:flex;gap:.7rem;flex-wrap:wrap;margin:0 0 .85rem}
+.questBoard,.questProgress{flex:1;min-width:min(15rem,100%);padding:.65rem .8rem;border:1px solid #4b7062;background:#142d26}
+.questBoard h3,.questProgress label{display:flex;align-items:center;gap:.45rem;color:#e5d5a2;margin:0 0 .45rem;font-size:.84rem;font-weight:600}
+.questBoard>div{display:flex;flex-wrap:wrap;gap:.35rem}
+.questBoard button{display:flex;justify-content:space-between;align-items:center;gap:.55rem;min-height:44px;padding:.35rem .55rem;background:#203d32;color:#f3f8ef;border:1px solid #507061;cursor:pointer;font:inherit;font-size:.77rem;text-align:left}
+.questBoard button:hover{border-color:#e5d5a2}
+.questBoard button svg{flex-shrink:0}
+.questProgress progress{display:block;width:100%;height:.6rem;accent-color:#abd8a3}
+.questProgress p{margin:.36rem 0 0;color:#c4d8cf;font-size:.74rem}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { ArrowRight, Compass, Flag } from "lucide-react";
 import { houseDateKey } from "@/lib/dashboard-calendar";
 import { reconcileOrderStage, orderStageMeta } from "@/lib/order-flow";
 import { loadMapIndex, loadMapStory } from "@/lib/system-map";
@@ -53,6 +54,7 @@ export default function SystemMap({ supabase, allowedModules }) {
   const [kind, setKind] = useState("order");
   const [id, setId] = useState("");
   const [lookup, setLookup] = useState("");
+  const [visitedByRecord, setVisitedByRecord] = useState(() => new Map());
   const [index, setIndex] = useState(null);
   const [story, setStory] = useState(null);
   const [indexError, setIndexError] = useState(false);
@@ -112,6 +114,33 @@ export default function SystemMap({ supabase, allowedModules }) {
   const extra = id && !options.some(item => item.id === id);
   const activeSection = visible[Number(section)] ? section : "1";
 
+  const recordKey = JSON.stringify([kind, id]);
+  const visited = visitedByRecord.get(recordKey) || [];
+  const visit = nextSection => {
+    setSection(nextSection);
+    if (!matchedStory) return;
+    setVisitedByRecord(previous => {
+      const seen = previous.get(recordKey) || [];
+      if (seen.includes(nextSection)) return previous;
+      const next = new Map(previous);
+      next.set(recordKey, [...seen, nextSection]);
+      return next;
+    });
+  };
+  const blockedOrder = index?.orders.find(item => item.health === "blocked" && reconcileOrderStage(item.stage, item.status) !== "completed");
+  const readyQuote = sales && index?.acceptedQuotes.find(item => item.opportunity_id);
+  const tasks = id ? [
+    order?.health === "blocked" && orderStage !== "completed" && { id: "blocked", label: "Gỡ vướng đơn hàng", run: () => visit("1") },
+    late && { id: "delivery", label: "Kiểm tra đơn quá hạn giao", run: () => visit("2") },
+    amountDue > 0 && receivable.due_at && receivable.due_at <= today && { id: "payment", label: "Xem khoản thu đến hạn", run: () => visit("3") },
+    missingBatch && { id: "lot", label: "Kiểm tra phân bổ lô", run: () => visit("2") },
+    sale?.suggested && { id: "match", label: "Đối chiếu liên kết khách", run: () => visit("0") },
+    sale?.customer?.next_action_at && houseDateKey(new Date(sale.customer.next_action_at)) <= today && { id: "follow-up", label: "Xem lịch theo dõi khách", run: () => visit("0") },
+  ].filter(Boolean) : indexError ? [] : [
+    blockedOrder && { id: "blocked", label: "Gỡ vướng một đơn", run: () => selectOrder(blockedOrder.id) },
+    readyQuote && { id: "quote", label: "Theo dõi báo giá đã chấp nhận", run: () => selectCustomer(readyQuote.opportunity_id) },
+  ].filter(Boolean);
+
   return <div className={styles.systemMap}>
     <div className={styles.systemToolbar}>
       <label>Tra theo<select value={kind} onChange={event => { setKind(event.target.value); setId(""); setLookup(""); setSection(event.target.value === "order" ? "1" : "0"); }}>
@@ -131,6 +160,20 @@ export default function SystemMap({ supabase, allowedModules }) {
       <button type="submit" disabled={!lookup.trim()}>Mở theo mã</button>
     </form>
     {indexError && <p role="status">Chưa tải được danh sách hồ sơ. Bấm Làm mới để thử lại.</p>}
+    {(tasks.length > 0 || matchedStory) && <section className={styles.mapQuests} aria-label="Nhiệm vụ trên bản đồ">
+      {tasks.length > 0 && <div className={styles.questBoard}>
+        <h3><Flag size={16} aria-hidden="true" /> Nhiệm vụ</h3>
+        <div>{tasks.map(task => <button key={task.id} type="button" onClick={() => {
+          task.run();
+          document.getElementById("system-map-detail")?.focus();
+        }}>{task.label}<ArrowRight size={16} aria-hidden="true" /></button>)}</div>
+      </div>}
+      {matchedStory && <div className={styles.questProgress}>
+        <label htmlFor="system-map-progress"><Compass size={16} aria-hidden="true" /> Khám phá hồ sơ</label>
+        <progress id="system-map-progress" value={visiblePhases.filter(phase => visited.includes(phase.id)).length} max={visiblePhases.length} />
+        <p>{visiblePhases.filter(phase => visited.includes(phase.id)).length}/{visiblePhases.length} khu đã mở{visiblePhases.every(phase => visited.includes(phase.id)) ? " · Đã xem hết bản đồ" : ""}</p>
+      </div>}
+    </section>}
     <div className={styles.scene}>
       <div className={styles.controls}>
         {!flat && <button type="button" onClick={() => setCamera(homeCamera)}>Đặt lại góc nhìn</button>}
@@ -138,13 +181,13 @@ export default function SystemMap({ supabase, allowedModules }) {
         <button type="button" aria-pressed={flat} onClick={() => setFlat(value => !value)}>{flat ? "Mở đồ thị 3D" : "Xem dạng phẳng"}</button>
       </div>
       {flat ? <div className={styles.track}>{visiblePhases.map(phase =>
-        <button key={phase.id} type="button" aria-pressed={phase.id === activeSection} className={styles.stop} onClick={() => setSection(phase.id)}>
+        <button key={phase.id} type="button" aria-pressed={phase.id === activeSection} className={styles.stop} onClick={() => visit(phase.id)}>
           <strong>{phase.zone}</strong><span>{phase.count ?? "—"}</span>
         </button>)}</div> : <OrderGraph phases={visiblePhases} hubs={visibleHubs} edges={edges} current={activeSection} snapshot={Boolean(index || matchedStory)}
-        controls={camera} onCameraChange={setCamera} onSelect={setSection} detailId="system-map-detail" onUnavailable={fallback} />}
+        controls={camera} onCameraChange={setCamera} onSelect={visit} detailId="system-map-detail" onUnavailable={fallback} />}
       <p className={styles.graphHint}>{id ? "Nét liền · Có liên kết đã lưu. Nét đứt · Cần xác nhận." : "Luồng tổng quan · Chọn một hồ sơ để xem các liên kết đã lưu."}</p>
     </div>
-    <section className={styles.systemDetail} id="system-map-detail" aria-label={titles[Number(activeSection)]}>
+    <section className={styles.systemDetail} id="system-map-detail" tabIndex={-1} aria-label={titles[Number(activeSection)]}>
       <h3>{titles[Number(activeSection)]}</h3>
       {storyError ? <p role="status">Chưa tải được liên kết cho hồ sơ này. Bấm Làm mới để thử lại.</p>
         : id && !matchedStory ? <p role="status">Đang tải hồ sơ…</p>
