@@ -2,6 +2,8 @@
 import { retailPublicClient } from '@/lib/retail-catalog-server';
 import { retailProductHref } from '@/lib/retail-catalog';
 
+import { INTERNATIONAL_LOCALES, INTERNATIONAL_SECTIONS, localPath } from '@/lib/international-site';
+
 export const revalidate = 3600;
 export default async function sitemap() {
   const base = "https://www.hoanglongtra.com";
@@ -16,6 +18,11 @@ export default async function sitemap() {
     { url: `${base}/meet`, changeFrequency: "monthly", priority: 0.5 },
     ...["/company", "/catalog", "/wholesale", "/shop", "/story", "/terms", "/shipping", "/returns"].map(path => ({url: `${base}${path}`, changeFrequency: "monthly", priority: 0.7})),
     { url: `${base}/privacy`, changeFrequency: "yearly", priority: 0.3 },
+    ...Object.keys(INTERNATIONAL_LOCALES).flatMap(locale => INTERNATIONAL_SECTIONS.map(section => ({
+      url: base + localPath(locale, section),
+      changeFrequency: "monthly",
+      priority: section ? 0.7 : 0.9,
+    }))),
     ...teas.map(product => ({ url: `${base}${retailProductHref(product.id)}`, changeFrequency: 'weekly', priority: 0.7 })),
   ];
 }

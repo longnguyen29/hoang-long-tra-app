@@ -3,7 +3,7 @@ import CompanyProfile from "@/components/public/CompanyProfile";
 export const metadata = {
   title: "Hồ sơ sản phẩm xuất khẩu & doanh nghiệp | Hoàng Long",
   description: "Hồng Trà Mật, Hồng Trà Khói, Xanh Mộc và Hoa Ngọc Lan. Hồ sơ bốn dòng trà chủ lực, quy cách PP/PE, cung ứng EXW Hà Giang và tài liệu Việt/Anh cho nhà nhập khẩu.",
-  alternates: { canonical: "https://www.hoanglongtra.com/company" },
+  alternates: { canonical: "https://www.hoanglongtra.com/company", languages: { vi: "https://www.hoanglongtra.com/company", en: "https://www.hoanglongtra.com/en/company", ja: "https://www.hoanglongtra.com/ja/company", "zh-Hans": "https://www.hoanglongtra.com/zh/company", "x-default": "https://www.hoanglongtra.com/company" } },
   openGraph: {
     title: "Bốn dòng trà xuất khẩu chủ lực | Hoàng Long",
     description: "Hồ sơ sản phẩm, mẫu chào hàng, quy cách xuất khẩu và điều kiện cung ứng. Tải tài liệu PDF Việt/Anh.",

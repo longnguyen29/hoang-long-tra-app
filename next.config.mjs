@@ -29,7 +29,7 @@ const nextConfig = {
       toHome("/collections/:path*"),
       toHome("/pages/:path*"),
       toHome("/blogs/:path*"),
-      toHome("/en/:path*"),
+      ...["products", "collections", "pages", "blogs", "cart", "checkout", "checkouts", "account"].map(path => toHome(`/en/${path}/:path*`)),
       toHome("/cart/:path*"),
       toHome("/carts"),
       toHome("/checkout/:path*"),

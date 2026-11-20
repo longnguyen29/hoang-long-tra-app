@@ -272,3 +272,6 @@
     color: var(--color-ink);
   }
 }
+
+.languageButton select{max-width:5.8rem;min-height:40px;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer}
+@media(max-width:30rem){.languageButton{padding-inline:.18rem;gap:.23rem}.languageButton select{max-width:4.7rem}}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, Globe2, Menu, X } from "lucide-react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
+import { INTERNATIONAL_LOCALES, internationalSection, localPath } from "@/lib/international-site";
 import styles from "./PublicSiteHeader.module.css";
 
 const GROUPS = [
@@ -52,7 +53,7 @@ function campaignQuery(search) {
 }
 
 export default function PublicSiteHeader({ children }) {
-  const { locale, toggleLocale } = useLocale();
+  const { locale, setLocale } = useLocale();
   const language = locale === "en" ? "en" : "vi";
   const pathname = usePathname() || "/";
   const id = useId();
@@ -188,15 +189,21 @@ export default function PublicSiteHeader({ children }) {
         </nav>
 
         <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.languageButton}
-            onClick={() => { closeNavigation(); toggleLocale(); }}
-            aria-label={language === "vi" ? "Chuyển sang tiếng Anh" : "Switch to Vietnamese"}
-          >
+          <label className={styles.languageButton} data-no-translate>
             <Globe2 size={16} className={styles.languageIcon} aria-hidden="true" />
-            <span>{language.toUpperCase()}</span>
-          </button>
+            <select aria-label={language === "vi" ? "Chọn ngôn ngữ" : "Choose language"}
+              value={language === "en" ? "en-current" : "vi"} onChange={event => {
+                const target = event.target.value;
+                closeNavigation();
+                if (target === "vi") { setLocale("vi"); return; }
+                const section = currentHash === "#documents" ? "documents" : internationalSection(pathname);
+                window.location.assign(localPath(target, section) + (tracking ? `?${tracking}` : ""));
+              }}>
+              <option value="vi">Tiếng Việt</option>
+              {language === "en" && <option value="en-current" hidden>English</option>}
+              {Object.entries(INTERNATIONAL_LOCALES).map(([lang, name]) => <option key={lang} value={lang} lang={lang}>{name}</option>)}
+            </select>
+          </label>
           {children && <div className={styles.cartSlot} onClick={closeNavigation}>{children}</div>}
           <button
             ref={menuButtonRef}

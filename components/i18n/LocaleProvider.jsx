@@ -240,6 +240,11 @@ export default function LocaleProvider({ children }) {
   }, [defaultLocale, storageKey]);
 
   useEffect(() => {
+    const edition = pathname?.split("/")[1];
+    if (["en", "ja", "zh"].includes(edition)) {
+      document.documentElement.lang = edition === "zh" ? "zh-Hans" : edition;
+      return;
+    }
     document.documentElement.lang = locale;
     document.title = translateText(document.title, locale);
     try {
@@ -256,7 +261,7 @@ export default function LocaleProvider({ children }) {
     });
     observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true });
     return () => observer.disconnect();
-  }, [locale, storageKey]);
+  }, [locale, storageKey, pathname]);
 
   const value = useMemo(
     () => ({ locale, setLocale, toggleLocale: () => setLocale((current) => (current === "vi" ? "en" : "vi")) }),
