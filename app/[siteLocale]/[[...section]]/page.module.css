@@ -1,0 +1,55 @@
+.site{--green:#1d3d32;--ink:#25332a;--rule:#c8c9ba;--paper:#f6f3e9;min-height:100vh;background:var(--paper);color:var(--ink);font-family:var(--font-body),system-ui,sans-serif}
+.header,.main,.footer{width:min(100% - 2rem,76rem);margin-inline:auto}
+.header{display:flex;gap:.65rem 1.5rem;flex-wrap:wrap;align-items:center;justify-content:space-between;padding:.7rem 0;border-bottom:1px solid var(--rule)}
+.header nav{display:flex;flex-wrap:wrap;gap:.25rem .8rem;align-items:center}
+.header :is(a){color:inherit;text-decoration:none;font-size:.84rem;min-height:42px;display:inline-flex;align-items:center}
+.header .wordmark{font-weight:750;letter-spacing:.13em;font-size:1.03rem;color:var(--green)}
+.header nav a[aria-current]{text-decoration:underline;text-underline-offset:.3em;font-weight:650}
+.header .languages a{font-size:.76rem}
+.hero{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:clamp(1.25rem,5vw,4rem);padding:clamp(1.8rem,5vw,4.4rem) 0}
+.site h1,.site h2,.site h3{margin:0;color:var(--green);line-height:1.2;font-family:"Noto Serif CJK JP","Noto Serif CJK SC",Georgia,serif}
+.site:lang(zh-Hans) :is(h1,h2,h3){font-family:"Noto Serif CJK SC",serif}
+.site h1{font-size:clamp(2.1rem,5.6vw,4.7rem);max-width:16ch}
+.site h2{font-size:clamp(1.4rem,3vw,2.35rem)}
+.site h3{font-size:1.14rem}
+.site p,.site li{line-height:1.7}
+.hero p,.band>p,.pageHeading p{max-width:66ch}
+.heroImage,.productImage{position:relative;overflow:hidden;background:#d7d3bf}
+.heroImage{aspect-ratio:1.12}
+.heroImage img,.productImage img{object-fit:cover}
+.actions{display:flex;flex-wrap:wrap;gap:.45rem .65rem;margin-top:.9rem}
+.actions :is(a,button){display:inline-flex;align-items:center;min-height:44px;padding:.42rem .75rem;border:1px solid #789180;background:transparent;color:var(--green);font:inherit;font-size:.87rem;text-decoration:none;cursor:pointer}
+.actions .primary{background:var(--green);color:#fff;border-color:var(--green)}
+.pageHeading{padding:2.2rem 0 .5rem}
+.band{padding:clamp(1.3rem,4vw,2.8rem) 0;border-top:1px solid var(--rule)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(12rem,100%),1fr));gap:.7rem;margin:1.1rem 0 0}
+.facts div{border-top:2px solid #7e937a;padding:.65rem 0}
+.facts dt{font-weight:650;font-size:.87rem}.facts dd{margin:.3rem 0 0;font-size:.9rem;line-height:1.5}
+.products,.docTeas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(.8rem,2vw,1.4rem);margin-top:1rem}
+.products article{min-width:0}.products h3{margin-top:.7rem}.products p,.docTeas p,.steps p{margin:.4rem 0;font-size:.85rem}
+.productImage{aspect-ratio:1.25}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem 1.5rem;padding:0 0 0 1.2rem}
+.footer{padding:1.2rem 0 2rem;border-top:1px solid var(--rule);font-size:.8rem}
+.docActions{padding:1.25rem 0}.existing{display:flex;flex-wrap:wrap;gap:.5rem 1rem;margin-top:.8rem;font-size:.83rem}.existing a{color:var(--green)}
+.document{padding:clamp(1rem,4vw,2.75rem);background:#fff;border:1px solid var(--rule);margin-bottom:1.5rem}
+.document header{padding-bottom:1rem}.document h1{max-width:none;font-size:clamp(1.65rem,4vw,2.9rem)}
+.document .docTeas{grid-template-columns:repeat(2,minmax(0,1fr))}
+.document footer{border-top:1px solid var(--rule);padding:.65rem 0 0;font-size:.86rem}
+.checks{padding-inline-start:1.2rem}
+@media(max-width:760px){.hero{grid-template-columns:1fr}.heroImage{aspect-ratio:1.7}.products{grid-template-columns:repeat(2,minmax(0,1fr))}.steps{grid-template-columns:1fr}.header{gap:.15rem 1rem}}
+@media print{
+  .site{background:#fff;min-height:0}
+  .header,.footer,.docActions{display:none}
+  .main{width:100%}
+  .document{border:0;margin:0;padding:0}
+  .document header{padding-bottom:.6rem}
+  .document h1{font-size:22pt}
+  .document h2{font-size:14pt}
+  .document h3{font-size:11pt}
+  .document p,.document li,.document dd{font-size:9.5pt;line-height:1.4}
+  .document .band{padding:.44rem 0;break-inside:avoid}
+  .document .steps{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .document .facts{gap:.5rem;margin-top:.35rem}
+  .document .facts div{padding:.25rem 0}
+}
+@page{size:A4;margin:14mm}

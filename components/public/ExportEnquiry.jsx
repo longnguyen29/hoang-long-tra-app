@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
+import { internationalEnquiry, internationalEnquiryTeas } from "@/lib/international-enquiry";
 import { EXPORT_TEAS } from "@/lib/export-teas";
 import { exportAttribution, exportLink, exportRequirementsLimit, normalizeExportConnectorContact } from "@/lib/export-enquiry";
 import styles from "./ExportEnquiry.module.css";
 
 const COPY = {
+  ...internationalEnquiry,
   vi: {
     sender: "Bạn gửi nhu cầu với vai trò nào?", senderRoles: { buyer: "Khách mua", connector: "Đối tác giới thiệu" }, customerSection: "Khách hàng cần trà", customerHint: "Điền thông tin bên mua trà. Nếu bạn là đối tác giới thiệu, hãy ghi người liên hệ của khách tại đây.", connectorSection: "Thông tin của đối tác giới thiệu", connectorSenderName: "Tên của bạn", connectorSenderContact: "Email hoặc số điện thoại của bạn", connectorSenderHint: "Đây là liên hệ của bạn để Hoàng Long phối hợp, khác với khách mua trà.", connectorConsent: "Tôi là người giới thiệu, được khách cho phép chia sẻ thông tin trên và đồng ý để Hoàng Long lưu, liên hệ khách và tôi về nhu cầu này.",
     eyebrow: "Bước tiếp theo", title: "Gửi nhu cầu mua trà", intro: "Một yêu cầu cho mẫu, báo giá EXW hoặc lịch thăm nhà máy. Hoàng Long sẽ xác nhận quy cách, kiểm nghiệm và thời gian phù hợp trước khi chốt đơn.",
@@ -38,6 +40,8 @@ const COPY = {
 };
 const INITIAL = { submitterRole: "buyer", business: "", name: "", contact: "", teaIds: [], intent: "quote", quantityKg: "", desiredDate: "", contactMethod: "email", contactDetail: "", requirements: "", website: "", currency: "TWD", connectorName: "", connectorContact: "" };
 const SENDER_ERRORS = {
+  ja: { connector_name_required: "紹介者のお名前を入力してください。", invalid_connector_contact: "紹介者のメールアドレスまたは電話番号をご確認ください。", invalid_submitter_role: "購入者または紹介者を選んでください。" },
+  zh: { connector_name_required: "请填写介绍人姓名。", invalid_connector_contact: "请核对介绍人的邮箱或电话号码。", invalid_submitter_role: "请选择采购方或介绍方。" },
   vi: { connector_name_required: "Điền tên người phụ trách giới thiệu.", invalid_connector_contact: "Kiểm tra email hoặc số điện thoại của đối tác giới thiệu; không dùng ID LINE.", invalid_submitter_role: "Chọn Khách mua hoặc Đối tác giới thiệu." },
   en: { connector_name_required: "Add the responsible referral partner's name.", invalid_connector_contact: "Add the referral partner's valid email or phone number, not a LINE ID.", invalid_submitter_role: "Choose Buyer or Referral partner." },
   "zh-TW": { connector_name_required: "請填寫負責介紹人的姓名。", invalid_connector_contact: "請填寫介紹人有效的電子郵件或電話，不可使用 LINE ID。", invalid_submitter_role: "請選擇買方或介紹人。" },
@@ -47,7 +51,7 @@ const PAGE_COPY = {
   en: { location: "Customer region / delivery destination", locationHint: "City, province and country; a full address is not needed yet.", volume: "Expected volume for this order (kg)", consent: name => `I agree that Hoàng Long may share this enquiry, the customer's business contact details and basic sample / quotation / order progress with ${name}, the referral partner shown on this page.`, received: "The referral source has been saved for Hoàng Long to review. This does not confirm an order or commission entitlement.", errors: { location_required: "Add the customer's region / delivery destination.", invalid_location: "Check the destination, up to 160 characters.", partner_consent_required: "Agree to share the enquiry and progress with the named partner.", invalid_partner_page: "This referral page is no longer accepting enquiries. Contact Hoàng Long.", partner_page_unavailable: "This referral page is no longer accepting enquiries. Contact Hoàng Long.", partner_page_changed: "This page has changed. Reload it and check the contact before submitting." } },
   "zh-TW": { location: "客戶地區／交貨目的地", locationHint: "請填寫城市、地區及國家，暫不需要完整地址。", volume: "本次訂單預計採購量（公斤）", consent: name => `我同意 Hoàng Long 與本頁介紹合作夥伴 ${name} 分享此需求、客戶業務聯絡資訊及基本樣品／報價／訂單進度。`, received: "介紹來源已儲存供 Hoàng Long 審核；不代表訂單或佣金權利已確認。", errors: { location_required: "請填寫客戶地區／交貨目的地。", invalid_location: "請確認目的地，最多 160 字元。", partner_consent_required: "請同意與本頁合作夥伴分享需求及進度。", invalid_partner_page: "此介紹頁面已停止接受需求，請聯繫 Hoàng Long。", partner_page_unavailable: "此介紹頁面已停止接受需求，請聯繫 Hoàng Long。", partner_page_changed: "頁面資料已更新，請重新載入並確認聯絡資訊。" } },
 };
-const METHODS = { email: "Email", phone: { vi: "Điện thoại", en: "Phone", "zh-TW": "電話" }, line: "LINE", zalo: "Zalo", whatsapp: "WhatsApp" };
+const METHODS = { email: "Email", phone: { vi: "Điện thoại", en: "Phone", "zh-TW": "電話", ja: "電話", zh: "电话" }, line: "LINE", zalo: "Zalo", whatsapp: "WhatsApp" };
 
 export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], availableTeaIds = EXPORT_TEAS.map((tea) => tea.id), intent = "quote", compact = false, initialCurrency = "TWD", partnerPage = null, presentationProfileId }) {
   const language = Object.hasOwn(COPY, locale) ? locale : "zh-TW";
@@ -71,7 +75,8 @@ export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], a
   }, [initialCurrency, saved]);
   const inFlight = useRef(false);
   const heading = useRef(null);
-  const pageCopy = PAGE_COPY[language];
+  const pageCopy = PAGE_COPY[language] || PAGE_COPY.en;
+  const translatedTeaNames = Object.hasOwn(internationalEnquiryTeas, language) ? internationalEnquiryTeas[language] : null;
   const pageErrors = { ...pageCopy.errors, page_unavailable: pageCopy.errors.partner_page_unavailable };
   const partnerPageInput = partnerPage ? { slug: partnerPage.slug, revision: partnerPage.revision } : null;
   const previewInput = { ...form, ...(partnerPageInput ? { partnerPage: partnerPageInput, partnerConsent: true } : presentationProfileId ? { presentationProfileId } : {}) };
@@ -148,7 +153,7 @@ export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], a
   const needsChannel = ["line", "zalo", "whatsapp"].includes(form.contactMethod);
   const noteLimit = exportRequirementsLimit(previewInput, exportAttribution(search));
   const noteTooLong = form.requirements.length > noteLimit;
-  return <section id="export-enquiry" className={`${styles.section} ${compact ? styles.compact : ""}`} lang={language} aria-labelledby="export-enquiry-title">
+  return <section id="export-enquiry" className={`${styles.section} ${compact ? styles.compact : ""}`} lang={language === "zh" ? "zh-Hans" : language} aria-labelledby="export-enquiry-title">
     <div className={styles.intro}>
       <p className={styles.eyebrow}>{t.eyebrow}</p><h2 id="export-enquiry-title">{t.title}</h2><p>{t.intro}</p>
       {!compact && <aside className={styles.partner}><strong>{t.connector}</strong><Link href={exportLink("/partners/network", search, language)}>{t.partner}<ArrowRight size={16} aria-hidden="true"/></Link><p>{t.partnerHint}</p></aside>}
@@ -166,7 +171,7 @@ export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], a
           </div>
           {partnerPage && <label className={styles.field}>{pageCopy.location}<input name="location" required maxLength={160} autoComplete="off" value={form.location} onChange={e => update("location", e.target.value)} aria-invalid={error === "location_required" || error === "invalid_location"}/><small>{pageCopy.locationHint}</small></label>}
           {form.submitterRole === "connector" && <section className={styles.saved} aria-labelledby="export-connector-title"><h3 id="export-connector-title">{t.connectorSection}</h3><p>{t.connectorSenderHint}</p><div className={styles.twoFields}><label className={styles.field}>{t.connectorSenderName}<input name="connectorName" required maxLength={40} autoComplete="name" aria-invalid={error === "connector_name_required"} value={form.connectorName} onChange={(e) => update("connectorName", e.target.value)}/></label><label className={styles.field}>{t.connectorSenderContact}<input name="connectorContact" required maxLength={60} autoComplete="off" placeholder="Email / +886… / +84…" aria-invalid={error === "invalid_connector_contact"} value={form.connectorContact} onChange={(e) => update("connectorContact", e.target.value)}/></label></div></section>}
-          <fieldset className={styles.selection}><legend>{t.tea}</legend><div>{availableTeas.map((tea) => <label key={tea.id}><input type="checkbox" checked={form.teaIds.includes(tea.id)} onChange={(e) => update("teaIds", e.target.checked ? [...form.teaIds, tea.id] : form.teaIds.filter((id) => id !== tea.id))}/><span>{tea.name[language]}</span></label>)}</div></fieldset>
+          <fieldset className={styles.selection}><legend>{t.tea}</legend><div>{availableTeas.map((tea) => <label key={tea.id}><input type="checkbox" checked={form.teaIds.includes(tea.id)} onChange={(e) => update("teaIds", e.target.checked ? [...form.teaIds, tea.id] : form.teaIds.filter((id) => id !== tea.id))}/><span>{translatedTeaNames?.[tea.id] || tea.name[language] || tea.name.en}</span></label>)}</div></fieldset>
           <div className={styles.twoFields}>
             <label className={styles.field}>{t.purpose}<select name="intent" value={form.intent} onChange={(e) => update("intent", e.target.value)}>{Object.entries(t.intents).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
             <label className={styles.field}>{partnerPage ? pageCopy.volume : t.quantity}<input name="quantityKg" type="number" min="0.001" max="10000000" step="0.001" placeholder={t.optional} value={form.quantityKg} onChange={(e) => update("quantityKg", e.target.value)}/></label>
@@ -186,7 +191,7 @@ export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], a
           {partnerPage && <label className={styles.consent}><input type="checkbox" checked={partnerConsent} required onChange={e => { if (inFlight.current) return; requestId.current = ""; setError(""); setPartnerConsent(e.target.checked); }}/><span>{pageCopy.consent(partnerPage.display_name)}</span></label>}
           {error && <p className={styles.error} role="alert">{error === "note_too_long" ? t.noteTooLong : pageErrors[error] || SENDER_ERRORS[language][error] || t.errors[error]}</p>}
           <button className={styles.submit} type="submit" disabled={noteTooLong}>{sending ? t.sending : t.send}<ArrowRight size={17} aria-hidden="true"/></button>
-          <p className={styles.privacy}>{t.privacy} <Link href="/privacy">{t.privacyLink}</Link></p>
+          <p className={styles.privacy}>{t.privacy} <Link href={["ja", "zh", "en"].includes(language) ? "/privacy?lang=en" : "/privacy"}>{t.privacyLink}</Link></p>
         </fieldset>
       </form>}
   </section>;

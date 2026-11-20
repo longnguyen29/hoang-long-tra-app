@@ -2,7 +2,8 @@ export const metadata = {
   "title": "Hoàng Long | Trà Việt Nam · Sản phẩm xuất khẩu & cung ứng B2B",
   "description": "Hồng Trà Mật, Hồng Trà Khói, Xanh Mộc và Trà Xanh Hoa Ngọc Lan. Hồ sơ sản phẩm xuất khẩu, nhà máy Hà Giang, quy cách lô lớn và cửa hàng trà Hoàng Long.",
   "alternates": {
-    "canonical": "https://www.hoanglongtra.com/"
+    "canonical": "https://www.hoanglongtra.com/",
+    "languages": { vi: "https://www.hoanglongtra.com/", en: "https://www.hoanglongtra.com/en", ja: "https://www.hoanglongtra.com/ja", "zh-Hans": "https://www.hoanglongtra.com/zh", "x-default": "https://www.hoanglongtra.com/" }
   },
   "openGraph": {
     "title": "Hoàng Long | Trà Việt Nam · Sản phẩm xuất khẩu & cung ứng B2B",
