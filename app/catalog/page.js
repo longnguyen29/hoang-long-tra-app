@@ -5,7 +5,7 @@ export const metadata = {
   "description": "Bốn sản phẩm chủ lực: Hồng Trà Mật, Hồng Trà Khói, Xanh Mộc và Trà Xanh Hoa Ngọc Lan. Hồ sơ sản phẩm, quy cách PP/PE, mẫu và báo giá xuất khẩu.",
   "alternates": {
     "canonical": "https://www.hoanglongtra.com/catalog",
-    "languages": { vi: "https://www.hoanglongtra.com/catalog", en: "https://www.hoanglongtra.com/en/catalog", ja: "https://www.hoanglongtra.com/ja/catalog", "zh-Hans": "https://www.hoanglongtra.com/zh/catalog", "x-default": "https://www.hoanglongtra.com/catalog" }
+    "languages": { vi: "https://www.hoanglongtra.com/catalog", en: "https://www.hoanglongtra.com/en/catalog", ja: "https://www.hoanglongtra.com/ja/catalog", "zh-Hans": "https://www.hoanglongtra.com/zh/catalog", ru: "https://www.hoanglongtra.com/ru/catalog", "x-default": "https://www.hoanglongtra.com/catalog" }
   },
   "openGraph": {
     "title": "Danh mục trà xuất khẩu & B2B | Hoàng Long",

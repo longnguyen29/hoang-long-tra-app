@@ -40,6 +40,7 @@ const COPY = {
 };
 const INITIAL = { submitterRole: "buyer", business: "", name: "", contact: "", teaIds: [], intent: "quote", quantityKg: "", desiredDate: "", contactMethod: "email", contactDetail: "", requirements: "", website: "", currency: "TWD", connectorName: "", connectorContact: "" };
 const SENDER_ERRORS = {
+  ru: { connector_name_required: "Укажите имя представителя.", invalid_connector_contact: "Проверьте электронный адрес или телефон представителя.", invalid_submitter_role: "Выберите покупателя или представителя." },
   ja: { connector_name_required: "紹介者のお名前を入力してください。", invalid_connector_contact: "紹介者のメールアドレスまたは電話番号をご確認ください。", invalid_submitter_role: "購入者または紹介者を選んでください。" },
   zh: { connector_name_required: "请填写介绍人姓名。", invalid_connector_contact: "请核对介绍人的邮箱或电话号码。", invalid_submitter_role: "请选择采购方或介绍方。" },
   vi: { connector_name_required: "Điền tên người phụ trách giới thiệu.", invalid_connector_contact: "Kiểm tra email hoặc số điện thoại của đối tác giới thiệu; không dùng ID LINE.", invalid_submitter_role: "Chọn Khách mua hoặc Đối tác giới thiệu." },
@@ -51,7 +52,7 @@ const PAGE_COPY = {
   en: { location: "Customer region / delivery destination", locationHint: "City, province and country; a full address is not needed yet.", volume: "Expected volume for this order (kg)", consent: name => `I agree that Hoàng Long may share this enquiry, the customer's business contact details and basic sample / quotation / order progress with ${name}, the referral partner shown on this page.`, received: "The referral source has been saved for Hoàng Long to review. This does not confirm an order or commission entitlement.", errors: { location_required: "Add the customer's region / delivery destination.", invalid_location: "Check the destination, up to 160 characters.", partner_consent_required: "Agree to share the enquiry and progress with the named partner.", invalid_partner_page: "This referral page is no longer accepting enquiries. Contact Hoàng Long.", partner_page_unavailable: "This referral page is no longer accepting enquiries. Contact Hoàng Long.", partner_page_changed: "This page has changed. Reload it and check the contact before submitting." } },
   "zh-TW": { location: "客戶地區／交貨目的地", locationHint: "請填寫城市、地區及國家，暫不需要完整地址。", volume: "本次訂單預計採購量（公斤）", consent: name => `我同意 Hoàng Long 與本頁介紹合作夥伴 ${name} 分享此需求、客戶業務聯絡資訊及基本樣品／報價／訂單進度。`, received: "介紹來源已儲存供 Hoàng Long 審核；不代表訂單或佣金權利已確認。", errors: { location_required: "請填寫客戶地區／交貨目的地。", invalid_location: "請確認目的地，最多 160 字元。", partner_consent_required: "請同意與本頁合作夥伴分享需求及進度。", invalid_partner_page: "此介紹頁面已停止接受需求，請聯繫 Hoàng Long。", partner_page_unavailable: "此介紹頁面已停止接受需求，請聯繫 Hoàng Long。", partner_page_changed: "頁面資料已更新，請重新載入並確認聯絡資訊。" } },
 };
-const METHODS = { email: "Email", phone: { vi: "Điện thoại", en: "Phone", "zh-TW": "電話", ja: "電話", zh: "电话" }, line: "LINE", zalo: "Zalo", whatsapp: "WhatsApp" };
+const METHODS = { email: "Email", phone: { vi: "Điện thoại", en: "Phone", "zh-TW": "電話", ja: "電話", zh: "电话", ru: "Телефон" }, line: "LINE", zalo: "Zalo", whatsapp: "WhatsApp" };
 
 export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], availableTeaIds = EXPORT_TEAS.map((tea) => tea.id), intent = "quote", compact = false, initialCurrency = "TWD", partnerPage = null, presentationProfileId }) {
   const language = Object.hasOwn(COPY, locale) ? locale : "zh-TW";
@@ -191,7 +192,7 @@ export default function ExportEnquiry({ locale = "zh-TW", selectedTeaIds = [], a
           {partnerPage && <label className={styles.consent}><input type="checkbox" checked={partnerConsent} required onChange={e => { if (inFlight.current) return; requestId.current = ""; setError(""); setPartnerConsent(e.target.checked); }}/><span>{pageCopy.consent(partnerPage.display_name)}</span></label>}
           {error && <p className={styles.error} role="alert">{error === "note_too_long" ? t.noteTooLong : pageErrors[error] || SENDER_ERRORS[language][error] || t.errors[error]}</p>}
           <button className={styles.submit} type="submit" disabled={noteTooLong}>{sending ? t.sending : t.send}<ArrowRight size={17} aria-hidden="true"/></button>
-          <p className={styles.privacy}>{t.privacy} <Link href={["ja", "zh", "en"].includes(language) ? "/privacy?lang=en" : "/privacy"}>{t.privacyLink}</Link></p>
+          <p className={styles.privacy}>{t.privacy} <Link href={["ja", "zh", "en", "ru"].includes(language) ? "/privacy?lang=en" : "/privacy"}>{t.privacyLink}</Link></p>
         </fieldset>
       </form>}
   </section>;

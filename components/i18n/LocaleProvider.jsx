@@ -241,7 +241,7 @@ export default function LocaleProvider({ children }) {
 
   useEffect(() => {
     const edition = pathname?.split("/")[1];
-    if (["en", "ja", "zh"].includes(edition)) {
+    if (["en", "ja", "zh", "ru"].includes(edition)) {
       document.documentElement.lang = edition === "zh" ? "zh-Hans" : edition;
       return;
     }
