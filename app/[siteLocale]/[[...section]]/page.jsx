@@ -9,7 +9,7 @@ import styles from "./page.module.css";
 
 export const dynamicParams = false;
 const base = "https://www.hoanglongtra.com";
-const localeTags = { en: "en", ja: "ja", zh: "zh-Hans" };
+const localeTags = { en: "en", ja: "ja", zh: "zh-Hans", ru: "ru" };
 const originalDocs = ["corporate-profile", "product-annex", "cooperation-brief"];
 const pdfPath = language => `/downloads/hoang-long-export-brief-${language}.pdf`;
 
