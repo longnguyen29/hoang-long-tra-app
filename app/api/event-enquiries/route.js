@@ -1,3 +1,4 @@
+import { notifyTelegram } from "@/lib/telegram";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { allowedEventEnquiryOrigin, eventEnquiryReference, eventEnquiryThrottleKeys,
   normalizeEventEnquiry, readEventEnquiryBody } from "@/lib/event-enquiry";
@@ -36,6 +37,10 @@ export async function POST(request) {
       return fail("unavailable", 503);
     }
     if (!data || data.request_id !== input.requestId || typeof data.is_new !== "boolean") return fail("unavailable", 503);
+    if (data.is_new) {
+      try { const notice = await notifyTelegram("event_enquiries", input.requestId); if (!notice.ok) console.error("Event enquiry Telegram notification failed:", notice.reason); }
+      catch { console.error("Event enquiry Telegram notification failed"); }
+    }
     return reply({ ok: true, reference: eventEnquiryReference(input.requestId), requestId: input.requestId }, data.is_new ? 201 : 200);
   } catch { return fail("unavailable", 503); }
 }
