@@ -11,6 +11,8 @@ export async function POST(request) {
     return Response.json({ ok: false }, { status: 400 });
   }
 
+  // Private event enquiries are notified only inside their trusted submission routes.
+  if (kind === "event_enquiries") return Response.json({ ok: false }, { status: 400 });
   const result = await notifyTelegram(kind, id);
   return Response.json(result, result.status ? { status: result.status } : undefined);
 }
