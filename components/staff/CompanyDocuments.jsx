@@ -8,6 +8,8 @@ import {
   normalizeDocumentDraft, prefillPartner, buildDocument, validateDocument,
 } from "@/lib/company-documents";
 import { DOCUMENT_GROUPS } from "@/lib/company-document-forms";
+import { PROFILE_LEGAL } from "@/lib/company-profile";
+import { greenHillLegendDocumentFields } from "@/lib/green-hill-legend-document-preset";
 import { PARTNER_COMMISSION_TIERS, companyDocumentTierPatch, getMatchingCommissionTier } from "@/lib/partner-commission-tiers";
 import styles from "./CompanyDocuments.module.css";
 
@@ -49,6 +51,8 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", i
   const importVersion = useRef(0);
   const alertRef = useRef(null);
   const template = DOCUMENT_TEMPLATES.find(item => item.id === templateId) || DOCUMENT_TEMPLATES[0];
+  const supportsGreenHillLegend = ["tea_trade_agreement", "tea_order_confirmation", "tea_lot_receipt"].includes(templateId);
+  const usesExternalSeller = Boolean(template.group && draft.company_legal_name && draft.company_legal_name.trim().toUpperCase() !== PROFILE_LEGAL.name.toUpperCase());
   const generated = useMemo(() => buildDocument(templateId, draft), [templateId, draft]);
   const validation = useMemo(() => validateDocument(templateId, draft, { forExport: true }), [templateId, draft]);
   const groups = useMemo(() => {
@@ -92,6 +96,16 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", i
       setDraft(previous => ({ ...previous, template_id: id }));
     }
     setReviewed(false); setShowErrors(false); setDirty(!resetDraft); setNotice(""); setFileError("");
+  }
+  function useGreenHillLegendPreset() {
+    const fields = greenHillLegendDocumentFields(templateId);
+    if (!fields) return;
+    if (dirty && !window.confirm("Thay bản nháp đang nhập bằng thông tin giao dịch Green Hill – Legend Tea?")) return;
+    importVersion.current += 1;
+    setDraft(createDocumentDraft(templateId, fields));
+    setSelectedPartner(""); setReviewed(false); setShowErrors(false); setDirty(true); setFileError("");
+    setNotice("Đã điền thông tin Green Hill – Legend Tea theo hợp đồng đã chốt. Số, ngày, nơi ký, giao nhận và tiến độ thanh toán vẫn cần điền trước khi xuất.");
+    setView("edit");
   }
   function selectPartner(id) {
     // Keep both parties' legal identities blank: a CRM contact is not necessarily
@@ -164,6 +178,7 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", i
         </optgroup>)}
       </select>
       <p id="document-template-description">{template.description}</p>
+      {supportsGreenHillLegend && <div className={styles.picker}><button type="button" onClick={useGreenHillLegendPreset}>Điền giao dịch Green Hill – Legend Tea (24/11/2026)</button><p>3 mặt hàng, khối lượng 380,56 kg, tổng 48.375.360 VNĐ gồm VAT 8%; tài khoản nhận 110636872222 – VietinBank PGD Bắc Thăng Long. Chỉ áp dụng cho bản nháp đang soạn, không sửa pháp nhân mặc định hoặc các đơn khác.</p></div>}
       {template.sources && <p className={styles.sources}>{template.sources.map(source => <a key={source.href} href={source.href} target="_blank" rel="noreferrer">{source.label}</a>)}</p>}
     </div>
     <div className={styles.toolbar}><div><span className={styles.draftChip}>Bản nháp · Chưa ký</span><small>{dirty ? "Có thay đổi chưa tải xuống" : "Soạn riêng trong phiên làm việc này"}</small></div><div className={styles.actions}>
@@ -180,7 +195,7 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", i
       <section className={styles.editor} aria-label="Điền thông tin tài liệu">
         {!template.group && <div className={styles.picker}><label htmlFor="document-partner">Điền từ đối tác đã duyệt</label><select id="document-partner" value={selectedPartner} onChange={event => selectPartner(event.target.value)}><option value="">Điền thủ công</option>{partners.map(partner => <option key={partner.id} value={partner.id}>{partner.business_name} · {partner.code}</option>)}</select><p>Chỉ lấy thông tin liên hệ và tỷ lệ đã thỏa thuận. Thông tin người ký cần xác nhận riêng.</p>{partnersUnavailable && <p className={styles.error}>Chưa tải được danh sách đối tác. Bạn vẫn có thể điền thủ công hoặc tải lại trang.</p>}{partnersTruncated && <p>Đang hiển thị 200 đối tác đầu tiên. Có thể điền thủ công nếu chưa thấy người cần chọn.</p>}</div>}
         {templateId === "partner_agreement" && <div className={styles.picker}><button type="button" onClick={chooseClassic}>Điền bản nháp Classic 1% / 2%</button><label htmlFor="document-commission-tier">Mức hoa hồng mẫu</label><select id="document-commission-tier" value={commissionTier} onChange={event => chooseTier(event.target.value)}>{PARTNER_COMMISSION_TIERS.map(tier => <option key={tier.id} value={tier.id}>{tier.label}</option>)}</select><p>{PARTNER_COMMISSION_TIERS.find(tier => tier.id === commissionTier)?.description}</p><p>Điền mẫu để hai bên thống nhất, có thể sửa các tỷ lệ ở mục Hoa hồng. Không thay đổi điều kiện đã lưu trong Partner Network.</p></div>}
-        {groups.map(([section, fields], index) => <details key={`${templateId}-${section}`} className={styles.group} open={index === 0 || (showErrors && fields.some(field => validation.errors?.[field.name] || validation.missing?.includes(field.name)))}><summary><span><small>0{index + 1}</small>{template.oneParty && section === "Bên A · Hoàng Long" ? "Công ty và chủ sở hữu" : sectionLabels[section] || section}</span><ChevronDown size={18} aria-hidden="true" /></summary><div className={styles.fields}>{fields.map(field => {
+        {groups.map(([section, fields], index) => <details key={`${templateId}-${section}`} className={styles.group} open={index === 0 || (showErrors && fields.some(field => validation.errors?.[field.name] || validation.missing?.includes(field.name)))}><summary><span><small>0{index + 1}</small>{template.oneParty && section === "Bên A · Hoàng Long" ? "Công ty và chủ sở hữu" : usesExternalSeller && section === "Bên A · Hoàng Long" ? "Bên A · Bên bán" : sectionLabels[section] || section}</span><ChevronDown size={18} aria-hidden="true" /></summary><div className={styles.fields}>{fields.map(field => {
           if (field.name === "repeat_order_limit" && draft.commission_policy === "classic") return null;
           if (field.name === "employment_end" && draft.employment_type !== "fixed" && !draft.employment_end) return null;
           const required = template.required?.includes(field.name) || (field.name === "employment_end" && draft.employment_type === "fixed") || (field.name === "repeat_rate_percent" && draft.commission_policy === "classic");
@@ -192,10 +207,10 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", i
         <div className={styles.review}><label><input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} /><span>Tôi đã đối chiếu thông tin, thẩm quyền người ký và nội dung trước khi xuất bản nháp.</span></label><p>Bản xuất là bản nháp để rà soát, chưa ký.</p><button type="button" onClick={() => exportDocument("text")}><FileText size={16} aria-hidden="true" />Tải nội dung .txt để sửa tiếp</button></div>
       </section>
       <section className={styles.previewPanel} aria-label="Xem trước bản in"><div className={styles.previewHeading}><span>Bản xem trước · A4</span><small>Chọn “Lưu dưới dạng PDF” trong hộp thoại in.</small></div>
-        <article className={styles.document} data-company-document><header className={styles.documentHeader}><div><span className={styles.seal} aria-hidden="true">HL</span><div><strong>HOÀNG LONG</strong><small>Tài liệu công ty</small></div></div><span>BẢN NHÁP · CHƯA KÝ</span></header><h2>{generated.title}</h2>
+        <article className={styles.document} data-company-document><header className={styles.documentHeader}><div><span className={styles.seal} aria-hidden="true">{usesExternalSeller ? "GD" : "HL"}</span><div><strong>{usesExternalSeller ? "CHỨNG TỪ GIAO DỊCH" : "HOÀNG LONG"}</strong><small>Tài liệu công ty</small></div></div><span>BẢN NHÁP · CHƯA KÝ</span></header><h2>{generated.title}</h2>
           {generated.sections.map((section, index) => <section key={index} className={styles.documentSection}><h3>{section.title}</h3>{section.paragraphs.map((paragraph, number) => <p key={number}>{paragraph}</p>)}</section>)}
           <div className={styles.signatures} data-single={template.oneParty || undefined}>{generated.signatureBlocks.map((signature, index) => <section key={index}><strong>{signature.title}</strong><p>Ký, ghi rõ họ tên; đóng dấu nếu áp dụng</p><div aria-hidden="true" /><b>{signature.name || "………………………………"}</b>{signature.titleRole && <small>{signature.titleRole}</small>}</section>)}</div>
-          <footer className={styles.documentFooter}>Hoàng Long · {draft.document_ref || "Chưa có số văn bản"} · Bản soạn thảo chưa ký. Kiểm tra và thống nhất nội dung trước khi sử dụng.</footer>
+          <footer className={styles.documentFooter}>{usesExternalSeller ? "Chứng từ giao dịch" : "Hoàng Long"} · {draft.document_ref || "Chưa có số văn bản"} · Bản soạn thảo chưa ký. Kiểm tra và thống nhất nội dung trước khi sử dụng.</footer>
         </article>
       </section>
     </div>
