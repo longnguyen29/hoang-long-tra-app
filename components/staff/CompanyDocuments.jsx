@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, ChevronDown, Download, FileText, FolderOpen, Printer } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Download, FileText, FolderOpen, Printer, Save } from "lucide-react";
 import {
   DOCUMENT_FIELDS, DOCUMENT_TEMPLATES, createDocumentDraft,
   normalizeDocumentDraft, prefillPartner, buildDocument, validateDocument,
@@ -31,7 +31,7 @@ function downloadFile(content, name, type) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export default function CompanyDocuments({ partners = [], initialPartner = "", initialTemplate = "partner_agreement", orderFields = {}, orderUnavailable = false, partnersUnavailable = false, partnersTruncated = false }) {
+export default function CompanyDocuments({ partners = [], initialPartner = "", initialTemplate = "partner_agreement", orderFields = {}, orderUnavailable = false, partnersUnavailable = false, partnersTruncated = false, b2b = null }) {
   const initial = partners.find(partner => partner.id === initialPartner);
   const [templateId, setTemplateId] = useState(initialTemplate);
   const [draft, setDraft] = useState(() => createDocumentDraft(initialTemplate, initialTemplate === "partner_agreement" && initial ? prefillPartner(initial) : orderFields));
@@ -40,6 +40,7 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", i
   const [reviewed, setReviewed] = useState(false);
   const [view, setView] = useState("edit");
   const [showErrors, setShowErrors] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState(() => orderUnavailable
     ? "Không tải được đơn hàng. Có thể điền bản nháp thủ công."
     : orderFields.tea_order_ref ? "Đã lấy dữ liệu từ đơn hàng. Kiểm tra lại thông tin và điền các điều kiện còn thiếu trước khi xuất." : "");
@@ -49,6 +50,7 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", i
   const importVersion = useRef(0);
   const alertRef = useRef(null);
   const template = DOCUMENT_TEMPLATES.find(item => item.id === templateId) || DOCUMENT_TEMPLATES[0];
+  const draftLabel = template.workingSheet ? "Bảng đối chiếu · Chưa phát hành" : "Bản nháp · Chưa ký";
   const generated = useMemo(() => buildDocument(templateId, draft), [templateId, draft]);
   const validation = useMemo(() => validateDocument(templateId, draft, { forExport: true }), [templateId, draft]);
   const groups = useMemo(() => {
@@ -122,7 +124,29 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", i
     }
     if (kind === "print") { window.print(); return; }
     downloadFile(`\uFEFF${generated.plainText}`, `${fileName(templateId, draft)}.txt`, "text/plain;charset=utf-8");
-    setNotice("Đã tải nội dung để chỉnh tiếp bằng trình soạn thảo. Đây là bản chưa ký.");
+    setNotice(template.workingSheet ? "Đã tải bảng đối chiếu nội bộ." : "Đã tải nội dung để chỉnh tiếp bằng trình soạn thảo. Đây là bản chưa ký.");
+  }
+  async function saveWorkflowDraft() {
+    if (!b2b || saving) return;
+    const result = normalizeDocumentDraft({ ...draftFields(template, draft), template_id: templateId });
+    if (Object.keys(result.errors || {}).length) {
+      setFileError("Kiểm tra các ô sai định dạng trước khi lưu.");
+      setShowErrors(true);
+      setView("edit");
+      return;
+    }
+    setSaving(true);
+    setFileError("");
+    setNotice("");
+    try {
+      await b2b.save(draftFields(template, result.data));
+      setDirty(false);
+      setNotice("Đã lưu bản nháp vào hồ sơ.");
+    } catch (error) {
+      setFileError(error.message);
+    } finally {
+      setSaving(false);
+    }
   }
   function saveDraft() {
     const fields = draftFields(template, draft);
@@ -143,7 +167,7 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", i
       const input = JSON.parse(await file.text());
       if (version !== importVersion.current) return;
       const importedTemplate = DOCUMENT_TEMPLATES.find(item => item.id === input?.template_id);
-      if (input?.format !== DRAFT_FORMAT || input.version !== 1 || !importedTemplate
+      if (input?.format !== DRAFT_FORMAT || input.version !== 1 || !importedTemplate || importedTemplate.workflowOnly
         || !input.fields || typeof input.fields !== "object" || Array.isArray(input.fields)) throw new Error("format");
       const fields = draftFields(importedTemplate, input.fields);
       if (!importedTemplate.group) fields.commission_basis ??= "revenue";
@@ -155,22 +179,26 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", i
   }
 
   return <main className={styles.page} data-company-documents-page data-no-translate>
-    <header className={styles.header}><div><p className={styles.eyebrow}>Hoàng Long · Bàn quản trị</p><h1>Tài liệu công ty</h1><p>Chọn mẫu. Điền thông tin. Xuất bản nháp để kiểm tra.</p></div><Link href="/admin/partner-network">Mạng lưới đối tác <ArrowUpRight size={16} aria-hidden="true" /></Link></header>
-    <div className={styles.templates}>
+    <header className={styles.header}><div><p className={styles.eyebrow}>{b2b ? "Tài liệu công ty · Hồ sơ B2B" : "Hoàng Long · Bàn quản trị"}</p><h1>{b2b ? template.title : "Tài liệu công ty"}</h1><p>{b2b ? b2b.description : "Chọn mẫu. Điền thông tin. Xuất bản nháp để kiểm tra."}</p></div><Link href={b2b?.returnHref || "/admin/partner-network"}>{b2b ? "Về hồ sơ" : "Mạng lưới đối tác"} <ArrowUpRight size={16} aria-hidden="true" /></Link></header>
+    {b2b?.panel}
+    {!b2b && <div className={styles.templates}>
       <label htmlFor="document-template">Mẫu tài liệu</label>
       <select id="document-template" value={templateId} onChange={event => changeTemplate(event.target.value)} aria-describedby="document-template-description">
         {DOCUMENT_GROUPS.map(group => <optgroup key={group} label={group}>
-          {DOCUMENT_TEMPLATES.filter(item => (item.group || DOCUMENT_GROUPS[0]) === group).map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
+          {DOCUMENT_TEMPLATES.filter(item => !item.workflowOnly && (item.group || DOCUMENT_GROUPS[0]) === group).map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
         </optgroup>)}
       </select>
       <p id="document-template-description">{template.description}</p>
       {template.sources && <p className={styles.sources}>{template.sources.map(source => <a key={source.href} href={source.href} target="_blank" rel="noreferrer">{source.label}</a>)}</p>}
-    </div>
-    <div className={styles.toolbar}><div><span className={styles.draftChip}>Bản nháp · Chưa ký</span><small>{dirty ? "Có thay đổi chưa tải xuống" : "Soạn riêng trong phiên làm việc này"}</small></div><div className={styles.actions}>
-      <button type="button" onClick={saveDraft}><Download size={16} aria-hidden="true" />Tải bản nháp</button>
-      <button type="button" onClick={() => fileInput.current?.click()}><FolderOpen size={16} aria-hidden="true" />Mở bản nháp</button>
+    </div>}
+    {(!b2b || b2b.editing) && <>
+    <div className={styles.toolbar}><div><span className={styles.draftChip}>{draftLabel}</span><small>{dirty ? (b2b ? "Có thay đổi chưa lưu" : "Có thay đổi chưa tải xuống") : b2b ? "" : "Soạn riêng trong phiên làm việc này"}</small></div><div className={styles.actions}>
+      {b2b ? <button type="button" disabled={saving || b2b.busy} onClick={saveWorkflowDraft}><Save size={16} aria-hidden="true" />{saving ? "Đang lưu…" : "Lưu bản nháp"}</button> : <>
+        <button type="button" onClick={saveDraft}><Download size={16} aria-hidden="true" />Tải bản nháp</button>
+        <button type="button" onClick={() => fileInput.current?.click()}><FolderOpen size={16} aria-hidden="true" />Mở bản nháp</button>
+        <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={openDraft} aria-label="Chọn file bản nháp" />
+      </>}
       <button type="button" className={styles.primary} onClick={() => exportDocument("print")}><Printer size={16} aria-hidden="true" />In / lưu PDF</button>
-      <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={openDraft} aria-label="Chọn file bản nháp" />
     </div></div>
     {notice && <p className={styles.notice} role="status">{notice}</p>}
     {fileError && <p className={styles.error} role="alert">{fileError}</p>}
@@ -180,25 +208,26 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", i
       <section className={styles.editor} aria-label="Điền thông tin tài liệu">
         {!template.group && <div className={styles.picker}><label htmlFor="document-partner">Điền từ đối tác đã duyệt</label><select id="document-partner" value={selectedPartner} onChange={event => selectPartner(event.target.value)}><option value="">Điền thủ công</option>{partners.map(partner => <option key={partner.id} value={partner.id}>{partner.business_name} · {partner.code}</option>)}</select><p>Chỉ lấy thông tin liên hệ và tỷ lệ đã thỏa thuận. Thông tin người ký cần xác nhận riêng.</p>{partnersUnavailable && <p className={styles.error}>Chưa tải được danh sách đối tác. Bạn vẫn có thể điền thủ công hoặc tải lại trang.</p>}{partnersTruncated && <p>Đang hiển thị 200 đối tác đầu tiên. Có thể điền thủ công nếu chưa thấy người cần chọn.</p>}</div>}
         {templateId === "partner_agreement" && <div className={styles.picker}><button type="button" onClick={chooseClassic}>Điền bản nháp Classic 1% / 2%</button><label htmlFor="document-commission-tier">Mức hoa hồng mẫu</label><select id="document-commission-tier" value={commissionTier} onChange={event => chooseTier(event.target.value)}>{PARTNER_COMMISSION_TIERS.map(tier => <option key={tier.id} value={tier.id}>{tier.label}</option>)}</select><p>{PARTNER_COMMISSION_TIERS.find(tier => tier.id === commissionTier)?.description}</p><p>Điền mẫu để hai bên thống nhất, có thể sửa các tỷ lệ ở mục Hoa hồng. Không thay đổi điều kiện đã lưu trong Partner Network.</p></div>}
-        {groups.map(([section, fields], index) => <details key={`${templateId}-${section}`} className={styles.group} open={index === 0 || (showErrors && fields.some(field => validation.errors?.[field.name] || validation.missing?.includes(field.name)))}><summary><span><small>0{index + 1}</small>{template.oneParty && section === "Bên A · Hoàng Long" ? "Công ty và chủ sở hữu" : sectionLabels[section] || section}</span><ChevronDown size={18} aria-hidden="true" /></summary><div className={styles.fields}>{fields.map(field => {
+        {groups.map(([section, fields], index) => <details key={`${templateId}-${section}`} className={styles.group} open={index === 0 || (showErrors && fields.some(field => validation.errors?.[field.name] || validation.missing?.includes(field.name)))}><summary><span>{!b2b && <small>0{index + 1}</small>}{b2b && section === "Bên A · Hoàng Long" ? "Pháp nhân bán" : b2b && section === "Bên B · Đối tác" ? "Khách hàng" : template.oneParty && section === "Bên A · Hoàng Long" ? "Công ty và chủ sở hữu" : sectionLabels[section] || section}</span><ChevronDown size={18} aria-hidden="true" /></summary><div className={styles.fields}>{fields.map(field => {
           if (field.name === "repeat_order_limit" && draft.commission_policy === "classic") return null;
           if (field.name === "employment_end" && draft.employment_type !== "fixed" && !draft.employment_end) return null;
           const required = template.required?.includes(field.name) || (field.name === "employment_end" && draft.employment_type === "fixed") || (field.name === "repeat_rate_percent" && draft.commission_policy === "classic");
-          const fieldLabel = draft.commission_policy === "classic" && field.name === "first_order_rate_percent" ? "Hoa hồng hai đơn đủ điều kiện đầu (%)" : draft.commission_policy === "classic" && field.name === "repeat_rate_percent" ? "Hoa hồng từ đơn đủ điều kiện thứ ba (%)" : field.label;
+          const fieldLabel = b2b && field.name === "company_legal_name" ? "Tên pháp nhân bán" : draft.commission_policy === "classic" && field.name === "first_order_rate_percent" ? "Hoa hồng hai đơn đủ điều kiện đầu (%)" : draft.commission_policy === "classic" && field.name === "repeat_rate_percent" ? "Hoa hồng từ đơn đủ điều kiện thứ ba (%)" : field.label;
           const error = showErrors && (validation.errors?.[field.name] || (validation.missing?.includes(field.name) ? "Vui lòng bổ sung trước khi xuất." : ""));
-          const common = { id: `doc-${field.name}`, value: draft[field.name] ?? "", onChange: event => update(field.name, event.target.value), "aria-invalid": error ? true : undefined, "aria-describedby": error ? `err-${field.name}` : undefined };
+          const common = { id: `doc-${field.name}`, value: draft[field.name] ?? "", readOnly: b2b && field.name === "b2b_vat_percent" || undefined, onChange: event => update(field.name, event.target.value), "aria-invalid": error ? true : undefined, "aria-describedby": error ? `err-${field.name}` : undefined };
           return <label key={field.name} className={field.type === "textarea" ? styles.wide : ""} htmlFor={common.id}><span>{fieldLabel}{required && <b aria-label="cần điền"> *</b>}</span>{field.options ? <select {...common}><option value="">Chọn…</option>{field.options.map(option => <option key={typeof option === "string" ? option : option.value || option.id} value={typeof option === "string" ? option : option.value || option.id}>{typeof option === "string" ? option : option.label}</option>)}</select> : field.type === "textarea" ? <textarea {...common} rows={3} maxLength={field.maxLength || 3000} /> : <input {...common} type={field.type || "text"} min={field.min} max={field.max} step={field.type === "number" ? field.step || "0.01" : undefined} maxLength={field.maxLength || 240} autoComplete="off" />}{error && <small id={`err-${field.name}`} className={styles.fieldError}>{error}</small>}</label>;
         })}</div></details>)}
-        <div className={styles.review}><label><input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} /><span>Tôi đã đối chiếu thông tin, thẩm quyền người ký và nội dung trước khi xuất bản nháp.</span></label><p>Bản xuất là bản nháp để rà soát, chưa ký.</p><button type="button" onClick={() => exportDocument("text")}><FileText size={16} aria-hidden="true" />Tải nội dung .txt để sửa tiếp</button></div>
+        <div className={styles.review}><label><input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} /><span>{template.workingSheet ? "Tôi đã đối chiếu tên hàng, đơn giá và thuế suất." : "Tôi đã đối chiếu thông tin, thẩm quyền người ký và nội dung trước khi xuất bản nháp."}</span></label><p>{template.workingSheet ? "Phát hành hóa đơn trên hệ thống hóa đơn điện tử, sau đó lưu file đã phát hành vào hồ sơ." : "Bản xuất là bản nháp để rà soát, chưa ký."}</p><button type="button" onClick={() => exportDocument("text")}><FileText size={16} aria-hidden="true" />Tải nội dung .txt để sửa tiếp</button></div>
       </section>
       <section className={styles.previewPanel} aria-label="Xem trước bản in"><div className={styles.previewHeading}><span>Bản xem trước · A4</span><small>Chọn “Lưu dưới dạng PDF” trong hộp thoại in.</small></div>
-        <article className={styles.document} data-company-document><header className={styles.documentHeader}><div><span className={styles.seal} aria-hidden="true">HL</span><div><strong>HOÀNG LONG</strong><small>Tài liệu công ty</small></div></div><span>BẢN NHÁP · CHƯA KÝ</span></header><h2>{generated.title}</h2>
+        <article className={styles.document} data-company-document><header className={styles.documentHeader}><div>{!b2b && <span className={styles.seal} aria-hidden="true">HL</span>}<div><strong>{b2b ? draft.company_legal_name || b2b.sellerLabel : "HOÀNG LONG"}</strong><small>{b2b ? "Hồ sơ giao dịch" : "Tài liệu công ty"}</small></div></div><span>{draftLabel.toLocaleUpperCase("vi-VN")}</span></header><h2>{generated.title}</h2>
           {generated.sections.map((section, index) => <section key={index} className={styles.documentSection}><h3>{section.title}</h3>{section.paragraphs.map((paragraph, number) => <p key={number}>{paragraph}</p>)}</section>)}
-          <div className={styles.signatures} data-single={template.oneParty || undefined}>{generated.signatureBlocks.map((signature, index) => <section key={index}><strong>{signature.title}</strong><p>Ký, ghi rõ họ tên; đóng dấu nếu áp dụng</p><div aria-hidden="true" /><b>{signature.name || "………………………………"}</b>{signature.titleRole && <small>{signature.titleRole}</small>}</section>)}</div>
-          <footer className={styles.documentFooter}>Hoàng Long · {draft.document_ref || "Chưa có số văn bản"} · Bản soạn thảo chưa ký. Kiểm tra và thống nhất nội dung trước khi sử dụng.</footer>
+          {generated.signatureBlocks.length > 0 && <div className={styles.signatures} data-single={template.oneParty || undefined}>{generated.signatureBlocks.map((signature, index) => <section key={index}><strong>{signature.title}</strong><p>Ký, ghi rõ họ tên; đóng dấu nếu áp dụng</p><div aria-hidden="true" /><b>{signature.name || "………………………………"}</b>{signature.titleRole && <small>{signature.titleRole}</small>}</section>)}</div>}
+          <footer className={styles.documentFooter}>{draft.document_ref || "Chưa có số văn bản"} · {draftLabel}.</footer>
         </article>
       </section>
     </div>
-    <footer className={styles.help}>Chưa có kho lưu hợp đồng đã ký trong bản này. Tải bản nháp để giữ nội dung; lưu PDF sau khi kiểm tra. Thông tin đang nhập không được đưa vào đường dẫn chia sẻ hay tự gửi cho đối tác.</footer>
+    </>}
+    {!b2b && <footer className={styles.help}>Tải bản nháp để giữ nội dung; lưu PDF sau khi kiểm tra. Thông tin đang nhập không được đưa vào đường dẫn chia sẻ hay tự gửi cho đối tác.</footer>}
   </main>;
 }

@@ -9,6 +9,8 @@ import { dateInput, money, normalizeContact, QUOTE_STATUS, quoteMessage, shortDa
 import { latestOpenQuoteValues, stageQuoteTotal } from "@/lib/crm-stage-values";
 import { buildCustomerJourney, customerOrderHref } from "@/lib/customer-journey";
 import { CUSTOMER_CATEGORIES, customerOrderIndex, summarizeCustomerOrders, customerMatchRank } from "@/lib/customer-directory";
+import { B2BWorkflowOverview, CustomerB2BWorkflow } from "./B2BCustomerWorkflow";
+import { useStaffFeatures } from "./StaffFeatures";
 import { contactCandidates, searchCustomer, interestItems, addInterest, removeInterest } from "@/lib/customer-contacts";
 import { useDialogFocus } from "./useDialogFocus";
 import LoadFailure from "./LoadFailure";
@@ -100,7 +102,8 @@ function TradeLineFields({ line, index, products, quantityKey, agreement, onChan
   </div>;
 }
 
-export default function TradePipeline({ supabase, email }) {
+export default function TradePipeline({ supabase, email, role }) {
+  const { allowedModules } = useStaffFeatures();
   const dialogRef = useRef(null);
   const [opportunities, setOpportunities] = useState([]);
   const [quotes, setQuotes] = useState([]);
@@ -139,6 +142,8 @@ export default function TradePipeline({ supabase, email }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [b2bOverviewRevision, setB2bOverviewRevision] = useState(0);
+  const canManageB2B = (role === "admin" || role === "manager") && (allowedModules === null || allowedModules.includes("documents"));
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("view") === "agenda") setViewMode("agenda");
@@ -467,6 +472,7 @@ export default function TradePipeline({ supabase, email }) {
       <article><FileText/><span>Báo giá đang mở</span><b>{openQuotes.length}</b><small>{quotes.filter((item) => item.status === "accepted").length} đã đồng ý</small></article>
       <article><Handshake/><span>Đối tác định kỳ</span><b>{opportunities.filter((item) => item.stage === "active").length}</b><small>{opportunities.filter((item) => item.stage === "won").length} đang ở đơn đầu</small></article>
     </section></details>
+    {canManageB2B && <B2BWorkflowOverview revision={b2bOverviewRevision}/>}
     <div className={styles.viewSwitch} role="group" aria-label="Kiểu xem khách hàng"><button type="button" aria-pressed={viewMode === "agenda"} data-active={viewMode === "agenda"} onClick={() => setViewMode("agenda")}>Lịch chăm sóc</button><button type="button" aria-pressed={viewMode === "list"} data-active={viewMode === "list"} onClick={() => setViewMode("list")}>Danh sách</button><button type="button" aria-pressed={viewMode === "pipeline"} data-active={viewMode === "pipeline"} onClick={() => setViewMode("pipeline")}>Theo giai đoạn</button></div>
     <section className={styles.tools}><label><Search/><input aria-label="Tìm khách hàng" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm khách, liên hệ hoặc sản phẩm quan tâm"/></label>{viewMode !== "agenda" && <button data-active={showLost} onClick={() => setShowLost(!showLost)}>Tạm dừng · {opportunities.filter((item) => item.stage === "lost").length}</button>}</section>
     {viewMode === "agenda" && <CustomerAgenda key={query} customers={agendaCustomers} loading={loading} onOpen={openOpportunity} onSave={(base, patch) => persistFollowup(supabase, base, patch)} onSaved={applyFollowup}/>}
@@ -502,6 +508,8 @@ export default function TradePipeline({ supabase, email }) {
         {[["care","Chăm sóc"],["trade","Mẫu, giá & đơn"],["details","Thông tin"]].map(([id,label]) =>
           <button key={id} type="button" aria-pressed={profilePage === id} aria-controls={`customer-panel-${id}`} onClick={() => { setProfilePage(id); dialogRef.current?.scrollTo({ top: 0 }); }}>{label}</button>)}
       </nav>
+      {canManageB2B && profilePage === "care" && <CustomerB2BWorkflow key={selected.id} customerId={selected.id}
+        onClassificationChange={() => setB2bOverviewRevision(value => value + 1)}/>}
       <div id="customer-panel-care" hidden={profilePage !== "care"}>
       <section className={styles.next}><span>Bước tiếp theo</span><h3>{selected.next_action || "Chưa đặt bước tiếp theo"}</h3><time>{shortDate(selected.next_action_at)}</time><p>Phụ trách: {selected.owner || "Chưa phân công"}</p><div>{!selected.prospect_suppressed && selected.stage !== "lost" && <button onClick={() => setFollowupCustomer(selected)}>Ghi kết quả</button>}<button onClick={() => setEditing({ ...selected, next_action_at: selected.next_action_at?.slice(0, 10) || "" })}>Sửa nhịp làm việc</button><Link className={styles.recipeBridge} href={`/admin/recipes?view=lab&opportunity=${encodeURIComponent(selected.id)}`}><FlaskConical/>Mở phòng công thức</Link></div></section>
       <CustomerJourneyPanel primaryActionTitle={selected.prospect_suppressed?"Không liên hệ · chỉ xử lý giao dịch đã có":selected.next_action} journey={selectedJourney} onCommand={runJourneyCommand}/>
