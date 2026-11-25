@@ -14,6 +14,7 @@ import { useDialogFocus } from "./useDialogFocus";
 import LoadFailure from "./LoadFailure";
 import styles from "./TradePipeline.module.css";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
+import { persistFollowup } from "@/lib/customer-followup-entry";
 import CustomerAgenda from "./CustomerAgenda";
 import CustomerJourneyPanel from "./CustomerJourneyPanel";
 import { notifyHouse } from "@/lib/notify";
@@ -314,6 +315,9 @@ export default function TradePipeline({ supabase, email }) {
   const orderableProducts = useMemo(() => tradeProductOptions(products), [products]);
 
   const openOpportunity = (item) => { setCategoryError(""); setContactFeedback(""); setContactDraft(""); setSelected(item); setEditing(null); setQuoteDraft(null); setPriceDraft(null); };
+  const applyFollowup = (record) => {
+    setOpportunities(current => current.map(item => item.id === record.id ? { ...item, ...record } : item));
+  };
   const saveOpportunity = async (event) => {
     event.preventDefault();
     if (!editing.business_name.trim() || !editing.contact.trim()) return;
@@ -334,9 +338,12 @@ export default function TradePipeline({ supabase, email }) {
     // The prospect link is managed only by promotion; omit it from ordinary upserts.
     delete row.discovery_prospect_id;
     delete row.prospect_suppressed;
-    const { data, error: saveError } = await supabase.from("trade_opportunities").upsert(row).select().single();
+    const table = supabase.from("trade_opportunities");
+    const write = editing.id ? table.update(row).eq("id", editing.id).eq("updated_at", editing.updated_at) : table.insert(row);
+    const { data, error: saveError } = await write.select().maybeSingle();
     setSaving(false);
     if (saveError) { setError(saveError.code === "23505" ? "Liên hệ này đã có trong pipeline." : "Chưa lưu được cơ hội."); return; }
+    if (!data) { setError("Hồ sơ đã thay đổi. Sao chép phần đang sửa, tải lại hồ sơ rồi đối chiếu trước khi lưu."); return; }
     setOpportunities((current) => [data, ...current.filter((item) => item.id !== data.id)]);
     setSelected(data); setEditing(null); setQuery(""); setCategoryFilter("all"); setViewMode("list"); if (data.stage === "lost") setShowLost(true); flash("Đã lưu hồ sơ khách hàng");
   };
@@ -453,7 +460,7 @@ export default function TradePipeline({ supabase, email }) {
     </section></details>
     <div className={styles.viewSwitch} role="group" aria-label="Kiểu xem khách hàng"><button type="button" aria-pressed={viewMode === "agenda"} data-active={viewMode === "agenda"} onClick={() => setViewMode("agenda")}>Lịch chăm sóc</button><button type="button" aria-pressed={viewMode === "list"} data-active={viewMode === "list"} onClick={() => setViewMode("list")}>Danh sách</button><button type="button" aria-pressed={viewMode === "pipeline"} data-active={viewMode === "pipeline"} onClick={() => setViewMode("pipeline")}>Theo giai đoạn</button></div>
     <section className={styles.tools}><label><Search/><input aria-label="Tìm khách hàng" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm khách, liên hệ hoặc sản phẩm quan tâm"/></label>{viewMode !== "agenda" && <button data-active={showLost} onClick={() => setShowLost(!showLost)}>Tạm dừng · {opportunities.filter((item) => item.stage === "lost").length}</button>}</section>
-    {viewMode === "agenda" && <CustomerAgenda key={query} customers={agendaCustomers} loading={loading} onOpen={openOpportunity}/>}
+    {viewMode === "agenda" && <CustomerAgenda key={query} customers={agendaCustomers} loading={loading} onOpen={openOpportunity} onSave={(base, patch) => persistFollowup(supabase, base, patch)} onSaved={applyFollowup}/>}
     {viewMode === "list" && <section className={styles.directory} aria-label="Danh sách khách hàng">
       <header><div><h2>Danh sách khách hàng</h2><p>{directory.length} hồ sơ CRM · Tổng đơn là giá trị dự kiến, không phải tiền đã thu.</p></div><label>Loại khách<select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}><option value="all">Tất cả</option><option value="uncategorized">Chưa phân loại</option>{CUSTOMER_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select></label></header>
       <div className={styles.directoryHead} aria-hidden="true"><span>Khách hàng</span><span>Loại / giai đoạn</span><span>Số đơn</span><span>Tổng dự kiến</span><span>Đặt gần nhất</span></div>

@@ -12,16 +12,23 @@
 .tiles button[aria-pressed=true] { background:var(--color-ink); color:var(--color-paper); box-shadow:inset 0 -4px var(--color-accent) }
 .agenda ul { margin:0; padding:0; list-style:none }
 .agenda li + li { border-top:1px solid var(--color-rule-2) }
-.agenda li button { width:100%; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) auto; align-items:center; gap:.75rem; padding:.9rem 1.25rem; text-align:left; background:transparent; border:0; overflow-wrap:anywhere }
-.agenda li button:hover { background:var(--color-paper-2) }
+.agenda li .record { width:100%; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) auto; align-items:center; gap:.75rem; padding:.9rem 1.25rem; text-align:left; background:transparent; border:0; overflow-wrap:anywhere }
+.agenda li .record:hover { background:var(--color-paper-2) }
 .agenda small { display:block; margin-top:.2rem; color:var(--color-muted) }
 .agenda p,.manual,.more { margin:1rem 1.25rem }
 .manual { display:grid; gap:.4rem }
 .manual textarea { min-height:6rem }
 @media(max-width:38rem) {
   .tiles button { padding:.65rem .4rem; font-size:.8rem }
-  .agenda li button { grid-template-columns:minmax(0,1fr) auto; gap:.4rem }
-  .agenda li button span:nth-child(2) { grid-row:2 }
+  .agenda li .record { grid-template-columns:minmax(0,1fr) auto; gap:.4rem }
+  .agenda li .record span:nth-child(2) { grid-row:2 }
   .agenda li svg { grid-column:2; grid-row:1 / 3 }
 }
 .agenda { margin:0 var(--page-gutter) var(--space-md) }
+
+.agenda li { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center }
+.agenda .logButton { margin-inline-end:1rem; min-height:44px; padding:.4rem .75rem; border:1px solid var(--color-rule); border-radius:var(--radius-control); background:transparent; font-size:.86rem; font-weight:600 }
+.agenda .logButton:hover { background:var(--color-paper-2) }
+.owner { display:flex; align-items:center; flex-wrap:wrap; gap:.65rem; padding:0 1.25rem .75rem; font-size:.88rem }
+.owner select { min-height:44px; max-width:100%; padding:.4rem .65rem; border:1px solid var(--color-rule); color:inherit; background:var(--color-paper); font:inherit }
+@media(max-width:38rem){.agenda li .record { padding-inline:.75rem }.agenda .logButton { margin-inline-end:.65rem }}
