@@ -361,6 +361,19 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
     });
   }, [supabase]);
 
+  useEffect(() => {
+    function openMemory() {
+      if (window.location.hash !== "#company-memory") return;
+      const section = document.getElementById("company-memory");
+      const details = section?.closest("details");
+      if (details) details.open = true;
+      section?.scrollIntoView({ block: "start" });
+    }
+    openMemory();
+    window.addEventListener("hashchange", openMemory);
+    return () => window.removeEventListener("hashchange", openMemory);
+  }, []);
+
   useEffect(() => { load(); loadActivityExtras(); }, [load, loadActivityExtras]);
 
   useEffect(() => {
@@ -736,7 +749,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
               <Link href={resume.href} onClick={(event) => openApp(event, resume)}>Tiếp tục<ArrowRight /></Link>
             </section>
 
-            <section className={styles.memory}>
+            <section className={styles.memory} id="company-memory">
               <header className={styles.sectionHeader}>
                 <div><h2>Điều công ty cần nhớ</h2><p>Ghi nhận trước, duyệt sau. Không tự biến chat thành quy tắc.</p></div>
                 <span>{memory.inbox_count || 0} chờ duyệt</span>
