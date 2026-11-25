@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import Link from "next/link";
 import { CheckCheck, Copy, ExternalLink, MessageCircle, Pause, Play, RefreshCw, Save, Square } from "lucide-react";
 import { buildSampleFollowupMessage, sampleFollowupPhone } from "@/lib/sample-followup.js";
+import { foldCustomerText } from "@/lib/customer-contacts";
 import styles from "./SampleFollowups.module.css";
 
 const FIELDS = "id,source_kind,source_id,sample_request_id,order_id,opportunity_id,sent_at,due_at,channel,status,customer_name,phone,attempts,claimed_at,last_error,sms_queued_at,telegram_notified_at,telegram_error,notes,created_at,resolved_at";
@@ -123,6 +124,7 @@ export default function SampleFollowups({ supabase, role }) {
   const [loadError, setLoadError] = useState("");
   const [actionError, setActionError] = useState("");
   const [notice, setNotice] = useState("");
+  const [query, setQuery] = useState("");
   const [view, setView] = useState("due");
   const [visible, setVisible] = useState(6);
   const [busyId, setBusyId] = useState("");
@@ -175,14 +177,17 @@ export default function SampleFollowups({ supabase, role }) {
 
   const groups = useMemo(() => {
     const result = { due: [], waiting: [], history: [] };
+    const term = foldCustomerText(query);
     rows.forEach((row) => {
+      const searchable = [row.customer_name, row.source_id, row.sample_request_id, row.order_id, row.phone, sampleFollowupPhone(row.phone).replace(/^\+84/, "0")];
+      if (term && !searchable.some(value => foldCustomerText(value).includes(term))) return;
       if (HISTORY.has(row.status)) result.history.push(row);
       else if (row.status !== "sending" && row.status !== "failed" && new Date(row.due_at).getTime() > now) result.waiting.push(row);
       else result.due.push(row);
     });
     result.history.sort((a, b) => new Date(b.resolved_at || b.sms_queued_at || b.due_at) - new Date(a.resolved_at || a.sms_queued_at || a.due_at));
     return result;
-  }, [rows, now]);
+  }, [rows, now, query]);
   const tabs = [["due", "Đến hạn"], ["waiting", "Chờ đến lịch"], ["history", "Lịch sử"]];
 
   async function act(row, action, note, channel = null) {
@@ -237,13 +242,14 @@ export default function SampleFollowups({ supabase, role }) {
     <p className={styles.retryHint}>Khi gửi lỗi, hệ thống thử tối đa 3 lần, cách nhau ít nhất 3 giờ. Kết quả chưa xác nhận cần kiểm tra điện thoại gửi trước khi xử lý tiếp.</p>
     {settings && !loadError && <p className={styles.automation} data-paused={!settings.enabled}>{settings.enabled ? "Đang bật tự động" : "Đang tạm dừng tự động · các lịch chờ vẫn được giữ"} · Kênh mặc định: {settings.default_channel === "telegram" ? "Telegram nội bộ" : "SMS"}</p>}
     {loadError ? <p className={styles.error} role="alert">{loadError}</p> : <>
+      <label className={styles.search}>Tìm lịch hỏi thăm<input type="search" value={query} placeholder="Tên khách, số điện thoại hoặc mã mẫu" onChange={event => { setQuery(event.target.value); setVisible(6); }}/></label>
       <div className={styles.tabs} role="group" aria-label="Lọc lịch hỏi thăm mẫu">{tabs.map(([key, label]) => <button key={key} type="button" aria-pressed={view === key} onClick={() => { setView(key); setVisible(6); }}>{label}<span>{loading ? "—" : groups[key].length}</span></button>)}</div>
       {actionError && <p className={styles.error} role="alert">{actionError}</p>}
       {notice && <p className={styles.notice} role="status">{notice}</p>}
       <div className={styles.rows} aria-busy={loading}>
         {loading ? <p className={styles.empty} role="status">Đang tải lịch hỏi thăm…</p>
           : groups[view].length ? groups[view].slice(0, visible).map((row) => <FollowupRow key={row.id} row={row} busy={Boolean(busyId) || settingsBusy} onAction={act}/>)
-            : <p className={styles.empty}>{view === "due" ? "Chưa có mẫu đến hạn hỏi thăm." : view === "waiting" ? "Chưa có lịch đang chờ. Khi gửi mẫu từ một đơn mới, lịch hỏi thăm sẽ xuất hiện ở đây." : "Chưa có lịch sử hỏi thăm mẫu."}</p>}
+            : <p className={styles.empty}>{query.trim() ? "Không có lịch phù hợp trong nhóm này." : view === "due" ? "Chưa có mẫu đến hạn hỏi thăm." : view === "waiting" ? "Chưa có lịch đang chờ. Khi gửi mẫu từ một đơn mới, lịch hỏi thăm sẽ xuất hiện ở đây." : "Chưa có lịch sử hỏi thăm mẫu."}</p>}
       </div>
       {!loading && groups[view].length > visible && <div className={styles.more}><button type="button" onClick={() => setVisible((value) => value + 6)}>Xem thêm {Math.min(6, groups[view].length - visible)} mục</button><span>Đang hiện {Math.min(visible, groups[view].length)} / {groups[view].length}</span></div>}
     </>}

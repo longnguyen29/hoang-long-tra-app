@@ -14,6 +14,7 @@ import { useDialogFocus } from "./useDialogFocus";
 import LoadFailure from "./LoadFailure";
 import styles from "./TradePipeline.module.css";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
+import CustomerAgenda from "./CustomerAgenda";
 import CustomerJourneyPanel from "./CustomerJourneyPanel";
 import { notifyHouse } from "@/lib/notify";
 import PipelineSample from "./PipelineSample";
@@ -133,6 +134,10 @@ export default function TradePipeline({ supabase, email }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("view") === "agenda") setViewMode("agenda");
+  }, []);
+
   const closeSelected = useCallback(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.has("opportunity")) {
@@ -228,6 +233,10 @@ export default function TradePipeline({ supabase, email }) {
   const searchable = useMemo(() => opportunities.filter(item => searchCustomer(item, query, orders, directoryLinks)), [opportunities, query, orders, directoryLinks]);
   const isHidden = (kind, id) => directoryHidden.some(entry => entry.kind === kind && entry.entry_id === id);
   const directory = useMemo(() => searchable.filter(item => !isHidden("opportunity", item.id) && (showLost || item.stage !== "lost") && (categoryFilter === "all" || (item.customer_category || "uncategorized") === categoryFilter)).map(item => ({ item, summary: customerOrderSummary(item, opportunities, orders, quotes, partners, directoryLinks) })).sort((a,b) => (Date.parse(b.summary.lastOrder) || 0) - (Date.parse(a.summary.lastOrder) || 0)), [searchable, opportunities, orders, quotes, partners, directoryLinks, directoryHidden, categoryFilter, showLost]);
+  const agendaCustomers = useMemo(() => {
+    const hiddenIds = new Set(directoryHidden.filter(row => row.kind === "opportunity").map(row => row.entry_id));
+    return searchable.filter(row => !hiddenIds.has(row.id));
+  }, [searchable, directoryHidden]);
   const saveContacts = async (patch) => {
     if (!selected || contactSaving) return;
     setContactSaving(true); setContactFeedback("");
@@ -442,8 +451,9 @@ export default function TradePipeline({ supabase, email }) {
       <article><FileText/><span>Báo giá đang mở</span><b>{openQuotes.length}</b><small>{quotes.filter((item) => item.status === "accepted").length} đã đồng ý</small></article>
       <article><Handshake/><span>Đối tác định kỳ</span><b>{opportunities.filter((item) => item.stage === "active").length}</b><small>{opportunities.filter((item) => item.stage === "won").length} đang ở đơn đầu</small></article>
     </section></details>
-    <div className={styles.viewSwitch} aria-label="Kiểu xem khách hàng"><button type="button" data-active={viewMode === "list"} onClick={() => setViewMode("list")}>Danh sách</button><button type="button" data-active={viewMode === "pipeline"} onClick={() => setViewMode("pipeline")}>Theo giai đoạn</button></div>
-    <section className={styles.tools}><label><Search/><input aria-label="Tìm khách hàng" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm khách, liên hệ hoặc sản phẩm quan tâm"/></label><button data-active={showLost} onClick={() => setShowLost(!showLost)}>Tạm dừng · {opportunities.filter((item) => item.stage === "lost").length}</button></section>
+    <div className={styles.viewSwitch} role="group" aria-label="Kiểu xem khách hàng"><button type="button" aria-pressed={viewMode === "agenda"} data-active={viewMode === "agenda"} onClick={() => setViewMode("agenda")}>Lịch chăm sóc</button><button type="button" aria-pressed={viewMode === "list"} data-active={viewMode === "list"} onClick={() => setViewMode("list")}>Danh sách</button><button type="button" aria-pressed={viewMode === "pipeline"} data-active={viewMode === "pipeline"} onClick={() => setViewMode("pipeline")}>Theo giai đoạn</button></div>
+    <section className={styles.tools}><label><Search/><input aria-label="Tìm khách hàng" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm khách, liên hệ hoặc sản phẩm quan tâm"/></label>{viewMode !== "agenda" && <button data-active={showLost} onClick={() => setShowLost(!showLost)}>Tạm dừng · {opportunities.filter((item) => item.stage === "lost").length}</button>}</section>
+    {viewMode === "agenda" && <CustomerAgenda key={query} customers={agendaCustomers} loading={loading} onOpen={openOpportunity}/>}
     {viewMode === "list" && <section className={styles.directory} aria-label="Danh sách khách hàng">
       <header><div><h2>Danh sách khách hàng</h2><p>{directory.length} hồ sơ CRM · Tổng đơn là giá trị dự kiến, không phải tiền đã thu.</p></div><label>Loại khách<select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}><option value="all">Tất cả</option><option value="uncategorized">Chưa phân loại</option>{CUSTOMER_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select></label></header>
       <div className={styles.directoryHead} aria-hidden="true"><span>Khách hàng</span><span>Loại / giai đoạn</span><span>Số đơn</span><span>Tổng dự kiến</span><span>Đặt gần nhất</span></div>

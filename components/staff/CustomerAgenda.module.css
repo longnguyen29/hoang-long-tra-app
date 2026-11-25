@@ -1,0 +1,27 @@
+.agenda { border:1px solid var(--color-rule); background:var(--color-paper); color:var(--color-ink); min-width:0 }
+.agenda header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.75rem; padding:1rem 1.25rem }
+.agenda header div { display:flex; gap:.6rem; align-items:center }
+.agenda h2 { font-family:var(--font-display); margin:0; font-size:1.6rem }
+.agenda button { cursor:pointer; color:inherit; font:inherit }
+.agenda header button,.more { min-height:44px; display:inline-flex; align-items:center; gap:.5rem; background:transparent; border:1px solid var(--color-rule); border-radius:var(--radius-control); padding:0 .75rem }
+.agenda button:focus-visible { outline:3px solid var(--color-focus); outline-offset:-3px }
+.tiles { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border-block:1px solid var(--color-rule) }
+.tiles button { padding:.9rem 1.2rem; display:grid; gap:.25rem; text-align:left; border:0; border-inline-end:1px solid var(--color-rule); background:var(--color-paper-2) }
+.tiles button:last-child { border-inline-end:0 }
+.tiles strong { font:500 clamp(1.8rem,4vw,2.8rem)/1 var(--font-display); font-variant-numeric:tabular-nums }
+.tiles button[aria-pressed=true] { background:var(--color-ink); color:var(--color-paper); box-shadow:inset 0 -4px var(--color-accent) }
+.agenda ul { margin:0; padding:0; list-style:none }
+.agenda li + li { border-top:1px solid var(--color-rule-2) }
+.agenda li button { width:100%; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) auto; align-items:center; gap:.75rem; padding:.9rem 1.25rem; text-align:left; background:transparent; border:0; overflow-wrap:anywhere }
+.agenda li button:hover { background:var(--color-paper-2) }
+.agenda small { display:block; margin-top:.2rem; color:var(--color-muted) }
+.agenda p,.manual,.more { margin:1rem 1.25rem }
+.manual { display:grid; gap:.4rem }
+.manual textarea { min-height:6rem }
+@media(max-width:38rem) {
+  .tiles button { padding:.65rem .4rem; font-size:.8rem }
+  .agenda li button { grid-template-columns:minmax(0,1fr) auto; gap:.4rem }
+  .agenda li button span:nth-child(2) { grid-row:2 }
+  .agenda li svg { grid-column:2; grid-row:1 / 3 }
+}
+.agenda { margin:0 var(--page-gutter) var(--space-md) }

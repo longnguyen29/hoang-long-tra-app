@@ -122,3 +122,29 @@
 .moreToday { min-height:44px; margin-top:.35rem; padding-inline:.4rem; color:var(--color-accent); background:none; border:0; font:inherit; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
 .todayDetails { margin-block:var(--space-md); }
 .todayDetails > summary { min-height:44px; padding:.6rem 1rem; border:1px solid var(--color-rule); background:var(--color-paper); color:var(--color-ink); font-weight:600; cursor:pointer; }
+
+.desk .topbar {
+  position:relative; isolation:isolate; overflow:hidden; flex-wrap:wrap;
+  margin-top:var(--space-sm); padding:clamp(1rem,3vw,2.25rem);
+  background:#19392e; color:#fff9e9; border:0; border-radius:var(--radius-control);
+}
+.topbar::before {
+  content:""; position:absolute; inset:0; z-index:-1;
+  background:linear-gradient(90deg,rgba(18,46,35,.98),rgba(18,46,35,.82) 50%,rgba(18,46,35,.77)),url('/hero-study/tea-still-life.jpg') center 55% / cover;
+}
+.desk .topbar :is(h1,p,b,small) { color:inherit }
+.desk .identity { min-width:0; max-width:100% }
+.desk .identity span { min-width:0; overflow-wrap:anywhere }
+.desk .identity button { color:#fff9e9; background:transparent; border-color:#a3b2a5 }
+.shortcuts { display:flex; flex-wrap:wrap; border:1px solid var(--color-rule); background:var(--color-paper); margin-block:.65rem 1.2rem }
+.shortcuts a { flex:1 1 10rem; display:flex; align-items:center; gap:.65rem; padding:.75rem 1rem; min-height:44px; color:var(--color-ink); font-weight:650; text-decoration:none }
+.shortcuts a + a { border-inline-start:1px solid var(--color-rule-2) }
+.shortcuts svg { width:1.1rem; flex:none }
+.shortcuts svg:last-child { margin-inline-start:auto }
+.shortcuts a:hover { background:var(--color-paper-2) }
+.shortcuts a:focus-visible { outline:2px solid var(--color-focus); outline-offset:-2px }
+@media(max-width:38rem){
+  .shortcuts { display:grid; grid-template-columns:repeat(auto-fit,minmax(5rem,1fr)) }
+  .shortcuts a { flex-direction:column; gap:.35rem; padding:.7rem .25rem; text-align:center; font-size:.82rem }
+  .shortcuts svg:last-child { display:none }
+}

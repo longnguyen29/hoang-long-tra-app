@@ -124,3 +124,5 @@
 .column>div>button{border-radius:9px;background:color-mix(in srgb,var(--color-paper) 82%,transparent);box-shadow:0 4px 16px color-mix(in srgb,var(--color-ink) 6%,transparent)}
 .column .addCard{border-radius:9px;background:transparent;box-shadow:none}
 @media(max-width:47.99rem){.boardHint{margin-inline:var(--space-sm)}.column>header{min-height:4.5rem}}
+.viewSwitch { flex-wrap:wrap }
+.viewSwitch button { min-height:44px }
