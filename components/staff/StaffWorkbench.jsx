@@ -157,13 +157,13 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
  const selectOrder=async(order)=>{setTask(null);setActiveThread(null);setCustomer(null);setFlowBlock(null);const next=order.unread?{...order,unread:false}:order;setSelected(next);setHealthDraft(next.health||"on_track");setWaitingDraft(next.waitingOn||"us");setHealthNoteDraft(next.healthNote||"");setTrackingDraft(next.trackingCode||"");setCarrierDraft(next.shippingCarrier||"");setOrderEvents([]);setTrackingSms(null);setSmsHistory({items:[],unavailable:false});loadEvents(next.id);if(order.unread){await supabase.from("orders").update({unread:false}).eq("id",order.id);setOrders(current=>current.map(o=>o.id===order.id?next:o))}};
  const openedOrderLink=useRef("");
  useEffect(()=>{
-  if(loading || openedOrderLink.current)return;
-  const id=new URLSearchParams(window.location.search).get("order");
-  const order=orders.find(item=>item.id===id);
+  if (!linkedOrder) { openedOrderLink.current = ""; return; }
+  if (loading || openedOrderLink.current === linkedOrder) return;
+  const order = orders.find(item => item.id === linkedOrder) || (linkedRecord?.id === linkedOrder ? linkedRecord : null);
   if(!order)return;
-  openedOrderLink.current=id;
+  openedOrderLink.current = linkedOrder;
   selectOrder(order);
- },[loading,orders]);
+ },[loading, orders, linkedOrder, linkedRecord]);
  const openThread=async(thread)=>{setSelected(null);setTask(null);setCustomer(null);setActiveThread(thread);if(thread.unreadForAdmin){await supabase.from("support_threads").update({unread_for_admin:false}).eq("id",thread.id);const next={...thread,unreadForAdmin:false};setThreads(current=>current.map(item=>item.id===thread.id?next:item));setActiveThread(next)}};
  const openTask=(item)=>{if(item.kind==="order"){selectOrder(item.record);return}if(item.kind==="message"){openThread(item.record);return}setActiveThread(null);setCustomer(null);setSelected(null);setTask(item)};
  const updateOrderFlow=async(patch)=>{
@@ -277,7 +277,7 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
    if (loading || dataFailure || initialAnchorHandled.current) return;
    initialAnchorHandled.current = true;
    const anchor = window.location.hash.slice(1);
-   if (["orders", "sample-followups"].includes(anchor)) document.getElementById(anchor)?.scrollIntoView({ block: "start" });
+   if (["orders", "sample-followups", "contacts"].includes(anchor)) document.getElementById(anchor)?.scrollIntoView({ block: "start" });
  }, [loading, dataFailure]);
  const cards=[{label:"Cần xử lý",value:queue.length,icon:ClipboardList},{label:"Đơn đang mở",value:openOrders.length,icon:PackageCheck},{label:"Tin chưa đọc",value:unreadThreads.length,icon:MessageSquare},{label:"Lịch trà chờ",value:pendingSessions.length,icon:Calendar}];
  if(dataFailure)return <LoadFailure onRetry={load} loading={loading} title="Chưa tải được bàn đơn hàng"/>;
