@@ -47,18 +47,18 @@ function flattenProducts(products) {
   });
 }
 
-export default function NewOrderPanel({ supabase, onClose, onCreated, sourceOrder = null, initialDraft = null }) {
+export default function NewOrderPanel({ supabase, onClose, onCreated, sourceOrder = null, initialDraft = null, b2bCustomer = null }) {
   const submissionRef=useRef(null);
   const submissionBusyRef=useRef(false);
   const reorderLinkFailedRef=useRef(false);
   if(!submissionRef.current)submissionRef.current=createOrderSubmission();
   const [submissionState,setSubmissionState]=useState("idle");
   const [step, setStep] = useState("edit");
-  const [type, setType] = useState(sourceOrder?.type || (initialDraft ? "" : "retail"));
-  const [customerName, setCustomerName] = useState(sourceOrder?.customerName || initialDraft?.customerName || "");
-  const [contact, setContact] = useState(sourceOrder?.contact || initialDraft?.contact || "");
-  const [address, setAddress] = useState(sourceOrder?.address || initialDraft?.address || "");
-  const [taxNumber, setTaxNumber] = useState(sourceOrder?.taxNumber || "");
+  const [type, setType] = useState(b2bCustomer ? "wholesale" : sourceOrder?.type || (initialDraft ? "" : "retail"));
+  const [customerName, setCustomerName] = useState(b2bCustomer?.business_name || sourceOrder?.customerName || initialDraft?.customerName || "");
+  const [contact, setContact] = useState(b2bCustomer?.preferred_contact || b2bCustomer?.contact || sourceOrder?.contact || initialDraft?.contact || "");
+  const [address, setAddress] = useState(b2bCustomer?.delivery_address || sourceOrder?.address || initialDraft?.address || "");
+  const [taxNumber, setTaxNumber] = useState(b2bCustomer?.b2b_legal?.taxId || sourceOrder?.taxNumber || "");
   const [note, setNote] = useState(initialDraft?.note || "");
   const [paymentMethod, setPaymentMethod] = useState(sourceOrder?.paymentMethod || (initialDraft ? "" : "qr"));
   const [lines, setLines] = useState(() => {
@@ -277,14 +277,15 @@ export default function NewOrderPanel({ supabase, onClose, onCreated, sourceOrde
         {step === "edit" ? <>
           {sourceOrder && <p className={styles.reorderHint}>Đã lấy thông tin từ đơn {sourceOrder.id}. Kiểm tra lại địa chỉ, sản phẩm, số lượng và giá trước khi tạo đơn mới. Đơn cũ vẫn giữ nguyên.</p>}
           {initialDraft && <p className={styles.reorderHint}>Thông tin từ trợ lý là bản nháp. Kiểm tra thông tin khách, chọn loại đơn, sản phẩm, giá và cách thanh toán trước khi tạo.</p>}
-          <section className={styles.typeSwitch} aria-label="Loại đơn hàng">
+          {b2bCustomer && <p className={styles.reorderHint}>Đơn sỉ cho {b2bCustomer.business_name}. Thông tin được lấy từ hồ sơ khách hàng.</p>}
+          {!b2bCustomer && <section className={styles.typeSwitch} aria-label="Loại đơn hàng">
             <button type="button" data-active={type === "retail"} onClick={() => changeType("retail")}>
               <ShoppingBag /><span><b>Đơn lẻ</b><small>Trừ tồn kho khi xác nhận tạo</small></span>{type === "retail" && <Check />}
             </button>
             <button type="button" data-active={type === "wholesale"} onClick={() => changeType("wholesale")}>
               <Store /><span><b>Đơn sỉ</b><small>Nhập giá riêng cho khách nếu cần</small></span>{type === "wholesale" && <Check />}
             </button>
-          </section>
+          </section>}
           <section className={styles.section}>
             <div className={styles.sectionTitle}><span>01</span><h3>Khách hàng</h3></div>
             <div className={styles.fieldGrid}>

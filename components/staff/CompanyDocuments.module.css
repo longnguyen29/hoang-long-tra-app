@@ -10,13 +10,38 @@
 @media(min-width:76rem){.workspace{grid-template-columns:minmax(24rem,.9fr) minmax(0,1.1fr)}.views{display:none}}
 @media(max-width:75.99rem){.workspace[data-view=edit] .previewPanel{display:none}.workspace[data-view=preview] .editor{display:none}}
 @media(max-width:42rem){.toolbar{align-items:stretch}.actions{width:100%}.actions button{flex:1;font-size:.75rem;padding:.55rem}.actions .primary{flex-basis:100%}.fields{grid-template-columns:1fr}.document{padding:1.1rem}.document>h2{font-size:1.1rem}.header{margin-bottom:1.2rem}.group summary{padding:.9rem}.documentSection p{font-size:.85rem}}
+.workflowPanel{display:grid;gap:.65rem;margin-bottom:1.25rem}
+.workflowTop{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:.75rem;border:1px solid var(--color-rule);background:var(--color-paper);padding:.85rem 1rem}
+.workflowTop label,.workflowTop small,.uploadForm label{display:grid;gap:.4rem;font-size:.8rem}
+.workflowTop strong{display:block;font-size:.95rem}
+.workflowTop a{align-self:center;font-size:.82rem;text-underline-offset:.2em}
+.workflowTop select,.uploadForm input:not([type=checkbox]){width:100%;min-width:0;min-height:44px;padding:.55rem;border:1px solid var(--color-rule);background:#fff;color:inherit;font:inherit}
+.workflowTop label{min-width:min(12rem,100%)}
+.archive{border:1px solid var(--color-rule);background:var(--color-paper)}
+.archive summary{display:flex;min-height:44px;align-items:center;gap:.5rem;cursor:pointer;padding:.65rem 1rem;list-style:none;font-size:.88rem;font-weight:600}
+.archive summary::-webkit-details-marker{display:none}
+.archive summary>span{margin-left:auto;font-size:.78rem;font-variant-numeric:tabular-nums;color:var(--color-muted)}
+.archive[open] summary{border-bottom:1px solid var(--color-rule)}
+.archive ul{list-style:none;margin:0;padding:0 1rem}
+.archive li{display:flex;align-items:center;flex-wrap:wrap;gap:.6rem;padding:.65rem 0}
+.archive li+li{border-top:1px solid var(--color-rule)}
+.archive li div{flex:1 1 12rem;min-width:0;overflow-wrap:anywhere}
+.archive li small{display:block;color:var(--color-muted);line-height:1.5}
+.archive button,.newDraft{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:44px;padding:.5rem .75rem;border:1px solid var(--color-rule);background:var(--color-paper);color:inherit;font:inherit;font-size:.82rem;cursor:pointer}
+.newDraft{justify-self:start}
+.uploadForm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem;padding:1rem}
+.uploadForm button{justify-self:start;background:var(--color-ink);color:var(--color-paper)}
+.uploadForm .uploadConfirm{display:flex;align-items:center;gap:.45rem;grid-column:1/-1}
+.uploadConfirm input{width:1.15rem;height:1.15rem;flex-shrink:0;accent-color:var(--color-ink)}
+.pricingHint{margin:.1rem 0;color:var(--color-muted);font-size:.82rem;line-height:1.5}
+@media(max-width:42rem){.uploadForm{grid-template-columns:1fr}.workflowTop{align-items:stretch}.workflowTop label{width:100%}}
 @page{size:A4;margin:17mm 17mm 18mm}
 @media print{
   :global(html),:global(body){overflow:visible!important;background:white!important;color:black!important}
   :global([data-staff-shell]){display:block!important;min-height:0!important}
   :global([data-staff-navigation]),:global(a[href="#staff-content"]),:global(.hl-locale-switch){display:none!important}
   :global(#staff-content){display:block!important;width:auto!important;overflow:visible!important}
-  .page{padding:0;max-width:none;margin:0}.header,.templates,.toolbar,.notice,.error,.views,.editor,.help,.previewHeading{display:none!important}
+  .page{padding:0;max-width:none;margin:0}.header,.templates,.toolbar,.notice,.error,.views,.editor,.help,.previewHeading,.workflowPanel{display:none!important}
   .workspace,.previewPanel{display:block!important;min-width:0;overflow:visible}.document{border:0;box-shadow:none;padding:0;font-size:11pt;line-height:1.5;overflow:visible;color:black}
   .documentHeader{padding-bottom:8mm}.document>h2{font-size:16pt;margin:8mm 0}.documentSection h3{font-size:11pt;break-after:avoid;margin-top:5mm}.documentSection p{font-size:10.5pt;orphans:3;widows:3}.signatures{margin-top:8mm}.signatures section>div{height:24mm}.signatures strong,.signatures b{font-size:10pt}.signatures p,.signatures small{font-size:9pt}.documentFooter{font-size:7pt}.documentHeader,.signatures,.documentFooter{break-inside:avoid}
 }

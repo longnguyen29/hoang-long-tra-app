@@ -17,6 +17,7 @@ import ProcedureOrderLink from "./ProcedureOrderLink";
 import { useStaffFeatures } from "./StaffFeatures";
 import PartnerReferralLink from "./PartnerReferralLink";
 import NewOrderPanel from "./NewOrderPanel";
+import { OrderB2BWorkflow, requestB2BWorkflow } from "./B2BCustomerWorkflow";
 import InvoiceExport from "../InvoiceExport";
 import SampleFollowups from "./SampleFollowups";
 import LoadFailure from "./LoadFailure";
@@ -55,11 +56,33 @@ const orderEventMessage=(event)=>{
 export default function StaffWorkbench({supabase,email,role,onLogout}){
  const { allowedModules } = useStaffFeatures();
  const createOrderButtonRef=useRef(null);
- const closeNewOrder=()=>{setCreatingOrder(false);setReorderSource(null);setAssistantDraft(null);requestAnimationFrame(()=>createOrderButtonRef.current?.focus())};
+ const closeNewOrder=()=>{setCreatingOrder(false);setReorderSource(null);setAssistantDraft(null);setB2bCustomer(null);requestAnimationFrame(()=>createOrderButtonRef.current?.focus())};
  const [orders,setOrders]=useState([]),[leads,setLeads]=useState([]),[samples,setSamples]=useState([]),[sessions,setSessions]=useState([]),[threads,setThreads]=useState([]),[customers,setCustomers]=useState([]),[selected,setSelected]=useState(null),[task,setTask]=useState(null),[activeThread,setActiveThread]=useState(null),[reply,setReply]=useState(""),[customer,setCustomer]=useState(null),[customerNote,setCustomerNote]=useState(""),[query,setQuery]=useState(""),[creatingOrder,setCreatingOrder]=useState(false),[reorderSource,setReorderSource]=useState(null),[reorderLoading,setReorderLoading]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState("");
  const [detailError,setDetailError]=useState("");
  const [assistantDraft,setAssistantDraft]=useState(null);
  const [assistantDraftError,setAssistantDraftError]=useState("");
+ const [b2bCustomer,setB2bCustomer]=useState(null);
+ useEffect(() => {
+  if (!["admin", "manager"].includes(role)) return;
+  const url = new URL(window.location.href);
+  const customerId = url.searchParams.get("customer");
+  if (!customerId) return;
+  const controller = new AbortController();
+  requestB2BWorkflow(`?customer=${encodeURIComponent(customerId)}`, { signal: controller.signal })
+   .then(({ customer }) => {
+    if (controller.signal.aborted) return;
+    if (!customer?.is_b2b) throw new Error("invalid_customer");
+    url.searchParams.delete("customer");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    setReorderSource(null);
+    setAssistantDraft(null);
+    setB2bCustomer(customer);
+    setCreatingOrder(true);
+   }).catch(() => {
+    if (!controller.signal.aborted) setAssistantDraftError("Chưa mở được hồ sơ doanh nghiệp để tạo đơn. Kiểm tra phân loại khách hàng rồi mở lại phiếu từ hồ sơ.");
+   });
+  return () => controller.abort();
+ }, [role]);
  const assistantDraftRead=useRef(false);
  useEffect(()=>{
   if(assistantDraftRead.current)return;
@@ -271,7 +294,29 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
   }catch{return {error:"Chưa xác nhận được kết quả xoá. Hãy tải lại danh sách trước khi thử lại."}}
   finally{setFlowSaving(false)}
  };
- const orderCreated=async(order,{reorderLinkFailed=false}={})=>{changeOrderView("active");setQuery("");setOrders(current=>[order,...current.filter(item=>item.id!==order.id)]);setCreatingOrder(false);setReorderSource(null);setAssistantDraft(null);notifyHouse("orders",order.id);try{await staffRequest(order.id,{method:"POST"})}catch{}await selectOrder(order);const refreshed=await supabase.rpc("customer_profiles_summary");if(!refreshed.error&&Array.isArray(refreshed.data))setCustomers(refreshed.data);if(reorderLinkFailed)setError("Đơn đã được tạo, nhưng chưa lưu được liên kết với đơn cũ. Kiểm tra lại hồ sơ khách hàng.");requestAnimationFrame(()=>document.querySelector("#orders")?.scrollIntoView({behavior:"smooth",block:"start"}))};
+ const orderCreated=async(order,{reorderLinkFailed=false}={})=>{
+  const customerId = b2bCustomer?.id;
+  changeOrderView("active");
+  setQuery("");
+  setOrders(current=>[order,...current.filter(item=>item.id!==order.id)]);
+  setCreatingOrder(false);
+  setReorderSource(null);
+  setAssistantDraft(null);
+  setB2bCustomer(null);
+  let customerLinkFailed = false;
+  if (customerId) {
+   try { await requestB2BWorkflow("", { body: { orderId: order.id, customerId } }); }
+   catch { customerLinkFailed = true; }
+  }
+  notifyHouse("orders",order.id);
+  try { await staffRequest(order.id,{method:"POST"}); } catch {}
+  await selectOrder(order);
+  const refreshed=await supabase.rpc("customer_profiles_summary");
+  if(!refreshed.error&&Array.isArray(refreshed.data))setCustomers(refreshed.data);
+  if (customerLinkFailed) setError("Đơn đã tạo. Kiểm tra và nối hồ sơ khách trong mục Hồ sơ đơn B2B.");
+  else if(reorderLinkFailed)setError("Đơn đã được tạo, nhưng chưa lưu được liên kết với đơn cũ. Kiểm tra lại hồ sơ khách hàng.");
+  requestAnimationFrame(()=>document.querySelector("#orders")?.scrollIntoView({behavior:"smooth",block:"start"}));
+ };
  const initialAnchorHandled = useRef(false);
  useEffect(() => {
    if (loading || dataFailure || initialAnchorHandled.current) return;
@@ -307,7 +352,7 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
   />}
   {task&&<aside className={styles.detail} aria-label="Chi tiết việc cần xử lý"><header><div><p>{task.kind}</p><h2>{task.title}</h2></div><button onClick={()=>setTask(null)} aria-label="Đóng">×</button></header><dl><div><dt>Mã</dt><dd>{task.id}</dd></div><div><dt>Nhận lúc</dt><dd>{dateTime(task.ts)}</dd></div><div><dt>Chi tiết</dt><dd>{task.detail}</dd></div>{task.record.contact&&<div><dt>Liên hệ</dt><dd>{task.record.contact}</dd></div>}{task.record.phone&&<div><dt>Điện thoại</dt><dd>{task.record.phone}</dd></div>}{task.record.address&&<div><dt>Địa chỉ</dt><dd>{task.record.address}</dd></div>}{task.record.note&&<div><dt>Ghi chú</dt><dd>{task.record.note}</dd></div>}</dl>{allowedModules === null && <Link href="/admin/legacy">Xử lý trong hệ thống đầy đủ <ArrowRight/></Link>}</aside>}
   {customer&&<aside className={styles.detail} aria-label="Hồ sơ khách hàng"><header><div><p>Customer memory</p><h2>{customer.customer_name}</h2></div><button onClick={()=>setCustomer(null)} aria-label="Đóng">×</button></header><dl><div><dt>Liên hệ</dt><dd>{customer.contact}</dd></div><div><dt>Số đơn</dt><dd>{customer.order_count}</dd></div><div><dt>Tổng chi</dt><dd>{money(customer.total_spent)}</dd></div><div><dt>Đơn gần nhất</dt><dd>{dateTime(customer.last_order)} · {ageLabel(customerStats?.daysSinceLastOrder??null)}</dd></div><div><dt>Nhịp đặt lại</dt><dd>{customerStats?.averageGapDays===null?"Cần ít nhất 3 đơn":`${new Intl.NumberFormat("vi-VN",{maximumFractionDigits:1}).format(customerStats.averageGapDays)} ngày/đơn`}</dd></div><div><dt>TB số lượng/đơn</dt><dd>{formatQuantities(customerStats?.averageQuantities)}</dd></div></dl><div className={styles.history}><h3>Lịch sử đơn</h3>{(customer.detail?.history||[]).map(item=>{const full=orders.find(order=>order.id===item.id);return <article key={item.id} className={styles.customerOrder}><div><b>{item.id}</b><small>{dateTime(item.ts)} · {item.type==="wholesale"?"Đơn sỉ":"Đơn lẻ"} · {orderStageMeta(full?.stage||orderStageForStatus(item.status)).shortLabel}</small>{full?.reorderOfOrderId&&<small>Đặt lại từ {full.reorderOfOrderId}</small>}<small>Số lượng: {formatQuantities(customerStats?.quantitiesById[item.id])}</small></div><strong>{money(item.total)}</strong><button type="button" disabled={reorderLoading} onClick={()=>startReorder(item.id,customer.contact)}><RotateCcw/> Đặt lại</button></article>})}</div><label className={styles.houseNote}>Ghi nhớ của Nhà<textarea value={customerNote} onChange={event=>setCustomerNote(event.target.value)} placeholder="Cách uống, nơi nhận, điều cần nhớ…"/></label><button className={styles.advance} onClick={saveCustomerNote}>Lưu ghi nhớ</button></aside>}
-  {creatingOrder&&<NewOrderPanel key={reorderSource?.id||(assistantDraft?"assistant":"new")} supabase={supabase} sourceOrder={reorderSource} initialDraft={assistantDraft} onClose={closeNewOrder} onCreated={orderCreated}/>}
+  {creatingOrder&&<NewOrderPanel key={reorderSource?.id||b2bCustomer?.id||(assistantDraft?"assistant":"new")} supabase={supabase} sourceOrder={reorderSource} initialDraft={assistantDraft} b2bCustomer={b2bCustomer} onClose={closeNewOrder} onCreated={orderCreated}/>}
  </main>
 }
 
@@ -403,10 +448,11 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
   </section>}
   <button type="button" className={styles.smsQuickStatus} onClick={()=>document.getElementById("tracking-sms-preview")?.scrollIntoView({behavior:"smooth",block:"start"})}><MessageCircle/><span><small>SMS vận đơn</small><b>{smsQuickStatus}</b></span><ChevronRight/></button>
   {order.reorderOfOrderId&&<p className={styles.reorderOrigin}>Đặt lại từ đơn {order.reorderOfOrderId}. Đơn này có lịch sử và trạng thái xử lý riêng.</p>}
-  {canRemoveLines && (allowedModules === null || allowedModules.includes("documents")) && <div className={styles.documentActions}>
+  {canRemoveLines && (allowedModules === null || allowedModules.includes("documents")) && <OrderB2BWorkflow
+    key={`${order.id}:${order.type}`} orderId={order.id} showWhileLoading={order.type === "wholesale"} fallback={<div className={styles.documentActions}>
     <Link className={styles.reorderAction} href={`/admin/documents?template=tea_order_confirmation&order=${encodeURIComponent(order.id)}`}>Soạn xác nhận đơn hàng</Link>
     <Link className={styles.reorderAction} href={`/admin/documents?template=tea_lot_receipt&order=${encodeURIComponent(order.id)}`}>Soạn biên bản giao nhận</Link>
-  </div>}
+  </div>}/>}
   <button type="button" className={styles.reorderAction} onClick={onReorder} disabled={saving}><RotateCcw/> Đặt lại đơn này</button>
   {showProcedures && <ProcedureOrderLink order={order} role={role}/>}
   {order.type === "wholesale" && <PartnerReferralLink orderId={order.id}/>}
