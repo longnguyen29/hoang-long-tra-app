@@ -7,14 +7,16 @@ import { ArrowLeft, ArrowRight, BadgeDollarSign, Calculator, CalendarClock, Chec
 import { fromCatalogRow, fromVariantRow } from "@/lib/mappers";
 import { dateInput, money, normalizeContact, QUOTE_STATUS, quoteMessage, shortDate, stageLabel, TRADE_STAGES } from "@/lib/trade-pipeline";
 import { latestOpenQuoteValues, stageQuoteTotal } from "@/lib/crm-stage-values";
-import { buildCustomerJourney } from "@/lib/customer-journey";
-import { CUSTOMER_CATEGORIES, customerOrderSummary, customerMatchRank } from "@/lib/customer-directory";
+import { buildCustomerJourney, customerOrderHref } from "@/lib/customer-journey";
+import { CUSTOMER_CATEGORIES, customerOrderIndex, summarizeCustomerOrders, customerMatchRank } from "@/lib/customer-directory";
 import { contactCandidates, searchCustomer, interestItems, addInterest, removeInterest } from "@/lib/customer-contacts";
 import { useDialogFocus } from "./useDialogFocus";
 import LoadFailure from "./LoadFailure";
 import styles from "./TradePipeline.module.css";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
 import { persistFollowup } from "@/lib/customer-followup-entry";
+import CustomerOrders from "./CustomerOrders";
+import CustomerFollowupSheet from "./CustomerFollowupSheet";
 import CustomerAgenda from "./CustomerAgenda";
 import CustomerJourneyPanel from "./CustomerJourneyPanel";
 import { notifyHouse } from "@/lib/notify";
@@ -115,6 +117,9 @@ export default function TradePipeline({ supabase, email }) {
   const [directoryBusy, setDirectoryBusy] = useState(false);
   const [receivables, setReceivables] = useState([]);
   const [products, setProducts] = useState([]);
+  const [profilePage, setProfilePage] = useState("care");
+  const [followupCustomer, setFollowupCustomer] = useState(null);
+  const quoteAnchor = useRef("");
   const [selected, setSelectedRaw] = useState(null);
   const setSelected = (value) => setSelectedRaw(previous => value && ({...value, prospect_suppressed: value.prospect_suppressed ?? (previous?.id===value.id ? previous.prospect_suppressed : Boolean(value.discovery_prospect_id))}));
   const [editing, setEditing] = useState(null);
@@ -145,10 +150,10 @@ export default function TradePipeline({ supabase, email }) {
       url.searchParams.delete("opportunity");
       window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
     }
-    setSelected(null);
+    setSelected(null); setProfilePage("care"); quoteAnchor.current = "";
   }, []);
 
-  useDialogFocus(dialogRef, Boolean(selected) && !editing && !quoteDraft && !priceDraft, closeSelected);
+  useDialogFocus(dialogRef, Boolean(selected) && !editing && !quoteDraft && !priceDraft && !followupCustomer, closeSelected);
 
   const openEventOpportunity = async (id) => {
     const { data, error: readError } = await supabase.from("trade_opportunities").select("*").eq("id", id).maybeSingle();
@@ -218,22 +223,25 @@ export default function TradePipeline({ supabase, email }) {
     const opportunityId = new URLSearchParams(window.location.search).get("opportunity");
     if (!selected && opportunityId && opportunities.length) {
       const opportunity = opportunities.find((item) => item.id === opportunityId);
-      if (opportunity) { setSelected(opportunity); setEditing(null); setQuoteDraft(null); setPriceDraft(null); }
+      if (opportunity) {
+        const quote = new URLSearchParams(window.location.search).get("quote");
+        if (quote) { quoteAnchor.current = `quote-${quote}`; setProfilePage("trade"); }
+        setSelected(opportunity); setEditing(null); setQuoteDraft(null); setPriceDraft(null); }
     }
   }, [opportunities, selected]);
   useEffect(() => {
-    if (!selected) return;
-    const params = new URLSearchParams(window.location.search);
-    const quote = params.get("quote");
-    if (quote && params.get("opportunity") === selected.id) {
-      document.getElementById(`quote-${quote}`)?.scrollIntoView({ block: "nearest" });
+    if (selected && profilePage === "trade" && quoteAnchor.current) {
+      document.getElementById(quoteAnchor.current)?.scrollIntoView({ block: "center" });
+      quoteAnchor.current = "";
     }
-  }, [selected]);
+  }, [selected, profilePage]);
   const flash = (message) => { setNotice(message); setTimeout(() => setNotice(""), 2200); };
   const today = dateInput();
   const searchable = useMemo(() => opportunities.filter(item => searchCustomer(item, query, orders, directoryLinks)), [opportunities, query, orders, directoryLinks]);
   const isHidden = (kind, id) => directoryHidden.some(entry => entry.kind === kind && entry.entry_id === id);
-  const directory = useMemo(() => searchable.filter(item => !isHidden("opportunity", item.id) && (showLost || item.stage !== "lost") && (categoryFilter === "all" || (item.customer_category || "uncategorized") === categoryFilter)).map(item => ({ item, summary: customerOrderSummary(item, opportunities, orders, quotes, partners, directoryLinks) })).sort((a,b) => (Date.parse(b.summary.lastOrder) || 0) - (Date.parse(a.summary.lastOrder) || 0)), [searchable, opportunities, orders, quotes, partners, directoryLinks, directoryHidden, categoryFilter, showLost]);
+  const orderIndex = useMemo(() => customerOrderIndex(opportunities, orders, quotes, partners, directoryLinks),
+    [opportunities, orders, quotes, partners, directoryLinks]);
+  const directory = useMemo(() => searchable.filter(item => !isHidden("opportunity", item.id) && (showLost || item.stage !== "lost") && (categoryFilter === "all" || (item.customer_category || "uncategorized") === categoryFilter)).map(item => ({ item, summary: summarizeCustomerOrders(orderIndex.byCustomer.get(item.id) || []) })).sort((a,b) => (Date.parse(b.summary.lastOrder) || 0) - (Date.parse(a.summary.lastOrder) || 0)), [searchable, orderIndex, directoryHidden, categoryFilter, showLost]);
   const agendaCustomers = useMemo(() => {
     const hiddenIds = new Set(directoryHidden.filter(row => row.kind === "opportunity").map(row => row.entry_id));
     return searchable.filter(row => !hiddenIds.has(row.id));
@@ -267,7 +275,7 @@ export default function TradePipeline({ supabase, email }) {
     flash("Đã cập nhật loại khách hàng");
   };
   const orderOnly = useMemo(() => {
-    const assigned = new Set(opportunities.flatMap(item => customerOrderSummary(item, opportunities, orders, quotes, partners, directoryLinks).orderIds));
+    const assigned = new Set(Array.from(orderIndex.byCustomer.values()).flatMap(rows => rows.map(order => order.id)));
     const groups = new Map();
     orders.filter(o => !assigned.has(o.id) && !isHidden("order", o.id) && !o.deleted_at && !["cancelled", "canceled", "deleted"].includes(o.status)).forEach(order => {
       const contact = normalizeContact(order.contact || "");
@@ -276,7 +284,7 @@ export default function TradePipeline({ supabase, email }) {
       groups.get(key).orders.push(order);
     });
     return [...groups.values()].filter(group => `${group.name} ${group.contact}`.toLowerCase().includes(query.toLowerCase())).sort((a,b) => (Date.parse(b.orders[0]?.ts) || 0) - (Date.parse(a.orders[0]?.ts) || 0));
-  }, [opportunities, orders, quotes, partners, directoryLinks, directoryHidden, query]);
+  }, [orderIndex, orders, directoryHidden, query]);
   const setDirectoryVisibility = async (kind, ids, hide) => {
     if (directoryBusy || !ids.length) return;
     setDirectoryBusy(true); setError("");
@@ -369,13 +377,14 @@ export default function TradePipeline({ supabase, email }) {
     const total = Math.round(subtotal * (1 - (Number(quoteDraft.discount_percent) || 0) / 100));
     const quoteFields = { ...quoteDraft };
     delete quoteFields.is_indefinite; delete quoteFields.priceAgreementId;
-    const partnerAccount = partners.find((item) => item.opportunity_id === selected.id) || partners.find((item) => normalizeContact(item.contact) === normalizeContact(selected.contact));
+    const partnerAccount = partners.find(item => item.opportunity_id === selected.id) || selectedJourney?.partner;
     const row = { ...quoteFields, partner_account_id: partnerAccount?.id || null, valid_until: quoteDraft.is_indefinite ? null : quoteDraft.valid_until || null, id: `quote-${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 4)}`, status: "draft", lines, subtotal, total, discount_percent: Number(quoteDraft.discount_percent) || 0, created_by: email };
     const { data, error: quoteError } = await supabase.from("trade_quotes").insert(row).select().single();
     if (quoteError) { setSaving(false); setError("Chưa lưu được báo giá."); return; }
     const { data: opportunity } = await supabase.from("trade_opportunities").update({ stage: "quoted", next_action: "Gửi báo giá và xác nhận khách đã nhận", next_action_at: new Date(`${today}T09:00:00+07:00`).toISOString(), updated_at: new Date().toISOString() }).eq("id", selected.id).select().single();
     setSaving(false); setQuotes((current) => [data, ...current]); setQuoteDraft(null);
     if (opportunity) { setSelected(opportunity); setOpportunities((current) => current.map((item) => item.id === opportunity.id ? opportunity : item)); }
+    quoteAnchor.current = `quote-${data.id}`; setProfilePage("trade");
     flash("Đã tạo bản nháp báo giá");
   };
 
@@ -435,11 +444,11 @@ export default function TradePipeline({ supabase, email }) {
   const selectedAgreements = selected ? agreements.filter((agreement) => agreement.opportunity_id === selected.id) : [];
   const latestAgreement = selectedAgreements.find((agreement) => agreement.status === "active") || null;
   const activeAgreement = latestAgreement && latestAgreement.effective_from <= today && (!latestAgreement.valid_until || latestAgreement.valid_until >= today) ? latestAgreement : null;
-  const selectedJourney = useMemo(() => selected ? buildCustomerJourney({ opportunity: selected, samples, recipes, recipeVersions, quotes, orders, receivables, partners, directoryLinks }) : null, [selected, samples, recipes, recipeVersions, quotes, orders, receivables, partners, directoryLinks]);
+  const selectedJourney = useMemo(() => selected ? buildCustomerJourney({ opportunity: selected, samples, recipes, recipeVersions, quotes, orders, receivables, partners, orderIndex }) : null, [selected, samples, recipes, recipeVersions, quotes, orders, receivables, partners, orderIndex]);
   const runJourneyCommand = (action) => {
     if (action.command === "edit-rhythm") setEditing({ ...selected, next_action_at: selected.next_action_at?.slice(0, 10) || "" });
     if (action.command === "create-quote") setQuoteDraft(newQuote(selected, activeAgreement));
-    if (action.command === "open-quote") document.getElementById("customer-quotes")?.scrollIntoView({ behavior: "auto", block: "start" });
+    if (action.command === "open-quote") { quoteAnchor.current = `quote-${action.sourceId}`; setProfilePage("trade"); }
     if (action.command === "convert-quote") {
       const quote = selectedQuotes.find((item) => item.id === action.sourceId);
       if (quote) convertQuote(quote);
@@ -489,15 +498,19 @@ export default function TradePipeline({ supabase, email }) {
     <div className={styles.enquiries}><EventEnquiryInbox supabase={supabase} refreshKey={opportunities} onOpenOpportunity={openEventOpportunity}/></div>
     {selected && <div className={styles.overlay} onPointerDown={(event) => { if (event.target === event.currentTarget) closeSelected(); }}><aside ref={dialogRef} tabIndex={-1} className={styles.drawer} aria-label="Chi tiết cơ hội" role="dialog" aria-modal="true">
       <header><div><p>{stageLabel(selected.stage)}</p><h2>{selected.business_name}</h2><span>{selected.preferred_contact || selected.contact}</span></div><button type="button" onClick={closeSelected} aria-label="Đóng"><X/></button></header>
-      <section className={styles.categoryEditor} aria-label="Thông tin liên hệ"><div className={styles.contactHeading}><strong>Thông tin khách hàng</strong><button type="button" onClick={() => setEditing({...selected, next_action_at:selected.next_action_at?.slice(0,10) || ""})}>Sửa hồ sơ</button></div><label>Liên hệ ưu tiên<select value={contactCandidates(selected, orders, directoryLinks).find(value => normalizeContact(value) === normalizeContact(selected.preferred_contact || selected.contact || "")) || ""} disabled={contactSaving} onChange={e => saveContacts({preferred_contact:e.target.value})}>{contactCandidates(selected, orders, directoryLinks).map(value => <option key={value} value={value}>{value}{normalizeContact(value) === normalizeContact(selected.contact) ? " · liên hệ gốc" : ""}</option>)}</select></label><div className={styles.contactAdd}><input value={contactDraft} onChange={e => setContactDraft(e.target.value)} placeholder="Thêm số điện thoại hoặc email" aria-label="Liên hệ bổ sung" maxLength={120}/><button type="button" disabled={contactSaving} onClick={addContact}>Thêm liên hệ</button></div><small>Liên hệ gốc được giữ để đối chiếu đơn cũ. Số ưu tiên hiển thị trong hồ sơ và dùng cho báo giá mới; hãy kiểm tra trước khi gửi.</small>{contactFeedback && <p role="status">{contactFeedback}</p>}</section>
-      <section className={styles.categoryEditor}><strong>Sản phẩm quan tâm</strong><span>{selected.product_interest || "Chưa ghi nhận"}</span><small>Chỉnh sửa trong hồ sơ khách hàng.</small></section>
-      <section className={styles.categoryEditor}><label>Loại khách hàng<select value={selected.customer_category || ""} disabled={categorySaving} onChange={e => updateCategory(e.target.value)}><option value="">Chưa phân loại</option>{CUSTOMER_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}{c.hint ? ` · ${c.hint}` : ""}</option>)}</select></label><small>Chọn theo thực tế; mức kg/tháng chỉ để tham khảo.</small>{categoryError && <p role="alert">{categoryError}</p>}</section>
-      {directoryLinks.some(link => link.opportunity_id === selected.id) && <section className={styles.categoryEditor}><strong>Đơn đã nối thủ công</strong>{directoryLinks.filter(link => link.opportunity_id === selected.id).map(link => {const order=orders.find(o => o.id === link.order_id); return <div className={styles.manualLink} key={link.order_id}><span>{order?.customer_name || "Đơn hàng"} · {shortDate(order?.ts)} · {order?.contact || ""}</span><button type="button" disabled={directoryBusy} onClick={() => unlinkOrder(link.order_id)}>Gỡ nối</button></div>;})}<small>Gỡ nối không xóa đơn; hệ thống vẫn có thể ghép theo liên hệ hoặc báo giá.</small></section>}
-      <PartnerReferralLink key={selected.id} opportunityId={selected.id}/>
-      <section className={styles.next}><span>Bước tiếp theo</span><h3>{selected.next_action || "Chưa đặt bước tiếp theo"}</h3><time>{shortDate(selected.next_action_at)}</time><p>Phụ trách: {selected.owner || "Chưa phân công"}</p><div><button onClick={() => setEditing({ ...selected, next_action_at: selected.next_action_at?.slice(0, 10) || "" })}>Sửa nhịp làm việc</button><Link className={styles.recipeBridge} href={`/admin/recipes?view=lab&opportunity=${encodeURIComponent(selected.id)}`}><FlaskConical/>Mở phòng công thức</Link></div></section>
+      <nav className={styles.profileNav} aria-label="Nội dung hồ sơ khách hàng">
+        {[["care","Chăm sóc"],["trade","Mẫu, giá & đơn"],["details","Thông tin"]].map(([id,label]) =>
+          <button key={id} type="button" aria-pressed={profilePage === id} aria-controls={`customer-panel-${id}`} onClick={() => { setProfilePage(id); dialogRef.current?.scrollTo({ top: 0 }); }}>{label}</button>)}
+      </nav>
+      <div id="customer-panel-care" hidden={profilePage !== "care"}>
+      <section className={styles.next}><span>Bước tiếp theo</span><h3>{selected.next_action || "Chưa đặt bước tiếp theo"}</h3><time>{shortDate(selected.next_action_at)}</time><p>Phụ trách: {selected.owner || "Chưa phân công"}</p><div>{!selected.prospect_suppressed && selected.stage !== "lost" && <button onClick={() => setFollowupCustomer(selected)}>Ghi kết quả</button>}<button onClick={() => setEditing({ ...selected, next_action_at: selected.next_action_at?.slice(0, 10) || "" })}>Sửa nhịp làm việc</button><Link className={styles.recipeBridge} href={`/admin/recipes?view=lab&opportunity=${encodeURIComponent(selected.id)}`}><FlaskConical/>Mở phòng công thức</Link></div></section>
       <CustomerJourneyPanel primaryActionTitle={selected.prospect_suppressed?"Không liên hệ · chỉ xử lý giao dịch đã có":selected.next_action} journey={selectedJourney} onCommand={runJourneyCommand}/>
-      <PipelineSample key={selected.id} opportunity={selected} supabase={supabase} samples={samples} onCreated={async()=>{await load();const {data}=await supabase.from('trade_opportunities').select('*').eq('id',selected.id).single();if(data)setSelected(data);}}/>
+      {selected.notes && <section className={styles.notes}><h3>Ghi chú quan hệ</h3><p>{selected.notes}</p></section>}
       <section className={styles.progress}><header><h3>Chuyển giai đoạn</h3><span>{Number(selected.monthly_potential_kg)>0?`${formatMassKg(selected.monthly_potential_kg)}/tháng`:'Chưa xác minh sản lượng'}</span></header><div>{TRADE_STAGES.map((stage) => <button key={stage.id} data-active={selected.stage === stage.id} disabled={selected.prospect_suppressed&&["sample_requested","sample_sent","feedback","quoted"].includes(stage.id)} onClick={() => moveStage(stage.id)}>{stage.short}</button>)}<button data-lost onClick={() => moveStage("lost")}>Tạm dừng</button></div></section>
+      </div>
+      <div id="customer-panel-trade" hidden={profilePage !== "trade"}>
+      <CustomerOrders key={selected.id} orders={orderIndex.byCustomer.get(selected.id) || []}/>
+      <PipelineSample key={selected.id} opportunity={selected} supabase={supabase} samples={samples} onCreated={async()=>{await load();const {data}=await supabase.from('trade_opportunities').select('*').eq('id',selected.id).single();if(data)setSelected(data);}}/>
       <section className={styles.priceBook}>
         <header><div><p>Partner price ledger</p><h3>Giá riêng đang áp dụng</h3></div><div className={styles.priceActions}><Link className={styles.priceCalculator} href={pricingHref(selected.id)}><Calculator/>Tính giá riêng</Link><button disabled={selected.prospect_suppressed} onClick={() => setPriceDraft(newPriceAgreement(selected, latestAgreement))}><Plus/>{latestAgreement ? "Phiên bản mới" : "Thiết lập giá"}</button></div></header>
         {latestAgreement ? <>
@@ -510,10 +523,21 @@ export default function TradePipeline({ supabase, email }) {
           {selectedAgreements.length > 1 && <details className={styles.priceHistory}><summary><History/>Xem {selectedAgreements.length - 1} phiên bản trước</summary>{selectedAgreements.filter((agreement) => agreement.status !== "active").map((agreement) => <div key={agreement.id}><span><b>Phiên bản {agreement.version}</b><small>{shortDate(agreement.effective_from)} – {agreement.valid_until ? shortDate(agreement.valid_until) : "vô thời hạn"}</small></span><small>{agreement.created_by || "Nhân viên"}</small></div>)}</details>}
         </> : <div className={styles.emptyPrice}><BadgeDollarSign/><p><b>Chưa có giá thỏa thuận.</b><span>Lưu giá riêng để các báo giá sau tự điền đúng mức đã chốt với đối tác này.</span></p></div>}
       </section>
-      <section className={styles.quoteBook} id="customer-quotes"><header><div><p>Quote book</p><h3>Báo giá</h3></div><button disabled={selected.prospect_suppressed} onClick={() => setQuoteDraft(newQuote(selected, activeAgreement))}><Plus/>Tạo báo giá</button></header>{selectedQuotes.length ? selectedQuotes.map((quote) => <article id={`quote-${quote.id}`} key={quote.id}><header><span><b>{quote.id}</b><small>{shortDate(quote.created_at)} · {quote.valid_until ? `hiệu lực ${shortDate(quote.valid_until)}` : "vô thời hạn"}</small></span><i data-status={quote.status}>{QUOTE_STATUS[quote.status]}</i></header><div>{quote.lines.map((line, index) => <span key={index}>{line.name?.vi || line.name?.en} · {line.qty} {sellingUnitLabel(line.unit)}</span>)}</div><footer><b>{money(quote.total)}</b><div><button disabled={selected.prospect_suppressed} onClick={() => copyQuote(quote)}><Clipboard/>Sao chép</button>{quote.status === "draft" && <button disabled={selected.prospect_suppressed} onClick={() => setQuoteStatus(quote, "sent")}><Send/>Đã gửi</button>}{quote.status === "sent" && <button onClick={() => setQuoteStatus(quote, "accepted")}><Check/>Đồng ý</button>}{quote.status === "accepted" && <button className={styles.convert} onClick={() => convertQuote(quote)} disabled={saving}>Tạo đơn<ArrowRight/></button>}{quote.converted_order_id && <Link href="/admin/orders">{quote.converted_order_id}<ArrowRight/></Link>}</div></footer></article>) : <div className={styles.emptyQuote}><FileText/><p>Chưa có báo giá. Tạo bản đầu tiên từ danh mục đang bán.</p></div>}</section>
-      {selected.notes && <section className={styles.notes}><h3>Ghi chú quan hệ</h3><p>{selected.notes}</p></section>}
+      <section className={styles.quoteBook} id="customer-quotes"><header><div><p>Quote book</p><h3>Báo giá</h3></div><button disabled={selected.prospect_suppressed} onClick={() => setQuoteDraft(newQuote(selected, activeAgreement))}><Plus/>Tạo báo giá</button></header>{selectedQuotes.length ? selectedQuotes.map((quote) => <article id={`quote-${quote.id}`} key={quote.id}><header><span><b>{quote.id}</b><small>{shortDate(quote.created_at)} · {quote.valid_until ? `hiệu lực ${shortDate(quote.valid_until)}` : "vô thời hạn"}</small></span><i data-status={quote.status}>{QUOTE_STATUS[quote.status]}</i></header><div>{quote.lines.map((line, index) => <span key={index}>{line.name?.vi || line.name?.en} · {line.qty} {sellingUnitLabel(line.unit)}</span>)}</div><footer><b>{money(quote.total)}</b><div><button disabled={selected.prospect_suppressed} onClick={() => copyQuote(quote)}><Clipboard/>Sao chép</button>{quote.status === "draft" && <button disabled={selected.prospect_suppressed} onClick={() => setQuoteStatus(quote, "sent")}><Send/>Đã gửi</button>}{quote.status === "sent" && <button onClick={() => setQuoteStatus(quote, "accepted")}><Check/>Đồng ý</button>}{quote.status === "accepted" && <button className={styles.convert} onClick={() => convertQuote(quote)} disabled={saving}>Tạo đơn<ArrowRight/></button>}{quote.converted_order_id && <Link href={customerOrderHref(quote.converted_order_id)}>{quote.converted_order_id}<ArrowRight/></Link>}</div></footer></article>) : <div className={styles.emptyQuote}><FileText/><p>Chưa có báo giá. Tạo bản đầu tiên từ danh mục đang bán.</p></div>}</section>
+      </div>
+      <div id="customer-panel-details" hidden={profilePage !== "details"}>
+      <section className={styles.categoryEditor} aria-label="Thông tin liên hệ"><div className={styles.contactHeading}><strong>Thông tin khách hàng</strong><button type="button" onClick={() => setEditing({...selected, next_action_at:selected.next_action_at?.slice(0,10) || ""})}>Sửa hồ sơ</button></div><label>Liên hệ ưu tiên<select value={contactCandidates(selected, orders, directoryLinks).find(value => normalizeContact(value) === normalizeContact(selected.preferred_contact || selected.contact || "")) || ""} disabled={contactSaving} onChange={e => saveContacts({preferred_contact:e.target.value})}>{contactCandidates(selected, orders, directoryLinks).map(value => <option key={value} value={value}>{value}{normalizeContact(value) === normalizeContact(selected.contact) ? " · liên hệ gốc" : ""}</option>)}</select></label><div className={styles.contactAdd}><input value={contactDraft} onChange={e => setContactDraft(e.target.value)} placeholder="Thêm số điện thoại hoặc email" aria-label="Liên hệ bổ sung" maxLength={120}/><button type="button" disabled={contactSaving} onClick={addContact}>Thêm liên hệ</button></div><small>Liên hệ gốc được giữ để đối chiếu đơn cũ. Số ưu tiên hiển thị trong hồ sơ và dùng cho báo giá mới; hãy kiểm tra trước khi gửi.</small>{contactFeedback && <p role="status">{contactFeedback}</p>}</section>
+      <section className={styles.categoryEditor}><strong>Sản phẩm quan tâm</strong><span>{selected.product_interest || "Chưa ghi nhận"}</span><small>Chỉnh sửa trong hồ sơ khách hàng.</small></section>
+      <section className={styles.categoryEditor}><label>Loại khách hàng<select value={selected.customer_category || ""} disabled={categorySaving} onChange={e => updateCategory(e.target.value)}><option value="">Chưa phân loại</option>{CUSTOMER_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}{c.hint ? ` · ${c.hint}` : ""}</option>)}</select></label><small>Chọn theo thực tế; mức kg/tháng chỉ để tham khảo.</small>{categoryError && <p role="alert">{categoryError}</p>}</section>
+      {directoryLinks.some(link => link.opportunity_id === selected.id) && <section className={styles.categoryEditor}><strong>Đơn đã nối thủ công</strong>{directoryLinks.filter(link => link.opportunity_id === selected.id).map(link => {const order=orders.find(o => o.id === link.order_id); return <div className={styles.manualLink} key={link.order_id}><span>{order?.customer_name || "Đơn hàng"} · {shortDate(order?.ts)} · {order?.contact || ""}</span><button type="button" disabled={directoryBusy} onClick={() => unlinkOrder(link.order_id)}>Gỡ nối</button></div>;})}<small>Gỡ nối không xóa đơn; hệ thống vẫn có thể ghép theo liên hệ hoặc báo giá.</small></section>}
+      <PartnerReferralLink key={selected.id} opportunityId={selected.id}/>
+      </div>
     </aside></div>}
 
+    {followupCustomer && <CustomerFollowupSheet customer={followupCustomer} onClose={() => setFollowupCustomer(null)}
+      onSave={(base, patch) => persistFollowup(supabase, base, patch)} onSaved={record => {
+        applyFollowup(record); setSelected(record); setFollowupCustomer(null); flash("Đã ghi kết quả chăm sóc.");
+      }}/>}
     {editing && <div className={styles.overlay}><form className={styles.editDrawer} onSubmit={saveOpportunity}><header><div><p>Relationship record</p><h2>{editing.id ? "Sửa hồ sơ khách hàng" : "Thêm khách hàng"}</h2></div><button type="button" onClick={() => setEditing(null)} aria-label="Đóng"><X/></button></header><label>Tên doanh nghiệp<input autoFocus required value={editing.business_name} onChange={(event) => setEditing({ ...editing, business_name: event.target.value })}/></label><label>Liên hệ gốc (dùng đối chiếu lịch sử)<input required value={editing.contact} onChange={(event) => setEditing({ ...editing, contact: event.target.value })}/></label><label>Địa chỉ giao hàng<textarea rows={2} maxLength={1000} value={editing.delivery_address || ""} onChange={event => setEditing({ ...editing, delivery_address: event.target.value })}/></label><div className={styles.formGrid}><label>Giai đoạn<select value={editing.stage} onChange={(event) => setEditing({ ...editing, stage: event.target.value })}>{TRADE_STAGES.map((stage) => <option key={stage.id} value={stage.id}>{stage.label}</option>)}<option value="lost">Tạm dừng</option></select></label><label>Tiềm năng kg/tháng<FormattedNumberInput min="0" value={editing.monthly_potential_kg} onChange={(event) => setEditing({ ...editing, monthly_potential_kg: event.target.value })}/></label></div><div className={styles.interestEditor}><label htmlFor="customer-interest-select">Sản phẩm quan tâm</label><select id="customer-interest-select" value="" onChange={event => setEditing({ ...editing, product_interest: addInterest(editing.product_interest, event.target.value) })}><option value="">Chọn sản phẩm để thêm</option>{products.map(product => <option key={product.id} value={product.name?.vi || product.name?.en || ""}>{product.name?.vi || product.name?.en}</option>)}</select>{interestItems(editing.product_interest).length > 0 && <div className={styles.interestChips}>{interestItems(editing.product_interest).map((name, index) => <span key={`${name}-${index}`}>{name}<button type="button" aria-label={`Bỏ ${name}`} onClick={() => setEditing({ ...editing, product_interest: removeInterest(editing.product_interest, index) })}>×</button></span>)}</div>}<label htmlFor="customer-interest-notes">Sửa danh sách hoặc thêm nhu cầu khác</label><input id="customer-interest-notes" maxLength={500} value={editing.product_interest || ""} onChange={event => setEditing({ ...editing, product_interest: event.target.value })} placeholder="Ngăn cách các loại bằng dấu phẩy"/><small>Chọn nhiều sản phẩm; có thể thêm loại chưa có trong danh mục.</small></div><label>Người phụ trách<input value={editing.owner || ""} onChange={(event) => setEditing({ ...editing, owner: event.target.value })} placeholder={email}/></label><label>Bước tiếp theo<input value={editing.next_action || ""} onChange={(event) => setEditing({ ...editing, next_action: event.target.value })}/></label><label>Ngày quay lại<input type="date" value={editing.next_action_at || ""} onChange={(event) => setEditing({ ...editing, next_action_at: event.target.value })}/></label>{editing.stage === "lost" && <label>Lý do tạm dừng<input value={editing.lost_reason || ""} onChange={(event) => setEditing({ ...editing, lost_reason: event.target.value })} placeholder="Chưa đúng thời điểm, ngân sách, không phản hồi…"/></label>}<label>Ghi chú<textarea rows="5" value={editing.notes || ""} onChange={(event) => setEditing({ ...editing, notes: event.target.value })}/></label>{error && <p role="alert">{error}</p>}<button className={styles.primary} disabled={saving}><Save/>{saving ? "Đang lưu…" : "Lưu hồ sơ"}</button></form></div>}
 
     {priceDraft && <div className={styles.overlay}><form className={`${styles.editDrawer} ${styles.priceDrawer}`} onSubmit={savePriceAgreement}><header><div><p>Partner price ledger</p><h2>{activeAgreement ? `Phiên bản giá ${activeAgreement.version + 1}` : "Bảng giá riêng"}</h2></div><button type="button" onClick={() => setPriceDraft(null)} aria-label="Đóng"><X/></button></header><p className={styles.formIntro}>Bản mới sẽ thay phiên bản đang dùng. Báo giá và đơn hàng cũ không thay đổi.</p><div className={styles.formGrid}><label>Áp dụng từ<input required type="date" max={today} value={priceDraft.effective_from} onChange={(event) => setPriceDraft({ ...priceDraft, effective_from: event.target.value })}/></label><label>Rà soát lại<input type="date" min={today} value={priceDraft.review_at} onChange={(event) => setPriceDraft({ ...priceDraft, review_at: event.target.value })}/></label></div><div className={styles.validityChoice}><label><input type="checkbox" checked={priceDraft.is_indefinite} onChange={(event) => setPriceDraft({ ...priceDraft, is_indefinite: event.target.checked, valid_until: event.target.checked ? "" : priceDraft.valid_until || dateInput(90) })}/><span><b>Vô thời hạn</b><small>Giữ giá đến khi tạo phiên bản mới</small></span></label>{!priceDraft.is_indefinite && <label>Hiệu lực đến<input required type="date" min={priceDraft.effective_from || today} value={priceDraft.valid_until} onChange={(event) => setPriceDraft({ ...priceDraft, valid_until: event.target.value })}/></label>}</div><section className={`${styles.quoteLines} ${styles.priceLines}`}><header><h3>Giá theo sản phẩm</h3><button type="button" onClick={() => setPriceDraft({ ...priceDraft, lines: [...priceDraft.lines, blankPriceLine()] })}><Plus/>Thêm dòng</button></header>{priceDraft.lines.map((line, index) => <TradeLineFields key={line.id} line={line} index={index} products={orderableProducts} quantityKey="minimum_quantity" onChange={updated => setPriceDraft({ ...priceDraft, lines: priceDraft.lines.map(item => item.id === line.id ? updated : item) })} removeDisabled={priceDraft.lines.length === 1} onRemove={() => setPriceDraft({ ...priceDraft, lines: priceDraft.lines.filter(item => item.id !== line.id) })} />)}<p className={styles.unitHelp}>Chọn đơn vị đã thỏa thuận. Đổi đơn vị cần nhập lại giá; hệ thống không tự đổi gói / viên / bánh sang kg.</p></section><fieldset className={styles.inclusions}><legend>Giá đã bao gồm</legend><label><input type="checkbox" checked={priceDraft.includes_vat} onChange={(event) => setPriceDraft({ ...priceDraft, includes_vat: event.target.checked })}/>VAT</label><label><input type="checkbox" checked={priceDraft.includes_delivery} onChange={(event) => setPriceDraft({ ...priceDraft, includes_delivery: event.target.checked })}/>Vận chuyển</label></fieldset><label>Điều khoản thanh toán<input value={priceDraft.payment_terms} onChange={(event) => setPriceDraft({ ...priceDraft, payment_terms: event.target.value })}/></label><label>Lý do / ghi chú phiên bản<textarea rows="3" value={priceDraft.note} onChange={(event) => setPriceDraft({ ...priceDraft, note: event.target.value })} placeholder="Ví dụ: điều chỉnh theo sản lượng cam kết quý IV"/></label><button className={styles.primary} disabled={saving}><Save/>{saving ? "Đang lưu…" : "Áp dụng phiên bản giá"}</button></form></div>}

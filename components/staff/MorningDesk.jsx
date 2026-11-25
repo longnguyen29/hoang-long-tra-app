@@ -289,11 +289,11 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
     setLoading(true);
     setError("");
     try {
-    const [deskResult, budgetResult, radarResult, opportunitiesResult, samplesResult, recipesResult, versionsResult, quotesResult, ordersResult, receivablesResult, partnersResult, carryResult] = await Promise.all([
+    const [deskResult, budgetResult, radarResult, opportunitiesResult, samplesResult, recipesResult, versionsResult, quotesResult, ordersResult, receivablesResult, partnersResult, carryResult, linksResult] = await Promise.all([
       supabase.rpc("morning_desk_snapshot"),
       supabase.rpc("budget_morning_snapshot"),
       supabase.from("recipe_radar_concepts").select("id,name,score_total").eq("stage", "candidate").order("score_total", { ascending: false }).limit(3),
-      supabase.from("trade_opportunities").select("*").neq("stage", "lost").order("updated_at", { ascending: false }),
+      supabase.from("trade_opportunities").select("*").order("updated_at", { ascending: false }),
       supabase.from("sample_requests").select("*").order("ts", { ascending: false }),
       supabase.from("recipes").select("*").order("updated_at", { ascending: false }),
       supabase.from("recipe_versions").select("*").order("created_at", { ascending: false }),
@@ -302,12 +302,13 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
       supabase.from("receivables").select("*").order("created_at", { ascending: false }),
       supabase.from("wholesale_accounts").select("id,opportunity_id,contact,business_name,reorder_cadence_days,created_at"),
       supabase.from("morning_focus_items").select("id,title,app_key,href,status,work_date").eq("status", "planned").lt("work_date", houseDateKey()).order("work_date", { ascending: true }),
+      supabase.from("customer_directory_order_links").select("order_id,opportunity_id"),
     ]);
     setActivity({
-      opportunities: opportunitiesResult.data || [], quotes: quotesResult.data || [],
+      opportunities: (opportunitiesResult.data || []).filter(row => row.stage !== "lost"), quotes: quotesResult.data || [],
       recipes: recipesResult.data || [], recipeVersions: versionsResult.data || [], orders: ordersResult.data || [],
     });
-    const incomplete = [deskResult, budgetResult, radarResult, opportunitiesResult, samplesResult, recipesResult, versionsResult, quotesResult, ordersResult, receivablesResult, partnersResult, carryResult].some(result => result.error);
+    const incomplete = [deskResult, budgetResult, radarResult, opportunitiesResult, samplesResult, recipesResult, versionsResult, quotesResult, ordersResult, receivablesResult, partnersResult, carryResult, linksResult].some(result => result.error);
     setDataIncomplete(incomplete);
     if (incomplete) {
       setError("Chưa tải đủ dữ liệu hôm nay. Làm mới để kiểm tra công việc và số liệu.");
@@ -326,6 +327,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
         orders: ordersResult.data || [],
         receivables: receivablesResult.data || [],
         partners: partnersResult.data || [],
+        directoryLinks: linksResult.data || [],
       });
       setSnapshot({ ...deskResult.data, budget: budgetResult.data || {}, radar: radarResult.data || [], journey_queue: journeyQueue, carry_over: (carryResult.data || []).filter((item) => item.work_date < deskResult.data.today) });
       if (budgetResult.error)

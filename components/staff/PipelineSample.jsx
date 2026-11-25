@@ -22,7 +22,7 @@ export default function PipelineSample({opportunity,supabase,samples,onCreated})
   <h3>Bộ mẫu</h3>
   {opportunity.discovery_prospect_id&&<a href={`/admin/discovery?prospect=${encodeURIComponent(opportunity.discovery_prospect_id)}`}>Mở hồ sơ & lịch sử trao đổi</a>}
   {suppressed&&<p role="alert">Không liên hệ: dừng chuẩn bị mẫu và liên hệ mới. Lịch sử giao dịch được giữ lại.</p>}
-  {open?<p>Yêu cầu {open.id} · {open.pack} · {open.status==='sent'?'Đã gửi':'Chờ chuẩn bị'}. <a href="/admin/orders#relationships">Mở xử lý bộ mẫu</a></p>:<details><summary>Chuẩn bị bộ mẫu</summary>
+  {open?<p>Yêu cầu {open.id} · {open.pack} · {open.status==='sent'?'Đã gửi':'Chờ chuẩn bị'}. <a href="/admin/orders#contacts">Mở xử lý bộ mẫu</a></p>:<details><summary>Chuẩn bị bộ mẫu</summary>
    <form className={styles.sampleForm} onSubmit={save}>
     <p>Nhập thông tin người nhận đã xác nhận. Lưu yêu cầu không gửi hàng hoặc tin nhắn.</p>
     <label>Người nhận<input name="recipient" required maxLength={150}/></label>
