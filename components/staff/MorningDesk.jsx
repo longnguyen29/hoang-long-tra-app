@@ -9,6 +9,7 @@ import {
   BookOpenCheck,
   Check,
   CheckCircle2,
+  CalendarDays,
   ChevronRight,
   Circle,
   FlaskConical,
@@ -554,6 +555,11 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
   const resumeApp = APPS[resumePreference.last_app_key] || APPS[MODE_DEFAULT_APP[mode]];
   const resumeHref = resumePreference.last_href || resumeApp.href;
   const resume = { ...resumeApp, href: resumeHref, label: resumeApp.label };
+  const quickLinks = [
+    ["pipeline", "/admin/pipeline?view=agenda", "Lịch chăm sóc", CalendarDays],
+    ["orders", "/admin/orders#sample-followups", "Hỏi thăm mẫu", FlaskConical],
+    ["orders", "/admin/orders#orders", "Sổ đơn hàng", BookOpenCheck],
+  ].filter(([module]) => allowedModules === null || allowedModules.includes(module));
   const completedFocus = focus.filter((item) => item.status === "done").length;
 
   return (
@@ -571,6 +577,10 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
             <button onClick={() => { load(); loadActivityExtras(); }} disabled={loading || activityExtras.loading} aria-label="Làm mới bàn ngày"><RefreshCw className={loading ? styles.spin : ""} /></button>
           </div>
         </header>
+
+        {quickLinks.length > 0 && <nav className={styles.shortcuts} aria-label="Truy cập nhanh">{quickLinks.map(([, href, label, Icon]) =>
+          <Link key={href} href={href}><Icon aria-hidden="true"/><span>{label}</span><ArrowRight aria-hidden="true"/></Link>
+        )}</nav>}
 
         {error && <p className={styles.error} role="alert"><AlertTriangle />{error}<button onClick={() => setError("")} aria-label="Đóng thông báo">×</button></p>}
 

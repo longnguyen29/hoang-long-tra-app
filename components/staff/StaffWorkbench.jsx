@@ -272,6 +272,13 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
   finally{setFlowSaving(false)}
  };
  const orderCreated=async(order,{reorderLinkFailed=false}={})=>{changeOrderView("active");setQuery("");setOrders(current=>[order,...current.filter(item=>item.id!==order.id)]);setCreatingOrder(false);setReorderSource(null);setAssistantDraft(null);notifyHouse("orders",order.id);try{await staffRequest(order.id,{method:"POST"})}catch{}await selectOrder(order);const refreshed=await supabase.rpc("customer_profiles_summary");if(!refreshed.error&&Array.isArray(refreshed.data))setCustomers(refreshed.data);if(reorderLinkFailed)setError("Đơn đã được tạo, nhưng chưa lưu được liên kết với đơn cũ. Kiểm tra lại hồ sơ khách hàng.");requestAnimationFrame(()=>document.querySelector("#orders")?.scrollIntoView({behavior:"smooth",block:"start"}))};
+ const initialAnchorHandled = useRef(false);
+ useEffect(() => {
+   if (loading || dataFailure || initialAnchorHandled.current) return;
+   initialAnchorHandled.current = true;
+   const anchor = window.location.hash.slice(1);
+   if (["orders", "sample-followups"].includes(anchor)) document.getElementById(anchor)?.scrollIntoView({ block: "start" });
+ }, [loading, dataFailure]);
  const cards=[{label:"Cần xử lý",value:queue.length,icon:ClipboardList},{label:"Đơn đang mở",value:openOrders.length,icon:PackageCheck},{label:"Tin chưa đọc",value:unreadThreads.length,icon:MessageSquare},{label:"Lịch trà chờ",value:pendingSessions.length,icon:Calendar}];
  if(dataFailure)return <LoadFailure onRetry={load} loading={loading} title="Chưa tải được bàn đơn hàng"/>;
  return <main className={styles.shell}>
