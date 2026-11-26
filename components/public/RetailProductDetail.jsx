@@ -9,7 +9,7 @@ import { retailOptions, retailProductFacts, retailProductHref, retailStockBadge 
 import { retailBrewingGuidance } from "@/lib/retail-product-guidance";
 import { retailTeaCharacteristics } from "@/lib/retail-tea-characteristics";
 import { RETAIL_CART_MAX } from "@/lib/retail-cart";
-import { RETAIL_VOLUME_POLICY } from "@/lib/retail-volume-policy";
+import { retailOptionGrams, RETAIL_VOLUME_POLICY } from "@/lib/retail-volume-policy";
 import { sellingUnitLabel } from "@/lib/selling-units";
 import { tradeEnquiryHref } from "@/lib/trade-catalog";
 import { useRetailCart } from "./RetailCartProvider";
@@ -26,17 +26,18 @@ const COPY = {
   vi: {
     back: "Tất cả trà", photoMissing: "Ảnh sản phẩm đang được cập nhật", photoError: "Chưa tải được ảnh sản phẩm",
     flavors: "Hương vị", packing: "Chọn quy cách", defaultPack: "Quy cách hiện có", quantity: "Số lượng",
-    orderUnit: "Đơn vị đặt hàng", recordedPacking: "Thông tin đóng gói", unitPrice: "Giá theo đơn vị đặt hàng",
+    aboutTea: "Hương vị & đặc điểm", recordedPacking: "Đóng gói",
     less: "Giảm số lượng", more: "Tăng số lượng", add: "Thêm vào giỏ", soldOut: "Tạm hết hàng",
+    waiting: "Đang kiểm tra", unavailableAction: "Chưa đặt được", cartFull: "Đã đạt giới hạn",
     requestPrice: "Liên hệ hỏi giá", noPrice: "Giá chưa được niêm yết. Liên hệ Nhà để xác nhận trước khi đặt hàng.",
-    selectedPrice: "Giá theo quy cách đã chọn", total: "Tạm tính", viewCart: "Xem giỏ hàng",
+    viewCart: "Xem giỏ hàng", openCart: count => `Xem giỏ hàng, ${count} sản phẩm`, addedToCart: "Đã thêm vào giỏ",
     added: (quantity, unit) => `Đã thêm ${quantity} ${unit} vào giỏ.`,
     stockLimit: "Bạn đã chọn hết lượng hiện có trong giỏ.", cartLimit: `Mỗi quy cách tối đa ${RETAIL_CART_MAX} đơn vị trong giỏ.`, unavailable: "Quy cách này hiện chưa đặt được.",
     checking: "Đang kiểm tra giá và tồn kho…", loadError: "Chưa kiểm tra được giá và tồn kho. Tải lại trang hoặc liên hệ Nhà.",
     invalidQuantity: `Chọn số lượng nguyên từ 1 đến ${RETAIL_CART_MAX}, trong lượng hàng hiện có.`,
     volumeTitle: "Ưu đãi theo tổng lượng trà", freeShipping: kg => `Từ ${kg} kg: miễn phí giao tiêu chuẩn nội địa.`, volumeTier: (kg, percent) => `Từ ${kg} kg · giảm ${percent}%`, volumeNote: "Cộng dồn trà có khối lượng xác định trong giỏ, không gồm bộ mẫu và sản vật. Áp dụng một mức giảm cao nhất.",
     brewing: "Pha theo cách bạn thích", brewMethods: "Chọn cách pha",
-    reassurance: "Yên tâm khi đặt trà", trustPrice: "Giá và phí rõ ràng", trustPriceNote: "Nhà xác nhận loại trà, quy cách, tổng tiền và phí giao trước khi thực hiện. Không tự thay sản phẩm hoặc tăng giá đơn đã xác nhận.",
+    reassurance: "Giao hàng & hỗ trợ", trustPrice: "Xác nhận phí giao trước khi thanh toán", trustPriceNote: "Hoàng Long báo tổng tiền và phí giao theo địa chỉ. Bạn có thể chọn chuyển khoản QR hoặc tiền mặt khi đặt đơn.",
     trustReturns: "Hỗ trợ khi hàng có vấn đề", trustReturnsNote: "Giao sai, thiếu hoặc hàng lỗi: Nhà tiếp nhận và trao đổi bổ sung, đổi hàng hoặc hoàn tiền theo chính sách. Báo sớm trong 7 ngày để xử lý nhanh; không bắt buộc video mở hộp.",
     trustContact: "Trao đổi trực tiếp với Nhà", trustContactNote: "Cần chọn trà, hỏi cách pha hoặc hỗ trợ đơn hàng? Liên hệ trực tiếp Hoàng Long qua điện thoại hoặc Zalo.", contactZalo: "Nhắn Zalo",
     policies: "Trước khi đặt hàng", shipping: "Thanh toán & giao nhận", returns: "Đổi trả & hoàn tiền",
@@ -47,17 +48,18 @@ const COPY = {
   en: {
     back: "All teas", photoMissing: "Product photo is being updated", photoError: "Product photo could not load",
     flavors: "Tasting notes", packing: "Choose a format", defaultPack: "Current format", quantity: "Quantity",
-    orderUnit: "Order unit", recordedPacking: "Packing information", unitPrice: "Price per order unit",
+    aboutTea: "Flavour & character", recordedPacking: "Packing",
     less: "Decrease quantity", more: "Increase quantity", add: "Add to cart", soldOut: "Currently sold out",
+    waiting: "Checking stock", unavailableAction: "Unavailable", cartFull: "Limit reached",
     requestPrice: "Ask the house for pricing", noPrice: "A price is not listed. Contact the house to confirm before ordering.",
-    selectedPrice: "Price for the selected format", total: "Subtotal", viewCart: "View cart",
+    viewCart: "View cart", openCart: count => `View cart, ${count} items`, addedToCart: "Added to cart",
     added: (quantity, unit) => `Added ${quantity} ${unit} to your cart.`,
     stockLimit: "Your cart already contains the available quantity.", cartLimit: `A maximum of ${RETAIL_CART_MAX} units per format can be added to the cart.`, unavailable: "This format cannot currently be ordered.",
     checking: "Checking price and availability…", loadError: "Price and availability could not be checked. Reload this page or contact the house.",
     invalidQuantity: `Choose a whole quantity from 1 to ${RETAIL_CART_MAX}, within the available stock.`,
     volumeTitle: "Benefits by total tea weight", freeShipping: kg => `From ${kg} kg: free standard domestic delivery.`, volumeTier: (kg, percent) => `${kg} kg or more · ${percent}% off`, volumeNote: "Combines tea with a confirmed weight in your cart, excluding samples and produce. The single highest discount applies.",
     brewing: "Brew it your way", brewMethods: "Choose a brewing method",
-    reassurance: "Order with clarity", trustPrice: "Clear pricing and delivery costs", trustPriceNote: "The house confirms the tea, format, total and delivery cost before fulfilment. Confirmed orders are not changed or repriced without your agreement.",
+    reassurance: "Delivery & support", trustPrice: "Delivery cost confirmed before payment", trustPriceNote: "Hoàng Long confirms the total and delivery cost for your address. Choose QR bank transfer or cash when you place your order.",
     trustReturns: "Support for order problems", trustReturnsNote: "For wrong, missing or faulty goods, the house reviews replacement, correction or refund under the returns policy. Report promptly within 7 days for faster handling; an unboxing video is not required.",
     trustContact: "Speak directly with the house", trustContactNote: "Need help choosing tea, brewing or checking an order? Contact Hoàng Long directly by phone or Zalo.", contactZalo: "Message on Zalo",
     policies: "Before ordering", shipping: "Payment & delivery (Vietnamese)", returns: "Returns & refunds (Vietnamese)",
@@ -67,11 +69,13 @@ const COPY = {
   },
 };
 
+const PRICE_UNITS_EN = { pcs: "pack", pack: "pack", "viên": "piece", "bánh": "cake", "hộp": "box", "chai": "bottle", "cái": "item" };
+
 function ProductPhoto({ product, name, text, small = false }) {
   const [failed, setFailed] = useState(false);
   return <div className={`${styles.photo}${small ? ` ${styles.smallPhoto}` : ""}`}>
     {product.photoUrl && !failed
-      ? <img src={product.photoUrl} alt={name} loading={small ? "lazy" : "eager"} onError={() => setFailed(true)} style={{ objectPosition: product.photoPosition || "center" }}/>
+      ? <img src={product.photoUrl} alt={name} loading={small ? "lazy" : "eager"} fetchPriority={small ? "auto" : "high"} onError={() => setFailed(true)} style={{ objectPosition: product.photoPosition || "center" }}/>
       : <div className={styles.photoFallback}><span>Hoàng Long</span><strong>{name}</strong><small>{failed ? text.photoError : text.photoMissing}</small></div>}
   </div>;
 }
@@ -88,9 +92,10 @@ export default function RetailProductDetail({ product, curatedSelection = null }
   const signatureNotes = publishedSensoryProfile
     ? presentSensoryNotes(publishedSensoryProfile,locale).slice(0,3).map(item=>item.label)
     : characteristics?.signatureNotes || facts.flavors;
-  const options = retailOptions(currentProduct);
-  const hasVariants = currentProduct.variants?.length > 0;
-  const kilogramBasis = !hasVariants && options[0]?.unit === "kg";
+  const options = retailOptions(currentProduct).sort((a, b) => {
+    const aGrams = retailOptionGrams(a), bGrams = retailOptionGrams(b);
+    return (aGrams ?? Infinity) - (bGrams ?? Infinity) || (a.price ?? Infinity) - (b.price ?? Infinity);
+  });
   const [selectedKey, setSelectedKey] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [message, setMessage] = useState("");
@@ -110,7 +115,28 @@ export default function RetailProductDetail({ product, curatedSelection = null }
   const validQuantity = Number.isInteger(quantityNumber) && quantityNumber >= 1 && quantityNumber <= maxQuantity;
   const canAdd = catalogStatus === "ready" && liveProduct && selected?.orderable && hasPrice && !soldOut && maxQuantity > 0 && validQuantity;
   const unit = sellingUnitLabel(selected?.unit, locale);
+  const priceUnit = locale === "en" ? PRICE_UNITS_EN[selected?.unit] || unit : unit;
+  const packName = option => option?.displayWeight || (option?.unit === "kg" ? "1 kg" : facts.packing || sellingUnitLabel(option?.unit, locale) || t.defaultPack);
+  const selectedPackName = packName(selected);
+  const subtotal = Number.isInteger(quantityNumber) && quantityNumber > 0 ? money.format(price * quantityNumber) : "—";
+  const cartCount = Object.values(cart).reduce((total, value) => total + value, 0);
   const stockBadge = retailStockBadge(currentProduct, selected, locale);
+  const catalogUnavailable = catalogStatus !== "ready" || !liveProduct || !selected;
+  let availability = "", addLabel = t.add;
+  if (catalogStatus === "loading") {
+    availability = t.checking;
+    addLabel = t.waiting;
+  } else if (catalogUnavailable || (!selected.orderable && hasPrice && !soldOut)) {
+    availability = catalogStatus === "error" ? t.loadError : t.unavailable;
+    addLabel = t.unavailableAction;
+  } else if (soldOut) {
+    availability = addLabel = t.soldOut;
+  } else if (maxQuantity === 0) {
+    availability = remaining === 0 ? t.stockLimit : t.cartLimit;
+    addLabel = t.cartFull;
+  } else if (selected.orderable && !validQuantity) {
+    availability = t.invalidQuantity;
+  }
   const brewGuidance = retailBrewingGuidance(currentProduct, locale);
   const selectedBrew = brewGuidance.methods.find(method => method.id === brewMethod) || brewGuidance.methods[0];
   const shopHref = `/shop?lang=${locale}`;
@@ -151,75 +177,84 @@ export default function RetailProductDetail({ product, curatedSelection = null }
       <ProductPhoto key={`${currentProduct.id}:${currentProduct.photoUrl || ""}`} product={currentProduct} name={facts.name} text={t}/>
       <div className={styles.productInfo}>
         <p className={styles.eyebrow}>{facts.groupLabel}</p>
-        {stockBadge && <p className={styles.stockBadge} data-kind={stockBadge.kind}>{stockBadge.label}</p>}
         <h1>{facts.name}</h1>
         <CuratedTeaBadge entry={curatedSelection} locale={locale}/>
-        {facts.note && <p className={styles.note}>{facts.note}</p>}
-        {!!signatureNotes.length && <div className={styles.flavorSection}><h2>{characteristics?.labels.signature || t.flavors}</h2><ul>{signatureNotes.map((flavor, index) => <li key={`${flavor}:${index}`}>{flavor}</li>)}</ul></div>}
-
-        {characteristics && <section className={styles.characteristics} aria-labelledby={`${groupName}-characteristics`}>
-          <h2 id={`${groupName}-characteristics`}>{characteristics.labels.title}</h2>
-          <dl>
-            <div><dt>{characteristics.labels.feeling}</dt><dd>{characteristics.feeling}</dd></div>
-            <div><dt>{characteristics.labels.moment}</dt><dd>{characteristics.moment}</dd></div>
-            <div><dt>{characteristics.labels.serving}</dt><dd>{characteristics.serving}</dd></div>
-          </dl>
-          <p>{characteristics.labels.caffeine}</p>
-        </section>}
+        {!!signatureNotes.length && <p className={styles.signature} aria-label={t.flavors}>{signatureNotes.slice(0, 3).join(" · ")}</p>}
+        <div className={styles.price}>
+          {hasPrice ? <strong>{money.format(price)} <small>/ {priceUnit}</small></strong>
+            : <strong>{catalogStatus === "ready" && liveProduct ? t.requestPrice : "—"}</strong>}
+          {stockBadge && <span className={styles.stockBadge} data-kind={stockBadge.kind}>{stockBadge.label}</span>}
+        </div>
 
         <form className={styles.purchase} onSubmit={addToCart}>
-          <fieldset className={styles.packages}>
-            <legend>{kilogramBasis ? t.orderUnit : t.packing}</legend>
+          {options.length > 1 ? <fieldset className={styles.packages}>
+            <legend>{t.packing}</legend>
+            <div className={styles.packGrid}>
             {options.map(option => {
               const unavailableStock = typeof option.stock === "number" && Number.isFinite(option.stock) && option.stock <= 0;
               const optionHasPrice = Number.isFinite(Number(option.price)) && Number(option.price) > 0;
-              return <label key={option.key} className={`${styles.package}${selected?.key === option.key ? ` ${styles.selectedPackage}` : ""}`}>
+              return <label key={option.key} className={`${styles.package}${selected?.key === option.key ? ` ${styles.selectedPackage}` : ""}`} data-unavailable={unavailableStock}>
                 <input type="radio" name={groupName} value={option.key} checked={selected?.key === option.key} onChange={() => selectOption(option.key)}/>
-                <span><strong>{option.displayWeight || (option.unit === "kg" ? "1 kg" : facts.packing || t.defaultPack)}</strong><small>{optionHasPrice ? `${money.format(option.price)} / ${sellingUnitLabel(option.unit, locale)}` : t.requestPrice}</small></span>
-                {unavailableStock && <span className={styles.stockLabel}>{t.soldOut}</span>}
+                <span><strong>{packName(option)}</strong><small>{unavailableStock ? t.soldOut : optionHasPrice ? money.format(option.price) : t.requestPrice}</small></span>
               </label>;
             })}
-            {!options.length && <p className={styles.availability}>{t.unavailable}</p>}
-          </fieldset>
-
-          {options.some(option => !option.weight && option.unit === "kg") && facts.packing && <div className={styles.recordedPacking}><span>{t.recordedPacking}</span><p>{facts.packing}</p></div>}
-
-          {hasPrice && <div className={styles.price}><span>{kilogramBasis ? t.unitPrice : t.selectedPrice}</span><strong>{money.format(price)}<small> / {unit}</small></strong></div>}
+            </div>
+          </fieldset> : selected && <p className={styles.singlePack}><span>{t.defaultPack}</span> <strong>{selectedPackName}</strong></p>}
+          {!selected?.weight && selected?.unit === "kg" && facts.packing && <p className={styles.recordedPacking}>{t.recordedPacking}: {facts.packing}</p>}
 
           {hasPrice && !soldOut && selected?.orderable && <div className={styles.quantityRow}>
-            <label htmlFor={`${groupName}-quantity`}>{t.quantity}<small>{unit}</small></label>
+            <label htmlFor={`${groupName}-quantity`}>{t.quantity}</label>
             <div className={styles.stepper}>
               <button type="button" aria-label={t.less} disabled={!validQuantity || quantityNumber <= 1} onClick={() => updateQuantity(String(quantityNumber - 1))}><Minus size={17} aria-hidden="true"/></button>
-              <input id={`${groupName}-quantity`} type="number" inputMode="numeric" min="1" max={maxQuantity || 1} step="1" required disabled={maxQuantity === 0} value={quantity} onChange={event => updateQuantity(event.target.value)} aria-describedby={`${groupName}-availability`}/>
-              <button type="button" aria-label={t.more} disabled={!validQuantity || quantityNumber >= maxQuantity} onClick={() => updateQuantity(String(quantityNumber + 1))}><Plus size={17} aria-hidden="true"/></button>
+              <input id={`${groupName}-quantity`} type="number" inputMode="numeric" min="1" max={maxQuantity || 1} step="1" required disabled={maxQuantity === 0} value={quantity} onChange={event => updateQuantity(event.target.value)} onBlur={() => { if (quantity === "") updateQuantity("1"); }} aria-describedby={`${groupName}-availability`}/>
+              <button type="button" aria-label={t.more} disabled={maxQuantity === 0 || quantityNumber >= maxQuantity} onClick={() => updateQuantity(String(validQuantity ? quantityNumber + 1 : 1))}><Plus size={17} aria-hidden="true"/></button>
             </div>
           </div>}
 
           <p id={`${groupName}-availability`} className={styles.availability} role="status">
-            {catalogStatus === "loading" ? t.checking : catalogStatus === "error" ? t.loadError : !liveProduct || !selected ? t.unavailable : soldOut ? t.soldOut : remaining === 0 ? t.stockLimit : maxQuantity === 0 ? t.cartLimit : !selected?.orderable && hasPrice ? t.unavailable : ""}
+            {availability}
           </p>
           {stockBadge?.detail && <p className={styles.stockDetail}>{stockBadge.detail}</p>}
 
-          {!hasPrice ? <><p className={styles.contactNote}>{t.noPrice}</p><a className={styles.primary} href={EVENT_CONTACT.zaloUrl} target="_blank" rel="noopener noreferrer">{t.requestPrice}<ArrowRight size={17} aria-hidden="true"/></a></>
-            : <><div className={styles.subtotal}><span>{t.total}</span><strong>{Number.isInteger(quantityNumber) && quantityNumber > 0 ? money.format(price * quantityNumber) : "—"}</strong></div><button className={styles.primary} type="submit" disabled={!canAdd}><ShoppingBag size={18} aria-hidden="true"/>{soldOut ? t.soldOut : t.add}</button></>}
-
+          {!hasPrice && catalogStatus === "ready" && liveProduct && selected && !soldOut && <p className={styles.contactNote}>{t.noPrice}</p>}
+          <div className={styles.buyBar}>
+            <div className={styles.buySummary}>
+              <small>{added ? t.addedToCart : (selected ? (quantityNumber > 1 ? `${quantityNumber} × ${selectedPackName}` : selectedPackName) : t.packing)}</small>
+              {hasPrice && <strong>{subtotal}</strong>}
+            </div>
+            <div className={styles.buyActions}>
+              {hasPrice || soldOut || catalogUnavailable
+                ? <button className={styles.primary} type="submit" disabled={!canAdd} aria-describedby={`${groupName}-availability`}>{addLabel}</button>
+                : <a className={styles.primary} href={EVENT_CONTACT.zaloUrl} target="_blank" rel="noopener noreferrer">{t.requestPrice}</a>}
+              {cartCount > 0 && <button type="button" className={styles.dockCart} onClick={openCart} aria-label={t.openCart(cartCount)}><ShoppingBag size={18} aria-hidden="true"/><b aria-hidden="true">{cartCount}</b></button>}
+            </div>
+          </div>
           {message && <div className={`${styles.feedback}${added ? "" : ` ${styles.feedbackError}`}`} role={added ? "status" : "alert"}>
             {added && <Check size={17} aria-hidden="true"/>}<p>{message}</p>{added && <button type="button" onClick={openCart}>{t.viewCart}<ArrowRight size={16} aria-hidden="true"/></button>}
           </div>}
         </form>
 
-        {currentProduct.kind !== "goods" && currentProduct.line !== "sample" && <aside className={styles.volumeBenefits} aria-label={t.volumeTitle}>
-          <strong>{t.volumeTitle}</strong><p>{t.freeShipping(RETAIL_VOLUME_POLICY.freeShippingGrams / 1000)}</p>
-          <ul>{RETAIL_VOLUME_POLICY.tiers.map(tier => <li key={tier.grams}>{t.volumeTier(tier.grams / 1000, tier.percent)}</li>)}</ul>
-          <small>{t.volumeNote}</small>
-        </aside>}
-
         <section className={styles.trust} aria-label={t.reassurance}>
-          <p className={styles.trustHeading}>{t.reassurance}</p>
           <details><summary><ReceiptText size={18} aria-hidden="true"/><span>{t.trustPrice}</span><ChevronDown size={16} aria-hidden="true"/></summary><div><p>{t.trustPriceNote}</p><Link href="/shipping">{t.shipping}<ArrowRight size={15} aria-hidden="true"/></Link></div></details>
           <details><summary><PackageCheck size={18} aria-hidden="true"/><span>{t.trustReturns}</span><ChevronDown size={16} aria-hidden="true"/></summary><div><p>{t.trustReturnsNote}</p><Link href="/returns">{t.returns}<ArrowRight size={15} aria-hidden="true"/></Link></div></details>
           <details><summary><MessageCircle size={18} aria-hidden="true"/><span>{t.trustContact}</span><ChevronDown size={16} aria-hidden="true"/></summary><div><p>{t.trustContactNote}</p><div className={styles.trustContacts}><a href={`tel:${EVENT_CONTACT.phone}`}>{EVENT_CONTACT.phoneLabel}</a><a href={EVENT_CONTACT.zaloUrl} target="_blank" rel="noopener noreferrer">{t.contactZalo}<ArrowRight size={15} aria-hidden="true"/></a></div></div></details>
+          {currentProduct.kind !== "goods" && currentProduct.line !== "sample" && <details className={styles.volumeBenefits}>
+            <summary><ShoppingBag size={18} aria-hidden="true"/><span>{t.freeShipping(RETAIL_VOLUME_POLICY.freeShippingGrams / 1000)}</span><ChevronDown size={16} aria-hidden="true"/></summary>
+            <div><p>{t.volumeTitle}</p><ul>{RETAIL_VOLUME_POLICY.tiers.map(tier => <li key={tier.grams}>{t.volumeTier(tier.grams / 1000, tier.percent)}</li>)}</ul><small>{t.volumeNote}</small></div>
+          </details>}
         </section>
+        {(facts.note || characteristics) && <section className={styles.about} aria-labelledby={`${groupName}-about`}>
+          <h2 id={`${groupName}-about`}>{t.aboutTea}</h2>
+          {facts.note && <p className={styles.note}>{facts.note}</p>}
+          {characteristics && <div className={styles.characteristics}>
+            <dl>
+              <div><dt>{characteristics.labels.feeling}</dt><dd>{characteristics.feeling}</dd></div>
+              <div><dt>{characteristics.labels.moment}</dt><dd>{characteristics.moment}</dd></div>
+              <div><dt>{characteristics.labels.serving}</dt><dd>{characteristics.serving}</dd></div>
+            </dl>
+            <p>{characteristics.labels.caffeine}</p>
+          </div>}
+        </section>}
       </div>
     </div>
 

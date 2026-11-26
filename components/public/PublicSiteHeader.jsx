@@ -56,6 +56,7 @@ export default function PublicSiteHeader({ children }) {
   const { locale, setLocale } = useLocale();
   const language = locale === "en" ? "en" : "vi";
   const pathname = usePathname() || "/";
+  const shopping = pathname === "/goods" || pathname === "/shop" || pathname.startsWith("/shop/");
   const id = useId();
   const headerRef = useRef(null);
   const menuButtonRef = useRef(null);
@@ -146,7 +147,7 @@ export default function PublicSiteHeader({ children }) {
   };
 
   return (
-    <header ref={headerRef} className={styles.header} data-no-translate>
+    <header ref={headerRef} className={styles.header} data-shopping={shopping || undefined} data-no-translate>
       <div className={styles.bar}>
         <Link
           href={hrefFor("/")}
@@ -195,6 +196,13 @@ export default function PublicSiteHeader({ children }) {
               value={language === "en" ? "en-current" : "vi"} onChange={event => {
                 const target = event.target.value;
                 closeNavigation();
+                if (shopping && (target === "vi" || target === "en")) {
+                  const url = new URL(window.location.href);
+                  url.searchParams.set("lang", target);
+                  window.history.replaceState(window.history.state, "", url);
+                  setLocale(target);
+                  return;
+                }
                 if (target === "vi") { setLocale("vi"); return; }
                 const section = currentHash === "#documents" ? "documents" : internationalSection(pathname);
                 window.location.assign(localPath(target, section) + (tracking ? `?${tracking}` : ""));

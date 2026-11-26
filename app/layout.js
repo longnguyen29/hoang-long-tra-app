@@ -42,7 +42,7 @@ export default function RootLayout({ children }) {
           }
         `}</style>
       </head>
-      <body><LocaleProvider><RetailCartProvider>{children}</RetailCartProvider><MetaPixel /></LocaleProvider></body>
+      <body><LocaleProvider><RetailCartProvider>{children}<MetaPixel /></RetailCartProvider></LocaleProvider></body>
     </html>
   );
 }

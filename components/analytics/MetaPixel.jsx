@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { useLocale } from "@/components/i18n/LocaleProvider";
+import { useRetailCart } from "@/components/public/RetailCartProvider";
 import { canTrackMeta, canShowCookiePreferences, META_CONSENT_KEY, META_PIXEL_ID } from "@/lib/meta-pixel";
 import styles from "./MetaPixel.module.css";
 
@@ -31,6 +32,7 @@ function loadPixel() {
 export default function MetaPixel() {
   const pathname = usePathname();
   const { locale } = useLocale();
+  const cartOpen = useRetailCart()?.cartOpen;
   const [choice, setChoice] = useState(null);
   const [ready, setReady] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -69,8 +71,22 @@ export default function MetaPixel() {
   }, [pathname, choice, ready]);
 
   useEffect(() => {
-    setFooterTarget(pathname === "/" ? document.getElementById("home-cookie-preferences") : null);
-  }, [pathname, locale]);
+    const retail = pathname === "/goods" || pathname === "/shop" || pathname.startsWith("/shop/");
+    const id = retail ? "shop-cookie-preferences" : pathname === "/" ? "home-cookie-preferences" : null;
+    if (!id) { setFooterTarget(null); return; }
+    let previous = undefined;
+    const update = () => {
+      const target = document.getElementById(id);
+      if (previous === target) return;
+      previous = target;
+      setFooterTarget(target);
+    };
+    update();
+    // A successful order swaps the receipt into the same URL.
+    const observer = new MutationObserver(update);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [pathname]);
 
   function choose(value) {
     try { localStorage.setItem(META_CONSENT_KEY, value); } catch { /* Session choice still works. */ }
@@ -79,10 +95,11 @@ export default function MetaPixel() {
     setEditing(false);
   }
 
-  if (!ready || !eligible) return null;
+  if (!ready || !eligible || (cartOpen && (pathname === "/goods" || pathname === "/shop" || pathname.startsWith("/shop/")))) return null;
   if (choice && !editing) {
-    const button = <button type="button" className={pathname === "/" && footerTarget ? styles.inlinePreferences : styles.preferences} onClick={() => setEditing(true)}>{vi ? "Tuỳ chọn cookie" : "Cookie preferences"}</button>;
-    return pathname === "/" && footerTarget ? createPortal(button, footerTarget) : button;
+    const inline = footerTarget?.isConnected;
+    const button = <button type="button" className={inline ? styles.inlinePreferences : styles.preferences} onClick={() => setEditing(true)}>{vi ? "Tuỳ chọn cookie" : "Cookie preferences"}</button>;
+    return inline ? createPortal(button, footerTarget) : button;
   }
   return (
     <section className={styles.notice} aria-label={vi ? "Tuỳ chọn cookie quảng cáo" : "Advertising cookie preferences"}>
