@@ -1,5 +1,6 @@
 import Link from "next/link";
 import CompanyDocuments from "@/components/staff/CompanyDocuments";
+import ProductDeclarationChecklist from "@/components/staff/ProductDeclarationChecklist";
 import B2BDocumentSession, { B2BSellingEntities } from "@/components/staff/B2BDocumentSession";
 import { createClient } from "@/lib/supabase/server";
 import { partnerNetworkEnabled } from "@/lib/partner-network-server";
@@ -24,6 +25,7 @@ export default async function CompanyDocumentsPage({ searchParams }) {
     <p>{context.access === "error" ? "Hãy tải lại trang. Không có dữ liệu đối tác được hiển thị khi chưa xác nhận quyền." : "Dùng tài khoản quản lý / admin Hoàng Long đã xác nhận email."}</p>
     <Link href={context.access === "error" ? "/admin/documents" : "/admin/login"}>{context.access === "error" ? "Thử lại" : "Đăng nhập"}</Link>
   </main>;
+  if (query?.declarations === "1") return <ProductDeclarationChecklist />;
   if (query?.b2b) {
     try {
       const { data: authorized, error } = await supabase.rpc("b2b_current_document_manager");
