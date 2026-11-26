@@ -91,7 +91,7 @@ export const STAFF_WORK_AREAS = [
     { module: "assistant" }, { module: "growth" },
   ] },
   { id: "operations", label: "Vận hành", icon: ClipboardCheck, links: [
-    { module: "work" }, { module: "operations", label: "Kho & sản xuất" }, { module: "procedures" },
+    { module: "work" }, { module: "work", label: "Sổ tay Hoàng Long", href: "/admin/work/guide" }, { module: "operations", label: "Kho & sản xuất" }, { module: "procedures" },
     { module: "recipes" }, { module: "productDevelopment" }, { module: "suppliers" },
     { module: "knowledge" }, { module: "documents" },
   ] },
