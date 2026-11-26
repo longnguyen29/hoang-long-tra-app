@@ -226,7 +226,9 @@ begin
   -- Retail creation deducts from two warehouses without retaining the split.
   -- A line with tracked stock needs reconciliation rather than a guessed
   -- release or further deduction against the current warehouse counts.
-  if (current_order.type = 'retail' or current_order.retail_pricing is not null or current_order.total_items is not null)
+  if (current_order.type = 'retail' or current_order.retail_pricing is not null
+    or (current_order.total_items is not null and current_order.quote_id is null
+      and current_order.partner_account_id is null))
     and product_key is not null and (
     (variant_key <> '' and exists (
       select 1 from public.catalog_variants where product_id = product_key and weight = variant_key

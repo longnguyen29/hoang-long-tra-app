@@ -110,6 +110,18 @@ begin
   then raise exception 'Original online terms were not preserved beside the updated price and quantities'; end if;
   update public.catalog_products set stock_ha_giang=25 where id='qty-test-web';
   perform pg_temp.expect_quantity_error('qty-test-retail',0,result->'order'->'lines',18,'Fixture correction',editor,'line_quantity_inventory_locked');
+  update public.orders set type='wholesale' where id='qty-test-retail';
+  perform pg_temp.expect_quantity_error('qty-test-retail',0,result->'order'->'lines',18,'Fixture correction',editor,'line_quantity_inventory_locked');
+
+  before_lines := '[{"productId":"qty-test-web","qty":2,"unit":"pcs","price":100000}]';
+  insert into public.trade_quotes(id,customer_name,contact,status)
+    values('qty-test-quote','Fixture','wholesale@example.test','accepted');
+  insert into public.orders(id,type,customer_name,contact,lines,estimated_total,total_items,quote_id,status,stage)
+    values('qty-test-quote-order','wholesale','Fixture','wholesale@example.test',before_lines,200000,2,'qty-test-quote','confirmed','packing');
+  result := public.correct_order_line_quantity('qty-test-quote-order',0,before_lines,3,'Fixture correction',editor);
+  if (result->'order'->>'estimated_total')::numeric<>300000
+    or not exists(select 1 from public.catalog_products where id='qty-test-web' and stock_ha_giang=25)
+  then raise exception 'A counted wholesale quote line should not be mistaken for an online retail deduction'; end if;
 
   before_lines := '[{"quantity":2,"unit":"kg","unitPrice":100},{"qty":1,"unit":"g","price":25}]';
   insert into public.orders(id,type,customer_name,contact,lines,estimated_total,tier,status,stage) values
