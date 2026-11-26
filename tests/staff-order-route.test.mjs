@@ -179,3 +179,41 @@ test('unit correction requires authenticated manager and a committed order resul
  const response=await send({correctLineUnit:{index:0,expectedLines:f.original.lines,unit:'viên',reason:'Sửa quy cách nhập nhầm'}});
  assert.equal(response.status,500);assert.equal((await response.json()).error,'line_unit_correction_reload_failed');
 });
+
+test("quantity correction sends one atomic mutation with the user's exact snapshot", async () => {
+  const expectedLines = [{ productId: "tea", qty: 5, unit: "kg", price: 100000 }];
+  const updated = { id: "TEST-1", type: "wholesale", estimated_total: 750000, lines: [{ ...expectedLines[0], qty: 7.5 }] };
+  const { rpcCalls, writes, events } = fixture({ rpcData: { order: updated } });
+  const response = await send({ correctLineQuantity: { index: 0, expectedLines, quantity: 7.5, reason: "  Khách xác nhận lại  " } });
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).order, updated);
+  assert.deepEqual(rpcCalls, [{ name: "correct_order_line_quantity", args: {
+    p_order_id: "TEST-1", p_line_index: 0, p_expected_lines: expectedLines, p_quantity: 7.5,
+    p_reason: "Khách xác nhận lại", p_actor: "STAFF-1",
+  }}]);
+  assert.equal(writes.length, 0);
+  assert.equal(events.length, 0);
+});
+
+test("quantity correction refuses zero, imprecise amounts, mixed changes and stale snapshots", async () => {
+  const baseline = { index: 0, expectedLines: [{ qty: 5, unit: "kg", price: 100000 }], quantity: 8, reason: "Sửa đơn đặt" };
+  for (const [payload, code] of [
+    [{ correctLineQuantity: { ...baseline, quantity: 0 } }, "invalid_line_quantity"],
+    [{ correctLineQuantity: { ...baseline, quantity: 0.0001 } }, "invalid_line_quantity"],
+    [{ correctLineQuantity: { ...baseline, quantity: "8" } }, "invalid_line_quantity"],
+    [{ correctLineQuantity: { ...baseline, reason: "" } }, "line_quantity_reason_required"],
+    [{ correctLineQuantity: baseline, stage: "shipping" }, "invalid_line_quantity_correction"],
+  ]) {
+    const { rpcCalls } = fixture();
+    const result = await send(payload);
+    assert.equal(result.status, 400);
+    assert.equal((await result.json()).error, code);
+    assert.equal(rpcCalls.length, 0);
+  }
+  for (const code of ["order_lines_changed", "line_quantity_payment_locked", "line_quantity_stage_locked", "line_quantity_documents_locked", "line_quantity_inventory_locked"]) {
+    fixture({ rpcError: { message: code } });
+    const response = await send({ correctLineQuantity: baseline });
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).error, code);
+  }
+});
