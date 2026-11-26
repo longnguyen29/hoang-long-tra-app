@@ -88,6 +88,49 @@ export async function PATCH(request, { params }) {
     return Response.json({ ok: false, error: "invalid_body" }, { status: 400 });
   }
 
+  if (body && Object.hasOwn(body, "correctLineQuantity")) {
+    const correction = body.correctLineQuantity;
+    if (Object.keys(body).length !== 1 || !correction || typeof correction !== "object"
+      || Array.isArray(correction) || Object.keys(correction).some(key => !["index", "expectedLines", "quantity", "reason"].includes(key))
+      || !Number.isInteger(correction.index) || correction.index < 0
+      || !Array.isArray(correction.expectedLines) || correction.expectedLines.length > 500
+      || correction.index >= correction.expectedLines.length
+      || correction.expectedLines.some(line => !line || typeof line !== "object" || Array.isArray(line))) {
+      return Response.json({ ok: false, error: "invalid_line_quantity_correction" }, { status: 400 });
+    }
+    if (!Number.isFinite(correction.quantity) || correction.quantity <= 0 || correction.quantity > 1e9
+      || Math.abs(correction.quantity - Math.round(correction.quantity * 1000) / 1000) > 1e-10) {
+      return Response.json({ ok: false, error: "invalid_line_quantity" }, { status: 400 });
+    }
+    const reason = typeof correction.reason === "string" ? correction.reason.trim() : "";
+    if (reason.length < 5 || reason.length > 1000) {
+      return Response.json({ ok: false, error: "line_quantity_reason_required" }, { status: 400 });
+    }
+    const { data: result, error } = await staff.admin.rpc("correct_order_line_quantity", {
+      p_order_id: id, p_line_index: correction.index, p_expected_lines: correction.expectedLines,
+      p_quantity: correction.quantity, p_reason: reason, p_actor: staff.user.id,
+    });
+    if (error) {
+      const codes = {
+        manager_required: 403, order_not_found: 404, invalid_line_index: 400, invalid_line_quantity: 400,
+        line_quantity_reason_required: 400, invalid_order_lines: 422, invalid_line_unit: 422,
+        order_lines_changed: 409, line_quantity_unchanged: 409, line_quantity_stage_locked: 409,
+        line_quantity_payment_locked: 409, line_quantity_documents_locked: 409,
+        line_quantity_inventory_locked: 409, line_quantity_procedure_locked: 409,
+      };
+      const code = Object.keys(codes).find(value => error.message?.includes(value));
+      return Response.json({ ok: false, error: code || "line_quantity_correction_failed" }, { status: codes[code] || 500 });
+    }
+    if (!result?.order) return Response.json({ ok: false, error: "line_quantity_correction_reload_failed" }, { status: 500 });
+    const [eventResult, costResult, receivableResult] = await Promise.all([
+      readEvents(staff.admin, id), readCosts(staff.admin, id), readReceivable(staff.admin, id),
+    ]);
+    return Response.json({
+      ok: true, order: result.order, receivable: receivableResult.data || null,
+      events: eventResult.data || [], costs: costResult.data || [],
+    });
+  }
+
   if (body && Object.hasOwn(body, 'correctLineUnit')) {
     const correction = body.correctLineUnit;
     if (Object.keys(body).length !== 1 || !correction || Array.isArray(correction) || typeof correction !== 'object'

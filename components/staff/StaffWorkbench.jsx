@@ -32,6 +32,13 @@ const dateTime=(value)=>{const date=new Date(value);return !value||Number.isNaN(
 const money=(value)=>value===null||value===undefined?"Chưa báo giá":new Intl.NumberFormat("vi-VN",{style:"currency",currency:"VND",maximumFractionDigits:0}).format(value);
 const quantity=(order)=>formatLineQuantities(order.lines)||"Chưa có sản phẩm";
 const lineName=(line)=>typeof line?.name==="string"?line.name:line?.name?.vi||line?.name?.en||"Sản phẩm";
+const quantityFormatter=new Intl.NumberFormat("vi-VN",{maximumFractionDigits:20});
+const lineQuantity=(line)=>line?.qty??line?.quantity;
+const lineQuantityLabel=(line)=>{
+ const raw=lineQuantity(line),value=Number(raw);
+ if(raw===null||raw===undefined||raw===""||!Number.isFinite(value))return "Chưa ghi số lượng";
+ return `${quantityFormatter.format(value)} ${sellingUnitLabel(line.unit)}`.trim();
+};
 const orderEventMessage=(event)=>{
  if(event.kind==="sms_manual_action"){
   try{const detail=typeof event.message==="string"?JSON.parse(event.message):event.message;return `Yêu cầu ${detail.action==="resend"?"gửi lại":detail.action==="retry"?"thử gửi lại":detail.action==="automatic_retry"?"tự thử lại":"gửi ngay"} SMS vận đơn ${detail.tracking_code||""} qua Android. Lý do: ${detail.reason||"—"}. Xem lịch sử SMS để xác nhận kết quả.`}catch{return "Yêu cầu gửi SMS qua Android; xem lịch sử SMS để xác nhận kết quả."}
@@ -43,6 +50,14 @@ const orderEventMessage=(event)=>{
    if(!before||!after)return "Đã sửa đơn vị một dòng sản phẩm.";
    return `Đã sửa đơn vị ${lineName(after)}: ${before.qty} ${sellingUnitLabel(before.unit)} → ${after.qty} ${sellingUnitLabel(after.unit)}. Giữ nguyên số lượng, giá và trạng thái. Lý do: ${detail.reason||"—"}.`;
   }catch{return event.message||"Đã sửa đơn vị một dòng sản phẩm."}
+ }
+ if(event.kind==="line_quantity_corrected"){
+  try{
+   const detail=typeof event.message==="string"?JSON.parse(event.message):event.message;
+   const before=detail?.before_line,after=detail?.after_line;
+   if(!before||!after)return "Đã sửa số lượng một dòng sản phẩm.";
+   return `Đã sửa số lượng ${lineName(after)}: ${lineQuantityLabel(before)} → ${lineQuantityLabel(after)}. Tổng đơn: ${money(detail.before?.estimated_total)} → ${money(detail.after?.estimated_total)}. Lý do: ${detail.reason||"—"}.`;
+  }catch{return "Đã sửa số lượng một dòng sản phẩm."}
  }
  if(event.kind!=="line_removed")return event.message;
  try{
@@ -213,7 +228,7 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
     receivable_exists:"Đơn đã có yêu cầu thanh toán. Nếu tạo nhầm và chưa nhận tiền, hãy hủy yêu cầu trong mục Thanh toán của đơn để sửa giá.",
     order_lines_changed:"Sản phẩm trong đơn đã được người khác thay đổi. Đã tải lại đơn; kiểm tra lại dòng sản phẩm trước khi xác nhận.",
     last_order_line:"Đơn phải còn ít nhất một sản phẩm. Không thể xoá dòng cuối cùng.",
-    invalid_order_lines:"Dữ liệu sản phẩm, giá hoặc khoản điều chỉnh chưa được đối soát. Hãy kiểm tra số lượng, đơn vị và giá trước khi xoá.",
+    invalid_order_lines:"Dữ liệu sản phẩm, giá hoặc khoản điều chỉnh chưa được đối soát. Kiểm tra lại các dòng trước khi lưu.",
     line_removal_payment_conflict:"Chưa thể xoá dòng vì tổng mới hoặc yêu cầu thanh toán không khớp số tiền đã thu. Cần đối soát thanh toán trước khi thử lại.",
     invalid_line_index:"Dòng sản phẩm này không còn trong đơn. Tải lại đơn và chọn lại sản phẩm.",
     invalid_line_removal:"Thông tin xoá dòng chưa hợp lệ. Tải lại đơn và chọn dòng cần xoá.",
@@ -223,10 +238,20 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
     invalid_line_unit_correction:"Thông tin sửa đơn vị chưa hợp lệ. Tải lại đơn và kiểm tra sản phẩm.",
     invalid_line_unit:"Chọn đơn vị hợp lệ cho sản phẩm.",
     line_unit_reason_required:"Ghi lý do sửa đơn vị từ 5 đến 1.000 ký tự.",
-    invalid_line_quantity:"Số lượng viên, bánh hoặc gói phải là số nguyên. Thao tác này giữ số lượng cũ nên chưa thể đổi sang đơn vị đã chọn.",
+    invalid_line_quantity:patch.correctLineQuantity?"Số lượng chưa hợp lệ với đơn vị hiện tại. Kiểm tra số thập phân hoặc số lượng đóng gói.":"Số lượng viên, bánh hoặc gói phải là số nguyên. Thao tác này giữ số lượng cũ nên chưa thể đổi sang đơn vị đã chọn.",
     line_unit_unchanged:"Đơn vị đã giống lựa chọn hiện tại. Chọn đơn vị mới hoặc giữ nguyên.",
     line_unit_correction_failed:"Chưa lưu được đơn vị. Hãy thử lại.",
     line_unit_correction_reload_failed:"Đơn vị có thể đã được sửa. Tải lại đơn để kiểm tra trước khi thao tác tiếp.",
+    invalid_line_quantity_correction:"Thông tin sửa số lượng chưa hợp lệ. Tải lại đơn và chọn dòng sản phẩm.",
+    line_quantity_reason_required:"Ghi lý do sửa số lượng từ 5 đến 1.000 ký tự.",
+    line_quantity_unchanged:"Số lượng mới trùng với số lượng đã lưu.",
+    line_quantity_stage_locked:"Chỉ sửa số lượng khi đơn đang xử lý và chưa chuyển giao.",
+    line_quantity_payment_locked:"Đơn đã có yêu cầu thanh toán hoặc đã ghi nhận tiền. Đối soát thanh toán trước khi thử lại.",
+    line_quantity_documents_locked:"Đơn có chứng từ đã ký hoặc đã phát hành. Kiểm tra hồ sơ chứng từ trước khi sửa số lượng.",
+    line_quantity_inventory_locked:"Đơn đã trừ tồn kho, phân bổ lô trà hoặc có lượng giữ không khớp. Kiểm tra kho trước khi sửa số lượng.",
+    line_quantity_procedure_locked:"Đơn đã ghi nhận bước kiểm tra đóng gói hoặc vận chuyển. Kiểm tra quy trình trước khi sửa số lượng.",
+    line_quantity_correction_failed:"Chưa lưu được số lượng. Hãy thử lại.",
+    line_quantity_correction_reload_failed:"Số lượng có thể đã được sửa. Tải lại đơn để kiểm tra trước khi thao tác tiếp.",
     force_reason_required:"Ghi lý do rõ ràng, ít nhất 10 ký tự.",
     order_not_ready_for_force_shipping:"Chỉ có thể Force off cho đơn sỉ chưa hoàn tất. Tải lại đơn để kiểm tra trạng thái.",
     procedure_run_not_active:"Đơn không có Procedure Run còn hoạt động. Tải lại đơn để kiểm tra.",
@@ -375,11 +400,17 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
  const [editingPrices,setEditingPrices]=useState(false),[priceDrafts,setPriceDrafts]=useState(()=>(order.lines||[]).map(line=>line.price??""));
  const [removingLineIndex,setRemovingLineIndex]=useState(null),[lineRemovalReason,setLineRemovalReason]=useState(""),[lineRemovalNotice,setLineRemovalNotice]=useState("");
  const [unitLineIndex,setUnitLineIndex]=useState(null),[unitDraft,setUnitDraft]=useState(""),[unitReason,setUnitReason]=useState("");
+ const [quantityLineIndex,setQuantityLineIndex]=useState(null),[quantityDraft,setQuantityDraft]=useState(""),[quantityReason,setQuantityReason]=useState("");
+ const quantityTriggerRef=useRef(null);
  const canRemoveLines=["admin","manager"].includes(role);
+ const canCorrectQuantity=canRemoveLines&&["pending","confirmed"].includes(order.status)
+   &&["new_order","confirm_details","prepare_materials","production","packing"].includes(order.stage);
+ const lineEditorOpen=removingLineIndex!==null||unitLineIndex!==null||quantityLineIndex!==null;
+ const lineActionsDisabled=saving||loadingEvents||!!detailError||lineEditorOpen;
  const [addingCost,setAddingCost]=useState(false),[costSaving,setCostSaving]=useState(false),[costDraft,setCostDraft]=useState(freshCost);
  const [paymentAmount,setPaymentAmount]=useState(amountDue||"");
  const [messageKind,setMessageKind]=useState(defaultMessageKind),[messageDraft,setMessageDraft]=useState(()=>buildManualOrderMessage({order,kind:defaultMessageKind(),amountDue})),[smsPlatform,setSmsPlatform]=useState("android"),[messageCopied,setMessageCopied]=useState(false);
- useEffect(()=>{setPriceDrafts((order.lines||[]).map(line=>line.price??""));setEditingPrices(false);setRemovingLineIndex(null);setLineRemovalReason("");setUnitLineIndex(null);setUnitDraft("");setUnitReason("");setAddingCost(false);setCostDraft(freshCost());setMessageCopied(false)},[order.id,order.lines]);
+ useEffect(()=>{setPriceDrafts((order.lines||[]).map(line=>line.price??""));setEditingPrices(false);setRemovingLineIndex(null);setLineRemovalReason("");setUnitLineIndex(null);setUnitDraft("");setUnitReason("");setQuantityLineIndex(null);setQuantityDraft("");setQuantityReason("");setAddingCost(false);setCostDraft(freshCost());setMessageCopied(false)},[order.id,order.lines]);
  useEffect(()=>setLineRemovalNotice(""),[order.id]);
  useEffect(()=>{const nextKind=defaultMessageKind();setMessageKind(nextKind);setMessageDraft(buildManualOrderMessage({order,kind:nextKind,amountDue}))},[order.id,amountDue,stage.id]);
  useEffect(()=>{setPaymentAmount(amountDue||"")},[order.id,receivable?.id,amountDue]);
@@ -396,7 +427,7 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
  const recordedDiscount=Number(order.tier?.pct),recordedTotal=order.estimatedTotal===null||order.estimatedTotal===undefined?null:Number(order.estimatedTotal);
  const matchesRecordedTier=beforeSubtotal!==null&&Number.isFinite(recordedDiscount)&&recordedDiscount>=0&&recordedDiscount<=100&&recordedTotal===Math.round(beforeSubtotal*(1-recordedDiscount/100));
  const remainingTotalPreview=recordedTotal===null||remainingSubtotal===null?null:Math.abs(recordedTotal-beforeSubtotal)<0.01?Math.round(remainingSubtotal*100)/100:matchesRecordedTier?Math.round(remainingSubtotal*(1-recordedDiscount/100)):null;
- const startLineRemoval=(index)=>{if(saving||editingPrices||unitLineIndex!==null||!canRemoveLines||(order.lines||[]).length<2)return;setRemovingLineIndex(index);setLineRemovalReason("");setLineRemovalNotice("")};
+ const startLineRemoval=(index)=>{if(lineActionsDisabled||editingPrices||!canRemoveLines||(order.lines||[]).length<2)return;setRemovingLineIndex(index);setLineRemovalReason("");setLineRemovalNotice("")};
  const saveLineRemoval=async(event)=>{
   event.preventDefault();
   const reason=lineRemovalReason.trim();
@@ -408,7 +439,7 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
  const correctionUnits=[...ORDER_UNIT_CHOICES,"g",...(unitLine?.unit&&!ORDER_UNIT_CHOICES.includes(unitLine.unit)&&unitLine.unit!=="g"?[unitLine.unit]:[])];
  const unitQuantityValid=unitLine&&validSaleQuantity(unitLine.qty,unitDraft,"wholesale");
  const startUnitCorrection=(index)=>{
-  if(saving||editingPrices||removingLineIndex!==null||!canRemoveLines)return;
+  if(lineActionsDisabled||editingPrices||!canRemoveLines)return;
   setUnitLineIndex(index);setUnitDraft(order.lines[index].unit||"");setUnitReason("Sửa đơn vị nhập nhầm theo quy cách sản phẩm");setLineRemovalNotice("");
  };
  const saveUnitCorrection=async(event)=>{
@@ -418,6 +449,39 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
   const name=lineName(unitLine),unit=sellingUnitLabel(unitDraft);
   const saved=await onUpdate({correctLineUnit:{index:unitLineIndex,expectedLines:order.lines,unit:unitDraft,reason}});
   if(saved){setUnitLineIndex(null);setLineRemovalNotice(`Đã sửa đơn vị ${name} sang ${unit}. Số lượng, giá và trạng thái đơn giữ nguyên.`)}
+ };
+ const quantityLine=quantityLineIndex===null?null:order.lines?.[quantityLineIndex];
+ const quantityAllowsDecimal=order.type==="wholesale"&&["kg","g","t","ton","tons"].includes(quantityLine?.unit);
+ const quantityInput=quantityDraft.trim();
+ const nextQuantity=Number(quantityInput.replace(",","."));
+ const quantityFormatValid=(quantityAllowsDecimal?/^(?:\d+(?:[.,]\d{1,3})?|[.,]\d{1,3})$/:/^\d+$/).test(quantityInput);
+ const validQuantity=Boolean(quantityLine&&SUPPORTED_SELLING_UNITS.includes(quantityLine.unit)&&quantityFormatValid
+   &&nextQuantity<=1e9&&validSaleQuantity(nextQuantity,quantityLine.unit,order.type));
+ const changedQuantity=validQuantity&&nextQuantity!==Number(lineQuantity(quantityLine));
+ const quantityWarning=receivable
+   ?Number(receivable.paid)>0?"Đơn đã ghi nhận thanh toán. Đối soát trước khi sửa số lượng.":"Hủy yêu cầu thanh toán chưa thu tiền trước khi sửa số lượng."
+   :"";
+ const dismissQuantity=()=>{
+  setQuantityLineIndex(null);setQuantityDraft("");setQuantityReason("");
+  requestAnimationFrame(()=>quantityTriggerRef.current?.focus());
+ };
+ const startQuantityCorrection=(index,trigger)=>{
+  if(lineActionsDisabled||editingPrices||!canCorrectQuantity||receivable)return;
+  const line=order.lines[index];
+  quantityTriggerRef.current=trigger;
+  setQuantityLineIndex(index);
+  setQuantityDraft(String(lineQuantity(line)??"").replace(".",","));
+  setQuantityReason("");setLineRemovalNotice("");
+ };
+ const saveQuantityCorrection=async(event)=>{
+  event.preventDefault();
+  const reason=quantityReason.trim();
+  if(saving||loadingEvents||detailError||editingPrices||!canCorrectQuantity||receivable||!changedQuantity||reason.length<5||reason.length>1000)return;
+  const saved=await onUpdate({correctLineQuantity:{index:quantityLineIndex,expectedLines:order.lines,quantity:nextQuantity,reason}});
+  if(saved){
+   dismissQuantity();
+   setLineRemovalNotice(`Đã sửa ${lineName(quantityLine)} từ ${lineQuantityLabel(quantityLine)} thành ${lineQuantityLabel({...quantityLine,qty:nextQuantity})}. Kiểm tra lượng thực tế trước khi đóng gói.`);
+  }
  };
  const saveHealth=()=>onUpdate({health:healthDraft,waitingOn:healthDraft==="on_track"?null:waitingDraft,healthNote:healthDraft==="on_track"?"":healthNoteDraft});
  const savePayment=async(event)=>{event.preventDefault();const saved=await onRecordPayment(Number(paymentAmount));if(saved)setPaymentAmount("")};
@@ -457,11 +521,17 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
   {showProcedures && <ProcedureOrderLink order={order} role={role}/>}
   {order.type === "wholesale" && <PartnerReferralLink orderId={order.id}/>}
   {actionError&&<p className={styles.error} role="alert">{actionError}</p>}
-  <section className={styles.typeEditor} aria-label="Loại đơn và giá bán">
+  <section className={styles.typeEditor} aria-label="Loại đơn và sản phẩm">
    <h3>Loại đơn & giá bán</h3>
    <label>Loại đơn<select value={typeDraft} disabled={saving} onChange={event=>setTypeDraft(event.target.value)}><option value="retail">Đơn lẻ (single order)</option><option value="wholesale">Đơn sỉ (bulk order)</option></select></label>
    <p>Đổi loại giữ nguyên sản phẩm, số lượng, đơn vị và giá. Bạn có thể sửa giá riêng cho từng dòng ở cả hai loại đơn.</p>
-   <div><button disabled={saving||typeDraft===order.type} onClick={()=>onUpdate({type:typeDraft})}>{saving?"Đang lưu…":"Lưu loại đơn"}</button><button disabled={saving||removingLineIndex!==null||unitLineIndex!==null} onClick={()=>{setEditingPrices(true);document.getElementById("order-price-editor")?.scrollIntoView({block:"start"})}}>Sửa giá từng sản phẩm</button>{canRemoveLines&&<button type="button" disabled={saving||unitLineIndex!==null||(order.lines||[]).length<2} title={(order.lines||[]).length<2?"Đơn phải còn ít nhất một dòng sản phẩm.":"Mở danh sách sản phẩm để chọn dòng nhập nhầm cần xoá."} onClick={()=>{setEditingPrices(false);document.getElementById("order-price-editor")?.scrollIntoView({block:"start"})}}>Xoá sản phẩm nhập nhầm</button>}{canRemoveLines&&<button type="button" disabled={saving||editingPrices||removingLineIndex!==null} onClick={()=>document.getElementById("order-price-editor")?.scrollIntoView({block:"start"})}>Sửa đơn vị sản phẩm</button>}</div>
+   <div>
+    <button disabled={saving||lineEditorOpen||typeDraft===order.type} onClick={()=>onUpdate({type:typeDraft})}>{saving?"Đang lưu…":"Lưu loại đơn"}</button>
+    <button disabled={saving||lineEditorOpen} onClick={()=>{setEditingPrices(true);document.getElementById("order-price-editor")?.scrollIntoView({block:"start"})}}>Sửa giá từng sản phẩm</button>
+    {canCorrectQuantity&&<button type="button" disabled={saving||lineEditorOpen} onClick={()=>{setEditingPrices(false);document.getElementById("order-price-editor")?.scrollIntoView({block:"start"})}}>Sửa số lượng sản phẩm</button>}
+    {canRemoveLines&&<button type="button" disabled={saving||lineEditorOpen||(order.lines||[]).length<2} title={(order.lines||[]).length<2?"Đơn phải còn ít nhất một dòng sản phẩm.":"Mở danh sách sản phẩm để chọn dòng nhập nhầm cần xoá."} onClick={()=>{setEditingPrices(false);document.getElementById("order-price-editor")?.scrollIntoView({block:"start"})}}>Xoá sản phẩm nhập nhầm</button>}
+    {canRemoveLines&&<button type="button" disabled={saving||editingPrices||lineEditorOpen} onClick={()=>document.getElementById("order-price-editor")?.scrollIntoView({block:"start"})}>Sửa đơn vị sản phẩm</button>}
+   </div>
   </section>
   {onDelete && <section className={styles.deleteOrder}>
    {!deleteOpen ? <button type="button" disabled={saving} onClick={()=>{setDeleteOpen(true);setDeleteError("")}}><Trash2 size={16}/>Xoá đơn nhập nhầm</button> : <form onSubmit={async event=>{event.preventDefault();setDeleteError("");const result=await onDelete(deleteConfirmation);if(result?.error)setDeleteError(result.error)}}>
@@ -503,13 +573,29 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
    {customerPageUrl&&<details className={styles.pagePreview}><summary><span><b>Xem trang khách sẽ mở</b><small>{customerPageUrl}</small></span><ExternalLink/></summary><div className={styles.phoneFrame}><iframe src={customerPageUrl} title={`Trang theo dõi của đơn ${order.id}`} loading="lazy"/></div><a href={customerPageUrl} target="_blank" rel="noreferrer">Mở toàn màn hình <ExternalLink/></a></details>}
   </section>
   <section id="order-price-editor" className={styles.orderFacts}>
-   <div className={styles.detailSectionTitle}><ClipboardList/><span><b>Thông tin đã đặt</b><small>{dateTime(order.ts)}</small></span><button type="button" className={styles.priceEditToggle} disabled={saving||removingLineIndex!==null||unitLineIndex!==null} onClick={()=>setEditingPrices(current=>!current)} title="Mở giá bán của từng dòng để điều chỉnh riêng cho đơn này.">{editingPrices?"Hủy chỉnh giá":"Điều chỉnh giá bán"}</button></div>
+   <div className={styles.detailSectionTitle}><ClipboardList/><span><b>Thông tin đã đặt</b><small>{dateTime(order.ts)}</small></span><button type="button" className={styles.priceEditToggle} disabled={saving||lineEditorOpen} onClick={()=>setEditingPrices(current=>!current)} title="Mở giá bán của từng dòng để điều chỉnh riêng cho đơn này.">{editingPrices?"Hủy chỉnh giá":"Điều chỉnh giá bán"}</button></div>
    <dl><div><dt>Mã đơn</dt><dd>{order.id}</dd></div><div><dt>Liên hệ</dt><dd>{order.contact}</dd></div><div><dt>Địa chỉ</dt><dd>{order.address||"—"}</dd></div><div><dt>Thanh toán</dt><dd>{order.paymentMethod==="cash"?"Tiền mặt":"Chuyển khoản QR"}</dd></div>{order.note&&<div><dt>Ghi chú</dt><dd>{order.note}</dd></div>}</dl>
+   {canCorrectQuantity&&quantityWarning&&<p className={styles.lineRemovalHint} id="order-quantity-payment-help">{quantityWarning}</p>}
    <div className={styles.lines}>{(order.lines||[]).map((line,index)=><div key={index} className={styles.lineItem}>
     <div className={styles.lineContent}>
-     <span><b>{lineName(line)}</b><small>{line.qty} {sellingUnitLabel(line.unit)}{line.price!==null&&line.price!==undefined?` × ${money(line.price)}`:" · chưa báo giá"}</small></span>
-     {editingPrices?<label className={styles.linePriceEditor}><span>Giá / {sellingUnitLabel(line.unit)}</span><FormattedNumberInput disabled={saving} min="0" step="1000" value={priceDrafts[index]} onChange={event=>setPriceDrafts(current=>current.map((value,itemIndex)=>itemIndex===index?event.target.value:value))} placeholder="Chưa báo giá"/></label>:<div className={styles.lineActions}><span>{line.price!==null&&line.price!==undefined?money(line.price*line.qty):"—"}</span>{canRemoveLines&&<button type="button" disabled={saving||loadingEvents||!!detailError||(order.lines||[]).length<2||removingLineIndex!==null||unitLineIndex!==null} aria-label={`Xoá dòng ${lineName(line)} · ${line.qty} ${sellingUnitLabel(line.unit)}`} aria-expanded={removingLineIndex===index} aria-controls={`order-line-removal-${index}`} title={(order.lines||[]).length<2?"Đơn phải còn ít nhất một dòng sản phẩm.":"Xoá dòng nhập nhầm và tính lại tổng đơn, giữ nguyên bước xử lý."} onClick={()=>startLineRemoval(index)}><Trash2/>Xoá dòng</button>}{canRemoveLines&&<button type="button" disabled={saving||loadingEvents||!!detailError||removingLineIndex!==null||unitLineIndex!==null} aria-label={`Sửa đơn vị ${lineName(line)}`} aria-expanded={unitLineIndex===index} aria-controls={`order-unit-correction-${index}`} onClick={()=>startUnitCorrection(index)}><Edit3/>Sửa đơn vị</button>}</div>}
+     <span><b>{lineName(line)}</b><small>{lineQuantityLabel(line)}{line.price!==null&&line.price!==undefined?` × ${money(line.price)}`:" · chưa báo giá"}</small></span>
+     {editingPrices?<label className={styles.linePriceEditor}><span>Giá / {sellingUnitLabel(line.unit)}</span><FormattedNumberInput disabled={saving} min="0" step="1000" value={priceDrafts[index]} onChange={event=>setPriceDrafts(current=>current.map((value,itemIndex)=>itemIndex===index?event.target.value:value))} placeholder="Chưa báo giá"/></label>:<div className={styles.lineActions}>
+      <span>{line.price!==null&&line.price!==undefined?money(line.price*lineQuantity(line)):"—"}</span>
+      {canCorrectQuantity&&<button type="button" className={styles.lineEditAction} disabled={lineActionsDisabled||!!receivable} aria-label={`Sửa số lượng ${lineName(line)}`} aria-expanded={quantityLineIndex===index} aria-controls={`order-quantity-correction-${index}`} aria-describedby={quantityWarning?"order-quantity-payment-help":undefined} onClick={event=>startQuantityCorrection(index,event.currentTarget)}><Edit3/>Sửa số lượng</button>}
+      {canRemoveLines&&<button type="button" className={styles.lineEditAction} disabled={lineActionsDisabled} aria-label={`Sửa đơn vị ${lineName(line)}`} aria-expanded={unitLineIndex===index} aria-controls={`order-unit-correction-${index}`} onClick={()=>startUnitCorrection(index)}><Edit3/>Sửa đơn vị</button>}
+      {canRemoveLines&&<button type="button" disabled={lineActionsDisabled||(order.lines||[]).length<2} aria-label={`Xoá dòng ${lineName(line)} · ${lineQuantityLabel(line)}`} aria-expanded={removingLineIndex===index} aria-controls={`order-line-removal-${index}`} title={(order.lines||[]).length<2?"Đơn phải còn ít nhất một dòng sản phẩm.":"Xoá dòng nhập nhầm và tính lại tổng đơn, giữ nguyên bước xử lý."} onClick={()=>startLineRemoval(index)}><Trash2/>Xoá dòng</button>}
+     </div>}
     </div>
+    {quantityLineIndex===index&&<form id={`order-quantity-correction-${index}`} className={`${styles.lineRemoval} ${styles.unitCorrection}`} onSubmit={saveQuantityCorrection}>
+     <h3>Sửa số lượng {lineName(line)}</h3>
+     <p>Đang ghi <b>{lineQuantityLabel(line)}</b>. Đơn giá {money(line.price)} / {sellingUnitLabel(line.unit)}. Tổng đơn được tính lại theo giá đã ghi.</p>
+     <label>Số lượng mới ({sellingUnitLabel(line.unit)})<input className={styles.quantityCorrectionInput} autoFocus required maxLength={20} type="text" inputMode={quantityAllowsDecimal?"decimal":"numeric"} autoComplete="off" disabled={saving} value={quantityDraft} onChange={event=>setQuantityDraft(event.target.value)} aria-invalid={quantityDraft!==""&&!validQuantity} aria-describedby={`order-quantity-help-${index}`}/></label>
+     <small id={`order-quantity-help-${index}`}>{quantityAllowsDecimal?"Nhập số lớn hơn 0, tối đa 3 chữ số thập phân. Ví dụ: 1,5.":"Nhập số nguyên lớn hơn 0."} Nếu cần bỏ sản phẩm, dùng nút Xoá dòng.</small>
+     {changedQuantity&&line.price!==null&&line.price!==undefined&&<div className={styles.lineRemovalPreview}><span><small>Tiền hàng dòng này</small><b>{money(nextQuantity*Number(line.price))}</b></span></div>}
+     <label>Lý do sửa số lượng (bắt buộc)<textarea required minLength={5} maxLength={1000} disabled={saving} value={quantityReason} onChange={event=>setQuantityReason(event.target.value)} placeholder="Ví dụ: khách xác nhận lấy 5 kg"/></label>
+     {actionError&&<p className={styles.error} role="alert">{actionError}</p>}
+     <div className={styles.lineRemovalButtons}><button type="button" disabled={saving} onClick={dismissQuantity}>Hủy</button><button type="submit" disabled={saving||loadingEvents||!!detailError||!!receivable||!canCorrectQuantity||!changedQuantity||quantityReason.trim().length<5}>{saving?"Đang lưu…":"Lưu số lượng"}</button></div>
+    </form>}
     {unitLineIndex===index&&<form id={`order-unit-correction-${index}`} className={`${styles.lineRemoval} ${styles.unitCorrection}`} onSubmit={saveUnitCorrection}>
      <h3>Sửa đơn vị {lineName(line)}</h3>
      <p>{line.qty} {sellingUnitLabel(line.unit)} → <b>{line.qty} {sellingUnitLabel(unitDraft)}</b>. Giữ số lượng <b>{line.qty}</b>, đơn giá <b>{money(line.price)}</b>, tổng đơn <b>{money(order.estimatedTotal)}</b> và bước <b>{stage.label}</b>.</p>
@@ -535,7 +621,7 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
    {editingPrices&&receivable&&<p className={styles.error}>Đơn đã có yêu cầu thanh toán. Cần xử lý công nợ trước khi lưu giá mới.</p>}
    {editingPrices&&<div className={styles.priceSaveBar}><span><small>Tổng sau điều chỉnh</small><b>{money(pricePreview)}</b></span><button disabled={saving||loadingEvents||!!detailError||!!receivable} onClick={savePrices} title="Lưu giá riêng vào đơn, tính lại tổng và ghi thay đổi vào lịch sử."><Save/>Lưu giá riêng</button></div>}
    <div className={styles.detailTotal}><span>Tổng dự kiến</span><b>{money(order.estimatedTotal)}</b></div>
-   <InvoiceExport key={order.id} order={order} receivable={receivable} disabled={saving||loadingEvents||!!detailError||editingPrices||removingLineIndex!==null||unitLineIndex!==null}/>
+   <InvoiceExport key={order.id} order={order} receivable={receivable} disabled={saving||loadingEvents||!!detailError||editingPrices||lineEditorOpen}/>
   </section>
   <section className={styles.costSection}><div className={styles.detailSectionTitle}><CircleDollarSign/><span><b>Chi phí của đơn</b><small>Định mức tự tạo giá vốn; chỉ thêm tay các khoản riêng của đơn.</small></span><div className={styles.costTools}><button onClick={syncCosts} disabled={costSaving} title="Tính lại trà, bao bì và nhãn từ định mức đang áp dụng cho từng sản phẩm trong đơn."><RefreshCw/>Tính từ định mức</button><button onClick={()=>setAddingCost(current=>!current)} title="Mở phiếu thêm vận chuyển hoặc chi phí riêng không có trong định mức.">{addingCost?"Đóng phiếu":"Thêm riêng"}</button></div></div>
    {addingCost&&<form className={styles.costForm} onSubmit={saveCost}><label>Loại chi phí<select value={costDraft.category} onChange={event=>setCostDraft(current=>({...current,category:event.target.value}))}>{ORDER_COST_CATEGORIES.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label className={styles.costDescription}>Mô tả chi phí<input required maxLength="200" value={costDraft.description} onChange={event=>setCostDraft(current=>({...current,description:event.target.value}))} placeholder="Ví dụ: túi zipper 500 g"/></label><label>Số lượng<FormattedNumberInput required min="0.001" step="0.001" value={costDraft.quantity} onChange={event=>setCostDraft(current=>({...current,quantity:event.target.value}))}/></label><label>Đơn giá<FormattedNumberInput required min="0" step="1000" value={costDraft.unitCost} onChange={event=>setCostDraft(current=>({...current,unitCost:event.target.value}))} placeholder="0 ₫"/></label><label>Trạng thái<select value={costDraft.paymentStatus} onChange={event=>setCostDraft(current=>({...current,paymentStatus:event.target.value}))}>{ORDER_COST_STATUSES.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label>Ngày<input type="date" required value={costDraft.incurredOn} onChange={event=>setCostDraft(current=>({...current,incurredOn:event.target.value}))}/></label><label className={styles.costNote}>Ghi chú<input value={costDraft.note} onChange={event=>setCostDraft(current=>({...current,note:event.target.value}))} placeholder="Nhà cung cấp hoặc điều cần nhớ"/></label><label className={styles.expenseToggle}><input type="checkbox" checked={costDraft.recordExpense} onChange={event=>setCostDraft(current=>({...current,recordExpense:event.target.checked}))}/><span><b>Đồng thời ghi vào Hộp chi phí</b><small>Bật khi khoản này thực sự cần theo dõi trong ngân sách. Hệ thống liên kết hai nơi để tránh nhập trùng.</small></span></label><div className={styles.costFormTotal}><span><small>Thành tiền</small><b>{money((Number(costDraft.quantity)||0)*(Number(costDraft.unitCost)||0))}</b></span><button disabled={costSaving||!costDraft.description.trim()||Number(costDraft.quantity)<=0||costDraft.unitCost===""}>{costSaving?"Đang lưu…":"Lưu chi phí"}</button></div></form>}
