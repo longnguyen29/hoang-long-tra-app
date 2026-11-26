@@ -168,6 +168,10 @@
   .menuLabel {
     display: none;
   }
+
+  .header[data-shopping] .brandShort {
+    display: none;
+  }
 }
 
 @media (min-width: 64rem) {
