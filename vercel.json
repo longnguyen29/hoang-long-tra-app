@@ -1,4 +1,9 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "codex/website-reinvention": false
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/recipe-radar",
