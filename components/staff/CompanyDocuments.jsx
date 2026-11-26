@@ -181,6 +181,7 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", i
   return <main className={styles.page} data-company-documents-page data-no-translate>
     <header className={styles.header}><div><p className={styles.eyebrow}>{b2b ? "Tài liệu công ty · Hồ sơ B2B" : "Hoàng Long · Bàn quản trị"}</p><h1>{b2b ? template.title : "Tài liệu công ty"}</h1><p>{b2b ? b2b.description : "Chọn mẫu. Điền thông tin. Xuất bản nháp để kiểm tra."}</p></div><Link href={b2b?.returnHref || "/admin/partner-network"}>{b2b ? "Về hồ sơ" : "Mạng lưới đối tác"} <ArrowUpRight size={16} aria-hidden="true" /></Link></header>
     {b2b?.panel}
+    {!b2b && <div className={styles.templates}><Link href="/admin/documents?declarations=1">Hồ sơ công bố sản phẩm · Checklist 6 bước <ArrowUpRight size={16} aria-hidden="true" /></Link><p>Chuẩn bị hồ sơ trà đóng gói, OEM và nhập khẩu.</p></div>}
     {!b2b && <div className={styles.templates}>
       <label htmlFor="document-template">Mẫu tài liệu</label>
       <select id="document-template" value={templateId} onChange={event => changeTemplate(event.target.value)} aria-describedby="document-template-description">
