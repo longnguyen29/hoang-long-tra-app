@@ -41,6 +41,13 @@ export default function BusinessCycleMap({supabase,revision=0}) {
       <blockquote className={styles.principle} lang="en">
         fundamental art of living is not controlling outcomes but arranging the conditions from which desirable outcomes naturally emerge.
       </blockquote>
+      <div className={styles.principle} lang="en">
+        <blockquote>Things that escape immediate exploitation sometimes acquire greater long-term value.</blockquote>
+        <details>
+          <summary>Mechanism</summary>
+          <p>Continuous extraction can destroy the underlying capacity of a resource. Periods of non-use may preserve resilience, optionality and future productivity. Not everything valuable needs to be continuously utilized.</p>
+        </details>
+      </div>
       {unavailable?<p role="status">Chưa tải được nhịp hiện tại.</p>:!snapshot?<p role="status">Đang tải nhịp hiện tại…</p>:<>
         <p className={styles.phase}>{selected?"Đang ở":"Gợi ý để bắt đầu"} <strong>{(selected||suggested).label}</strong></p>
         <p className={styles.focus}>{focus}</p>
