@@ -20,7 +20,8 @@ async function readEvents(admin, orderId) {
     .from("order_events")
     .select("*")
     .eq("order_id", orderId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false });
 }
 
 async function readCosts(admin, orderId) {
@@ -88,6 +89,29 @@ export async function PATCH(request, { params }) {
     return Response.json({ ok: false, error: "invalid_body" }, { status: 400 });
   }
 
+  if (body && Object.hasOwn(body, "resolveQuantityInventoryReview")) {
+    const resolution = body.resolveQuantityInventoryReview;
+    const note = typeof resolution?.note === "string" ? resolution.note.trim() : "";
+    if (Object.keys(body).length !== 1 || !resolution || Object.keys(resolution).length !== 2
+      || !Number.isSafeInteger(resolution.eventId) || resolution.eventId < 1 || note.length < 5 || note.length > 1000) {
+      return Response.json({ ok: false, error: "line_quantity_inventory_review_note_required" }, { status: 400 });
+    }
+    const { data: result, error } = await staff.admin.rpc("resolve_order_quantity_inventory_review", {
+      p_order_id: id, p_expected_event_id: resolution.eventId, p_note: note, p_actor: staff.user.id,
+    });
+    if (error) {
+      const codes = {
+        manager_required: 403, order_not_found: 404, line_quantity_inventory_review_changed: 409,
+        line_quantity_inventory_review_note_required: 400,
+      };
+      const code = error.message;
+      return Response.json({ ok: false, error: codes[code] ? code : "line_quantity_inventory_review_failed" }, { status: codes[code] || 500 });
+    }
+    if (!result?.order) return Response.json({ ok: false, error: "line_quantity_inventory_review_failed" }, { status: 500 });
+    const eventResult = await readEvents(staff.admin, id);
+    return Response.json({ ok: true, order: result.order, events: eventResult.data ?? null });
+  }
+
   if (body && Object.hasOwn(body, "correctLineQuantity")) {
     const correction = body.correctLineQuantity;
     if (Object.keys(body).length !== 1 || !correction || typeof correction !== "object"
@@ -127,7 +151,7 @@ export async function PATCH(request, { params }) {
     ]);
     return Response.json({
       ok: true, order: result.order, receivable: receivableResult.data || null,
-      events: eventResult.data || [], costs: costResult.data || [],
+      events: eventResult.data ?? null, costs: costResult.data || [],
     });
   }
 

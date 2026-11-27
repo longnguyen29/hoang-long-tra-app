@@ -87,3 +87,19 @@
 
 .documentActions{display:flex;flex-wrap:wrap;gap:var(--space-xs);margin-block:var(--space-sm)}
 .documentActions a{text-decoration:none}
+
+.inventoryReview {
+  padding: 1rem;
+  border-inline-start: 3px solid var(--gold, #94620f);
+  background: #f5ead5;
+  color: #3a2d1c;
+}
+.inventoryReview h3, .inventoryReview p { margin: 0 0 .45rem; }
+.inventoryReview ul { margin: .5rem 0; padding-inline-start: 1.2rem; overflow-wrap: anywhere; }
+.inventoryReview a, .inventoryReview summary { font-weight: 600; }
+.inventoryReview details { margin-top: .8rem; }
+.inventoryReview summary { cursor: pointer; }
+.inventoryReview form { display: grid; justify-items: start; gap: .65rem; margin-top: .75rem; }
+.inventoryReview label { display: grid; gap: .35rem; width: 100%; }
+.inventoryReview textarea { width: 100%; min-height: 4.5rem; }
+.inventoryReview button { min-height: 44px; padding: .45rem .8rem; }
