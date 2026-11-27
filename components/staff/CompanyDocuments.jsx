@@ -180,6 +180,7 @@ export default function CompanyDocuments({ partners = [], initialPartner = "", i
 
   return <main className={styles.page} data-company-documents-page data-no-translate>
     <header className={styles.header}><div><p className={styles.eyebrow}>{b2b ? "Tài liệu công ty · Hồ sơ B2B" : "Hoàng Long · Bàn quản trị"}</p><h1>{b2b ? template.title : "Tài liệu công ty"}</h1><p>{b2b ? b2b.description : "Chọn mẫu. Điền thông tin. Xuất bản nháp để kiểm tra."}</p></div><Link href={b2b?.returnHref || "/admin/partner-network"}>{b2b ? "Về hồ sơ" : "Mạng lưới đối tác"} <ArrowUpRight size={16} aria-hidden="true" /></Link></header>
+    {!b2b && <p><Link href="/admin/documents?sign=1">Mở hồ sơ ký &amp; đóng dấu <ArrowUpRight size={15} aria-hidden="true" /></Link></p>}
     {b2b?.panel}
     {!b2b && <div className={styles.templates}>
       <label htmlFor="document-template">Mẫu tài liệu</label>

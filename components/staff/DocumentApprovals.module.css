@@ -1,0 +1,19 @@
+.page { max-width: 60rem; margin-inline: auto; padding: clamp(1rem,3vw,2rem); color: var(--color-ink); }
+.page > header { padding-block-end: 1rem; border-block-end: 1px solid var(--color-rule); }
+.page h1 { font: 600 clamp(2rem,4vw,3rem)/1.1 var(--font-display); margin: .8rem 0; }
+.page p { color: var(--color-muted); margin-block: .5rem; }
+.packet, .newPacket { margin-block: 1rem; border: 1px solid var(--color-rule); padding: clamp(.85rem,2vw,1.25rem); background: var(--color-paper); }
+.packetHead, .actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
+.packetHead h3 { margin: 0; overflow-wrap: anywhere; }
+.packetHead strong { font-size: .85rem; color: var(--color-accent); }
+.actions { justify-content: flex-start; }
+.page form { display: grid; gap: .85rem; margin-block-start: 1rem; }
+.page label { display: grid; gap: .35rem; }
+.page fieldset { border: 1px solid var(--color-rule); min-width: 0; }
+.page .check { display: flex; align-items: center; gap: .55rem; min-height: 44px; }
+.page :is(button,input:not([type=checkbox]),select) { min-height: 44px; min-width: 0; max-width: 100%; padding: .5rem .7rem; border: 1px solid var(--color-rule); border-radius: var(--radius-control); background: var(--color-paper); color: var(--color-ink); }
+.page button { cursor: pointer; }
+.page button:disabled { opacity: .55; }
+.page button[type=submit] { justify-self: start; background: var(--color-ink); color: var(--color-paper); }
+.newPacket summary { cursor: pointer; font-weight: 750; min-height: 44px; align-content: center; }
+.page .error { color: var(--color-danger); }
