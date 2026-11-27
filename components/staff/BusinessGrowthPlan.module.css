@@ -1,0 +1,79 @@
+.plan {
+  --plan-pad: clamp(1rem, 2vw, 1.8rem);
+  min-width: 0;
+  margin-block: 1rem 2rem;
+  padding: var(--plan-pad);
+  border: 1px solid var(--color-rule);
+  background: var(--color-paper);
+}
+.header, .priority, .save, .scenarios {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .8rem;
+}
+.header h2 { margin: 0; font: 600 clamp(1.5rem, 3vw, 2.3rem)/1.1 var(--font-display); }
+.plan p { color: var(--color-muted); line-height: 1.5; }
+.plan label { display: grid; gap: .35rem; min-width: 0; font-size: .86rem; font-weight: 650; }
+.plan :is(input, select, textarea, button) {
+  min-width: 0;
+  min-height: 44px;
+  max-width: 100%;
+  padding: .55rem .7rem;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: inherit;
+}
+.plan button { cursor: pointer; }
+.plan button:disabled { opacity: .55; cursor: default; }
+.score {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  border: 1px solid var(--color-rule);
+  gap: 1px;
+  margin-block: 1rem;
+  background: var(--color-rule);
+}
+.score > div { display: grid; align-content: start; gap: .3rem; padding: .8rem; background: var(--color-paper); }
+.score > div strong { font-size: clamp(1rem, 2vw, 1.4rem); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.score small, .metricRow small, .plan .section > small { color: var(--color-muted); }
+.priority { align-items: center; padding: 1rem; border-inline-start: 3px solid var(--color-accent); background: var(--color-paper-2); }
+.priority p, .priority h3 { margin: 0 0 .35rem; }
+.priority a { color: inherit; font-weight: 700; }
+.focus { margin-block: 1rem; }
+.focus textarea { min-height: 80px; resize: vertical; }
+.section { padding-block: .45rem .8rem; border-top: 1px solid var(--color-rule); }
+.section > summary { padding-block: .65rem; font-weight: 750; cursor: pointer; }
+.metricGroup h3 { margin: 1.15rem 0 .4rem; }
+.metricHead, .metricRow {
+  display: grid;
+  grid-template-columns: minmax(9rem,1.5fr) repeat(3,minmax(0,1fr));
+  align-items: center;
+  gap: .65rem;
+  padding: .45rem .55rem;
+}
+.metricHead { background: var(--color-paper-2); font-size: .82rem; }
+.metricRow { border-bottom: 1px solid var(--color-rule-2); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.metricRow small { display: block; font-size: .75rem; font-weight: 450; margin-top: .2rem; }
+.metricRow > :is(span,strong,label) > small { display: none; }
+.metricRow[data-position="achieved"] > strong { color: #245139; }
+.metricRow input { width: 100%; }
+.scenarios { margin-block-end: .55rem; }
+.drivers { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,13rem),1fr)); gap: .7rem; }
+.save { align-items: center; border-top: 1px solid var(--color-rule); padding-block-start: .85rem; }
+.save button { background: var(--color-ink); color: var(--color-paper); font-weight: 700; }
+.error { color: var(--color-danger) !important; }
+@media (max-width: 40rem) {
+  .score { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .metricHead { display: none; }
+  .metricRow { grid-template-columns: minmax(0,.9fr) minmax(0,1fr) minmax(0,1.2fr); padding-inline: 0; gap: .4rem; }
+  .metricRow > div { grid-column: 1 / -1; }
+  .metricRow > :is(span,strong,label) > small { display: block; }
+  .metricRow input { padding-inline: .35rem; }
+}
+.roadmap { padding-inline-start: 1.35rem; }
+.roadmap li + li { margin-block-start: .8rem; }
+.roadmap p { margin: .25rem 0; }

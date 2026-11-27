@@ -38,6 +38,7 @@ import {
 import LoadFailure from "./LoadFailure";
 import BusinessMetrics from "./BusinessMetrics";
 import BusinessRankings from "./BusinessRankings";
+import BusinessGrowthPlan from "./BusinessGrowthPlan";
 import AppUpdates from "./AppUpdates";
 import styles from "./BusinessControl.module.css";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
@@ -149,7 +150,7 @@ export default function BusinessControl({ supabase, email, role, onLogout }) {
   }, [load]);
   const requestedTab = useSearchParams().get("tab");
   useEffect(() => {
-    setTab(["reports", "metrics", "rankings", "updates", "partners", "offers", "reviews", "payment", "connections", "bin"].includes(requestedTab) ? requestedTab : "reports");
+    setTab(["reports", "plan", "metrics", "rankings", "updates", "partners", "offers", "reviews", "payment", "connections", "bin"].includes(requestedTab) ? requestedTab : "reports");
   }, [requestedTab]);
   function openTab(id) {
     if (window.location.pathname === "/admin/control") {
@@ -381,7 +382,8 @@ export default function BusinessControl({ supabase, email, role, onLogout }) {
     URL.revokeObjectURL(url);
   };
   const tabs = [
-    ["reports", "Báo cáo", BarChart3],
+    ["plan", "Kế hoạch tăng trưởng", BarChart3],
+    ["reports", "Báo cáo", Activity],
     ["metrics", "Chỉ số kinh doanh", Calculator],
     ["rankings", "Xếp hạng", Trophy],
     ["updates", "Cập nhật app", History],
@@ -392,7 +394,7 @@ export default function BusinessControl({ supabase, email, role, onLogout }) {
     ["connections", "Kết nối", Activity],
     ["bin", "Khôi phục", RotateCcw],
   ];
-  if(dataFailure && !["metrics", "updates"].includes(tab)) return <LoadFailure onRetry={load} loading={loading}/>;
+  if(dataFailure && !["plan", "metrics", "updates"].includes(tab)) return <LoadFailure onRetry={load} loading={loading}/>;
 
   return (
     <main className={styles.page}>
@@ -441,6 +443,7 @@ export default function BusinessControl({ supabase, email, role, onLogout }) {
           {saved}
         </p>
       )}
+      {tab === "plan" && <BusinessGrowthPlan supabase={supabase} role={role}/>}
       {tab === "metrics" && <BusinessMetrics supabase={supabase} orders={orders} role={role} email={email} ordersLoading={loading} ordersError={dataFailure}/> }
       {tab === "rankings" && <BusinessRankings orders={orders} loading={loading}/>}
       {tab === "updates" && <AppUpdates/>}
