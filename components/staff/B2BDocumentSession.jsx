@@ -183,6 +183,7 @@ export default function B2BDocumentSession({ context, kind, requestedSeller }) {
           </select>
         </label> : <div><small>Pháp nhân bán</small><strong>{seller?.label || "Chưa chọn"}</strong></div>}
         <Link href="/admin/documents?b2b=entities">Thông tin pháp nhân bán</Link>
+        {seller && kind!=="vat_invoice" && <Link href={`/admin/documents?sign=1&seller=${seller.id}${order?`&order=${encodeURIComponent(order.id)}`:""}`}>Ký &amp; đóng dấu</Link>}
       </div>
       {!offerEditor && <p className={styles.pricingHint}>{!seller ? "Mở hồ sơ đơn để chọn pháp nhân bán." : "Hồ sơ này chỉ mở để tra cứu tài liệu đã lưu."}</p>}
       {pricing?.needsConfirmation && editing && <p className={styles.pricingHint}>

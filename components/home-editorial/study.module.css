@@ -46,3 +46,53 @@
   .footerBrand { grid-column: 1 / -1; padding-bottom: .75rem; border-bottom: 1px solid #435349; }
   .footerPolicies { line-height: 1.45; }
 }
+
+.supplyProcess {
+  max-width: 95rem;
+  margin-inline: auto;
+  padding: clamp(2.7rem,7vw,7.5rem) var(--page-gutter);
+  color: var(--color-ink);
+}
+.supplyIntro {
+  display: grid;
+  grid-template-columns: minmax(0,1.3fr) minmax(0,.7fr);
+  align-items: end;
+  gap: clamp(1rem,4vw,4rem);
+  margin-block-end: clamp(1.5rem,3vw,3rem);
+}
+.supplyIntro h2 {
+  margin: .45rem 0 0;
+  font: 550 clamp(2.7rem,6.4vw,6.3rem)/.96 var(--font-display);
+  letter-spacing: -.045em;
+}
+.supplyIntro > div p {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: .79rem;
+  font-weight: 700;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+.supplyIntro > p { max-width: 32ch; margin: 0; color: var(--color-muted); line-height: 1.6; }
+.supplyVisual { position: relative; min-height: clamp(26rem,45vw,40rem); display: grid; align-items: end; justify-items: end; isolation: isolate; }
+.supplyVisual > img { position: absolute; z-index: -1; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 48%; }
+.supplySheet {
+  width: min(100%,30rem);
+  margin: clamp(.65rem,2.5vw,2rem);
+  padding: clamp(1.2rem,3vw,2rem);
+  background: var(--color-paper);
+  box-shadow: 0 .75rem 2rem color-mix(in srgb,var(--color-ink) 27%,transparent);
+}
+.supplySheet > p { margin: 0 0 .5rem; color: var(--color-accent); font-size: .76rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 750; }
+.supplySheet > strong { display: block; font: 600 clamp(1.35rem,2.5vw,2rem)/1.1 var(--font-display); }
+.supplySheet ol { margin: 1rem 0 0; padding: 0; list-style: none; }
+.supplySheet li { display: grid; grid-template-columns: 1.4rem minmax(0,1fr); gap: .8rem; align-items: start; padding-block: .7rem; border-block-start: 1px solid var(--color-rule); }
+.supplySheet li svg { width: 1.15rem; height: 1.15rem; color: var(--color-accent); }
+.supplySheet li span { display: block; margin-block-start: .2rem; color: var(--color-muted); font-size: .89rem; }
+.supplyProcess > a { margin-block-start: 1.35rem; }
+@media (max-width: 45rem) {
+  .supplyIntro { grid-template-columns: minmax(0,1fr); }
+  .supplyVisual { min-height: 0; padding-block-start: clamp(8rem,44vw,16rem); }
+  .supplyVisual > img { height: calc(100% - 5rem); }
+  .supplySheet { width: calc(100% - 1.3rem); margin: .65rem; }
+}

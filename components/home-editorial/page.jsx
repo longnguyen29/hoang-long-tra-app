@@ -1,6 +1,6 @@
 "use client";
 import Link from 'next/link';
-import { ArrowDown, ArrowRight } from 'lucide-react';
+import { ArrowDown, ArrowRight, ClipboardList, PackageCheck, Truck } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import PublicSiteHeader from '@/components/public/PublicSiteHeader';
 import HouseHome from '@/components/public/HouseHome';
@@ -45,7 +45,25 @@ export default function HeroStudy() {
   </section>
   <section id="story" className={styles.story}><div className={styles.storyVisual}><img loading="lazy" decoding="async" src={home?.featured_photos?.[0] || "/landing/1.jpg"} alt="Hình ảnh từ thư viện Hoàng Long"/><span>01 / TỪ VÙNG TRÀ</span></div><div className={styles.storyText}><p className={styles.label}>NGUỒN CỘI &amp; CON NGƯỜI <span>01 — 04</span></p><h2>Từ vùng trà,<br/><em>đến nhà máy.</em></h2><p>Tại Tân Lập, Hà Giang, Hoàng Long làm việc với trà Việt từ khâu lựa chọn nguyên liệu đến chế biến và hoàn thiện sản phẩm.</p><p>Mỗi dòng trà được giới thiệu với hương vị và quy cách phù hợp, từ nhu cầu thưởng thức đến pha chế và cung ứng sỉ.</p>{home?.producer_quote?.vi && <p>“{home.producer_quote.vi}”{home?.producer_name && <> — {home.producer_name}</>}</p>}<Link className={styles.textLink} href={`/company${campaign}`}>Tìm hiểu về Hoàng Long <ArrowRight className={styles.arrow} aria-hidden="true"/></Link></div></section>
   <section id="collection" className={styles.collection}><div className={styles.sectionHead}><div><p className={styles.label}>TUYỂN CHỌN HOÀNG LONG <span>02 — 04</span></p><h2>Bốn dòng trà,<br/><em>bốn nét riêng.</em></h2></div><p>Từ hương mật êm dịu đến nét khói trầm sâu, mỗi dòng trà mở ra một cách thưởng thức và sáng tạo riêng.</p></div><div className={styles.teas}>{teas.map(t => <Link href={`/catalog${campaign}`} className={styles.tea} key={t.no}><div className={styles.teaPhoto}><img src={t.image} alt={t.name} loading="lazy" decoding="async"/><span aria-hidden="true"><ArrowRight className={styles.arrow}/></span></div><div className={styles.teaTitle}><h3>{t.name}</h3><span>{t.no}</span></div><p>{t.note}</p></Link>)}</div><Link className={styles.textLink} href={`/catalog${campaign}`}>Xem danh mục trà <ArrowRight className={styles.arrow} aria-hidden="true"/></Link></section>
-  <section className={styles.trade}><div className={styles.tradeImage}><img loading="lazy" decoding="async" src="/landing/3.jpg" alt="Dây chuyền chế biến trà trong bộ ảnh Hoàng Long"/><figure><img loading="lazy" decoding="async" src="/cafe/serving-20260910/tea-trio-1200.webp" alt="Minh họa các cách dùng trà trong đồ uống cho quán"/><figcaption>Gợi ý ứng dụng pha chế</figcaption></figure></div><div className={styles.tradeContent}><p className={styles.label}>DÀNH CHO ĐỐI TÁC <span>03 — 04</span></p><h2>Một nguồn trà phù hợp.<br/><em>Một khởi đầu<br/>vững vàng.</em></h2><p>Từ quán đồ uống đến nhà phân phối và đối tác xuất khẩu, chúng tôi trao đổi nhu cầu, gửi mẫu và xây dựng báo giá theo từng đơn hàng.</p><div className={styles.steps}><span>01 &nbsp; Trao đổi nhu cầu</span><span>02 &nbsp; Chọn trà &amp; thử mẫu</span><span>03 &nbsp; Báo giá &amp; hợp tác</span></div><Link className={styles.lightButton} href={`/wholesale${campaign}`}>Bắt đầu cuộc trao đổi <ArrowRight className={styles.arrow} aria-hidden="true"/></Link></div></section>
+  <section className={styles.supplyProcess} id="quy-trinh-cung-ung" aria-labelledby="supply-title">
+    <div className={styles.supplyIntro}>
+      <div><p>Nhà máy Hoàng Long · Tân Lập, Hà Giang</p><h2 id="supply-title">Từ mẫu trà<br/>đến lô hàng.</h2></div>
+      <p>Mẫu đã chọn là điểm đối chiếu khi chốt quy cách. Trước khi bàn giao, hai bên biết rõ khối lượng, lịch hàng và chứng từ cần có.</p>
+    </div>
+    <div className={styles.supplyVisual}>
+      <img src="/landing/3.jpg" alt="Dây chuyền chế biến trà tại nhà máy Hoàng Long" loading="lazy" decoding="async"/>
+      <div className={styles.supplySheet}>
+        <p>Đơn sỉ &amp; xuất khẩu</p>
+        <strong>Ba mốc để theo dõi một lô trà</strong>
+        <ol>
+          <li><ClipboardList aria-hidden="true"/><div><b>Chốt theo mẫu</b><span>Dòng trà, quy cách đóng gói và lịch hàng.</span></div></li>
+          <li><PackageCheck aria-hidden="true"/><div><b>Kiểm tra trước khi xuất</b><span>Đối chiếu lô, số bao và chứng từ theo đơn.</span></div></li>
+          <li><Truck aria-hidden="true"/><div><b>Bàn giao lô hàng</b><span>Xác nhận giao nhận và gửi vận đơn khi có.</span></div></li>
+        </ol>
+      </div>
+    </div>
+    <Link className={styles.textLink} href={`/wholesale${campaign}`}>Yêu cầu mẫu &amp; báo giá <ArrowRight className={styles.arrow} aria-hidden="true"/></Link>
+  </section>
   <section className={styles.retail}><div className={styles.retailCopy}><p className={styles.label}>DÀNH CHO BẠN <span>04 — 04</span></p><h2>Chọn trà cho<br/><em>những ngày thường.</em></h2><p>Tìm một hương trà hợp gu, dành cho bàn trà của bạn hoặc làm quà cho người thân.</p><Link className={styles.textLink} href="/shop">Ghé cửa hàng trà <ArrowRight className={styles.arrow} aria-hidden="true"/></Link></div><figure className={styles.retailImage}><img loading="lazy" decoding="async" src="/hero-study/tea-moment-illustration.jpg" alt="Minh họa khoảnh khắc rót trà bên bàn gỗ"/></figure></section>
   <section className={styles.closing}><p>HOUSE OF HOÀNG LONG · VIETNAM</p><h2>Cùng trò chuyện<br/><em>về trà.</em></h2><Link href={`/wholesale${campaign}`}>Liên hệ hợp tác <ArrowRight className={styles.arrow} aria-hidden="true"/></Link></section>
   </main>
