@@ -46,3 +46,13 @@
   .cycle li[data-phase=grow] { left: 71%; }
   .cycle li[data-phase=restore] { right: 71%; }
 }
+
+.principle {
+  margin: .75rem 0;
+  border-inline-start: 2px solid var(--color-accent);
+  padding: .4rem 0 .4rem .8rem;
+  max-width: 34rem;
+  font-family: var(--font-display);
+  font-size: clamp(1rem,2vw,1.18rem);
+  line-height: 1.4;
+}
