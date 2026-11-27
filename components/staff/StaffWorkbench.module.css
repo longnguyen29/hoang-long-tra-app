@@ -143,3 +143,20 @@
 @media (max-width: 24rem) {
   .orderDetail .orderDetailNav button { font-size: .78rem; }
 }
+.orderDetailNav { grid-template-columns: 1fr .86fr 1.24fr .9fr; }
+.lineActions:has(.lineMore) { grid-template-columns: auto auto; align-items: start; }
+.lineActions:has(.lineMore) > span { grid-column: 1 / -1; }
+.lineMore { min-width: 0; }
+.lineMore summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: var(--space-xs);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+.lineMore summary::after { content: "▾"; margin-inline-start: .25rem; }
+.lineMore[open] summary::after { content: "▴"; }
+.lineMore[open] { grid-column: 1 / -1; }
+.lineMore > div { display: grid; gap: var(--space-2xs); justify-items: end; }

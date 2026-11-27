@@ -573,15 +573,20 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
      {editingPrices?<label className={styles.linePriceEditor}><span>Giá / {sellingUnitLabel(line.unit)}</span><FormattedNumberInput disabled={saving} min="0" step="1000" value={priceDrafts[index]} onChange={event=>setPriceDrafts(current=>current.map((value,itemIndex)=>itemIndex===index?event.target.value:value))} placeholder="Chưa báo giá"/></label>:<div className={styles.lineActions}>
       <span>{line.price!==null&&line.price!==undefined?money(line.price*lineQuantity(line)):"—"}</span>
       {canCorrectQuantity&&<button type="button" className={styles.lineEditAction} disabled={lineActionsDisabled||!!receivable} aria-label={`Sửa số lượng ${lineName(line)}`} aria-expanded={quantityLineIndex===index} aria-controls={`order-quantity-correction-${index}`} aria-describedby={quantityWarning?"order-quantity-payment-help":undefined} onClick={event=>startQuantityCorrection(index,event.currentTarget)}><Edit3/>Sửa số lượng</button>}
-      {canRemoveLines&&<button type="button" className={styles.lineEditAction} disabled={lineActionsDisabled} aria-label={`Sửa đơn vị ${lineName(line)}`} aria-expanded={unitLineIndex===index} aria-controls={`order-unit-correction-${index}`} onClick={()=>startUnitCorrection(index)}><Edit3/>Sửa đơn vị</button>}
-      {canRemoveLines&&<button type="button" disabled={lineActionsDisabled||(order.lines||[]).length<2} aria-label={`Xoá dòng ${lineName(line)} · ${lineQuantityLabel(line)}`} aria-expanded={removingLineIndex===index} aria-controls={`order-line-removal-${index}`} title={(order.lines||[]).length<2?"Đơn phải còn ít nhất một dòng sản phẩm.":"Xoá dòng nhập nhầm và tính lại tổng đơn, giữ nguyên bước xử lý."} onClick={()=>startLineRemoval(index)}><Trash2/>Xoá dòng</button>}
+      {canRemoveLines&&<details className={styles.lineMore}>
+       <summary>Thêm</summary>
+       <div>
+        <button type="button" className={styles.lineEditAction} disabled={lineActionsDisabled} aria-label={`Sửa đơn vị ${lineName(line)}`} aria-expanded={unitLineIndex===index} aria-controls={`order-unit-correction-${index}`} onClick={()=>startUnitCorrection(index)}><Edit3/>Sửa đơn vị</button>
+        <button type="button" disabled={lineActionsDisabled||(order.lines||[]).length<2} aria-label={`Xoá dòng ${lineName(line)} · ${lineQuantityLabel(line)}`} aria-expanded={removingLineIndex===index} aria-controls={`order-line-removal-${index}`} title={(order.lines||[]).length<2?"Đơn phải còn ít nhất một dòng sản phẩm.":"Xoá dòng nhập nhầm và tính lại tổng đơn, giữ nguyên bước xử lý."} onClick={()=>startLineRemoval(index)}><Trash2/>Xoá dòng</button>
+       </div>
+      </details>}
      </div>}
     </div>
     {quantityLineIndex===index&&<form id={`order-quantity-correction-${index}`} className={`${styles.lineRemoval} ${styles.unitCorrection}`} onSubmit={saveQuantityCorrection}>
      <h3>Sửa số lượng {lineName(line)}</h3>
      <p>Đang ghi <b>{lineQuantityLabel(line)}</b>. Đơn giá {money(line.price)} / {sellingUnitLabel(line.unit)}. Tổng đơn được tính lại theo giá đã ghi.</p>
      <label>Số lượng mới ({sellingUnitLabel(line.unit)})<input className={styles.quantityCorrectionInput} autoFocus required maxLength={20} type="text" inputMode={quantityAllowsDecimal?"decimal":"numeric"} autoComplete="off" disabled={saving} value={quantityDraft} onChange={event=>setQuantityDraft(event.target.value)} aria-invalid={quantityDraft!==""&&!validQuantity} aria-describedby={`order-quantity-help-${index}`}/></label>
-     <small id={`order-quantity-help-${index}`}>{quantityAllowsDecimal?"Nhập số lớn hơn 0, tối đa 3 chữ số thập phân. Ví dụ: 1,5.":"Nhập số nguyên lớn hơn 0."} Nếu cần bỏ sản phẩm, dùng nút Xoá dòng.</small>
+     <small id={`order-quantity-help-${index}`}>{quantityAllowsDecimal?"Nhập số lớn hơn 0, tối đa 3 chữ số thập phân. Ví dụ: 1,5.":"Nhập số nguyên lớn hơn 0."} Nếu cần bỏ sản phẩm, chọn Thêm → Xoá dòng.</small>
      {changedQuantity&&line.price!==null&&line.price!==undefined&&<div className={styles.lineRemovalPreview}><span><small>Tiền hàng dòng này</small><b>{money(nextQuantity*Number(line.price))}</b></span></div>}
      <label>Lý do sửa số lượng (bắt buộc)<textarea required minLength={5} maxLength={1000} disabled={saving} value={quantityReason} onChange={event=>setQuantityReason(event.target.value)} placeholder="Ví dụ: khách xác nhận lấy 5 kg"/></label>
      {actionError&&<p className={styles.error} role="alert">{actionError}</p>}
