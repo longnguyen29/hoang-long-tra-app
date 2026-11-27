@@ -33,11 +33,17 @@ declare
   detail jsonb;
   original_checkout jsonb := '{"version":1,"tea_grams":20000,"total":1940000,"discount_percent":3,"free_shipping":true}';
   run_id uuid;
+  review_id bigint;
+  next_review_id bigint;
 begin
   if has_function_privilege('anon','public.correct_order_line_quantity(text,integer,jsonb,numeric,text,uuid)','execute')
     or has_function_privilege('authenticated','public.correct_order_line_quantity(text,integer,jsonb,numeric,text,uuid)','execute')
     or not has_function_privilege('service_role','public.correct_order_line_quantity(text,integer,jsonb,numeric,text,uuid)','execute')
   then raise exception 'Quantity correction must be service-role-only'; end if;
+  if has_function_privilege('anon','public.resolve_order_quantity_inventory_review(text,bigint,text,uuid)','execute')
+    or has_function_privilege('authenticated','public.resolve_order_quantity_inventory_review(text,bigint,text,uuid)','execute')
+    or not has_function_privilege('service_role','public.resolve_order_quantity_inventory_review(text,bigint,text,uuid)','execute')
+  then raise exception 'Warehouse review resolution must be service-role-only'; end if;
 
   insert into auth.users(id,email) values (editor,'qty-editor@example.test'),(helper,'qty-helper@example.test');
   insert into public.staff_roles(user_id,role) values (editor,'manager'),(helper,'employee');
@@ -62,8 +68,6 @@ begin
   perform pg_temp.expect_quantity_error('qty-test-order',1,before_lines,1.5,'Fixture correction',editor,'invalid_line_quantity');
   perform pg_temp.expect_quantity_error('qty-test-order',3,before_lines,3,'Fixture correction',editor,'invalid_line_index');
   perform pg_temp.expect_quantity_error('qty-test-order',0,before_lines,5,'Fixture correction',editor,'line_quantity_unchanged');
-  perform pg_temp.expect_quantity_error('qty-test-order',0,before_lines,6,'Fixture correction',editor,'line_quantity_inventory_locked');
-  perform pg_temp.expect_quantity_error('qty-test-order',0,before_lines,4.999,'Fixture correction',editor,'line_quantity_inventory_locked');
 
   result := public.correct_order_line_quantity('qty-test-order',0,before_lines,3.25,'Fixture correction',editor);
   current_lines := result->'order'->'lines';
@@ -94,6 +98,36 @@ begin
   then raise exception 'Voided request should stay unchanged when a new total is saved'; end if;
   current_lines := result->'order'->'lines';
 
+  result := public.correct_order_line_quantity('qty-test-order',0,current_lines,3.249,'Fine weigh adjustment',editor);
+  select id into review_id from public.order_events where order_id='qty-test-order' and kind='line_quantity_inventory_review_needed';
+  if review_id is null or not exists(select 1 from public.order_events where id=review_id
+      and (message::jsonb->'reasons') ? 'reservation_precision')
+    or (result->'order'->>'estimated_total')::numeric <> 474.90
+    or not exists(select 1 from public.inventory_reservations where id='qty-test-hold' and quantity=3.25 and status='active')
+  then raise exception 'Precise order change should save and defer fractional stock release'; end if;
+  current_lines := result->'order'->'lines';
+  result := public.correct_order_line_quantity('qty-test-order',0,current_lines,6,'Customer increased order',editor);
+  current_lines := result->'order'->'lines';
+  select id into next_review_id from public.order_events where order_id='qty-test-order'
+    and kind='line_quantity_inventory_review_needed' order by id desc limit 1;
+  if next_review_id <= review_id or not exists(select 1 from public.order_events where id=next_review_id
+      and (message::jsonb->'reasons') ? 'insufficient_reservation')
+    or (current_lines->0->>'qty')::numeric <> 6
+    or not exists(select 1 from public.inventory_reservations where id='qty-test-hold' and quantity=3.25 and status='active')
+  then raise exception 'Short reservation should defer inventory and save order increase'; end if;
+  begin
+    perform public.resolve_order_quantity_inventory_review('qty-test-order',review_id,'Adjusted after recount',editor);
+    raise exception 'Out-of-date review should fail';
+  exception when others then
+    if sqlerrm <> 'line_quantity_inventory_review_changed' then raise; end if;
+  end;
+  execute 'set local role service_role';
+  perform public.resolve_order_quantity_inventory_review('qty-test-order',next_review_id,'Adjusted after recount',editor);
+  execute 'reset role';
+  if not exists(select 1 from public.order_events where order_id='qty-test-order'
+      and kind='line_quantity_inventory_review_resolved' and (message::jsonb->>'through_event_id')::bigint=next_review_id)
+  then raise exception 'Reconciliation must leave an audit event'; end if;
+
   insert into public.b2b_documents(order_id,seller_id,kind,status,file_path,file_name,invoice_number,invoice_date,created_by,completed_by,completed_at)
     values('qty-test-order','hoang-long','vat_invoice','complete','qty-test-invoice','test.pdf','TEST-123',current_date,editor,editor,now());
   perform pg_temp.expect_quantity_error('qty-test-order',1,current_lines,2,'Fixture correction',editor,'line_quantity_documents_locked');
@@ -109,9 +143,13 @@ begin
     or (result->'order'->'lines'->0->>'total')::numeric<>1843000
   then raise exception 'Original online terms were not preserved beside the updated price and quantities'; end if;
   update public.catalog_products set stock_ha_giang=25 where id='qty-test-web';
-  perform pg_temp.expect_quantity_error('qty-test-retail',0,result->'order'->'lines',18,'Fixture correction',editor,'line_quantity_inventory_locked');
   update public.orders set type='wholesale' where id='qty-test-retail';
-  perform pg_temp.expect_quantity_error('qty-test-retail',0,result->'order'->'lines',18,'Fixture correction',editor,'line_quantity_inventory_locked');
+  result := public.correct_order_line_quantity('qty-test-retail',0,result->'order'->'lines',18,'Customer confirmed smaller batch',editor);
+  if (result->'order'->>'estimated_total')::numeric<>1746000
+    or not exists(select 1 from public.catalog_products where id='qty-test-web' and stock_ha_giang=25)
+    or not exists(select 1 from public.order_events where order_id='qty-test-retail'
+      and kind='line_quantity_inventory_review_needed' and (message::jsonb->'reasons') ? 'retail_stock_deducted')
+  then raise exception 'Reclassified retail order should save and defer the unknown historical stock split'; end if;
 
   before_lines := '[{"productId":"qty-test-web","qty":2,"unit":"pcs","price":100000}]';
   insert into public.trade_quotes(id,customer_name,contact,status)

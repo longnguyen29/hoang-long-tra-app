@@ -39,7 +39,26 @@ const lineQuantityLabel=(line)=>{
  if(raw===null||raw===undefined||raw===""||!Number.isFinite(value))return "Chưa ghi số lượng";
  return `${quantityFormatter.format(value)} ${sellingUnitLabel(line.unit)}`.trim();
 };
+const inventoryReviewReasons={
+ batch_allocation:"Đã phân bổ lô trà",
+ retail_stock_deducted:"Có thể đã trừ kho khi đặt",
+ fulfilled_reservation:"Đã xác nhận lượng giữ",
+ incompatible_reservation_units:"Đơn vị giữ hàng chưa khớp",
+ insufficient_reservation:"Lượng giữ chưa đủ",
+ reservation_precision:"Số lẻ cần đối soát",
+};
+const inventoryReviewMessage=(event)=>{
+ try{
+  const detail=JSON.parse(event.message);
+  if(event.kind==="line_quantity_inventory_review_resolved")return `Đã đối soát kho. ${detail.note}`;
+  const change=`${lineName(detail.after_line)} · ${lineQuantityLabel(detail.before_line)} → ${lineQuantityLabel(detail.after_line)}`;
+  const reasons=(detail.reasons||[]).map(reason=>inventoryReviewReasons[reason]).filter(Boolean);
+  return reasons.length?`${change} · ${reasons.join(", ")}`:change;
+ }catch{return event.kind==="line_quantity_inventory_review_resolved"?"Đã đối soát kho.":"Đã lưu thay đổi cần đối soát kho."}
+};
 const orderEventMessage=(event)=>{
+ if(event.kind==="line_quantity_inventory_review_needed")return `Cần đối soát kho · ${inventoryReviewMessage(event)}`;
+ if(event.kind==="line_quantity_inventory_review_resolved")return inventoryReviewMessage(event);
  if(event.kind==="sms_manual_action"){
   try{const detail=typeof event.message==="string"?JSON.parse(event.message):event.message;return `Yêu cầu ${detail.action==="resend"?"gửi lại":detail.action==="retry"?"thử gửi lại":detail.action==="automatic_retry"?"tự thử lại":"gửi ngay"} SMS vận đơn ${detail.tracking_code||""} qua Android. Lý do: ${detail.reason||"—"}. Xem lịch sử SMS để xác nhận kết quả.`}catch{return "Yêu cầu gửi SMS qua Android; xem lịch sử SMS để xác nhận kết quả."}
  }
@@ -212,7 +231,9 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
    const result=await staffRequest(selected.id,{method:"PATCH",body:patch});
    const next=fromOrderRow(result.order);
    setOrders(current=>current.map(order=>order.id===next.id?next:order));
-   setSelected(next);setFlowBlock(null);setOrderEvents(result.events||[]);
+   setSelected(next);setFlowBlock(null);
+   if(result.events===null)await loadEvents(next.id);
+   else setOrderEvents(result.events||[]);
    if(Object.hasOwn(result,"receivable"))setOrderReceivable(result.receivable||null);
    if(Object.hasOwn(result,"costs"))setOrderCosts(result.costs||[]);
    if(Object.hasOwn(result,"trackingSms"))setTrackingSms(result.trackingSms||null);
@@ -248,6 +269,9 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
     line_quantity_stage_locked:"Chỉ sửa số lượng khi đơn đang xử lý và chưa chuyển giao.",
     line_quantity_payment_locked:"Đơn đã có yêu cầu thanh toán hoặc đã ghi nhận tiền. Đối soát thanh toán trước khi thử lại.",
     line_quantity_documents_locked:"Đơn có chứng từ đã ký hoặc đã phát hành. Kiểm tra hồ sơ chứng từ trước khi sửa số lượng.",
+    line_quantity_inventory_review_changed:"Đơn có cập nhật về kho. Kiểm tra lại các thay đổi trước khi xác nhận.",
+    line_quantity_inventory_review_note_required:"Nhập ghi chú đối soát từ 5 đến 1.000 ký tự.",
+    line_quantity_inventory_review_failed:"Chưa xác nhận được việc đối soát. Tải lại đơn để kiểm tra.",
     line_quantity_inventory_locked:"Đơn đã trừ tồn kho, phân bổ lô trà hoặc có lượng giữ không khớp. Kiểm tra kho trước khi sửa số lượng.",
     line_quantity_procedure_locked:"Đơn đã ghi nhận bước kiểm tra đóng gói hoặc vận chuyển. Kiểm tra quy trình trước khi sửa số lượng.",
     line_quantity_correction_failed:"Chưa lưu được số lượng. Hãy thử lại.",
@@ -258,6 +282,7 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
     force_ship_reload_failed:"Đơn có thể đã được chuyển. Tải lại Order book để kiểm tra trước khi thao tác tiếp.",
     force_ship_failed:"Chưa chuyển được đơn. Không có thay đổi nào được lưu; hãy thử lại.",
    };
+   if(error.message==="line_quantity_inventory_review_changed")await loadEvents(selected.id);
    if(error.message==="order_lines_changed"){
     const {data,error:reloadError}=await supabase.from("orders").select("*").eq("id",selected.id).maybeSingle();
     if(!reloadError&&data){
@@ -401,6 +426,13 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
  const [removingLineIndex,setRemovingLineIndex]=useState(null),[lineRemovalReason,setLineRemovalReason]=useState(""),[lineRemovalNotice,setLineRemovalNotice]=useState("");
  const [unitLineIndex,setUnitLineIndex]=useState(null),[unitDraft,setUnitDraft]=useState(""),[unitReason,setUnitReason]=useState("");
  const [quantityLineIndex,setQuantityLineIndex]=useState(null),[quantityDraft,setQuantityDraft]=useState(""),[quantityReason,setQuantityReason]=useState("");
+ const [inventoryReviewNote,setInventoryReviewNote]=useState("");
+ useEffect(()=>setInventoryReviewNote(""),[order.id]);
+ const lastInventoryResolution=events.reduce((latest,event)=>
+  event.kind==="line_quantity_inventory_review_resolved"?Math.max(latest,Number(event.id)):latest,0);
+ const pendingInventoryReviews=events.filter(event=>event.kind==="line_quantity_inventory_review_needed"
+   &&Number(event.id)>lastInventoryResolution).sort((a,b)=>Number(b.id)-Number(a.id));
+ const latestInventoryReview=pendingInventoryReviews[0];
  const quantityTriggerRef=useRef(null);
  const canRemoveLines=["admin","manager"].includes(role);
  const canCorrectQuantity=canRemoveLines&&["pending","confirmed"].includes(order.status)
@@ -521,6 +553,24 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
   {showProcedures && <ProcedureOrderLink order={order} role={role}/>}
   {order.type === "wholesale" && <PartnerReferralLink orderId={order.id}/>}
   {actionError&&<p className={styles.error} role="alert">{actionError}</p>}
+  {latestInventoryReview&&<section className={styles.inventoryReview} aria-labelledby="quantity-inventory-review-title">
+   <h3 id="quantity-inventory-review-title">Cần đối soát kho</h3>
+   <p>Đã lưu số lượng trên đơn. Kiểm tra tồn, lượng giữ hoặc lô trà liên quan khi đối soát.</p>
+   <ul>{pendingInventoryReviews.map(event=><li key={event.id}>{inventoryReviewMessage(event)}</li>)}</ul>
+   <Link href="/admin/operations?tab=planning">Mở quản lý kho →</Link>
+   {canRemoveLines&&<details>
+    <summary>Ghi nhận đã đối soát</summary>
+    <form onSubmit={async event=>{
+     event.preventDefault();
+     const note=inventoryReviewNote.trim();
+     if(saving||loadingEvents||detailError||note.length<5||note.length>1000)return;
+     if(await onUpdate({resolveQuantityInventoryReview:{eventId:Number(latestInventoryReview.id),note}}))setInventoryReviewNote("");
+    }}>
+     <label>Ghi chú đối soát<textarea required minLength={5} maxLength={1000} disabled={saving} value={inventoryReviewNote} onChange={event=>setInventoryReviewNote(event.target.value)}/></label>
+     <button type="submit" disabled={saving||loadingEvents||!!detailError||inventoryReviewNote.trim().length<5}>{saving?"Đang lưu…":"Xác nhận đã đối soát"}</button>
+    </form>
+   </details>}
+  </section>}
   <section className={styles.typeEditor} aria-label="Loại đơn và sản phẩm">
    <h3>Loại đơn & giá bán</h3>
    <label>Loại đơn<select value={typeDraft} disabled={saving} onChange={event=>setTypeDraft(event.target.value)}><option value="retail">Đơn lẻ (single order)</option><option value="wholesale">Đơn sỉ (bulk order)</option></select></label>

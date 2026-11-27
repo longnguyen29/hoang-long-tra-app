@@ -217,3 +217,24 @@ test("quantity correction refuses zero, imprecise amounts, mixed changes and sta
     assert.equal((await response.json()).error, code);
   }
 });
+
+test("manager warehouse review records the exact event and the trimmed note", async () => {
+  const order = { id: "TEST-1", lines: [] };
+  const { rpcCalls } = fixture({ rpcData: { order } });
+  const response = await send({ resolveQuantityInventoryReview: { eventId: 17, note: "  Đã đếm lại kho  " } });
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).order, order);
+  assert.deepEqual(rpcCalls, [{ name: "resolve_order_quantity_inventory_review", args: {
+    p_order_id: "TEST-1", p_expected_event_id: 17, p_note: "Đã đếm lại kho", p_actor: "STAFF-1",
+  } }]);
+});
+
+test("warehouse review refuses stale events, short notes and mixed mutations", async () => {
+  const action = { eventId: 17, note: "Đã đếm lại kho" };
+  const { rpcCalls } = fixture();
+  assert.equal((await send({ resolveQuantityInventoryReview: { ...action, note: " " } })).status, 400);
+  assert.equal((await send({ resolveQuantityInventoryReview: action, stage: "shipping" })).status, 400);
+  assert.equal(rpcCalls.length, 0);
+  fixture({ rpcError: { message: "line_quantity_inventory_review_changed" } });
+  assert.equal((await send({ resolveQuantityInventoryReview: action })).status, 409);
+});
