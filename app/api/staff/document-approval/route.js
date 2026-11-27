@@ -16,7 +16,8 @@ const canCreate = staff => ["admin","manager"].includes(staff.role);
 async function authorize(request) {
   const staff = await authenticateStaffRequest(request);
   if (!staff?.user.email_confirmed_at) return null;
-  return staff;
+  const profile=await staff.admin.from("staff_profiles").select("display_name").eq("user_id",staff.user.id).eq("active",true).maybeSingle();
+  return profile.error || !profile.data ? null : { ...staff, displayName:profile.data.display_name };
 }
 async function people(db) {
   const [roles, profiles] = await Promise.all([
@@ -131,12 +132,10 @@ export async function POST(request) {
     if (!row || !row.signer_ids.includes(staff.user.id)) return reply({error:"forbidden"},403);
     if (Object.hasOwn(row.approvals,staff.user.id) || row.source_sha256!==form.get("sha")
       || String(row.version)!==form.get("version")) return reply({error:"changed"},409);
-    const profile=checked(await db.from("staff_profiles").select("display_name").eq("user_id",staff.user.id).eq("active",true).maybeSingle());
-    if (!profile) return reply({error:"invalid_signer"},403);
     const signature=await optionalImage(form,"signature");
     const path=signature?`approvals/${row.id}/${randomUUID()}.png`:null;
     if (path) await put(path,signature,"image/png");
-    const approvals={...row.approvals,[staff.user.id]:{name:profile.display_name,at:new Date().toISOString(),path}};
+    const approvals={...row.approvals,[staff.user.id]:{name:staff.displayName,at:new Date().toISOString(),path}};
     const result=await db.from(TABLE).update({approvals,version:row.version+1}).eq("id",row.id)
       .eq("version",row.version).select("*").maybeSingle();
     if (result.error) throw result.error;
