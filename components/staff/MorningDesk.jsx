@@ -28,6 +28,7 @@ import { houseDateKey } from "@/lib/dashboard-calendar";
 import { dashboardTextError, FOCUS_TITLE_LIMIT } from "@/lib/dashboard-task-input";
 import { STAFF_APPS as APPS, STAFF_APP_LIST as APP_LIST } from "./staff-navigation";
 import DashboardPlanner from "./DashboardPlanner";
+import BusinessCycleMap from "./BusinessCycleMap";
 import SampleFollowups from "./SampleFollowups";
 import OrderJourneyMap from "./OrderJourneyMap";
 import RecentStaffActivity from "./RecentStaffActivity";
@@ -266,6 +267,7 @@ function buildMetrics(snapshot, mode) {
 
 export default function MorningDesk({ supabase, email, role, onLogout }) {
   const { partnerNetworkEnabled, allowedModules } = useStaffFeatures();
+  const [cycleRevision,setCycleRevision]=useState(0);
   const router = useRouter();
   const { locale } = useLocale();
   const [snapshot, setSnapshot] = useState(null);
@@ -576,7 +578,7 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
           </div>
           <div className={styles.identity}>
             <span><b>{email}</b><small>{role}</small></span>
-            <button onClick={() => { load(); loadActivityExtras(); }} disabled={loading || activityExtras.loading} aria-label="Làm mới bàn ngày"><RefreshCw className={loading ? styles.spin : ""} /></button>
+            <button onClick={() => { load(); loadActivityExtras(); setCycleRevision(value=>value+1); }} disabled={loading || activityExtras.loading} aria-label="Làm mới bàn ngày"><RefreshCw className={loading ? styles.spin : ""} /></button>
           </div>
         </header>
 
@@ -587,6 +589,9 @@ export default function MorningDesk({ supabase, email, role, onLogout }) {
         {error && <p className={styles.error} role="alert"><AlertTriangle />{error}<button onClick={() => setError("")} aria-label="Đóng thông báo">×</button></p>}
 
 
+
+        {(allowedModules===null || allowedModules.includes("control")) &&
+          <BusinessCycleMap supabase={supabase} revision={cycleRevision}/>}
 
         <div className={styles.todayOverview}>
           <section className={styles.exceptions}>

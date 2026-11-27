@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { businessPhases, validateBusinessCycle, vnToday } from "@/lib/business-cycle";
 import FormattedNumberInput from "@/components/FormattedNumberInput";
 import {
   growthActual, growthFunnel, growthMetrics, growthPriority, localMonth, planningInputs, suggestedGrowthTargets,
@@ -17,6 +18,7 @@ const show = (value, unit) => {
   if (unit === "%") return `${decimal.format(value)}%`;
   return decimal.format(value);
 };
+const emptyCycle = { phase:"", startsOn:"", reviewOn:"", readyWhen:"" };
 const highlighted = new Set(["netRevenue", "grossMargin", "firstPaidBuyers", "repeatPaidBuyers"]);
 const floorPosition = (actual, target) => {
   if (actual == null || target == null) return null;
@@ -31,6 +33,7 @@ export default function BusinessGrowthPlan({ supabase, role }) {
   const [targets, setTargets] = useState({});
   const [assumptions, setAssumptions] = useState({});
   const [focus, setFocus] = useState("");
+  const [cycle,setCycle]=useState(emptyCycle);
   const [increase, setIncrease] = useState(10);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -56,6 +59,7 @@ export default function BusinessGrowthPlan({ supabase, role }) {
         setTargets(data.plan?.targets ?? {});
         setAssumptions(data.plan?.assumptions ?? {});
         setFocus(data.plan?.focus ?? "");
+        setCycle(data.plan?.cycle ?? emptyCycle);
         setDirty(false);
       } catch {
         if (!controller.signal.aborted) setError("Chưa tải được kế hoạch. Hãy thử tải lại.");
@@ -63,6 +67,12 @@ export default function BusinessGrowthPlan({ supabase, role }) {
     })();
     return () => controller.abort();
   }, [supabase, month, canManage, reload]);
+
+  useEffect(()=>{
+    if (result && window.location.hash==="#nhip-kinh-doanh") {
+      document.getElementById("nhip-kinh-doanh")?.scrollIntoView({block:"start"});
+    }
+  },[Boolean(result)]);
 
   const todayMonth = localMonth();
   const actual = useMemo(() => month > todayMonth ? {} : growthActual(result?.months[0]), [result, month, todayMonth]);
@@ -99,9 +109,27 @@ export default function BusinessGrowthPlan({ supabase, role }) {
     setResult(null); setMonth(value);
   };
 
+  function updateCycle(key,value) {
+    setCycle(current=>({...current,[key]:value}));
+    setDirty(true); setMessage("");
+  }
+
+  function useSuggestedCycle() {
+    const today=vnToday();
+    const startsOn=today.startsWith(month)?today:`${month}-01`;
+    const review=new Date(`${startsOn}T00:00:00Z`);
+    review.setUTCDate(review.getUTCDate()+14);
+    setCycle({phase:"plant",startsOn,reviewOn:review.toISOString().slice(0,10),readyWhen:
+      "Đã hỏi lại ít nhất 4 mẫu, ghi rõ mẫu nào chuyển thành đơn và biết giá vốn của trà được chọn."});
+    if (!focus.trim()) setFocus("Ghi ngày thực gửi mẫu và hẹn hỏi lại từng quán sau 7 ngày.");
+    setDirty(true); setMessage("");
+  }
+
   async function save(event) {
     event.preventDefault();
     if (!result || saving || !dirty) return;
+    const activeCycle=cycle.phase?validateBusinessCycle(cycle,`${month}-01`):null;
+    if (activeCycle===undefined) { setError("Chọn ngày bắt đầu trong tháng kế hoạch, ngày xem lại từ ngày bắt đầu và điều kiện chuyển nhịp."); return; }
     setSaving(true); setError(""); setMessage("");
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -109,7 +137,7 @@ export default function BusinessGrowthPlan({ supabase, role }) {
       const response = await fetch("/api/staff/business-plan", {
         method: "PUT",
         headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ month, targets: numericTargets, assumptions: numbers(assumptions), focus, version: result.plan?.version ?? null }),
+        body: JSON.stringify({ month, targets: numericTargets, assumptions: numbers(assumptions), focus, cycle:activeCycle, version: result.plan?.version ?? null }),
       });
       const data = await response.json();
       if (response.status === 409) { setError("Kế hoạch vừa được cập nhật ở thiết bị khác. Ghi lại phần chỉnh sửa rồi tải lại."); return; }
@@ -141,10 +169,24 @@ export default function BusinessGrowthPlan({ supabase, role }) {
         <div><p>Ưu tiên điều hành</p><h3>{priority.title}</h3><span>{priority.detail}</span></div>
         <Link href={priority.href}>{priority.action} →</Link>
       </section>
-      <label className={styles.focus}>Việc trọng tâm tháng này
-        <textarea value={focus} onChange={event => { setFocus(event.target.value); setDirty(true); }} maxLength={600} disabled={saving}
-          placeholder="Ví dụ: hỏi lại quán sau khi gửi mẫu, ghi rõ trà được chọn và ngày dự kiến đặt đơn."/>
-      </label>
+      <section className={styles.cycleEditor} id="nhip-kinh-doanh" aria-labelledby="cycle-editor-title">
+        <header><h3 id="cycle-editor-title">Nhịp kinh doanh</h3>
+          <button type="button" disabled={saving||Boolean(cycle.phase)} onClick={useSuggestedCycle}>Điền gợi ý Ươm nền</button></header>
+        <p>Ngày bắt đầu quyết định khi nhịp xuất hiện trên trang Hôm nay. Đến mốc xem lại, bạn chọn giữ nhịp hoặc chuyển tiếp.</p>
+        <div className={styles.drivers}>
+          <label>Giai đoạn<select value={cycle.phase} onChange={event=>updateCycle("phase",event.target.value)} disabled={saving}>
+            <option value="">Chưa chọn</option>{businessPhases.map(phase=><option key={phase.id} value={phase.id}>{phase.label}</option>)}
+          </select></label>
+          <label>Bắt đầu<input type="date" value={cycle.startsOn} onChange={event=>updateCycle("startsOn",event.target.value)} disabled={saving||!cycle.phase}/></label>
+          <label>Xem lại<input type="date" value={cycle.reviewOn} min={cycle.startsOn || undefined} onChange={event=>updateCycle("reviewOn",event.target.value)} disabled={saving||!cycle.phase}/></label>
+        </div>
+        {cycle.phase && <label>Điều kiện chuyển nhịp<textarea value={cycle.readyWhen} maxLength={350} onChange={event=>updateCycle("readyWhen",event.target.value)} disabled={saving} placeholder="Ví dụ: có đủ phản hồi mẫu và biết được biên gộp của trà bán chính."/></label>}
+        <label className={styles.focus}>Việc trọng tâm tháng này
+          <textarea value={focus} onChange={event => { setFocus(event.target.value); setDirty(true); }} maxLength={600} disabled={saving}
+            placeholder="Ví dụ: hỏi lại quán sau khi gửi mẫu, ghi rõ trà được chọn và ngày dự kiến đặt đơn."/>
+        </label>
+        <div className={styles.cycleSave}><button type="submit" disabled={!dirty||saving}>{saving?"Đang lưu…":"Lưu nhịp & kế hoạch"}</button></div>
+      </section>
 
       <details className={styles.section} open>
         <summary>Thực tế và mục tiêu</summary>
