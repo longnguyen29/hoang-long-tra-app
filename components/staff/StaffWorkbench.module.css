@@ -103,3 +103,43 @@
 .inventoryReview label { display: grid; gap: .35rem; width: 100%; }
 .inventoryReview textarea { width: 100%; min-height: 4.5rem; }
 .inventoryReview button { min-height: 44px; padding: .45rem .8rem; }
+
+.orderDetail > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .5rem;
+  padding-block: .75rem .5rem;
+}
+.orderDetail > header > button { grid-column: 2; }
+.orderDetailNav {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .25rem;
+}
+.orderDetail .orderDetailNav button {
+  width: auto;
+  min-height: 44px;
+  padding: .25rem;
+  border: 0;
+  border-radius: var(--radius-control);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+.orderDetailNav button[aria-pressed="true"] {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.orderDetail [hidden] { display: none; }
+.orderFold { border-block-start: var(--rule-thin) solid var(--color-rule); }
+.orderFold > summary {
+  min-height: 44px;
+  align-content: center;
+  padding-block: .35rem;
+  cursor: pointer;
+  font-weight: 650;
+}
+.orderDetail .orderFacts { padding-block-start: var(--space-sm); }
+@media (max-width: 24rem) {
+  .orderDetail .orderDetailNav button { font-size: .78rem; }
+}
