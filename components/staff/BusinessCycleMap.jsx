@@ -38,6 +38,9 @@ export default function BusinessCycleMap({supabase,revision=0}) {
   return <section className={styles.card} aria-labelledby="business-cycle-title" data-no-translate>
     <div className={styles.copy}>
       <h2 id="business-cycle-title">Nhịp kinh doanh Hoàng Long</h2>
+      <blockquote className={styles.principle} lang="en">
+        fundamental art of living is not controlling outcomes but arranging the conditions from which desirable outcomes naturally emerge.
+      </blockquote>
       {unavailable?<p role="status">Chưa tải được nhịp hiện tại.</p>:!snapshot?<p role="status">Đang tải nhịp hiện tại…</p>:<>
         <p className={styles.phase}>{selected?"Đang ở":"Gợi ý để bắt đầu"} <strong>{(selected||suggested).label}</strong></p>
         <p className={styles.focus}>{focus}</p>
