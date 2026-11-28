@@ -160,3 +160,21 @@
 .lineMore[open] summary::after { content: "▴"; }
 .lineMore[open] { grid-column: 1 / -1; }
 .lineMore > div { display: grid; gap: var(--space-2xs); justify-items: end; }
+
+.externalVehicle { margin-block: .6rem 1rem; }
+.externalVehicle form { display: grid; justify-items: start; gap: .65rem; padding-block: .3rem .6rem; }
+.externalVehicleToggle { display: flex; align-items: center; min-height: 44px; gap: .6rem; }
+.externalVehicleToggle input { width: 1.15rem; height: 1.15rem; accent-color: var(--color-ink); }
+.externalVehicleFields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); width: 100%; gap: .65rem; }
+.externalVehicleFields label { display: grid; gap: .35rem; min-width: 0; font-size: var(--text-sm); }
+.externalVehicleFields input, .externalVehicle button {
+  min-height: 44px;
+  padding: .45rem .65rem;
+  border: 1px solid var(--color-rule);
+  color: var(--color-ink);
+  background: var(--color-paper);
+  border-radius: var(--radius-control);
+}
+.externalVehicleFields input { min-width: 0; width: 100%; font-size: max(16px, var(--text-base)); }
+.externalVehicle button:disabled { opacity: .55; }
+@media(max-width: 24rem) { .externalVehicleFields { grid-template-columns: minmax(0,1fr); } }
