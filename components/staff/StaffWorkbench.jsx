@@ -263,6 +263,7 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
     line_unit_unchanged:"Đơn vị đã giống lựa chọn hiện tại. Chọn đơn vị mới hoặc giữ nguyên.",
     line_unit_correction_failed:"Chưa lưu được đơn vị. Hãy thử lại.",
     line_unit_correction_reload_failed:"Đơn vị có thể đã được sửa. Tải lại đơn để kiểm tra trước khi thao tác tiếp.",
+    invalid_external_vehicle:"Kiểm tra số liên lạc và biển số. Hai ô đều có thể để trống.",
     invalid_line_quantity_correction:"Thông tin sửa số lượng chưa hợp lệ. Tải lại đơn và chọn dòng sản phẩm.",
     line_quantity_reason_required:"Ghi lý do sửa số lượng từ 5 đến 1.000 ký tự.",
     line_quantity_unchanged:"Số lượng mới trùng với số lượng đã lưu.",
@@ -404,6 +405,31 @@ export default function StaffWorkbench({supabase,email,role,onLogout}){
   {customer&&<aside className={styles.detail} aria-label="Hồ sơ khách hàng"><header><div><p>Customer memory</p><h2>{customer.customer_name}</h2></div><button onClick={()=>setCustomer(null)} aria-label="Đóng">×</button></header><dl><div><dt>Liên hệ</dt><dd>{customer.contact}</dd></div><div><dt>Số đơn</dt><dd>{customer.order_count}</dd></div><div><dt>Tổng chi</dt><dd>{money(customer.total_spent)}</dd></div><div><dt>Đơn gần nhất</dt><dd>{dateTime(customer.last_order)} · {ageLabel(customerStats?.daysSinceLastOrder??null)}</dd></div><div><dt>Nhịp đặt lại</dt><dd>{customerStats?.averageGapDays===null?"Cần ít nhất 3 đơn":`${new Intl.NumberFormat("vi-VN",{maximumFractionDigits:1}).format(customerStats.averageGapDays)} ngày/đơn`}</dd></div><div><dt>TB số lượng/đơn</dt><dd>{formatQuantities(customerStats?.averageQuantities)}</dd></div></dl><div className={styles.history}><h3>Lịch sử đơn</h3>{(customer.detail?.history||[]).map(item=>{const full=orders.find(order=>order.id===item.id);return <article key={item.id} className={styles.customerOrder}><div><b>{item.id}</b><small>{dateTime(item.ts)} · {item.type==="wholesale"?"Đơn sỉ":"Đơn lẻ"} · {orderStageMeta(full?.stage||orderStageForStatus(item.status)).shortLabel}</small>{full?.reorderOfOrderId&&<small>Đặt lại từ {full.reorderOfOrderId}</small>}<small>Số lượng: {formatQuantities(customerStats?.quantitiesById[item.id])}</small></div><strong>{money(item.total)}</strong><button type="button" disabled={reorderLoading} onClick={()=>startReorder(item.id,customer.contact)}><RotateCcw/> Đặt lại</button></article>})}</div><label className={styles.houseNote}>Ghi nhớ của Nhà<textarea value={customerNote} onChange={event=>setCustomerNote(event.target.value)} placeholder="Cách uống, nơi nhận, điều cần nhớ…"/></label><button className={styles.advance} onClick={saveCustomerNote}>Lưu ghi nhớ</button></aside>}
   {creatingOrder&&<NewOrderPanel key={reorderSource?.id||b2bCustomer?.id||(assistantDraft?"assistant":"new")} supabase={supabase} sourceOrder={reorderSource} initialDraft={assistantDraft} b2bCustomer={b2bCustomer} onClose={closeNewOrder} onCreated={orderCreated}/>}
  </main>
+}
+
+function ExternalVehicleFields({vehicle, saving, onUpdate}) {
+ const [enabled,setEnabled]=useState(Boolean(vehicle));
+ const [phone,setPhone]=useState(vehicle?.phone || "");
+ const [plate,setPlate]=useState(vehicle?.plate || "");
+ useEffect(()=>{
+  setEnabled(Boolean(vehicle));
+  setPhone(vehicle?.phone || "");
+  setPlate(vehicle?.plate || "");
+ },[vehicle]);
+ const changed=enabled !== Boolean(vehicle) || (enabled && (
+  phone.trim() !== (vehicle?.phone || "") || plate.trim().toUpperCase() !== (vehicle?.plate || "")
+ ));
+ return <details className={`${styles.orderFold} ${styles.externalVehicle}`} open={vehicle ? true : undefined}>
+  <summary>Xe ngoài{vehicle?" · Đã ghi nhận":""}</summary>
+  <form onSubmit={event=>{event.preventDefault();if(changed&&!saving)onUpdate({externalVehicle:enabled?{phone,plate}:null})}}>
+   <label className={styles.externalVehicleToggle}><input type="checkbox" checked={enabled} onChange={event=>setEnabled(event.target.checked)} disabled={saving}/>Giao bằng xe ngoài</label>
+   {enabled&&<div className={styles.externalVehicleFields}>
+    <label>Số liên lạc (tùy chọn)<input type="tel" maxLength={50} value={phone} onChange={event=>setPhone(event.target.value)} disabled={saving}/></label>
+    <label>Biển số xe (tùy chọn)<input maxLength={40} autoCapitalize="characters" value={plate} onChange={event=>setPlate(event.target.value)} disabled={saving}/></label>
+   </div>}
+   <button type="submit" disabled={saving||!changed}>{saving?"Đang lưu…":"Lưu thông tin xe"}</button>
+  </form>
+ </details>;
 }
 
 export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",detailError="",onRetry,order,role,events,costs,receivable,trackingSms,smsHistory={items:[],unavailable:false},onSmsAction,flowBlock=null,loadingEvents,saving,healthDraft,setHealthDraft,waitingDraft,setWaitingDraft,healthNoteDraft,setHealthNoteDraft,trackingDraft,setTrackingDraft,carrierDraft,setCarrierDraft,onUpdate,onIssueReceivable,onRecordPayment,onAddCost,onSyncCosts,onDeleteCost,onClose}){
@@ -624,6 +650,7 @@ export function OrderDetail({onVoidReceivable,onDelete,onReorder,actionError="",
   <button type="button" className={styles.reorderAction} onClick={onReorder} disabled={saving}><RotateCcw/> Đặt lại đơn này</button>
   </div>
   <div id="order-panel-shipping" hidden={orderPanel!=="shipping"}>
+  {canRemoveLines&&<ExternalVehicleFields vehicle={order.externalVehicle} saving={saving} onUpdate={onUpdate}/>}
   {orderStageIndex(order.stage)>=4&&<section className={styles.trackingSection}><div className={styles.detailSectionTitle}><Truck/><span><b>Vận chuyển</b><small>Khi đơn ở bước Giao hàng, lưu hãng và mã vận đơn sẽ tự gửi SMS cập nhật cho khách.</small></span></div><div className={styles.trackingFields}><label>Đơn vị vận chuyển<select value={carrierDraft} onChange={event=>setCarrierDraft(event.target.value)}><option value="">Chọn hãng</option>{SHIPPING_CARRIERS.map(carrier=><option key={carrier.id} value={carrier.id}>{carrier.label}</option>)}</select></label><label>Mã vận đơn<input value={trackingDraft} onChange={event=>setTrackingDraft(event.target.value)} placeholder="Nhập mã vận đơn" autoCapitalize="characters"/></label><button disabled={saving||(Boolean(carrierDraft)!==Boolean(trackingDraft))||(carrierDraft===(order.shippingCarrier||"")&&trackingDraft===(order.trackingCode||""))} onClick={async()=>{if(await onUpdate({shippingCarrier:carrierDraft||null,trackingCode:trackingDraft}))requestAnimationFrame(()=>document.getElementById("tracking-sms-preview")?.scrollIntoView({behavior:"smooth",block:"start"}))}} title="Lưu hãng và mã vận đơn. Nếu đơn đang ở bước Giao hàng, hệ thống sẽ gửi SMS cho khách.">Lưu vận chuyển</button></div>{order.shippingCarrier&&order.trackingCode&&<div className={styles.carrierState} data-delivered={Boolean(order.deliveredAt)}><span><i/><b>{carrierLabel(order.shippingCarrier)}</b><code>{order.trackingCode}</code></span><p>{order.carrierStatusName?`${order.carrierStatusName}${order.carrierStatusCode?` · ${order.carrierStatusCode}`:""}`:"Đã kết nối · đang chờ trạng thái đầu tiên từ hãng"}</p>{order.carrierStatusAt&&<small>Cập nhật {dateTime(order.carrierStatusAt)}</small>}</div>}{order.shippingCarrier&&order.trackingCode&&<button type="button" disabled={saving} onClick={()=>{document.getElementById("tracking-sms-preview")?.scrollIntoView({behavior:"smooth",block:"start"})}}>Xem trạng thái SMS</button>}{order.publicTrackingToken&&<Link href={`/don-hang/${order.publicTrackingToken}`} target="_blank" title="Mở đúng trang mà khách sẽ thấy từ link trong tin nhắn.">Mở trang khách theo dõi <ArrowRight/></Link>}</section>}
   <section className={styles.flowSection} aria-labelledby="order-flow-title"><div className={styles.detailSectionTitle}><Activity/><span><b id="order-flow-title">Luồng xử lý</b><small>{order.type==='retail'?'Đơn lẻ: xác nhận → đóng gói → giao hàng.':'Đơn sỉ: đầy đủ bước chuẩn bị và sản xuất.'} Mỗi lần chỉ tiến hoặc lùi một bước.</small></span></div><details className={styles.orderFold}><summary>Xem các bước</summary><ol className={styles.orderSpine}>{flowStages.map((item,index)=><li key={item.id} data-state={index<stageIndex?"done":index===stageIndex?"current":"future"}><span>{index<stageIndex?<CheckCircle2/>:String(index+1).padStart(2,'0')}</span><div><b>{item.label}</b>{index===stageIndex&&<small>Đang ở đây</small>}</div></li>)}</ol></details>
    <div className={styles.nextAction}><span>Việc cần làm ở bước này</span><p>{stage.nextAction}</p></div>

@@ -273,10 +273,26 @@ export async function PATCH(request, { params }) {
     return Response.json({ ok: true, order, events: eventResult.data || [], trackingSms, smsHistory });
   }
 
-  const { stage, health, waitingOn, healthNote, trackingCode, shippingCarrier, linePrices, type } = body || {};
+  const { stage, health, waitingOn, healthNote, trackingCode, shippingCarrier, linePrices, type, externalVehicle } = body || {};
   const update = {};
   const events = [];
   let expectedPriceLines = null;
+  if (externalVehicle !== undefined) {
+    const valid = externalVehicle === null || (
+      externalVehicle && !Array.isArray(externalVehicle)
+      && typeof externalVehicle.phone === "string" && /^[0-9+()./ -]{0,50}$/.test(externalVehicle.phone)
+      && typeof externalVehicle.plate === "string" && !/[\x00-\x1f\x7f]/.test(externalVehicle.plate)
+      && externalVehicle.plate.trim().toUpperCase().length <= 40 && Object.keys(externalVehicle).length === 2
+    );
+    if (!valid || Object.keys(body).length !== 1) {
+      return Response.json({ok:false,error:"invalid_external_vehicle"},{status:400});
+    }
+    update.external_vehicle = externalVehicle && {
+      phone:externalVehicle.phone.trim(), plate:externalVehicle.plate.trim().toUpperCase(),
+    };
+    events.push({kind:"external_vehicle_change",message:externalVehicle?"Đã lưu thông tin xe ngoài.":"Đã bỏ ghi nhận xe ngoài."});
+  }
+
 
   if (type !== undefined) {
     if (!["retail", "wholesale"].includes(type)) return Response.json({ok:false,error:"invalid_type"},{status:400});

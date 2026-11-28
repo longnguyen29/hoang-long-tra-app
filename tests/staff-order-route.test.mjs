@@ -238,3 +238,38 @@ test("warehouse review refuses stale events, short notes and mixed mutations", a
   fixture({ rpcError: { message: "line_quantity_inventory_review_changed" } });
   assert.equal((await send({ resolveQuantityInventoryReview: action })).status, 409);
 });
+
+test("outside transport is optional on a new order without a carrier or tracking number", async () => {
+  const mock = fixture({orderOverrides:{stage:"new_order",status:"pending"}});
+  const response = await send({externalVehicle:{phone:"",plate:""}});
+  assert.equal(response.status,200);
+  assert.deepEqual(mock.writes,[{external_vehicle:{phone:"",plate:""}}]);
+  assert.deepEqual((await response.json()).order.external_vehicle,{phone:"",plate:""});
+  assert.equal(mock.events[0].kind,"external_vehicle_change");
+  assert.equal(mock.rpcCalls.length,0);
+});
+
+test("outside transport is independent of existing tracking and can be cleared", async () => {
+  const mock = fixture({orderOverrides:{tracking_code:"EXISTING",shipping_carrier:"viettel_post"}});
+  const response = await send({externalVehicle:{phone:" +84 900 000 000 ",plate:" 29c-123.45 "}});
+  const {order}=await response.json();
+  assert.equal(order.tracking_code,"EXISTING");
+  assert.deepEqual(mock.writes[0],{external_vehicle:{phone:"+84 900 000 000",plate:"29C-123.45"}});
+  assert.equal(mock.events[0].message.includes("29C"),false);
+  assert.equal((await send({externalVehicle:null})).status,200);
+  assert.deepEqual(mock.writes[1],{external_vehicle:null});
+});
+
+test("outside transport rejects malformed numbers and unrelated updates in the same request", async () => {
+  const mock = fixture();
+  for(const payload of [
+    {externalVehicle:{phone:"<script>",plate:""}},
+    {externalVehicle:{phone:"",plate:"",public:true}},
+    {externalVehicle:{phone:"",plate:""},stage:"shipping"},
+  ]){
+    const response=await send(payload);
+    assert.equal(response.status,400);
+    assert.equal((await response.json()).error,"invalid_external_vehicle");
+  }
+  assert.equal(mock.writes.length,0);
+});
